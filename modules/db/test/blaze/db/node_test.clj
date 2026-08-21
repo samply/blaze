@@ -29,11 +29,13 @@
    [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.spec]
-   [blaze.db.test-util :refer [config]]
+   [blaze.db.test-util :refer [config wait-for]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
    [blaze.db.tx-log.spec]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
    [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -462,7 +464,8 @@
            (ac/then-compose (partial tx-result-after-indexing node)))
 
       (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-               "store-tx-entries" "store-tx-success-entries"}
+               "await-resources" "store-tx-entries"
+               "store-tx-success-entries"}
              (duration-seconds-ops "main"))))
 
     (doseq [name ["main" "admin" "name-153446"]]
@@ -472,7 +475,8 @@
              (ac/then-compose (partial tx-result-after-indexing node)))
 
         (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-                 "store-tx-entries" "store-tx-success-entries"}
+                 "await-resources" "store-tx-entries"
+                 "store-tx-success-entries"}
                (duration-seconds-ops name)))))))
 
 (deftest transact-test
@@ -505,8 +509,8 @@
     ;; at the next start
     (testing "with failing resource indexer"
       (with-redefs
-       [resource-indexer/index-resources
-        (fn [_ _]
+       [resource-indexer/index-resource
+        (fn [_ _ _ _]
           (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
 
         (testing "fetching the result immediately"
@@ -776,3 +780,544 @@
 
       (given (plc/state (:kv-store node))
         :type := :current))))
+
+;; The following tests exercise the pipelining of the resource indexing across
+;; transactions. They drive the indexing loop with a transaction log that
+;; delivers a fixed batch of transactions and replace
+;; `resource-indexer/index-resource` with a stub that records what was
+;; dispatched and gates when it completes.
+
+(defmethod ig/init-key ::batch-tx-log [_ {:keys [batch released]}]
+  (let [polls (atom 0)]
+    (with-meta
+      (reify tx-log/TxLog
+        (-submit [_ _ _]
+          (ac/completed-future (ba/unavailable "The transaction log is read-only.")))
+        (-last-t [_]
+          (ac/completed-future (:t (peek batch))))
+        (-poll [_ offset _]
+          ;; the batch becomes available only after the test released it, so
+          ;; that the test can prepare the resource store before the indexing
+          ;; starts
+          (deref released 10000 nil)
+          (swap! polls inc)
+          (let [batch (filterv (comp #(<= offset %) :t) batch)]
+            (when (empty? batch)
+              ;; don't spin while there is nothing left to index
+              (Thread/sleep 10))
+            batch)))
+      {:polls polls})))
+
+(defn- batch-tx-log-config
+  "Returns a config of a node whose transaction log delivers `batch` as a single
+  poll result, once `released` is delivered, and whose resource indexer has
+  `num-threads` threads."
+  ([batch released]
+   (batch-tx-log-config batch released 4))
+  ([batch released num-threads]
+   (-> (dissoc config ::tx-log/local [::kv/mem :blaze.db/transaction-kv-store])
+       (assoc-in [:blaze.db/node :tx-log] (ig/ref ::batch-tx-log))
+       (assoc ::batch-tx-log {:batch batch :released released})
+       (assoc-in [:blaze.db.node.resource-indexer/executor :num-threads]
+                 num-threads))))
+
+(defn- patient [id]
+  {:fhir/type :fhir/Patient :id id})
+
+(defn- patients
+  "Returns `n` patients with an id prefixed by `prefix`."
+  [prefix n]
+  (mapv #(patient (str prefix "-" %)) (range n)))
+
+(defn- put-cmd [{:keys [id] :as resource}]
+  {:op "put" :type "Patient" :id id :hash (hash/generate resource)})
+
+(defn- payload [resources]
+  (into {} (map (juxt hash/generate identity)) resources))
+
+(defn- tx-data
+  "Returns transaction data with `t` that puts `resources`, carrying them as
+  local payload."
+  [t resources]
+  {:t t
+   :instant (.plusSeconds Instant/EPOCH t)
+   :tx-cmds (mapv put-cmd resources)
+   :local-payload (payload resources)})
+
+(defn- remote-tx-data
+  "Returns transaction data with `t` that puts `resources` without carrying a
+  local payload, so that the resources have to be fetched from the resource
+  store."
+  [t resources]
+  (dissoc (tx-data t resources) :local-payload))
+
+(defn- num-threads-config
+  "Returns a config whose resource indexer has `num-threads` threads."
+  [num-threads]
+  (assoc-in config [:blaze.db.node.resource-indexer/executor :num-threads]
+            num-threads))
+
+(deftest index-bounds-test
+  (testing "the node derives the bounds its indexing loop works with from the
+            number of threads of the resource indexer executor"
+    (doseq [[num-threads chunk-size look-ahead] [[1 2 8] [2 4 16] [4 8 32]]]
+      (with-system [{:blaze.db/keys [node]} (num-threads-config num-threads)]
+        (given (:index-bounds node)
+          :chunk-size := chunk-size
+          :look-ahead := look-ahead)))))
+
+(deftest index-look-ahead-test
+  (testing "the resources of a later transaction are dispatched before an
+            earlier transaction is applied"
+    (let [released (promise)
+          dispatched (atom [])
+          ;; the resource indexing completes only after two resources were
+          ;; dispatched, which are the resources of two different transactions
+          gate (ac/future)
+          index-resource resource-indexer/index-resource
+          batch (mapv #(tx-data (inc %) [(patient (str %))]) (range 4))]
+      (with-redefs
+       [resource-indexer/index-resource
+        (fn [resource-indexer last-updated hash resource]
+          (when (<= 2 (count (swap! dispatched conj (:id resource))))
+            (ac/complete! gate true))
+          (-> gate
+              (ac/then-compose
+               (fn [_]
+                 (index-resource resource-indexer last-updated hash resource)))))]
+
+        (with-system [{:blaze.db/keys [node]} (batch-tx-log-config batch released)]
+          (deliver released true)
+
+          (let [db (deref (d/sync node 4) 10000 ::timeout)
+                ids @dispatched]
+            ;; release the gate in any case, so that the node can be closed
+            (ac/complete! gate true)
+
+            (testing "all transactions of the batch are indexed"
+              (is (not (identical? ::timeout db))))
+
+            (testing "the resources are dispatched in transaction order"
+              (is (= ["0" "1" "2" "3"] ids)))))))))
+
+(defn- gated-index-resource
+  "Returns a replacement of `resource-indexer/index-resource` that counts the
+  resources dispatched in `dispatched`, completes `full` as soon as `look-ahead`
+  of them are dispatched, completes `overshoot` if more are and gates the
+  indexing itself on `gate`."
+  [look-ahead {:keys [dispatched full overshoot gate]}]
+  (let [index-resource resource-indexer/index-resource]
+    (fn [resource-indexer last-updated hash resource]
+      (let [n (swap! dispatched inc)]
+        (cond
+          (= look-ahead n) (ac/complete! full true)
+          (< look-ahead n) (ac/complete! overshoot true)))
+      (-> gate
+          (ac/then-compose
+           (fn [_]
+             (index-resource resource-indexer last-updated hash resource)))))))
+
+(deftest index-look-ahead-bound-test
+  (testing "the number of resources dispatched but not yet awaited never
+            exceeds the look-ahead, whatever the size of a transaction"
+    (let [released (promise)
+          gate (ac/future)
+          state {:dispatched (atom 0) :full (ac/future) :overshoot (ac/future)
+                 :gate gate}
+          ;; two transactions with far more resources than the look-ahead of
+          ;; 8 * 2 = 16 resources
+          batch (mapv #(tx-data (inc %) (patients % 40)) (range 2))]
+      (with-redefs [resource-indexer/index-resource (gated-index-resource 16 state)]
+
+        (with-system [{:blaze.db/keys [node]}
+                      (batch-tx-log-config batch released 2)]
+
+          (is (= 16 (:look-ahead (:index-bounds node))))
+
+          (deliver released true)
+
+          (testing "the look-ahead is filled"
+            (is (true? (deref (:full state) 10000 false))))
+
+          (testing "but never exceeded"
+            (is (identical? ::timeout (deref (:overshoot state) 200 ::timeout))))
+
+          (ac/complete! gate true)
+
+          (is (not (identical? ::timeout (deref (d/sync node 2) 10000 ::timeout)))))))))
+
+(defmethod ig/init-key ::multi-get-recording-resource-store
+  [_ {:keys [resource-store sizes]}]
+  (reify rs/ResourceStore
+    (-get [_ key]
+      (rs/get resource-store key))
+    (-multi-get [_ keys]
+      (swap! sizes conj (count keys))
+      (rs/multi-get resource-store keys))
+    (-put [_ entries]
+      (rs/put! resource-store entries))))
+
+(defn- with-multi-get-recording-resource-store
+  "Records the number of keys of every `multi-get` the node of `config` issues
+  while building the work list of a transaction in `sizes`."
+  [config sizes]
+  (-> (assoc-in config [:blaze.db/node :resource-store]
+                (ig/ref ::multi-get-recording-resource-store))
+      (assoc ::multi-get-recording-resource-store
+             {:resource-store (ig/ref ::rs/kv) :sizes sizes})))
+
+(deftest index-chunk-test
+  (testing "the resources of a single transaction are fetched and indexed in
+            chunks"
+    (let [released (promise)
+          gate (ac/future)
+          sizes (atom [])
+          state {:dispatched (atom 0) :full (ac/future) :overshoot (ac/future)
+                 :gate gate}
+          resources (patients 0 40)
+          batch [(remote-tx-data 1 resources)]]
+      (with-redefs [resource-indexer/index-resource (gated-index-resource 16 state)]
+
+        (with-system [{:blaze.db/keys [node] resource-store ::rs/kv}
+                      (-> (batch-tx-log-config batch released 2)
+                          (with-multi-get-recording-resource-store sizes))]
+
+          (is (= 4 (:chunk-size (:index-bounds node))))
+
+          @(rs/put! resource-store (payload resources))
+          (deliver released true)
+
+          (testing "the look-ahead is filled"
+            (is (true? (deref (:full state) 10000 false))))
+
+          (testing "but never exceeded"
+            (is (identical? ::timeout (deref (:overshoot state) 200 ::timeout))))
+
+          (ac/complete! gate true)
+
+          (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+
+          (testing "no fetch of the resource store exceeds the chunk size"
+            (is (= 10 (count @sizes)))
+            (is (every? #(= 4 %) @sizes))))))))
+
+(def ^:private slow-executor
+  (ac/delayed-executor 20 TimeUnit/MILLISECONDS))
+
+(defn- slow-index-resource
+  "Returns a replacement of `resource-indexer/index-resource` that counts the
+  resources it started and finished indexing, completes `full` as soon as
+  `look-ahead` of them were started and takes 20 ms per resource, so that
+  closing the node leaves chunks outstanding."
+  [look-ahead {:keys [started finished full]}]
+  (let [index-resource resource-indexer/index-resource]
+    (fn [resource-indexer last-updated hash resource]
+      (when (= look-ahead (swap! started inc))
+        (ac/complete! full true))
+      (-> (index-resource resource-indexer last-updated hash resource)
+          (ac/then-apply-async identity slow-executor)
+          (ac/when-complete (fn [_ _] (swap! finished inc)))))))
+
+(deftest index-drain-test
+  (testing "no resource indexing task outlives the indexing loop"
+    (let [released (promise)
+          state {:started (atom 0) :finished (atom 0) :full (ac/future)}
+          batch (mapv #(tx-data (inc %) (patients % 40)) (range 2))]
+      (with-redefs [resource-indexer/index-resource (slow-index-resource 16 state)]
+
+        (with-system [_ (batch-tx-log-config batch released 2)]
+          (deliver released true)
+
+          (testing "the look-ahead is filled"
+            (is (true? (deref (:full state) 10000 false)))))
+
+        (testing "all started tasks are finished after the node was closed"
+          (is (= @(:started state) @(:finished state))))))))
+
+(defmethod ig/init-key ::shared-index-kv-store [_ kv-store] kv-store)
+
+(defn- new-index-kv-store []
+  (let [key [::kv/mem :blaze.db/index-kv-store]]
+    (get (ig/init {key (config key)}) key)))
+
+(defn- with-shared-index-kv-store
+  "Replaces the index key-value store of `config` with `kv-store`, so that two
+  systems can be started against the same index."
+  [config kv-store]
+  (-> (dissoc config [::kv/mem :blaze.db/index-kv-store])
+      (assoc ::shared-index-kv-store kv-store)
+      (assoc-in [:blaze.db/node :kv-store] (ig/ref ::shared-index-kv-store))
+      (assoc-in [:blaze.db/tx-cache :kv-store] (ig/ref ::shared-index-kv-store))
+      (assoc-in [::node/resource-indexer :kv-store] (ig/ref ::shared-index-kv-store))))
+
+(deftest index-stop-mid-batch-test
+  (testing "closing the node stops the indexing inside the batch and the
+            remaining transactions are indexed at the next start"
+    (let [kv-store (new-index-kv-store)
+          batch (mapv #(tx-data (inc %) (patients % 40)) (range 2))
+          node-config #(-> (batch-tx-log-config batch % 2)
+                           (with-shared-index-kv-store kv-store))]
+
+      (let [released (promise)
+            state {:started (atom 0) :finished (atom 0) :full (ac/future)}]
+        (with-redefs [resource-indexer/index-resource (slow-index-resource 16 state)]
+          (with-system [{:blaze.db/keys [node]} (node-config released)]
+            (deliver released true)
+            (is (true? (deref (:full state) 10000 false)))
+
+            (testing "the batch isn't indexed completely"
+              (is (> 2 (:t @(:state node))))))))
+
+      (testing "the remaining transactions are indexed at the next start"
+        (let [released (promise)]
+          (with-system [{:blaze.db/keys [node]} (node-config released)]
+            (deliver released true)
+
+            (is (not (identical? ::timeout (deref (d/sync node 2) 10000 ::timeout))))))))))
+
+(defn- recording-index-resource
+  "Returns a replacement of `resource-indexer/index-resource` that records the
+  id of every resource it indexes in `ids`."
+  [ids]
+  (let [index-resource resource-indexer/index-resource]
+    (fn [resource-indexer last-updated hash resource]
+      (swap! ids conj (:id resource))
+      (index-resource resource-indexer last-updated hash resource))))
+
+(deftest index-resource-selection-test
+  (let [kept (patient "kept")
+        put (patient "put")
+        tx-cmds [(put-cmd put)
+                 (assoc (put-cmd kept) :op "keep")
+                 {:op "delete" :type "Patient" :id "deleted"}]]
+
+    (testing "with a local payload, the payload is indexed"
+      (let [released (promise)
+            ids (atom [])
+            batch [{:t 1 :instant Instant/EPOCH :tx-cmds tx-cmds
+                    :local-payload (payload [put])}]]
+        (with-redefs [resource-indexer/index-resource (recording-index-resource ids)]
+          (with-system [{:blaze.db/keys [node]} (batch-tx-log-config batch released)]
+            (deliver released true)
+
+            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+            (is (= ["put"] @ids))))))
+
+    (testing "without a local payload, the commands that have a hash and aren't
+              keep are fetched from the resource store and indexed"
+      (let [released (promise)
+            ids (atom [])
+            sizes (atom [])
+            batch [{:t 1 :instant Instant/EPOCH :tx-cmds tx-cmds}]]
+        (with-redefs [resource-indexer/index-resource (recording-index-resource ids)]
+          (with-system [{:blaze.db/keys [node] resource-store ::rs/kv}
+                        (-> (batch-tx-log-config batch released)
+                            (with-multi-get-recording-resource-store sizes))]
+            @(rs/put! resource-store (payload [put kept]))
+            (deliver released true)
+
+            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+            (is (= ["put"] @ids))
+
+            (testing "only the resource of the put command is fetched"
+              (is (= [1] @sizes)))))))))
+
+(defmethod ig/init-key ::tx-entries-signalling-kv-store [_ {:keys [kv-store signal]}]
+  (reify p/KvStore
+    (-new-snapshot [_]
+      (p/-new-snapshot kv-store))
+    (-get [_ column-family key]
+      (p/-get kv-store column-family key))
+    (-put [_ entries]
+      ;; the transaction index entries of step 2 are the only ones written into
+      ;; the ResourceAsOf index
+      (when (some (comp #{:resource-as-of-index} first) entries)
+        (ac/complete! signal true))
+      (p/-put kv-store entries))))
+
+(defn- with-tx-entries-signalling-kv-store
+  "Completes `signal` as soon as the node of `config` writes the transaction
+  index entries of a transaction."
+  [config signal]
+  (-> (assoc-in config [:blaze.db/node :kv-store]
+                (ig/ref ::tx-entries-signalling-kv-store))
+      (assoc ::tx-entries-signalling-kv-store
+             {:kv-store (ig/ref :blaze.db/index-kv-store) :signal signal})))
+
+(deftest index-tx-entries-before-resources-test
+  (testing "the transaction index entries of a transaction are written while its
+            own resources are still being indexed, so that a batch of a single
+            transaction overlaps them as well"
+    (let [released (promise)
+          ;; the resource indexing completes only after the transaction index
+          ;; entries of that same transaction were written
+          gate (ac/future)
+          index-resource resource-indexer/index-resource
+          batch [(tx-data 1 (patients 0 2))]]
+      (with-redefs
+       [resource-indexer/index-resource
+        (fn [resource-indexer last-updated hash resource]
+          (-> gate
+              (ac/then-compose
+               (fn [_]
+                 (index-resource resource-indexer last-updated hash resource)))))]
+
+        (with-system [{:blaze.db/keys [node]}
+                      (-> (batch-tx-log-config batch released)
+                          (with-tx-entries-signalling-kv-store gate))]
+          (deliver released true)
+
+          (let [db (deref (d/sync node 1) 10000 ::timeout)]
+            ;; release the gate in any case, so that the node can be closed
+            (ac/complete! gate true)
+
+            (is (not (identical? ::timeout db)))))))))
+
+(deftest index-batch-transactions-collector-init-test
+  (with-system [{collector ::node/index-batch-transactions}
+                {::node/index-batch-transactions {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+(defn- indexed-batches
+  "Returns the number of non-empty batches observed for the node `main`.
+
+  The last bucket of a Prometheus histogram is the +Inf bucket that counts all
+  observations."
+  []
+  (peek (:histogram/buckets (prom/get node/index-batch-transactions "main"))))
+
+(defn- index-batch-transactions-sum
+  "Returns the sum of the number of transactions of all batches observed for the
+  node `main`."
+  []
+  (:histogram/sum (prom/get node/index-batch-transactions "main")))
+
+(deftest index-batch-transactions-test
+  (testing "the number of transactions of each indexed batch is observed"
+    (let [released (promise)
+          batch (mapv #(tx-data (inc %) [(patient (str %))]) (range 3))]
+      (with-system [{:blaze.db/keys [node] tx-log ::batch-tx-log}
+                    (batch-tx-log-config batch released)]
+        (let [{:keys [polls]} (meta tx-log)
+              batches (indexed-batches)
+              transactions (index-batch-transactions-sum)]
+          (deliver released true)
+
+          (is (not (identical? ::timeout (deref (d/sync node 3) 10000 ::timeout))))
+
+          (testing "one batch with three transactions was indexed"
+            (is (= (inc batches) (indexed-batches)))
+            (is (= (+ transactions 3.0) (index-batch-transactions-sum))))
+
+          (testing "the empty batches polled afterwards aren't observed"
+            (is (true? (wait-for polls #(<= 3 %))))
+            (is (= (inc batches) (indexed-batches)))))))))
+
+(defn- duration-observations
+  "Returns the number of durations of `op` observed for the node `main`.
+
+  The last bucket of a Prometheus histogram is the +Inf bucket that counts all
+  observations."
+  [op]
+  (peek (:histogram/buckets (prom/get node/duration-seconds "main" op))))
+
+(defn- index-resources-observations
+  "Returns the number of `index-resources` durations observed for the node
+  `main`.
+
+  Only meaningful while no node is running, because that duration is observed by
+  the thread completing the last chunk of a transaction, which can happen after
+  the indexing loop committed that transaction and so after `d/sync` returned.
+  Halting the system awaits both the indexing loop and the resource indexer
+  executor, and those are the only threads that observe it."
+  []
+  (duration-observations "index-resources"))
+
+(defn- rejected-tx-data
+  "Returns transaction data with `t` that puts `resources` and is rejected by the
+  tx-indexer, because it also keeps a resource that doesn't exist."
+  [t resources]
+  (update (tx-data t resources) :tx-cmds conj
+          (assoc (put-cmd (patient "missing")) :op "keep")))
+
+(deftest index-rejected-transaction-test
+  (testing "a rejected transaction doesn't index the chunks it didn't dispatch
+            before its verification failed"
+    (let [released (promise)
+          ids (atom [])
+          ;; far more resources than the look-ahead of 8 * 2 = 16 resources
+          batch [(rejected-tx-data 1 (patients 0 40))]]
+      (with-redefs [resource-indexer/index-resource (recording-index-resource ids)]
+        (let [observations (index-resources-observations)]
+          (with-system [{:blaze.db/keys [node]}
+                        (batch-tx-log-config batch released 2)]
+            (deliver released true)
+
+            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+
+            (testing "the transaction was rejected"
+              (given @(:state node)
+                :t := 0
+                :error-t := 1))
+
+            (testing "only the resources dispatched before the verification
+                      failed are indexed, which is one look-ahead worth of them"
+              (is (= (:look-ahead (:index-bounds node))
+                     (count @ids)))))
+
+          ;; the resources were indexed and did cost time, so dropping the
+          ;; chunks left must not drop the observation of the ones dispatched
+          (testing "the resource indexing is still observed"
+            (is (= (inc observations) (index-resources-observations)))))))))
+
+(deftest await-resources-duration-test
+  (testing "the time the indexing loop is blocked awaiting the resources it
+            dispatched is observed once per chunk it awaits"
+    (let [released (promise)
+          ;; a chunk is 2 * 2 = 4 resources, so 10 resources are 3 chunks
+          batch [(tx-data 1 (patients 0 10))]]
+      (with-system [{:blaze.db/keys [node]}
+                    (batch-tx-log-config batch released 2)]
+        (let [observations (duration-observations "await-resources")]
+          (deliver released true)
+
+          (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+
+          (is (= (+ observations 3.0)
+                 (duration-observations "await-resources"))))))))
+
+(deftest index-resources-duration-test
+  (testing "the resource indexing of a transaction is observed once, whatever
+            the number of chunks it is indexed in"
+    (let [released (promise)
+          ;; a chunk is 2 * 2 = 4 resources, so 40 resources are 10 chunks
+          batch [(tx-data 1 (patients 0 40))]
+          observations (index-resources-observations)]
+      (with-system [{:blaze.db/keys [node]}
+                    (batch-tx-log-config batch released 2)]
+        (deliver released true)
+
+        (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout)))))
+
+      (is (= (inc observations) (index-resources-observations))))))
+
+(deftest index-rejected-transaction-without-chunks-left-test
+  (testing "a rejected transaction that dispatched all its chunks already
+            observes its resource indexing only once"
+    (let [released (promise)
+          ;; a chunk is 2 * 2 = 4 resources, so 4 resources are a single chunk
+          ;; that is dispatched before the verification fails
+          batch [(rejected-tx-data 1 (patients 0 4))]
+          observations (index-resources-observations)]
+      (with-system [{:blaze.db/keys [node]}
+                    (batch-tx-log-config batch released 2)]
+        (deliver released true)
+
+        (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+
+        (testing "the transaction was rejected"
+          (given @(:state node)
+            :t := 0
+            :error-t := 1)))
+
+      (is (= (inc observations) (index-resources-observations))))))

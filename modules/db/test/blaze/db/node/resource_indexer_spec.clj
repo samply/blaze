@@ -14,12 +14,19 @@
    [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.spec.type :as type]
    [clojure.spec.alpha :as s]))
 
-(s/fdef resource-indexer/index-resources
-  :args (s/cat :context :blaze.db.node/resource-indexer
-               :tx-data :blaze.db/tx-data)
+(s/fdef resource-indexer/index-resource
+  :args (s/cat :resource-indexer :blaze.db.node/resource-indexer
+               :last-updated type/instant?
+               :hash :blaze.resource/hash
+               :resource :fhir/Resource)
   :ret ac/completable-future?)
+
+(s/fdef resource-indexer/pool-size
+  :args (s/cat :resource-indexer :blaze.db.node/resource-indexer)
+  :ret pos-int?)
 
 (s/fdef resource-indexer/re-index-resources
   :args (s/cat :context :blaze.db.node/resource-indexer

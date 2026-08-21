@@ -10,6 +10,7 @@
    [blaze.db.node]
    [blaze.db.node.resource-indexer]
    [blaze.db.node.resource-indexer-spec]
+   [blaze.db.node.spec]
    [blaze.db.node.tx-indexer-spec]
    [blaze.db.node.util-spec]
    [blaze.db.resource-store-spec]

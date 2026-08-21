@@ -70,7 +70,7 @@ The list of all environment variables can be found in the [Environment Variables
 | `DB_BLOCK_CACHE_SIZE`          | Block Cache             | 128     | 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
 | `DB_SCALE_FACTOR`              | DB Buffers/File Sizes   | 1       | 1, 2, 4, 8 or 16                                      |
 | `CQL_EXPR_CACHE_SIZE`          | CQL Expression Cache    | —       | 128, 512, 1024 (in megabyte)                          |
-| `DB_RESOURCE_STORE_KV_THREADS` | Read-/Writing Resources | 4       | 4, 8, 16 or 32                                        |
+| `DB_RESOURCE_STORE_KV_THREADS` | Read-/Writing Resources | 4       | 16, 32, 64, 128 (max. transaction concurrency)        |
 
 ## Performance Benchmarks
 
@@ -122,5 +122,19 @@ Blaze maintains indexes for FHIR search parameters and CQL evaluation. The index
 
 Depending on your system, indexing can be I/O or CPU-bound. Performance tests show that at least 64 CPU cores can be utilized for resource indexing.
 
+### Resource Store Write Concurrency
+
+> [!important]
+> Set `DB_RESOURCE_STORE_KV_THREADS` to the maximum number of transactions you expect to be in flight at the same time.
+
+`DB_RESOURCE_STORE_KV_THREADS` sizes the thread pool the resource store uses to read and write resources. Every transaction hands all its resources to that pool as a single unit, so the pool size caps how many transactions can write their resources concurrently. For a server answering HTTP requests, the number to size it by is the number of clients writing to it at the same time. The default of 4 is meant for small deployments.
+
+A pool smaller than that concurrency costs throughput twice over. RocksDB merges the writers waiting at any moment into a [group commit][3]: their write-ahead log entries are written and synced together, so the cost of the fsync is shared by the whole group. A small pool keeps the groups small and so pays for the fsync far more often than necessary. On top of that, every client that finds no free thread has to wait for a full write of another client before its own even starts, which shows up as a step in the processing time as soon as the clients outnumber the threads.
+
+This matters most on SSDs with slow syncs, where the fsync dominates the processing time of a write. In the [transaction load test](performance/load-testing.md#transaction), A5N46 — a consumer NVMe SSD that acknowledges only 178 syncs per second — reaches over 4000 transactions/s at 128 concurrent clients with the pool sized to match, nearly twenty-three transactions per fsync, at a median processing time that stays flat at 29 ms over the whole sweep. Disks that sync from a write cache are far less sensitive, because their fsync is nearly free to begin with.
+
+Sizing the pool generously is cheap. Its threads are created on demand and are blocked on disk I/O rather than on the CPU while they work, so a pool that is only occasionally filled costs next to nothing.
+
 [1]: <https://github.com/synthetichealth/synthea>
 [2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
+[3]: <https://github.com/facebook/rocksdb/wiki/WAL-Performance>

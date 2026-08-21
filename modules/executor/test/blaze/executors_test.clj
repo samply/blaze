@@ -76,3 +76,12 @@
   (is (ex/single-thread-executor))
 
   (is (= ::executed (await-execution! (ex/single-thread-executor "foo")))))
+
+(deftest pool-size-test
+  (testing "cpu-bound-pool"
+    (is (= (.availableProcessors (Runtime/getRuntime))
+           (ex/pool-size (ex/cpu-bound-pool "name-%d")))))
+
+  (testing "io-pool"
+    (are [n] (= n (ex/pool-size (ex/io-pool n "name-%d")))
+      1 2 4)))

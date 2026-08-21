@@ -138,7 +138,7 @@ The number of resources which are indexed in a batch. (Deprecated)
 
 #### `DB_RESOURCE_STORE_KV_THREADS` <Badge type="warning" text="Since 0.17"/>
 
-The number of threads used for reading and writing resources.
+The number of threads used for reading and writing resources. It should be set to the maximum expected transaction concurrency. See also: [Production Configuration](../production-configuration.md#resource-store-write-concurrency).
 
 **Default:** 4
 
@@ -210,7 +210,7 @@ The number of resources which are indexed in a batch. (Deprecated)
 
 #### `DB_RESOURCE_STORE_KV_THREADS` <Badge type="warning" text="Since 0.17"/>
 
-The number of threads used for reading and writing resources.
+The number of threads used for reading and writing resources. It should be set to the maximum expected transaction concurrency. See also: [Production Configuration](../production-configuration.md#resource-store-write-concurrency).
 
 **Default:** 4
 

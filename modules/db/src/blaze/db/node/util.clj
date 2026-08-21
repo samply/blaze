@@ -56,3 +56,23 @@
   offset."
   [last-updated]
   (type/instant (.atOffset ^Instant last-updated ZoneOffset/UTC)))
+
+(def ^:private ^:const chunk-factor 2)
+(def ^:private ^:const look-ahead-chunks 4)
+
+(defn index-bounds
+  "Returns the bounds the indexing loop of the node works with, derived from
+  `pool-size`, the number of threads of the resource indexer executor, so that
+  `DB_RESOURCE_INDEXER_THREADS` governs both:
+
+  * :chunk-size - the number of resources dispatched and, for a transaction the
+    node didn't submit itself, fetched at once
+  * :look-ahead - the maximum number of resources dispatched but not yet awaited
+
+  The look-ahead is a whole number of chunks, so that a chunk always fits into
+  it, whatever the width of the executor is. That is what keeps the loop able to
+  dispatch."
+  [pool-size]
+  (let [chunk-size (* chunk-factor pool-size)]
+    {:chunk-size chunk-size
+     :look-ahead (* look-ahead-chunks chunk-size)}))

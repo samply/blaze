@@ -1,5 +1,6 @@
 (ns blaze.db.node.util-spec
   (:require
+   [blaze.db.node.spec]
    [blaze.db.node.util :as node-util]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
@@ -32,3 +33,7 @@
 (s/fdef node-util/instant
   :args (s/cat :last-updated :blaze.db.tx/instant)
   :ret :fhir/instant)
+
+(s/fdef node-util/index-bounds
+  :args (s/cat :pool-size pos-int?)
+  :ret :blaze.db.node/index-bounds)

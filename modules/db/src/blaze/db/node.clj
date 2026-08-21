@@ -121,6 +121,7 @@
    [prometheus.alpha :as prom :refer [defcounter defhistogram]]
    [taoensso.timbre :as log])
   (:import
+   [clojure.lang PersistentQueue]
    [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
@@ -140,11 +141,43 @@
 (defhistogram duration-seconds
   "Node durations.
 
-  The `node` label distinguishes the individual nodes like main and admin."
+  The `node` label distinguishes the individual nodes like main and admin.
+
+  The ops overlap, so their durations must not be summed to obtain the time of
+  the indexing thread. The `index-resources` of a transaction runs concurrently
+  with the `index-transactions` and `store-tx-entries` of that same transaction
+  and with the ops of later transactions, because the indexing loop dispatches
+  the resource indexing of later transactions before it applies earlier ones.
+
+  The `index-resources` of a transaction is observed even if its
+  `index-transactions` failed, because the resources were indexed and did cost
+  time either way.
+
+  The `await-resources` of one chunk is the time the indexing loop spends
+  blocked until that chunk is indexed, which is the only op during which the
+  loop does no work of its own. So the rate of its sum is the fraction of the
+  time the loop waits for the resource indexing to catch up."
   {:namespace "blaze"
    :subsystem "db_node"}
   (take 16 (iterate #(* 2 %) 0.0001))
   "node" "op")
+
+(defhistogram index-batch-transactions
+  "Number of transactions the indexer indexes in one batch.
+
+  The indexing loop polls the transaction log for up to 500 transactions at
+  once and indexes them as one batch, overlapping the resource indexing across
+  their boundaries. So the number of transactions per batch shows how much of
+  that overlap the loop actually gets to use.
+
+  Empty batches, which the loop polls whenever it has nothing to index, are not
+  observed, because they say nothing about the size of a batch.
+
+  The `node` label distinguishes the individual nodes like main and admin."
+  {:namespace "blaze"
+   :subsystem "db_node"}
+  (take 11 (iterate #(* 2 %) 1))
+  "node")
 
 (defcounter submit-rejections-total
   "Number of transaction submits rejected because the maximum number of
@@ -364,18 +397,6 @@
   (log/trace "store" (count entries) "transaction index entries")
   (with-open [_ (prom/timer duration-seconds node-name "store-tx-entries")]
     (kv/put! kv-store entries)))
-
-(defn- wait-for-resources [future timer]
-  (try
-    (log/trace "wait until resources are indexed...")
-    (ac/join future)
-    (log/trace "done indexing all resources")
-    (catch Throwable e
-      (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
-      (log/error e)
-      (throw e))
-    (finally
-      (prom/observe-duration! timer))))
 
 (defn- tx-success-entries [t instant]
   [(tx-success/index-entry t instant)
@@ -732,22 +753,257 @@
     (kv/put! kv-store (tx-success-entries t instant)))
   (advance-t! state t))
 
-(defn- index-tx-data!
-  "This is the main transaction handling function.
+(defn- observe-index-resources!
+  "Observes `timer` after all chunks of a transaction completed, so that it
+  measures when its resources were actually indexed and not when the loop got
+  around to awaiting them.
 
-  It indexes resources and transaction data and commits either success or error."
-  [{:keys [node-name resource-indexer kv-store read-only-matcher] :as node}
-   {:keys [t instant tx-cmds] :as tx-data}]
+  Only waits for the chunks in `pending`, because the ones a transaction
+  dispatched before them were awaited already and so completed by definition.
+  That keeps the wait bounded by the look-ahead instead of by the number of
+  chunks of the transaction."
+  [timer pending]
+  (-> (ac/all-of (mapv second pending))
+      (ac/when-complete (fn [_ _] (prom/observe-duration! timer)))))
+
+(defn- verify-tx!
+  "Verifies the transaction of `tx-chunk-state` against the database value
+  before it and stores its transaction index entries — step 2 of applying a
+  transaction.
+
+  Doesn't wait for the resources of that transaction, because the entries it
+  writes are keyed by its `t` and stay invisible until `commit-tx!` moves the
+  head of the TxSuccess index. Only that last step needs the resources to be
+  indexed.
+
+  Returns `tx-chunk-state` marked as verified, carrying the anomaly of a
+  rejected transaction, so that `commit-tx!` commits the error instead of the
+  success.
+
+  Drops the chunks of a rejected transaction that aren't dispatched yet, because
+  a transaction that produces no version references none of the index entries
+  they would write. The ones already dispatched are still awaited, so that no
+  task outlives the loop."
+  [{:keys [node-name kv-store read-only-matcher] :as node}
+   {{:keys [t tx-cmds] :as tx-data} :tx-data
+    :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
-  (let [timer (prom/timer duration-seconds node-name "index-resources")
-        future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx node-name {:db-before (np/-db node) :read-only-matcher read-only-matcher} tx-data)]
+  (let [result (index-tx node-name {:db-before (np/-db node)
+                                    :read-only-matcher read-only-matcher} tx-data)]
     (if (ba/anomaly? result)
-      (commit-error! node t result)
+      (do
+        ;; dropping the chunks left makes the ones dispatched the last ones, so
+        ;; the timer is observed here instead of by `dispatch-chunk!`
+        (when (seq chunks)
+          (observe-index-resources! timer pending))
+        (assoc tx-chunk-state :verified? true :anomaly result :chunks []))
       (do
         (store-tx-entries! node-name kv-store result)
-        (wait-for-resources future timer)
-        (commit-success! node t instant)))))
+        (assoc tx-chunk-state :verified? true)))))
+
+(defn- commit-tx!
+  "Commits either the success or the error of the transaction of
+  `tx-chunk-state` — step 3 of applying a transaction.
+
+  Runs after the resources of that transaction were indexed, because the success
+  marker is what makes them reachable."
+  [node {{:keys [t instant]} :tx-data :keys [anomaly]}]
+  (if anomaly
+    (commit-error! node t anomaly)
+    (commit-success! node t instant)))
+
+(defn- cmd-rs-keys
+  "Returns the resource store keys of all resources of `tx-cmds` that have to be
+  indexed.
+
+  Kept resources are excluded because they didn't change and so are already
+  indexed. Commands like delete carry no :hash and are excluded that way."
+  [tx-cmds variant]
+  (into
+   []
+   (keep
+    (fn [{:keys [op type hash]}]
+      (when (and hash (not= "keep" op))
+        [(keyword "fhir" type) hash variant])))
+   tx-cmds))
+
+(defn- hash-resource-pairs [resources]
+  (mapv (fn [[[_type hash] resource]] [hash resource]) resources))
+
+(defn- tx-chunks
+  "Returns a tuple of the chunks of resources of `tx-data` that have to be
+  indexed and a function fetching the resources of one chunk.
+
+  Uses the local payload if this node submitted the transaction and fetches the
+  resources from the resource store otherwise. Both cases cover the same set of
+  resources: kept resources are excluded because they didn't change and so are
+  already indexed, and commands like delete carry no hash and are excluded that
+  way."
+  [{:keys [resource-store]} chunk-size {:keys [tx-cmds] payload :local-payload}]
+  (if payload
+    [(mapv vec (partition-all chunk-size payload)) ac/completed-future]
+    [(mapv vec (partition-all chunk-size (cmd-rs-keys tx-cmds :complete)))
+     #(-> (rs/multi-get resource-store %) (ac/then-apply hash-resource-pairs))]))
+
+(defn- init-tx-chunk-state
+  "Returns the state the indexing loop keeps for `tx-data`: the chunks of
+  resources left to dispatch, the chunks dispatched but not yet awaited together
+  with their size and whether the transaction was verified already.
+
+  Keeps the chunks dispatched but not yet awaited in a queue, because a vector
+  sliced by `subvec` would keep the chunks already awaited alive until the
+  transaction is applied."
+  [node chunk-size {:keys [instant] :as tx-data}]
+  (let [[chunks fetch] (tx-chunks node chunk-size tx-data)]
+    {:tx-data tx-data
+     :last-updated (node-util/instant instant)
+     :fetch fetch
+     :chunks chunks
+     :pending PersistentQueue/EMPTY
+     :verified? false}))
+
+(defn- index-chunk!
+  "Starts indexing one chunk of resources, returning a future that completes
+  after all resources of that chunk are indexed."
+  [resource-indexer last-updated fetch chunk]
+  (-> (fetch chunk)
+      (ac/then-compose
+       (fn [entries]
+         (ac/all-of
+          (mapv (fn [[hash resource]]
+                  (resource-indexer/index-resource resource-indexer last-updated
+                                                   hash resource))
+                entries))))))
+
+(defn- dispatch-chunk!
+  "Dispatches the next chunk of `tx-chunk-state`, returning `tx-chunk-state`
+  with that chunk moved from the chunks left to dispatch to the chunks
+  dispatched but not yet awaited.
+
+  Starts the `index-resources` timer with the first chunk of a transaction and
+  observes it after all its chunks completed, so that it measures when the
+  resources of that transaction were actually indexed and not when the loop got
+  around to awaiting them."
+  [{:keys [node-name resource-indexer]}
+   {:keys [last-updated fetch chunks pending timer] :as tx-chunk-state}]
+  (let [[chunk & more] chunks
+        timer (or timer (prom/timer duration-seconds node-name "index-resources"))
+        future (index-chunk! resource-indexer last-updated fetch chunk)
+        pending (conj pending [(count chunk) future])]
+    (when-not more
+      (observe-index-resources! timer pending))
+    (assoc tx-chunk-state :chunks more :timer timer :pending pending)))
+
+(defn- await-chunk!
+  "Awaits the chunk of `tx-chunk-state` that was dispatched first and isn't
+  awaited yet, returning a tuple of `tx-chunk-state` without that chunk and the
+  number of resources it contained.
+
+  Observes the time spent waiting as `await-resources`, because that is the time
+  the indexing loop is blocked instead of doing work of its own. Observes it on
+  an error as well, because the loop did wait either way."
+  [node-name {:keys [pending] :as tx-chunk-state}]
+  (let [[size future] (peek pending)]
+    (with-open [_ (prom/timer duration-seconds node-name "await-resources")]
+      (try
+        (ac/join future)
+        (catch Throwable e
+          (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
+          (log/error e)
+          (throw e))))
+    [(assoc tx-chunk-state :pending (pop pending)) size]))
+
+(defn- await-quietly! [future]
+  (try
+    (ac/join future)
+    (catch Throwable _)))
+
+(defn- drain!
+  "Awaits all chunks of `tx-chunk-states` that were dispatched but not awaited
+  yet, discarding their results and exceptions, so that no resource indexing
+  task outlives the indexing loop.
+
+  Bounded by the look-ahead, because that is what limits the resources
+  dispatched but not yet awaited."
+  [tx-chunk-states]
+  (run! (fn [{:keys [pending]}]
+          (run! (fn [[_ future]] (await-quietly! future)) pending))
+        tx-chunk-states))
+
+(defn- next-dispatch
+  "Returns the index of the first transaction of `tx-chunk-states` at or after
+  `idx` that still has a chunk left to dispatch."
+  [tx-chunk-states idx]
+  (let [n (count tx-chunk-states)]
+    (loop [idx idx]
+      (if (and (< idx n) (empty? (:chunks (nth tx-chunk-states idx))))
+        (recur (inc idx))
+        idx))))
+
+(defn- index-batch!
+  "Indexes the transactions of `batch` in order.
+
+  Works with the `:index-bounds` of the node, keeping at most its look-ahead of
+  resources dispatched but not yet awaited, across transaction boundaries and
+  within a single transaction, so that the resource indexer executor doesn't
+  idle between transactions while neither the number of concurrent fetches of
+  the resource store nor the number of decoded resources held in memory scales
+  with the size of a transaction. A chunk always fits into the look-ahead, so
+  the loop can always dispatch.
+
+  Verifies and stores the transaction index entries of the head transaction as
+  soon as it is the head, without waiting for its own resources, so that a batch
+  of a single transaction overlaps them as well. Only the commit of that
+  transaction waits for them, and a rejected one doesn't dispatch the chunks it
+  has left at all.
+
+  Chunks are awaited in dispatch order and transactions are applied in order, so
+  the order of the observable effects is unchanged. Stops after the transaction
+  that turned `:run?` of `state` off, which makes closing responsive
+  independently of the size of the batch. Whatever is left dispatched is awaited
+  in the end, on a normal end, on a stop and on an exception alike."
+  [{:keys [node-name state] {:keys [chunk-size look-ahead]} :index-bounds
+    :as node} batch]
+  (when (seq batch)
+    (prom/observe! index-batch-transactions node-name (count batch)))
+  (let [tx-chunk-states (volatile! (mapv (partial init-tx-chunk-state node
+                                                  chunk-size)
+                                         batch))
+        n (count @tx-chunk-states)]
+    (try
+      (loop [head 0
+             dispatch (next-dispatch @tx-chunk-states 0)
+             in-flight 0]
+        (when (< head n)
+          (let [current @tx-chunk-states
+                next-size (when (< dispatch n)
+                            (count (first (:chunks (nth current dispatch)))))]
+            (cond
+              (and next-size (<= (+ in-flight next-size) look-ahead))
+              (do (vswap! tx-chunk-states assoc dispatch
+                          (dispatch-chunk! node (nth current dispatch)))
+                  (recur head (next-dispatch @tx-chunk-states dispatch)
+                         (long (+ in-flight next-size))))
+
+              (not (:verified? (nth current head)))
+              (do (vswap! tx-chunk-states assoc head
+                          (verify-tx! node (nth current head)))
+                  ;; a rejected transaction drops the chunks it has left, so the
+                  ;; dispatch index can point at a transaction without chunks now
+                  (recur head (next-dispatch @tx-chunk-states dispatch) in-flight))
+
+              (seq (:pending (nth current head)))
+              (let [[tx-chunk-state size] (await-chunk! node-name
+                                                        (nth current head))]
+                (vswap! tx-chunk-states assoc head tx-chunk-state)
+                (recur head dispatch (long (- in-flight size))))
+
+              :else
+              (do (commit-tx! node (nth current head))
+                  (when (:run? @state)
+                    (recur (inc head) dispatch in-flight)))))))
+      (finally
+        (drain! @tx-chunk-states)))))
 
 (defn- poll-tx-log! [node-name tx-log offset poll-timeout]
   (with-open [_ (prom/timer duration-seconds node-name "poll-tx-log")]
@@ -762,8 +1018,7 @@
   (let [{:keys [t error-t]} @state
         offset (inc (max t error-t))]
     (log/trace "poll transaction data with offset =" offset)
-    (run! (partial index-tx-data! node)
-          (poll-tx-log! node-name tx-log offset poll-timeout))))
+    (index-batch! node (poll-tx-log! node-name tx-log offset poll-timeout))))
 
 (defn- finish-indexing!
   "Marks the indexing of `state` as finished and fails all its waiters, so that
@@ -970,8 +1225,8 @@
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-store sync-fn search-param-registry resource-indexer
-                 read-only-matcher acquire-in-flight! state poll-timeout
-                 queue-capacity index-finished publish-finished]
+                 index-bounds read-only-matcher acquire-in-flight! state
+                 poll-timeout queue-capacity index-finished publish-finished]
   np/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -1249,6 +1504,8 @@
         node (->Node node-name (ctx config) tx-log tx-cache
                      kv-store resource-cache resource-store (sync-fn storage)
                      search-param-registry resource-indexer
+                     (node-util/index-bounds
+                      (resource-indexer/pool-size resource-indexer))
                      (compile-read-only-matcher search-param-registry)
                      (acquire-in-flight-fn node-name state
                                            max-in-flight-transactions)
@@ -1320,6 +1577,9 @@
 
 (reg-collector ::duration-seconds
   duration-seconds)
+
+(reg-collector ::index-batch-transactions
+  index-batch-transactions)
 
 (reg-collector ::submit-rejections-total
   submit-rejections-total)
