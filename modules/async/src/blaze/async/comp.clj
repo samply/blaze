@@ -312,7 +312,7 @@
              (-> (future)
                  (complete-on-timeout!
                   nil delay TimeUnit/MILLISECONDS)
-                 (then-compose
+                 (then-compose-async
                   (fn [_]
                     (retry* future-fn action-name max-retries (inc num-retry))))))
            e)))))
@@ -325,6 +325,10 @@
   Otherwise retries by calling `f` again with no arguments if the anomaly is of
   category `::anom/busy`. Waits between retries starting with 100 ms growing
   exponentially.
+
+  The retry is done using the default asynchronous execution facility and not on
+  the thread that completes the wait. That thread schedules all timeouts of the
+  JVM, so `f` doing any work on it would delay every other timeout.
 
   Please be aware that `num-retries` shouldn't be higher than the max stack
   depth. Otherwise, the CompletionStage would fail with a StackOverflowException."
