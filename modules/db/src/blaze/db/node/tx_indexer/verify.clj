@@ -8,9 +8,8 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.rts-as-of :as rts]
-   [blaze.db.impl.index.system-stats :as system-stats]
-   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.kv.spec]
+   [blaze.db.node.stats :as node-stats]
    [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
@@ -289,26 +288,22 @@
     :del-resources #{}}
    tx-cmds))
 
-(def ^:private empty-stats
-  {:total 0 :num-changes 0})
+(defn- post-process-res
+  "Completes the verification result of the transaction with `t` by appending
+  its TypeStats and SystemStats index entries to the `:entries` the commands
+  produced.
 
-(defn- type-stat-entry [snapshot t new-t [tid increments]]
-  (let [current-stats (or (type-stats/seek-value snapshot tid t) empty-stats)]
-    (type-stats/index-entry tid new-t (merge-with + current-stats increments))))
+  Verifying a command only accumulates the increments of the type it touches, so
+  the entries are built by adding those increments to `stats`, the stats of the
+  database before the transaction. That addition yields the stats after the
+  transaction as well.
 
-(defn- conj-type-stats [entries {:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer tx-u/duration-seconds "type-stats")]
-    (into entries (map (partial type-stat-entry snapshot t new-t)) stats)))
-
-(defn- system-stats [{:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer tx-u/duration-seconds "system-stats")]
-    (let [current-stats (or (system-stats/seek-value snapshot t) empty-stats)]
-      (system-stats/index-entry new-t (apply merge-with + current-stats (vals stats))))))
-
-(defn- post-process-res [db-before t {:keys [entries stats]}]
-  (cond-> (conj-type-stats entries db-before t stats)
-    stats
-    (conj (system-stats db-before t stats))))
+  Returns a map of the `:entries` and the `:stats` after the transaction."
+  [stats t {:keys [entries] increments :stats}]
+  (with-open [_ (prom/timer tx-u/duration-seconds "stats")]
+    (let [[stat-entries new-stats] (node-stats/apply-tx stats t increments)]
+      {:entries (into entries stat-entries)
+       :stats new-stats})))
 
 (defn- resource-exists? [db type id]
   (when-let [{:keys [op]} (d/resource-handle db type id)]
@@ -370,15 +365,19 @@
      cmds)))
 
 (defn verify-tx-cmds
-  "Verifies terminal `tx-cmds`. Returns index entries of the transaction outcome
-  if it is successful or an anomaly if it fails.
+  "Verifies terminal `tx-cmds`.
+
+  Returns a map of the `:entries` of the transaction outcome and the `:stats`
+  after it if it is successful or an anomaly if it fails. The stats are the ones
+  of `context` with the transaction applied, to be taken over by the node after
+  its entries were stored.
 
   The `t` is for the new transaction to commit."
   {:arglists '([context t tx-cmds])}
-  [{:keys [db-before] :as context} t tx-cmds]
+  [{:keys [db-before stats] :as context} t tx-cmds]
   (prom/observe! transaction-sizes (count tx-cmds))
   (ba/try-anomaly
    (detect-duplicate-commands! tx-cmds)
    (let [res (verify-tx-cmds* context t tx-cmds)]
      (check-referential-integrity! db-before res tx-cmds)
-     (post-process-res db-before t res))))
+     (post-process-res stats t res))))

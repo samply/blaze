@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba]
    [blaze.byte-string :as bs]
    [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change-test-util :as plc-tu]
    [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
    [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
@@ -46,11 +47,25 @@
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
                             :patient #fhir/Reference{:reference #fhir/string "Patient/0"}})
 
-(defn- verify-tx-cmds [{:keys [read-only-matcher] :as node} t tx-cmds]
+(defn- verify-tx-cmds*
+  "Verifies `tx-cmds` against `node`, using the stats the node itself keeps, so
+  that the entries are the ones the indexing loop of the node would write."
+  [{:keys [read-only-matcher stats] :as node} t tx-cmds]
   (with-open [db (d/new-batch-db (d/db node))]
     (verify/verify-tx-cmds
-     {:db-before db :read-only-matcher read-only-matcher}
+     {:db-before db :read-only-matcher read-only-matcher :stats @stats}
      t tx-cmds)))
+
+(defn- verify-tx-cmds [node t tx-cmds]
+  (let [res (verify-tx-cmds* node t tx-cmds)]
+    (if (ba/anomaly? res) res (:entries res))))
+
+(defn- patient-stats
+  "Returns the stats of the Patient type of the verification result `res`.
+
+  A function, because the tid isn't a path element `given` understands."
+  [res]
+  (get-in res [:stats :types (codec/tid "Patient")]))
 
 (defmulti verify-cmd identity)
 
@@ -60,6 +75,27 @@
 
 (defmethod verify-cmd :default [op]
   {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)})
+
+(deftest verify-tx-cmds-stats-test
+  (testing "the stats returned are the ones of the database after the
+            transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put patient-0]]]
+
+      (given (verify-tx-cmds* node 2 [{:op "put" :type "Patient" :id "1"
+                                       :hash (hash/generate patient-1)}])
+        patient-stats := {:total 2 :num-changes 2}
+        [:stats :system] := {:total 2 :num-changes 2})))
+
+  (testing "a transaction that changes nothing leaves the stats untouched"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put patient-0]]]
+
+      (given (verify-tx-cmds* node 2 [{:op "keep" :type "Patient" :id "0"
+                                       :hash (hash/generate patient-0)}])
+        :entries := []
+        patient-stats := {:total 1 :num-changes 1}
+        [:stats :system] := {:total 1 :num-changes 1}))))
 
 (deftest verify-tx-cmds-test
   (testing "two commands with the same identity aren't allowed"

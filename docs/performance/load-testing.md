@@ -84,13 +84,13 @@ Every transaction durably writes its transaction log entry and its resources bef
   title="Transaction (LEA47)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
-LEA47 scales to about 2200 transactions/s at 32 clients — more than four transactions per fsync at its 484 fsyncs/s — and gains little beyond that: 2429 at 64 and 2637 at 128 clients. The median processing time nearly doubles at each of those two levels instead, from 14 ms at 32 clients to 25 ms at 64 and 47 ms at 128, with a q99 of 79 ms at 128 clients. With the throughput staying put while the concurrency doubles, the clients added beyond 32 only queue.
+LEA47 scales to about 2600 transactions/s at 32 clients — more than five transactions per fsync at its 484 fsyncs/s — and on to 3137 at 64 clients, but gains little beyond that with 3313 at 128 clients, not quite seven transactions per fsync. The median processing time roughly doubles at each of the last two levels instead, from 11 ms at 32 clients to 19 ms at 64 and 37 ms at 128, with a q99 of 75 ms at 128 clients. With the throughput staying put while the concurrency doubles, the clients added beyond 64 only queue.
 
 <LineChart src="load-testing/data/transaction-LEA79.csv"
   title="Transaction (LEA79)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
-LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: throughput scales to about 11,000 transactions/s at 16 clients and flattens at about 15,000 from 64 clients on, with a median processing time of 7.8 ms and a q99 of 12 ms at 128 clients.
+LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: throughput scales to about 12,000 transactions/s at 16 clients and flattens at about 18,000 from 64 clients on, with a median processing time of 6.6 ms and a q99 of 11 ms at 128 clients.
 
 <LineChart src="load-testing/data/transaction-A5N46.csv"
   title="Transaction (A5N46)"

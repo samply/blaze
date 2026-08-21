@@ -531,6 +531,24 @@
               ::anom/message := "The database node `main` stopped because of an unrecoverable error."
               ::x := nil)))))))
 
+(deftest stats-test
+  (testing "a rejected transaction leaves the type and system stats untouched,
+            so that the transaction after it continues from the ones before it"
+    (with-system [{:blaze.db/keys [node]} config]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (given-failed-future
+       (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"} [:if-match 5]]])
+        ::anom/category := ::anom/conflict)
+
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
+
+      (let [db (d/db node)]
+        (is (= 2 (d/type-total db "Patient")))
+        (is (= 2 (d/system-total db)))
+        (is (= 2 (d/total-num-of-type-changes db "Patient")))
+        (is (= 2 (d/total-num-of-system-changes db)))))))
+
 (defn- submit-patient [node id]
   (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id id}]]))
 

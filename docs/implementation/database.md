@@ -129,6 +129,8 @@ The `TypeStats` index keeps track of the total number of resources and the numbe
 
 The `SystemStats` index does the same as `TypeStats`, but for the entire system, providing total counts for system-level queries.
 
+Both indices are maintained by the transaction indexer alone, which applies the transactions of a node strictly in order on a single thread. So the head value of each of them — the entry at the `t` of the last indexed transaction — is always the one the indexer wrote itself. The node keeps those head values in memory (`modules/db/src/blaze/db/node/stats.clj`), seeded once at startup, and takes the updated ones over after the entries of a transaction were stored. That way a transaction adds its increments to a value it already has instead of seeking it, while the entries themselves keep being written, because database values read them at arbitrary `t`.
+
 ### Search Param Indices
 
 These indices are independent of `t` and are used to find resources based on their content.
