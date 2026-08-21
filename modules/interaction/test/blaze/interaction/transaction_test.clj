@@ -258,6 +258,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid max-in-flight-transactions"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :max-in-flight-transactions] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/max-in-flight-transactions]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "invalid validator"
     (given-failed-system (assoc-in config [:blaze.interaction/transaction :validator] ::invalid)
       :key := :blaze.interaction/transaction

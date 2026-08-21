@@ -28,6 +28,14 @@
   :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops)
   :ret ac/completable-future?)
 
+(s/fdef d/submit-rejected-anom
+  :args (s/cat :msg string?)
+  :ret ::anom/anomaly)
+
+(s/fdef d/submit-rejected?
+  :args (s/cat :x any?)
+  :ret boolean?)
+
 (s/fdef d/subscribe-changes!
   :args (s/cat :node :blaze.db/node :type :fhir.resource/type :name string?
                :subscriber flow/subscriber?)

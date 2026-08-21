@@ -117,3 +117,6 @@
 
 (s/def :blaze.db/max-in-flight-transactions
   pos-int?)
+
+(s/def :blaze.db/submit-rejected?
+  true?)

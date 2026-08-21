@@ -304,17 +304,19 @@
   "Returns a function that tries to take one of the places for in-flight
   transactions.
 
-  That function returns a busy anomaly and counts the rejection if the maximum
-  number of in-flight transactions is already reached. It's the only point at
-  which a transaction is turned away, so it has to be called before any data of
-  the transaction is stored."
+  That function returns a rejection anomaly and counts the rejection if the
+  maximum number of in-flight transactions is already reached. It's the only
+  point at which a transaction is turned away, so it has to be called before any
+  data of the transaction is stored. That's also why the anomaly is marked as a
+  rejection, which tells a caller that submitting the transaction again is safe."
   [node-name state max-in-flight-transactions]
   (fn []
     (let [[old new] (swap-vals! state acquire-in-flight
                                 max-in-flight-transactions)]
       (when (identical? old new)
         (prom/inc! submit-rejections-total node-name)
-        (ba/busy (max-in-flight-msg max-in-flight-transactions))))))
+        (d/submit-rejected-anom
+         (max-in-flight-msg max-in-flight-transactions))))))
 
 (defn- settle-in-flight
   "Stops counting the transaction as submitting and starts counting it as

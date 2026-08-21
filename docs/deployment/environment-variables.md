@@ -461,6 +461,8 @@ Timeout in milliseconds for all reading FHIR interactions acquiring the newest d
 
 The maximum number of transactions that were submitted but are not yet indexed. Submitting a transaction while that maximum is reached will return a 503 Service Unavailable response instead, asking the client to try again later. Because such a transaction is rejected before any of its data is written, lowering this value bounds the memory the not yet indexed transactions occupy. Please increase it if you experience such 503 responses under a write load your system can otherwise sustain.
 
+The value also bounds how many entries of a batch bundle Blaze processes concurrently. That number is at most 64 and never more than half of this maximum, so that a single batch bundle can't take more than half of the places for in-flight transactions away from other clients.
+
 **Default:** 1024
 
 #### `DB_SEARCH_PARAM_BUNDLE` <Badge type="warning" text="Since 0.21"/>

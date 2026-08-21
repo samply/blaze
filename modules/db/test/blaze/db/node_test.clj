@@ -580,7 +580,12 @@
                     third submit is still rejected"
             (given-failed-future (submit-patient node "2")
               ::anom/category := ::anom/busy
-              ::anom/message := "The maximum number of 2 in-flight transactions is reached. Please try again later."))
+              ::anom/message := "The maximum number of 2 in-flight transactions is reached. Please try again later."
+              [d/submit-rejected?] := true))
+
+          (testing "a busy anomaly that isn't such a rejection isn't marked as
+                    one, because retrying it isn't safe"
+            (is (false? (d/submit-rejected? (ba/busy)))))
 
           (testing "no resource content is stored for the rejected transaction"
             (is (= puts @put-count))))

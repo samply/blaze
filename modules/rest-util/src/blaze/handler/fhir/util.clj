@@ -604,31 +604,140 @@
       :else
       entry)))
 
-(defn process-batch-entry
-  "Processes `entry` from `idx` of a batch bundle using :batch-handler from
-  `context`."
-  {:arglists '([context idx entry])}
-  [{:keys [batch-handler] :as context} idx entry]
+(defn- entry-response
+  "Calls the :batch-handler from `context` with `entry` and returns a
+  CompletableFuture that will complete with the response entry or will complete
+  exceptionally with an anomaly."
+  {:arglists '([context entry])}
+  [{:keys [batch-handler] :as context} entry]
+  (-> (batch-handler (batch-request context entry))
+      (ac/then-apply bundle-response)))
+
+(defn- entry-error-response [idx anom]
+  (if (ba/interrupted? anom)
+    anom
+    ((bundle-error-response idx) anom)))
+
+(defn- validated-entry-response
+  "Validates `entry` from `idx` of a batch bundle and returns a
+  CompletableFuture that will complete with the response entry of calling
+  `response-fn`, turning a possible anomaly into an error response entry."
+  [idx entry response-fn]
   (if-ok [_ (validate-entry idx entry)]
-    (-> (batch-handler (batch-request context entry))
-        (ac/then-apply bundle-response)
-        (ac/exceptionally
-         (fn [anom]
-           (if (ba/interrupted? anom)
-             anom
-             ((bundle-error-response idx) anom)))))
+    (-> (response-fn)
+        (ac/exceptionally (partial entry-error-response idx)))
     (comp ac/completed-future response-entry
           handler-util/bundle-error-response)))
 
-(defn- process-batch-entries* [context [entry & more] idx results]
-  (if entry
-    (-> (process-batch-entry context idx entry)
+(defn process-batch-entry
+  "Processes `entry` from `idx` of a batch bundle using :batch-handler from
+  `context`."
+  [context idx entry]
+  (validated-entry-response idx entry #(entry-response context entry)))
+
+(def ^:private ^:const num-entry-retries
+  "The number of times an entry of a batch bundle is retried after it was
+  rejected because the maximum number of in-flight transactions was reached.
+
+  Kept small on purpose. An entry that still doesn't get one of the places keeps
+  its 503, where it then really means that the server is saturated. An unbounded
+  retry would turn the backpressure into an internal queue."
+  3)
+
+(defn- process-batch-entry-retrying
+  "Like `process-batch-entry` but retries `entry` up to `num-entry-retries`
+  times if it was rejected because the maximum number of in-flight transactions
+  was reached.
+
+  Retrying is safe because such a rejection happens before anything is written.
+  So it stays narrowed to exactly that rejection, `d/submit-rejected?`, and
+  isn't widened to every `::anom/busy` anomaly. Busy is also the category of a
+  timeout, which can happen after the transaction of `entry` was already
+  committed, like the one of a read of the resource store while the response of
+  a create is being built. Retrying such an entry would write its resource a
+  second time, under a new id for a POST, and would turn the successful PUT of
+  an entry with `If-None-Match: *` into a 412. An `::anom/unavailable` of a
+  closing node can mean the same."
+  [context idx entry]
+  (validated-entry-response
+   idx entry
+   #(ac/retry (fn [] (entry-response context entry))
+              (format "batch bundle entry %d" idx) num-entry-retries
+              d/submit-rejected?)))
+
+(def ^:private ^:const max-window
+  "The maximum number of entries of a batch bundle that are processed
+  concurrently.
+
+  64 is where the transaction load test is already near its plateau."
+  64)
+
+(defn- window
+  "Returns the number of entries of a batch bundle that are processed
+  concurrently.
+
+  Caps the window at half of `max-in-flight-transactions` so that a batch never
+  takes more than half of the places for in-flight transactions away from other
+  clients, also when that maximum is configured below its default of 1024. That
+  default doesn't lower the window below `max-window`, so a missing
+  `max-in-flight-transactions` amounts to the same."
+  [max-in-flight-transactions]
+  (cond-> max-window
+    max-in-flight-transactions
+    (min (max 1 (quot max-in-flight-transactions 2)))))
+
+(defn- take-entry!
+  "Takes the next entry from `remaining`, an atom over a sequence of index-entry
+  tuples, and returns that tuple or nil if no entry is left."
+  [remaining]
+  (ffirst (swap-vals! remaining next)))
+
+(defn- process-entries!
+  "Runs one worker that takes the next entry from `remaining` and processes it,
+  one after another, until no entry is left.
+
+  Returns a CompletableFuture that will complete with `results`, the
+  index-response-entry tuples of all entries this worker processed."
+  [context remaining results]
+  (if-let [[idx entry] (take-entry! remaining)]
+    (-> (process-batch-entry-retrying context idx entry)
         (ac/then-compose-async
          (fn [result]
-           (process-batch-entries* context more (inc idx) (conj results result)))))
+           (process-entries! context remaining (conj results [idx result])))))
     (ac/completed-future results)))
 
 (defn process-batch-entries
-  "Processes `entries` of a batch bundle using :batch-handler from `context`."
-  [context entries]
-  (process-batch-entries* context entries 0 []))
+  "Processes `entries` of a batch bundle using :batch-handler from `context`.
+
+  Keeps at most `window` entries in flight, starting the next entry as soon as
+  one completes. The response entries keep the order of `entries`. In terms of
+  Reactor, that's `Flux.flatMapSequential` with a `maxConcurrency` of `window`.
+
+  The window isn't a counter checked before each entry. Instead as many workers
+  as the window is wide pull entries from one shared queue, each taking the next
+  entry as soon as its current one completed. That bounds the entries in flight
+  by construction, because a worker holds exactly one entry at a time and there
+  are never more workers than the window is wide.
+
+  Which entries a worker gets isn't fixed. It takes whatever is at the head of
+  the queue at the moment it becomes free, so a worker with fast entries
+  processes more of them than one held up by a slow entry or by the backoff of
+  `process-batch-entry-retrying`. That's what the shared queue buys: assigning
+  the entries to the workers upfront would leave the other workers idle while
+  one of them waits.
+
+  So the workers complete in arbitrary order, each with only its own entries.
+  The bundle order is restored at the end by sorting the index-response-entry
+  tuples of all workers. Unlike `flatMapSequential`, nothing is emitted before
+  that, which costs nothing here because the response bundle has to be complete
+  before it can be sent."
+  {:arglists '([context entries])}
+  [{:keys [max-in-flight-transactions] :as context} entries]
+  (let [remaining (atom (map-indexed vector entries))
+        workers (mapv (fn [_] (process-entries! context remaining []))
+                      (range (min (count entries)
+                                  (window max-in-flight-transactions))))]
+    (-> (ac/all-of workers)
+        (ac/then-apply
+         (fn [_]
+           (into [] (map second) (sort-by first (mapcat ac/join workers))))))))

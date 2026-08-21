@@ -7,6 +7,7 @@
   in time `t`."
   (:refer-clojure :exclude [str sync])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
@@ -56,15 +57,35 @@
   transaction in case of success or will complete exceptionally with an anomaly
   in case of a transaction error or other errors. Fails with an unavailable
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
-  transaction up anymore. Fails with a busy anomaly if `node` already has the
-  maximum number of transactions submitted but not yet indexed, before anything
-  of the transaction is written.
+  transaction up anymore. Fails with a busy anomaly marked as a rejection, so
+  that `submit-rejected?` holds for it, if `node` already has the maximum number
+  of transactions submitted but not yet indexed. Such a rejection happens before
+  anything of the transaction is written.
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
   [node tx-ops]
   (-> (np/-submit-tx node tx-ops)
       (ac/then-compose #(np/-tx-result node %))))
+
+(defn submit-rejected-anom
+  "Returns the anomaly of a transaction that was rejected with `msg` before
+  anything of it was written.
+
+  Only the point at which a transaction is turned away is allowed to create it,
+  because `submit-rejected?` holds for it."
+  [msg]
+  (ba/busy msg :blaze.db/submit-rejected? true))
+
+(defn submit-rejected?
+  "Checks whether `x` is the anomaly of a transaction that was rejected before
+  anything of it was written.
+
+  Such a rejection is the only failure of a write that can be safely retried by
+  submitting the transaction again. Every other busy anomaly, especially the one
+  of a timeout, can also mean that the transaction was applied after all."
+  [x]
+  (true? (:blaze.db/submit-rejected? x)))
 
 (defn subscribe-changes!
   "Subscribes `subscriber` to the resource handles of `type` changed in each
