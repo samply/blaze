@@ -612,7 +612,7 @@ Base URL of an external FHIR validator like the [MII FHIR Validator][8]. Setting
 
 Controls what happens when a resource fails external validation. One of:
 
-* `tag-only` — store the invalid resource, but add a tag with system `https://blaze-server.org/fhir/CodeSystem/ValidationStatus` and code `invalid` to its meta.
+* `tag-only` — store the invalid resource, but add a tag with system [`https://blaze-server.org/fhir/CodeSystem/ValidationStatus`](https://blaze-server.org/fhir/CodeSystem/ValidationStatus) and code `invalid` to its meta.
 * `tag-outcome` — like `tag-only`, but additionally store the validator's OperationOutcome as a contained resource referenced from a meta extension.
 * `reject` — reject the resource with `400 Bad Request` and an OperationOutcome describing the validation issues.
 
