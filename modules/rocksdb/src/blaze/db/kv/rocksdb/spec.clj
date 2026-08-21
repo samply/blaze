@@ -38,12 +38,16 @@
 (s/def ::db-options/max-background-jobs
   nat-int?)
 
+(s/def ::db-options/max-subcompactions
+  pos-int?)
+
 (s/def ::db-options/compaction-readahead-size
   (s/nilable nat-int?))
 
 (s/def ::rocksdb/db-options
   (s/keys :opt-un [::db-options/wal-dir
                    ::db-options/max-background-jobs
+                   ::db-options/max-subcompactions
                    ::db-options/compaction-readahead-size]))
 
 (s/def ::write-options/sync?
