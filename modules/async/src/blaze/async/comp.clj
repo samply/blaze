@@ -6,7 +6,6 @@
   (:require
    [blaze.anomaly :as ba]
    [clojure.math :as math]
-   [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])
   (:import
    [java.util.concurrent CompletionStage CompletableFuture TimeUnit CompletionException]))
@@ -299,10 +298,7 @@
     (fn [~binding-form]
       ~@body)))
 
-(defn- retryable? [{::anom/keys [category]}]
-  (#{::anom/busy} category))
-
-(defn- retry* [future-fn action-name max-retries num-retry]
+(defn- retry* [future-fn retryable? action-name max-retries num-retry]
   (-> (future-fn)
       (exceptionally-compose
        (fn [e]
@@ -312,9 +308,10 @@
              (-> (future)
                  (complete-on-timeout!
                   nil delay TimeUnit/MILLISECONDS)
-                 (then-compose
+                 (then-compose-async
                   (fn [_]
-                    (retry* future-fn action-name max-retries (inc num-retry))))))
+                    (retry* future-fn retryable? action-name max-retries
+                            (inc num-retry))))))
            e)))))
 
 (defn retry
@@ -322,14 +319,26 @@
   the function `f` with no arguments completes normally will complete with its
   result.
 
-  Otherwise retries by calling `f` again with no arguments if the anomaly is of
-  category `::anom/busy`. Waits between retries starting with 100 ms growing
-  exponentially.
+  Otherwise retries by calling `f` again with no arguments if calling the
+  function `retryable?` with the anomaly returns true. Retries every busy
+  anomaly if `retryable?` isn't given. Waits between retries starting with
+  100 ms growing exponentially.
+
+  Only anomalies for which retrying is safe should be matched by `retryable?`.
+  The category alone often doesn't tell that. A busy anomaly for example is
+  returned by a request that was rejected before it had any effect as well as by
+  one that timed out after it maybe had one already.
+
+  The retry is done using the default asynchronous execution facility and not on
+  the thread that completes the wait. That thread schedules all timeouts of the
+  JVM, so `f` doing any work on it would delay every other timeout.
 
   Please be aware that `num-retries` shouldn't be higher than the max stack
   depth. Otherwise, the CompletionStage would fail with a StackOverflowException."
-  [f action-name num-retries]
-  (retry* f action-name num-retries 0))
+  ([f action-name num-retries]
+   (retry f action-name num-retries ba/busy?))
+  ([f action-name num-retries retryable?]
+   (retry* f retryable? action-name num-retries 0)))
 
 (defn retry2
   "Returns a CompletionStage that, when the CompletionStage as result of calling

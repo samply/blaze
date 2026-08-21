@@ -5,6 +5,7 @@
    [blaze.async.comp-spec]
    [blaze.async.flow :as flow]
    [blaze.async.flow-spec]
+   [blaze.db.anom :as-alias db-anom]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.db.impl.db-spec]
@@ -580,7 +581,8 @@
                     third submit is still rejected"
             (given-failed-future (submit-patient node "2")
               ::anom/category := ::anom/busy
-              ::anom/message := "The maximum number of 2 in-flight transactions is reached. Please try again later."))
+              ::anom/message := "The maximum number of 2 in-flight transactions is reached. Please try again later."
+              ::db-anom/category := :submit-rejected))
 
           (testing "no resource content is stored for the rejected transaction"
             (is (= puts @put-count))))

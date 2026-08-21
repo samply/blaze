@@ -145,7 +145,8 @@
 (defmethod m/pre-init-spec :blaze.job/async-interaction [_]
   (s/keys :req [:blaze/base-url]
           :req-un [::main-node ::admin-node ::rest-api/batch-handler
-                   ::rest-api/db-sync-timeout :blaze/context-path]))
+                   ::rest-api/db-sync-timeout :blaze/context-path]
+          :opt-un [:blaze.db/max-in-flight-transactions]))
 
 (defmethod ig/init-key :blaze.job/async-interaction
   [_ config]

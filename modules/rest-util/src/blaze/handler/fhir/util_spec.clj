@@ -123,6 +123,7 @@
   :args (s/cat :context (s/keys :req [:blaze/base-url]
                                 :req-un [::rest-api/batch-handler]
                                 :opt [:blaze/db :blaze/cancelled?
-                                      :blaze.preference/return])
+                                      :blaze.preference/return]
+                                :opt-un [:blaze.db/max-in-flight-transactions])
                :entries (s/coll-of :fhir.Bundle/entry))
   :ret (s/or :response-entry :fhir.Bundle/entry :anomaly ::anom/anomaly))

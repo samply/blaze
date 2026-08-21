@@ -1,5 +1,6 @@
 (ns blaze.db.spec
   (:require
+   [blaze.db.anom :as-alias db-anom]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
    [blaze.db.node.protocols :as np]
@@ -117,3 +118,6 @@
 
 (s/def :blaze.db/max-in-flight-transactions
   pos-int?)
+
+(s/def ::db-anom/category
+  #{:submit-rejected})
