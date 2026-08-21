@@ -296,7 +296,7 @@
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
   (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn
                    ::rest-api/db-sync-timeout]
-          :opt-un [:blaze/validator]))
+          :opt-un [:blaze/validator :blaze.db/max-in-flight-transactions]))
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]
   (log/info "Init FHIR transaction interaction handler")

@@ -72,6 +72,7 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
+   [blaze.db.anom :as-alias db-anom]
    [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
@@ -304,17 +305,20 @@
   "Returns a function that tries to take one of the places for in-flight
   transactions.
 
-  That function returns a busy anomaly and counts the rejection if the maximum
-  number of in-flight transactions is already reached. It's the only point at
-  which a transaction is turned away, so it has to be called before any data of
-  the transaction is stored."
+  That function returns a rejection anomaly and counts the rejection if the
+  maximum number of in-flight transactions is already reached. It's the only
+  point at which a transaction is turned away, so it has to be called before any
+  data of the transaction is stored. That's also why the anomaly is categorized
+  as a rejection, which tells a caller that submitting the transaction again is
+  safe."
   [node-name state max-in-flight-transactions]
   (fn []
     (let [[old new] (swap-vals! state acquire-in-flight
                                 max-in-flight-transactions)]
       (when (identical? old new)
         (prom/inc! submit-rejections-total node-name)
-        (ba/busy (max-in-flight-msg max-in-flight-transactions))))))
+        (ba/busy (max-in-flight-msg max-in-flight-transactions)
+                 ::db-anom/category :submit-rejected)))))
 
 (defn- settle-in-flight
   "Stops counting the transaction as submitting and starts counting it as

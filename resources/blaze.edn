@@ -195,7 +195,8 @@
    :batch-handler #blaze/ref :blaze.rest-api/batch-handler
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]}
+   :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
+   :max-in-flight-transactions #blaze/cfg ["DB_MAX_IN_FLIGHT_TRANSACTIONS" pos-int? 1024]}
 
   :blaze.interaction/update
   {:node #blaze/ref :blaze.db.main/node}
@@ -464,6 +465,7 @@
    :admin-node #blaze/ref :blaze.db.admin/node
    :batch-handler #blaze/ref :blaze.rest-api/batch-handler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
+   :max-in-flight-transactions #blaze/cfg ["DB_MAX_IN_FLIGHT_TRANSACTIONS" pos-int? 1024]
    :blaze/base-url #blaze/var base-url
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :clock #blaze/ref :blaze/clock

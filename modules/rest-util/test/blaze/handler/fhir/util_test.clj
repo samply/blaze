@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.anom :as-alias db-anom]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec.generators :as fg]
@@ -1004,3 +1005,178 @@
                                       :url #fhir/uri "Patient"}}])
       ::anom/category := ::anom/interrupted
       ::anom/message := "msg-152801")))
+
+(defn- get-entry
+  ([]
+   (get-entry "Patient"))
+  ([url]
+   {:fhir/type :fhir.Bundle/entry
+    :request {:fhir/type :fhir.Bundle.entry/request
+              :method #fhir/code "GET"
+              :url (type/uri url)}}))
+
+(defn- window-recording-handler
+  "Returns a tuple of a batch handler that completes its responses not before
+  `window` requests are in flight and an atom holding the maximum number of
+  requests that were in flight."
+  [window]
+  (let [latch (ac/future)
+        in-flight (atom 0)
+        max-in-flight (atom 0)]
+    [(fn [_]
+       (let [n (swap! in-flight inc)]
+         (swap! max-in-flight max n)
+         (when (<= window n)
+           (ac/complete! latch nil)))
+       (ac/then-apply
+        latch
+        (fn [_]
+          (swap! in-flight dec)
+          (ring/response nil))))
+     max-in-flight]))
+
+(deftest process-batch-entries-window-test
+  (testing "up to 64 entries are processed concurrently"
+    (let [[batch-handler max-in-flight] (window-recording-handler 64)]
+      (is (= 100 (count (deref (fhir-util/process-batch-entries
+                                {:batch-handler batch-handler
+                                 :blaze/base-url "base-url-121502"}
+                                (repeat 100 (get-entry)))
+                               10000 []))))
+      (is (= 64 @max-in-flight))))
+
+  (testing "the window is at most half of the maximum number of in-flight transactions"
+    (let [[batch-handler max-in-flight] (window-recording-handler 4)]
+      (is (= 16 (count (deref (fhir-util/process-batch-entries
+                               {:batch-handler batch-handler
+                                :blaze/base-url "base-url-121502"
+                                :max-in-flight-transactions 8}
+                               (repeat 16 (get-entry)))
+                              10000 []))))
+      (is (= 4 @max-in-flight))))
+
+  (testing "at least one entry is processed at a time"
+    (let [[batch-handler max-in-flight] (window-recording-handler 1)]
+      (is (= 4 (count (deref (fhir-util/process-batch-entries
+                              {:batch-handler batch-handler
+                               :blaze/base-url "base-url-121502"
+                               :max-in-flight-transactions 1}
+                              (repeat 4 (get-entry)))
+                             10000 []))))
+      (is (= 1 @max-in-flight)))))
+
+(deftest process-batch-entries-start-test
+  (testing "no entry is processed on the calling thread"
+    (let [calling-thread (Thread/currentThread)
+          threads (atom #{})
+          batch-handler
+          (fn [_]
+            (swap! threads conj (Thread/currentThread))
+            (ac/completed-future (ring/response nil)))]
+      (is (= 100 (count (deref (fhir-util/process-batch-entries
+                                {:batch-handler batch-handler
+                                 :blaze/base-url "base-url-121502"}
+                                (repeat 100 (get-entry)))
+                               10000 []))))
+      (is (not (contains? @threads calling-thread))))))
+
+(deftest process-batch-entries-order-test
+  (testing "the response entries keep the order of the request entries"
+    (let [num-entries 10
+          pending (atom [])
+          batch-handler
+          (fn [{:keys [uri]}]
+            (let [response (ac/future)]
+              (when (= num-entries (count (swap! pending conj [uri response])))
+                (run! (fn [[uri response]] (ac/complete! response (ring/response uri)))
+                      (rseq @pending)))
+              response))]
+      (is (= (mapv (partial str "/Patient/") (range num-entries))
+             (mapv :resource
+                   (deref (fhir-util/process-batch-entries
+                           {:batch-handler batch-handler
+                            :blaze/base-url "base-url-121502"}
+                           (mapv (comp get-entry (partial str "Patient/"))
+                                 (range num-entries)))
+                          10000 [])))))))
+
+(deftest process-batch-entries-retry-test
+  (testing "an entry rejected because the maximum number of in-flight transactions was reached is retried"
+    (let [calls (atom 0)
+          batch-handler
+          (fn [_]
+            (ac/completed-future
+             (if (< (swap! calls inc) 3)
+               (ba/busy "msg-124737" ::db-anom/category :submit-rejected)
+               (ring/response nil))))]
+      (given (deref (fhir-util/process-batch-entries
+                     {:batch-handler batch-handler
+                      :blaze/base-url "base-url-121502"}
+                     [(get-entry)])
+                    10000 [])
+        [0 :response :status] := #fhir/string "200")
+
+      (is (= 3 @calls))))
+
+  (testing "after three retries the entry keeps its 503"
+    (let [calls (atom 0)
+          batch-handler
+          (fn [_]
+            (swap! calls inc)
+            (ac/completed-future (ba/busy "msg-124737" ::db-anom/category :submit-rejected)))]
+      (given (deref (fhir-util/process-batch-entries
+                     {:batch-handler batch-handler
+                      :blaze/base-url "base-url-121502"}
+                     [(get-entry)])
+                    10000 [])
+        [0 :response :status] := #fhir/string "503"
+        [0 :response :outcome :issue 0 :diagnostics] := #fhir/string "msg-124737")
+
+      (is (= 4 @calls))))
+
+  (testing "a busy anomaly that isn't such a rejection isn't retried, because
+            it can also happen after the transaction of the entry was already
+            committed"
+    (let [calls (atom 0)
+          batch-handler
+          (fn [_]
+            (swap! calls inc)
+            (ac/completed-future (ba/busy "msg-124737")))]
+      (given (deref (fhir-util/process-batch-entries
+                     {:batch-handler batch-handler
+                      :blaze/base-url "base-url-121502"}
+                     [(get-entry)])
+                    10000 [])
+        [0 :response :status] := #fhir/string "503"
+        [0 :response :outcome :issue 0 :diagnostics] := #fhir/string "msg-124737")
+
+      (is (= 1 @calls))))
+
+  (testing "other anomalies aren't retried"
+    (let [calls (atom 0)
+          batch-handler
+          (fn [_]
+            (swap! calls inc)
+            (ac/completed-future (ba/fault "msg-124737")))]
+      (given (deref (fhir-util/process-batch-entries
+                     {:batch-handler batch-handler
+                      :blaze/base-url "base-url-121502"}
+                     [(get-entry)])
+                    10000 [])
+        [0 :response :status] := #fhir/string "500")
+
+      (is (= 1 @calls))))
+
+  (testing "a single batch entry isn't retried"
+    (let [calls (atom 0)
+          batch-handler
+          (fn [_]
+            (swap! calls inc)
+            (ac/completed-future (ba/busy "msg-124737" ::db-anom/category :submit-rejected)))]
+      (given @(fhir-util/process-batch-entry
+               {:batch-handler batch-handler
+                :blaze/base-url "base-url-121502"}
+               0 (get-entry))
+        [:response :status] := #fhir/string "503")
+
+      (is (= 1 @calls)))))

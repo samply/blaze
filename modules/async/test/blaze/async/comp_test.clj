@@ -4,10 +4,13 @@
    [blaze.async.comp :as ac :refer [do-sync do-async]]
    [blaze.async.comp-spec]
    [blaze.executors :as ex]
+   [blaze.module.test-util :as mtu]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
-   [cognitect.anomalies :as anom])
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
    [java.util.concurrent TimeUnit]))
 
@@ -15,6 +18,12 @@
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
+
+(defn- delay-scheduler-thread?
+  "Returns true if `thread-name` is the name of the thread that schedules all
+  timeouts of the JVM."
+  [thread-name]
+  (str/includes? thread-name "delayScheduler"))
 
 (deftest completed-future-test
   (testing "on completed future"
@@ -383,6 +392,34 @@
                           (if (= 3 n) ::x (ba/busy))))]
         (given-failed-future (ac/retry future-fn "action-114844" 1)
           ::anom/category := ::anom/busy))))
+
+  (testing "with a retryable predicate"
+    (testing "an anomaly the predicate matches is retried"
+      (let [counter (atom 0)
+            future-fn #(ac/completed-future
+                        (let [n (swap! counter inc)]
+                          (if (= 2 n) ::x (ba/conflict))))]
+        (is (= ::x @(ac/retry future-fn "action-114844" 1 ba/conflict?)))))
+
+    (testing "a busy anomaly the predicate doesn't match isn't retried"
+      (let [counter (atom 0)
+            future-fn #(ac/completed-future
+                        (let [n (swap! counter inc)]
+                          (if (= 2 n) ::x (ba/busy))))]
+        (given-failed-future (ac/retry future-fn "action-114844" 1 ba/conflict?)
+          ::anom/category := ::anom/busy)
+
+        (is (= 1 @counter)))))
+
+  (testing "the retry doesn't happen on the thread that schedules the delay
+            because that single thread schedules all timeouts of the JVM"
+    (let [counter (atom 0)
+          future-fn #(ac/completed-future
+                      (let [n (swap! counter inc)]
+                        (if (= 2 n) {:result ::x} (ba/busy))))]
+      (given @(mtu/assoc-thread-name (ac/retry future-fn "action-114844" 1))
+        [meta :thread-name] :!? delay-scheduler-thread?
+        :result := ::x)))
 
   (testing "times"
     (testing "with second call successful"
