@@ -35,14 +35,16 @@ The creation of the datasets is described in the [Synthea section](./synthea/REA
 blazectl --server http://localhost:8080/fhir upload -c8 <dataset>
 ```
 
-| System | Dataset | DB Scale Factor | Time (h) | Resources/s |
-|--------|---------|----------------:|---------:|------------:|
-| LEA47  | 100k    |               1 |    2.855 |       10108 |
-| LEA47  | 100k-fh |               1 |    9.797 |        8977 |
-| LEA58  | 100k    |               1 |    2.169 |       13305 |
-| LEA58  | 100k-fh |               1 |    7.426 |       11843 |
-| LEA58  | 1M      |               4 |   26,480 |       10955 |
-| LEA79  | 1M      |               1 |   18.227 |       15915 |
-| LEA79  | 1M      |               4 |   12.174 |       23829 |
+| System | Dataset | DB Scale Factor | Max Subcompactions | Time (h) | Resources/s |
+|--------|---------|----------------:|-------------------:|---------:|------------:|
+| LEA47  | 100k    |               1 |                  1 |    2.855 |       10108 |
+| LEA47  | 100k-fh |               1 |                  1 |    9.797 |        8977 |
+| LEA58  | 100k    |               1 |                  1 |    2.169 |       13305 |
+| LEA58  | 100k-fh |               1 |                  1 |    7.426 |       11843 |
+| LEA58  | 1M      |               4 |                  1 |   26,480 |       10955 |
+| LEA79  | 100k    |               8 |                  1 |    0,648 |       44520 |
+| LEA79  | 100k    |               8 |                  8 |    0,426 |       67737 |
+| LEA79  | 1M      |               1 |                  1 |   18.227 |       15915 |
+| LEA79  | 1M      |               4 |                  1 |   12.174 |       23829 |
 
-Read more about the DB Scale Factor in the [Environment Variables Section](../deployment/environment-variables.md).
+Read more about the DB Scale Factor and Max Subcompactions in the [Environment Variables Section](../deployment/environment-variables.md).
