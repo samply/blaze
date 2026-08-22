@@ -1,37 +1,30 @@
-// Loading and parsing of the committed benchmark data the performance charts
-// are rendered from.
+// The row model the performance charts are rendered from.
 //
-// The data files are pulled in eagerly as raw strings so that a chart component
-// can build its SVG synchronously in `setup()`. That keeps the charts free of
-// any browser API, so they are rendered into the static HTML by `vitepress
-// build` instead of being painted after hydration.
+// A page hands a chart its already parsed rows, read at build time by the
+// page's data loader (`.vitepress/loader/rows.ts`). The chart therefore builds
+// its SVG synchronously in `setup()` without any browser API, so `vitepress
+// build` renders it into the static HTML instead of painting it after
+// hydration.
 //
-// The globs are deliberately narrow: `docs/performance` also holds unrelated
-// measurement data (`fhir-search/condition-codes-disease-10k.txt` alone is
-// 108 KB) that must not end up in the bundle.
-const RAW = import.meta.glob<string>(
-  [
-    "../../../performance/cql/*.txt",
-    "../../../performance/disk-perf/*.json",
-    "../../../performance/fhir-search/chart-data/*.txt",
-    "../../../performance/load-testing/data/*.csv",
-    "../../../performance/terminology-service/data/*.csv",
-  ],
-  { query: "?raw", import: "default", eager: true },
-);
-
-// The glob keys are relative to this file. Re-key them by their path below
-// `performance/`, so `src` is written the same way from every page, no matter
-// how deep that page sits.
-const FILES: Record<string, string> = Object.fromEntries(
-  Object.entries(RAW).map(([path, content]) => [
-    path.slice(path.indexOf("/performance/") + "/performance/".length),
-    content,
-  ]),
-);
+// Only the helpers a chart needs to pick values out of a row live here. They
+// are free of any Node API, because this module is part of the client bundle.
 
 /**
- * A row of a data file, split into its cells.
+ * Returns `data`, failing with the name of the chart if there is none.
+ *
+ * A page picks the data of a chart by a key into the record its data loader
+ * returns. A key the loader doesn't hold yields `undefined`, which would
+ * otherwise fail deep inside the chart rather than at the chart that names it.
+ */
+export function required<T>(data: T | undefined, chart: string): T {
+  if (data === undefined) {
+    throw new Error(`the chart "${chart}" was given no data`);
+  }
+  return data;
+}
+
+/**
+ * A row of a data file, split into its trimmed cells.
  *
  * Cells are addressed by gnuplot's 1-based column numbers, so a chart's
  * `y-col`/`x-col` is literally the number the replaced gnuplot script used in
@@ -46,7 +39,7 @@ export function cell(row: Row, col: number): string {
   if (value === undefined) {
     throw new Error(`missing column ${col} in row: ${row.join("|")}`);
   }
-  return value.trim();
+  return value;
 }
 
 const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
@@ -64,33 +57,6 @@ export function num(row: Row, col: number): number {
     throw new Error(`column ${col} is not a number: ${value}`);
   }
   return parseFloat(match[0]);
-}
-
-/** Returns the content of the data file `src`, given relative to `docs/performance`. */
-export function content(src: string): string {
-  const content = FILES[src];
-  if (content === undefined) {
-    throw new Error(
-      `unknown chart data file: ${src}\nknown files:\n  ${Object.keys(FILES).sort().join("\n  ")}`,
-    );
-  }
-  return content;
-}
-
-/**
- * Parses the data file `src`, given relative to `docs/performance`.
- *
- * The separator follows the file type, just like the `set datafile separator`
- * of the replaced gnuplot scripts: `|` for the `.txt` measurement tables, `,`
- * for the `.csv` k6 results.
- */
-export function rows(src: string): Row[] {
-  const separator = src.endsWith(".csv") ? "," : "|";
-  return content(src)
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0 && !line.startsWith("#"))
-    .map((line) => line.split(separator));
 }
 
 /**

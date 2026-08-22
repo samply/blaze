@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./load-testing.data";
+</script>
+
 # Load Testing
 
 ## Systems
@@ -80,19 +84,19 @@ All runs start from an empty database and grow it with every request, so there i
 
 Every transaction durably writes its transaction log entry and its resources before it is answered, so the disk's sync behaviour sets the processing time. It does not cap the throughput, though: the transaction log batches all transactions submitted while the previous write was in flight into a single write followed by one fsync, and the resource store group-commits its concurrent writers the same way. The batches grow with the number of concurrent clients, so throughput scales past the disk's raw fsync rate.
 
-<LineChart src="load-testing/data/transaction-LEA47.csv"
+<LineChart :data="data['transaction-LEA47.csv']"
   title="Transaction (LEA47)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
 LEA47 scales to about 2600 transactions/s at 32 clients — more than five transactions per fsync at its 484 fsyncs/s — and on to 3137 at 64 clients, but gains little beyond that with 3313 at 128 clients, not quite seven transactions per fsync. The median processing time roughly doubles at each of the last two levels instead, from 11 ms at 32 clients to 19 ms at 64 and 37 ms at 128, with a q99 of 75 ms at 128 clients. With the throughput staying put while the concurrency doubles, the clients added beyond 64 only queue.
 
-<LineChart src="load-testing/data/transaction-LEA79.csv"
+<LineChart :data="data['transaction-LEA79.csv']"
   title="Transaction (LEA79)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
 LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: throughput scales to about 12,000 transactions/s at 16 clients and flattens at about 18,000 from 64 clients on, with a median processing time of 6.6 ms and a q99 of 11 ms at 128 clients.
 
-<LineChart src="load-testing/data/transaction-A5N46.csv"
+<LineChart :data="data['transaction-A5N46.csv']"
   title="Transaction (A5N46)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 

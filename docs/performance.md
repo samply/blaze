@@ -1,10 +1,14 @@
+<script setup>
+import { data } from "./performance.data";
+</script>
+
 # Performance
 
 ## CQL
 
 The CQL engine of Blaze can process hundreds of thousands patients per second and scales with CPU cores available. 
 
-<BarChart src="cql/simple-code-search-100k.txt"
+<BarChart :data="data['simple-code-search-100k.txt']"
   title="Simple Code Search - Dataset 100k"
   x-label="System" :x-col="3"
   y-label="Patients/s" :y-col="8" :y-max="2200"

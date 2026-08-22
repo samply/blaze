@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import ChartFrame from "./ChartFrame.vue";
 import LineSeries from "./LineSeries.vue";
-import { num, rows } from "./data";
+import { num, required, type Row } from "./data";
 import {
   axis,
   type Curve,
@@ -18,8 +18,8 @@ import {
 
 const props = withDefaults(
   defineProps<{
-    /** Data file, relative to `docs/performance`. */
-    src: string;
+    /** Rows of the data file, read by the page's data loader. */
+    data: Row[];
     title: string;
     xLabel?: string;
     /** 1-based column holding the x value. */
@@ -62,8 +62,8 @@ const props = withDefaults(
   },
 );
 
-const data = computed(() => {
-  const all = rows(props.src);
+const plotted = computed(() => {
+  const all = required(props.data, props.title);
   const values = (col: number) =>
     all.map((row) => ({ x: num(row, props.xCol), y: num(row, col) }));
   return {
@@ -76,8 +76,8 @@ const data = computed(() => {
 const xAxis = computed(() => {
   if (props.xTicks) {
     return logAxis(
-      props.xMin ?? Math.min(...data.value.x),
-      props.xMax ?? Math.max(...data.value.x),
+      props.xMin ?? Math.min(...plotted.value.x),
+      props.xMax ?? Math.max(...plotted.value.x),
       props.xTicks,
     );
   }
@@ -85,8 +85,8 @@ const xAxis = computed(() => {
     throw new Error("a log x axis needs an explicit x-ticks list");
   }
   return axis(
-    Math.min(...data.value.x),
-    Math.max(...data.value.x),
+    Math.min(...plotted.value.x),
+    Math.max(...plotted.value.x),
     props.xMin,
     props.xMax,
     8,
@@ -94,7 +94,7 @@ const xAxis = computed(() => {
 });
 
 const yAxis = computed(() => {
-  const values = data.value.y.flat().map((point) => point.y);
+  const values = plotted.value.y.flat().map((point) => point.y);
   return axis(
     Math.min(...values),
     Math.max(...values),
@@ -108,7 +108,7 @@ const yAxis = computed(() => {
 // so both scales tend to land on the same gridlines instead of interleaving
 // two sets of horizontal lines.
 const y2Axis = computed(() => {
-  const values = data.value.y2.flat().map((point) => point.y);
+  const values = plotted.value.y2.flat().map((point) => point.y);
   return axis(
     Math.min(...values),
     Math.max(...values),
@@ -155,9 +155,9 @@ const curves = computed<Curve[]>(() => {
       })),
     }));
   return [
-    ...of(data.value.y, props.ySeries, y.value, () => "var(--blaze-chart-line-y1)", ""),
+    ...of(plotted.value.y, props.ySeries, y.value, () => "var(--blaze-chart-line-y1)", ""),
     ...of(
-      data.value.y2,
+      plotted.value.y2,
       props.y2Series,
       y2.value,
       (index) => `var(--blaze-chart-line-y2-${Math.min(index + 1, 3)})`,

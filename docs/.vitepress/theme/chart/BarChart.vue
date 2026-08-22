@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import ChartFrame from "./ChartFrame.vue";
-import { categories, num, rows, series } from "./data";
+import { categories, num, required, type Row, series } from "./data";
 import {
   axis,
   bar,
@@ -17,10 +17,10 @@ import {
 
 const props = withDefaults(
   defineProps<{
-    /** Data file, relative to `docs/performance`. */
-    src: string;
+    /** Rows of the data file, read by the page's data loader. */
+    data: Row[];
     title: string;
-    /** Series names, in the order the rows are interleaved in `src`. */
+    /** Series names, in the order the rows are interleaved in `data`. */
     series?: string[];
     xLabel?: string;
     /** 1-based column holding the category, as in gnuplot's `xtic(n)`. */
@@ -55,8 +55,8 @@ const names = computed(() =>
   props.series.length > 0 ? props.series : [props.title],
 );
 
-const data = computed(() => {
-  const all = series(rows(props.src), names.value.length);
+const plotted = computed(() => {
+  const all = series(required(props.data, props.title), names.value.length);
   return {
     categories: categories(all, props.xCol),
     values: all.map((rows) => rows.map((row) => num(row, props.yCol))),
@@ -64,7 +64,7 @@ const data = computed(() => {
 });
 
 const yAxis = computed(() => {
-  const values = data.value.values.flat();
+  const values = plotted.value.values.flat();
   return axis(
     Math.min(...values),
     Math.max(...values),
@@ -102,10 +102,10 @@ const color = (index: number) =>
 
 const bars = computed(() => {
   const { left, right } = plot.value;
-  const slot = (right - left) / data.value.categories.length;
+  const slot = (right - left) / plotted.value.categories.length;
   const width = Math.min(MAX_BAR_WIDTH, (slot * CLUSTER_WIDTH) / names.value.length);
   const cluster = width * names.value.length;
-  return data.value.values.flatMap((values, seriesIndex) =>
+  return plotted.value.values.flatMap((values, seriesIndex) =>
     values.map((value, categoryIndex) => ({
       key: `${seriesIndex}-${categoryIndex}`,
       color: color(seriesIndex),
@@ -119,7 +119,7 @@ const bars = computed(() => {
         baseline.value,
         y.value(value),
       ),
-      label: `${data.value.categories[categoryIndex]} · ${names.value[seriesIndex]}: ${tick(value, props.ySuffix)}`,
+      label: `${plotted.value.categories[categoryIndex]} · ${names.value[seriesIndex]}: ${tick(value, props.ySuffix)}`,
     })),
   );
 });
@@ -128,8 +128,8 @@ const bars = computed(() => {
 // rather than by a scale.
 const xTicks = computed<PlacedTick[]>(() => {
   const { left, right } = plot.value;
-  const slot = (right - left) / data.value.categories.length;
-  return data.value.categories.map((label, i) => ({
+  const slot = (right - left) / plotted.value.categories.length;
+  return plotted.value.categories.map((label, i) => ({
     label,
     pos: left + slot * (i + 0.5),
   }));
@@ -148,7 +148,7 @@ const legend = computed(() =>
 const description = computed(() =>
   [
     `Bar chart. ${props.title}.`,
-    `${props.xLabel ?? "Category"}: ${data.value.categories.join(", ")}.`,
+    `${props.xLabel ?? "Category"}: ${plotted.value.categories.join(", ")}.`,
     `${props.yLabel ?? "Value"}${subtitle.value ? ` for ${subtitle.value}` : ""}.`,
     props.series.length > 1
       ? `Series: ${props.series.join(", ")}.`

@@ -1,3 +1,7 @@
+<script setup>
+import { data } from "./disk-perf.data";
+</script>
+
 # Disk I/O Performance
 
 Blaze is designed for local NVMe SSD storage. RocksDB, the storage engine of Blaze, exploits the fast random access patterns SSDs provide. This page describes how to measure whether the disks of a deployment are fast enough.
@@ -61,33 +65,33 @@ All systems were configured according to the [Production Configuration](../produ
 
 #### A5N46
 
-<DiskPerfStats src="disk-perf/A5N46.json" />
+<DiskPerfStats :data="data['A5N46.json']" />
 
-<DiskPerfChart src="disk-perf/A5N46.json" title="Random Read IOPS (A5N46)" />
+<DiskPerfChart :data="data['A5N46.json']" title="Random Read IOPS (A5N46)" />
 
-<DiskPerfChart src="disk-perf/A5N46.json" metric="latency"
+<DiskPerfChart :data="data['A5N46.json']" metric="latency"
   title="Random Read Latency (A5N46)" />
 
 A5N46 has the fastest random reads of the three: a single reader reaches 18.8 k IOPS at a median latency of 55 µs, and the sweep scales almost linearly to 386 k IOPS at 32 readers, staying above the reference curve at every level. That last part is by construction: the reference curve is modelled on this very drive, set deliberately below its measured numbers so that other good local NVMe SSDs clear it as well. Its fsync rate of 178/s at a median fsync latency of 5.4 ms is by far the weakest of the three, though — the drive acknowledges a sync only once the data has reached the flash instead of from a write cache. Because every transaction has to sync its write-ahead log entries, that is what dominates the processing time of the [transaction load test](load-testing.md#transaction) on this system despite the fast reads: its median stays at about 29 ms over the whole sweep from 4 to 128 clients, while group commit lets the throughput scale to over 4000 transactions/s.
 
 #### LEA47
 
-<DiskPerfStats src="disk-perf/LEA47.json" />
+<DiskPerfStats :data="data['LEA47.json']" />
 
-<DiskPerfChart src="disk-perf/LEA47.json" title="Random Read IOPS (LEA47)" />
+<DiskPerfChart :data="data['LEA47.json']" title="Random Read IOPS (LEA47)" />
 
-<DiskPerfChart src="disk-perf/LEA47.json" metric="latency"
+<DiskPerfChart :data="data['LEA47.json']" metric="latency"
   title="Random Read Latency (LEA47)" />
 
 The Intel P5600 itself is a fast NVMe SSD, but LEA47 accesses it over vSAN, which adds network latency to every I/O operation: a single reader reaches only 2.2 k IOPS at a median latency of 441 µs, less than a quarter of the reference. The IOPS still scale linearly with the concurrency while the latency stays flat over the whole sweep, so it is the round-trip, not the drive, that the reads wait for. Together with 460 MiB/s of sequential write throughput and 484 fsyncs/s at a median latency of 1.9 ms, that ends at an acceptable score of 33.5 — the system works, but larger deployments will be limited by disk I/O.
 
 #### LEA79
 
-<DiskPerfStats src="disk-perf/LEA79.json" />
+<DiskPerfStats :data="data['LEA79.json']" />
 
-<DiskPerfChart src="disk-perf/LEA79.json" title="Random Read IOPS (LEA79)" />
+<DiskPerfChart :data="data['LEA79.json']" title="Random Read IOPS (LEA79)" />
 
-<DiskPerfChart src="disk-perf/LEA79.json" metric="latency"
+<DiskPerfChart :data="data['LEA79.json']" metric="latency"
   title="Random Read Latency (LEA79)" />
 
 LEA79 reaches the maximum score with all three dimensions above the reference values. The random reads scale linearly to 440 k IOPS at 32 readers, above the reference of 320 k, at a median latency that stays between 65 µs and 72 µs over the whole sweep. Sequential writes reach 10.7 GiB/s, and the fsync rate of 122 k/s at a median latency of 8.2 µs indicates a write cache that can acknowledge syncs almost immediately, which is why the same [transaction load test](load-testing.md#transaction) sustains about 18,000 transactions/s here.
