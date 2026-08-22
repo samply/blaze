@@ -1,5 +1,67 @@
 # Changelog
 
+## v1.11.0
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Summary
+
+**Small transactions are written much faster.**
+
+Not every workload writes big bundles. An ETL pipeline streams resources out of a hospital information system as they appear. An interoperability engine forwards a single Observation per HL7 v2 message. A client simply POSTs one resource at a time.
+
+For all of them the size of a transaction is decided by the data source, not by Blaze. So such a workload can only go faster if Blaze processes more transactions per second.
+
+Blaze now handles many small transactions together. It records them in its transaction log in batches, it takes the work of notifying subscribers about changed resources out of the indexing path, it indexes the resources of several transactions at the same time, and it starts the next write entries of a batch bundle before the previous ones are finished.
+
+Measured with the [transaction load test](https://blaze-server.org/performance/load-testing.html#transaction) on an enterprise server with fast SSDs, throughput went up from about 5,300 to about 18,000 transactions per second. That factor of 3.4 takes a five-hour import down to about an hour and a half.
+
+Single writes get their answer sooner as well, because a transaction no longer has to wait for everything submitted ahead of it. On that server, with 128 clients writing at the same time, half of all transactions are answered within 7.8 ms and 99 percent within 12 ms.
+
+On consumer grade hardware the gain is even bigger. There a sync to disk takes milliseconds rather than microseconds, and recording the transactions in batches spreads that cost over many of them.
+
+The same test went from 163 to 1,974 transactions per second with 64 clients — twelve times as much — and reaches 4,064 transactions per second with 128 clients. Even the slowest one percent of the transactions is answered within 42 ms now, compared to 1.8 s before.
+
+Overload gives a clear answer now, too. If far more transactions arrive than Blaze can process, it rejects them with `503 Service Unavailable`, so the memory usage stays bounded. The limit of 1,024 transactions that are submitted but not yet fully processed leaves room for 1,024 clients writing at the same time and can be changed with `DB_MAX_IN_FLIGHT_TRANSACTIONS`.
+
+**Disk performance can be measured from within Blaze.**
+
+Blaze is designed for fast local NVMe storage, and slow disks are the most common reason for a slow deployment.
+
+Blaze now brings its own disk performance measurement, which runs as a job. It can be started in the Jobs section of the admin UI or through the new system-level [$disk-perf](https://blaze-server.org/api/operation/disk-perf.html) operation, for which blazectl v1.5 provides a `disk-perf` subcommand.
+
+The measurement uses an I/O profile similar to the one the databases of Blaze produce: sequential writes like the ones during compactions, random reads of database blocks at rising concurrency like the ones during queries, and small appends each followed by a sync to disk like the ones of the write-ahead logs.
+
+Besides the raw numbers — throughput, IOPS, latency percentiles and syncs per second — the job reports a score between 0 and 100 together with a rating from excellent to insufficient. That way operators can tell whether their storage is fast enough before going into production. The database page of the admin UI shows the results of the most recent run.
+
+### Enhancements
+
+* Add Disk Performance Measurement Job ([#3895](https://github.com/samply/blaze/issues/3895))
+* Support Canonical URLs in Search Params ([#3344](https://github.com/samply/blaze/issues/3344))
+
+### Performance
+
+* Improve Throughput of Small Transactions ([#4103](https://github.com/samply/blaze/issues/4103))
+
+### Bugfixes
+
+* Fix Serialisation of Contained Resources ([#3998](https://github.com/samply/blaze/issues/3998))
+* Fix Parsing of Negative Time Zone Offsets ([#4012](https://github.com/samply/blaze/issues/4012))
+* Fix Null Bounds in Converted FHIR Period Intervals ([#3913](https://github.com/samply/blaze/issues/3913))
+* Implement Multiply for Integer ([#113](https://github.com/samply/blaze/issues/113))
+* Accept `_summary=false` on Search With Strict Handling ([#4051](https://github.com/samply/blaze/issues/4051))
+* Use Search Param Code in CapabilityStatement ([#3955](https://github.com/samply/blaze/issues/3955))
+* Map Unavailable Anomaly to 503 and Transient ([#4050](https://github.com/samply/blaze/issues/4050))
+* Retry Job Number Increment on Concurrent Update ([#4057](https://github.com/samply/blaze/issues/4057))
+* Add Node Label to Node Duration Metric ([#4067](https://github.com/samply/blaze/issues/4067))
+* Fix Empty `_include` Dropdown in Search Form ([#4069](https://github.com/samply/blaze/issues/4069))
+* Fix Flashing Loading Indicator on Search Pages ([#3994](https://github.com/samply/blaze/issues/3994))
+* Fix Dropdown Item Hover Color in Dark Mode ([#4061](https://github.com/samply/blaze/issues/4061))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/128?closed=1).
+
 ## v1.10.1
 
 ### Survey
