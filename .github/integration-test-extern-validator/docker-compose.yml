@@ -3,8 +3,8 @@ services:
     image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
-      EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
       EXTERN_VALIDATOR_URL: "http://fhir-validator:8080"
+      VALIDATOR_FAILURE_MODE: "${VALIDATOR_FAILURE_MODE:-tag-outcome}"
       LOG_LEVEL: debug
     ports:
     - "8080:8080"
@@ -46,9 +46,12 @@ services:
     environment:
       JAVA_OPTS: "-Xmx2g"
       TX_SERVER: "http://terminology-server:8080/fhir"
-      # the package hl7.fhir.us.cqfmeasures#5.0.0 is needed for the
-      # Measure/Library resources created during quality report evaluation
-      IG_PARAMS: "-ig hl7.fhir.us.cqfmeasures#5.0.0"
+      # Override the MII IG defaults of the image with US Core 3.1.1, the
+      # version of the profiles the Synthea test data was generated against.
+      # Later US Core versions retire code systems the data still references
+      # (like us-core-provenance-participant-type), which would produce
+      # validation errors that say nothing about Blaze.
+      IG_PARAMS: "-ig hl7.fhir.us.core#3.1.1"
     ports:
     - "8084:8080"
     # The validator only starts serving after it has loaded all implementation
