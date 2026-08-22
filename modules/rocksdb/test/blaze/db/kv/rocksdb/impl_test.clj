@@ -69,6 +69,7 @@
     {:statistics (.statistics options)
      :wal-dir (.walDir options)
      :max-background-jobs (.maxBackgroundJobs options)
+     :max-subcompactions (.maxSubcompactions options)
      :compaction-readahead-size (.compactionReadaheadSize options)
      :enable-pipelined-write (.enablePipelinedWrite options)
      :create-if-missing (.createIfMissing options)
@@ -149,6 +150,7 @@
         :statistics :? some?
         :wal-dir := ""
         :max-background-jobs := 2
+        :max-subcompactions := 1
         :compaction-readahead-size := 2097152
         :enable-pipelined-write := true
         :create-if-missing := true
@@ -159,6 +161,7 @@
         :statistics :? nil?
         :wal-dir := ""
         :max-background-jobs := 2
+        :max-subcompactions := 1
         :compaction-readahead-size := 2097152
         :enable-pipelined-write := true
         :create-if-missing := true
@@ -170,6 +173,7 @@
   (testing "with non-defaults"
     (doseq [[key value] [[:wal-dir "wal"]
                          [:max-background-jobs 4]
+                         [:max-subcompactions 8]
                          [:compaction-readahead-size 0]
                          [:compaction-readahead-size 10]]]
       (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))

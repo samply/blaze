@@ -676,6 +676,7 @@
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :max-subcompactions #blaze/cfg ["DB_MAX_SUBCOMPACTIONS" int? 1]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
     :column-families
@@ -917,6 +918,7 @@
     {:sync? true
      :wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :max-subcompactions #blaze/cfg ["DB_MAX_SUBCOMPACTIONS" int? 1]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
     :column-families
@@ -969,6 +971,7 @@
     {:sync? true
      :wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :max-subcompactions #blaze/cfg ["DB_MAX_SUBCOMPACTIONS" int? 1]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
     :column-families
@@ -1048,6 +1051,7 @@
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :max-subcompactions #blaze/cfg ["DB_MAX_SUBCOMPACTIONS" int? 1]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :scale-factor #blaze/var db-scale-factor
     :column-families

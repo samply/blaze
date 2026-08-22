@@ -124,6 +124,12 @@ The maximum number of the [background jobs][3] used for DB compactions.
 
 **Default:** 4
 
+#### `DB_MAX_SUBCOMPACTIONS` <Badge type="warning" text="Since 1.11.0"/>
+
+The maximum number of threads a single DB compaction is partitioned into by key range ([subcompactions][9]). Because RocksDB runs at most one L0 compaction per column family at a time, raising this is the way to speed up that compaction on systems with many cores. Try 4 or 8 if write stalls occur during import while CPU and disk utilization stay low.
+
+**Default:** 1
+
 #### `DB_RESOURCE_INDEXER_THREADS` <Badge type="warning" text="Since 0.8"/>
 
 The number threads used for indexing resources. Try 8 or 16 depending on your hardware.
@@ -195,6 +201,12 @@ The ratio of JVM heap size that is allocated to the resource cache. A value of 0
 The maximum number of the [background jobs][3] used for DB compactions.
 
 **Default:** 4
+
+#### `DB_MAX_SUBCOMPACTIONS` <Badge type="warning" text="Since 1.11.0"/>
+
+The maximum number of threads a single DB compaction is partitioned into by key range ([subcompactions][9]). Because RocksDB runs at most one L0 compaction per column family at a time, raising this is the way to speed up that compaction on systems with many cores. Try 4 or 8 if write stalls occur during import while CPU and disk utilization stay low.
+
+**Default:** 1
 
 #### `DB_RESOURCE_INDEXER_THREADS` <Badge type="warning" text="Since 0.8"/>
 
@@ -647,3 +659,4 @@ The password for the PKCS #12 trust store.
 [6]: <http://tx.fhir.org/r4>
 [7]: https://hub.docker.com/_/eclipse-temurin#can-i-add-my-internal-ca-certificates-to-the-truststore
 [8]: <https://github.com/medizininformatik-initiative/mii-fhir-validator>
+[9]: <https://github.com/facebook/rocksdb/wiki/Subcompaction>

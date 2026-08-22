@@ -100,12 +100,15 @@
    listener
    {:keys [wal-dir
            max-background-jobs
+           max-subcompactions
            compaction-readahead-size]
     :or {wal-dir ""
-         max-background-jobs 2}}]
+         max-background-jobs 2
+         max-subcompactions 1}}]
   (cond-> (doto (DBOptions.)
             (.setWalDir (str wal-dir))
             (.setMaxBackgroundJobs (long max-background-jobs))
+            (.setMaxSubcompactions (long max-subcompactions))
             (.setEnablePipelinedWrite true)
             (.setCreateIfMissing true)
             (.setCreateMissingColumnFamilies true)

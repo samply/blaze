@@ -81,7 +81,14 @@
       :key := ::kv/rocksdb
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [::rocksdb/stats]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid max-subcompactions"
+    (given-failed-system (assoc-in (config (new-temp-dir!)) [::kv/rocksdb :opts :max-subcompactions] 0)
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :val] := 0)))
 
 (deftest stats-collector-init-test
   (testing "nil config"
