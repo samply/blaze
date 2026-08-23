@@ -14,7 +14,7 @@ Not every workload writes big bundles. An ETL pipeline streams resources out of 
 
 For all of them the size of a transaction is decided by the data source, not by Blaze. So such a workload can only go faster if Blaze processes more transactions per second.
 
-Blaze now handles many small transactions together. It records them in its transaction log in batches, it takes the work of notifying subscribers about changed resources out of the indexing path, it indexes the resources of several transactions at the same time, and it starts the next write entries of a batch bundle before the previous ones are finished.
+Blaze now handles many small transactions together. It records them in its transaction log in batches, it takes the work of notifying subscribers about changed resources out of the indexing path, and it indexes the resources of several transactions at the same time.
 
 Measured with the [transaction load test](https://blaze-server.org/performance/load-testing.html#transaction) on an enterprise server with fast SSDs, throughput went up from about 5,300 to about 18,000 transactions per second. That factor of 3.4 takes a five-hour import down to about an hour and a half.
 
