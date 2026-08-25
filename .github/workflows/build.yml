@@ -179,8 +179,8 @@ jobs:
     - name: Install Dashboard Linter
       env:
         # renovate: datasource=github-release-attachments depName=grafana/dashboard-linter
-        DASHBOARD_LINTER_VERSION: v0.2.0
-        DASHBOARD_LINTER_CHECKSUM: 6cf73633018ef705cd12eda88736b872f5858137baa9dc9df83262d721934fac
+        DASHBOARD_LINTER_VERSION: v0.3.0
+        DASHBOARD_LINTER_CHECKSUM: 9a0eecb84ff22005dbd21c39ffd91534b407b511c45c21879df62ad0de33d79f
       run: .github/scripts/install-dashboard-linter.sh
 
     - name: Lint Dashboard
