@@ -23,11 +23,7 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
 export const handle = sequence(handleAuthentication, handleAuthorization);
 
 function isApiRoute(url: string) {
-  return (
-    url.endsWith('__search-params') ||
-    url.endsWith('__search-includes') ||
-    url.endsWith('__search-rev-includes')
-  );
+  return url.endsWith('__search-params');
 }
 
 const origin = env.ORIGIN || '';
