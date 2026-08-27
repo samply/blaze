@@ -1,19 +1,24 @@
 import type { CodeSystem, FhirResource, ValueSet } from 'fhir/r4';
 
-export function title(resource: FhirResource) {
-  if (resource.resourceType === 'CodeSystem') {
-    const codeSystem = resource as CodeSystem;
-    if (codeSystem.title && codeSystem.version) {
-      return `${codeSystem.title} v${codeSystem.version}`;
+/**
+ * Returns the human readable title of `resource`, including its version, or
+ * undefined if the resource has no such title.
+ */
+export function versionedTitle(resource: FhirResource): string | undefined {
+  if (resource.resourceType === 'CodeSystem' || resource.resourceType === 'ValueSet') {
+    const { title, version } = resource as CodeSystem | ValueSet;
+    if (title && version) {
+      return `${title} v${version}`;
     }
   }
 
-  if (resource.resourceType === 'ValueSet') {
-    const valueSet = resource as ValueSet;
-    if (valueSet.title && valueSet.version) {
-      return `${valueSet.title} v${valueSet.version}`;
-    }
-  }
+  return undefined;
+}
 
-  return `${resource.resourceType}/${resource.id}`;
+/**
+ * Returns a name of `resource` that identifies it on its own, either its
+ * versioned title or its type and id.
+ */
+export function title(resource: FhirResource): string {
+  return versionedTitle(resource) ?? `${resource.resourceType}/${resource.id}`;
 }
