@@ -2,11 +2,12 @@ import type { PageServerLoad } from './$types';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 import type { Bundle, Task } from 'fhir/r4';
+import { backendUrl } from '$lib/backend.js';
 import { toJob } from '$lib/jobs/async-interaction';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    `/fhir/__admin/Task?_id=${params.id}&_include=Task:input&_include=Task:output`,
+    backendUrl('/__admin/Task', `_id=${params.id}&_include=Task:input&_include=Task:output`),
     {
       headers: { Accept: 'application/fhir+json' }
     }

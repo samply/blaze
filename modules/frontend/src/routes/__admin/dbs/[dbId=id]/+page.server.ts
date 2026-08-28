@@ -1,6 +1,7 @@
 import type { Actions, PageServerLoad, RouteParams } from './$types';
-import { base, resolve } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
+import { backendUrl } from '$lib/backend.js';
 import { url } from '$lib/canonical';
 import { toTitleCase } from '$lib/util.js';
 import {
@@ -41,7 +42,7 @@ export interface ColumnFamilyData {
 }
 
 async function loadStats(fetch: Fetch, params: RouteParams): Promise<Stats> {
-  const res = await fetch(`${base}/__admin/dbs/${params.dbId}/stats`, {
+  const res = await fetch(backendUrl(`/__admin/dbs/${params.dbId}/stats`), {
     headers: { Accept: 'application/json' }
   });
 
@@ -61,7 +62,7 @@ async function loadStats(fetch: Fetch, params: RouteParams): Promise<Stats> {
 }
 
 async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<ColumnFamilyData[]> {
-  const res = await fetch(`${base}/__admin/dbs/${params.dbId}/column-families`, {
+  const res = await fetch(backendUrl(`/__admin/dbs/${params.dbId}/column-families`), {
     headers: { Accept: 'application/json' }
   });
 
@@ -81,8 +82,8 @@ async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<Co
 }
 
 async function loadDiskPerfJobs(fetch: typeof window.fetch): Promise<DiskPerfJob[]> {
-  const query = `?code=${encodeURIComponent(url('CodeSystem/JobType') + '|disk-perf')}&_sort=-_lastUpdated&_count=100`;
-  const res = await fetch(`/fhir/__admin/Task${query}`, {
+  const query = `code=${encodeURIComponent(url('CodeSystem/JobType') + '|disk-perf')}&_sort=-_lastUpdated&_count=100`;
+  const res = await fetch(backendUrl('/__admin/Task', query), {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -121,7 +122,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
 
 export const actions = {
   diskPerf: async ({ fetch, params }) => {
-    const res = await fetch('/fhir/__admin/Task', {
+    const res = await fetch(backendUrl('/__admin/Task'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify(newTask({ database: params.dbId, ...defaultParameters }))

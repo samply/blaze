@@ -1,11 +1,11 @@
 import type { Bundle, StructureDefinition } from 'fhir/r4';
-import { base } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 const structureDefinitionStore = new Map<string, Promise<StructureDefinition>>();
 
 function structureDefinitionUrl(type: string) {
-  return `${base}/StructureDefinition?url=http://hl7.org/fhir/StructureDefinition/${type}`;
+  return backendUrl('/StructureDefinition', `url=http://hl7.org/fhir/StructureDefinition/${type}`);
 }
 
 /**

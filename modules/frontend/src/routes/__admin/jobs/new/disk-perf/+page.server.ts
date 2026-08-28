@@ -1,5 +1,6 @@
 import type { Actions } from './$types';
 import { resolve } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { newTask } from '$lib/jobs/disk-perf';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { fail, redirect } from '@sveltejs/kit';
@@ -12,7 +13,7 @@ export const actions = {
     const phaseDuration = parseFloat(data.get('phase-duration') as string);
     const maxConcurrency = parseInt(data.get('max-concurrency') as string);
 
-    const res = await fetch('/fhir/__admin/Task', {
+    const res = await fetch(backendUrl('/__admin/Task'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify(newTask({ database, fileSize, phaseDuration, maxConcurrency }))

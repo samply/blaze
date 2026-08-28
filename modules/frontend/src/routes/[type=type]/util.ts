@@ -1,6 +1,6 @@
 import type { CapabilityStatement, OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
-import { base } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '$lib/util.js';
 import { transformBundle } from '$lib/resource/resource-card.js';
@@ -56,7 +56,7 @@ export async function fetchSearchMetadata(
   fetch: typeof window.fetch,
   type: string
 ): Promise<SearchMetadata> {
-  const res = await fetch(`${base}/metadata`, {
+  const res = await fetch(backendUrl('/metadata'), {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -74,7 +74,7 @@ export async function fetchBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${base}/${params.type}?${processParams(url.searchParams)}`, {
+  const res = await fetch(backendUrl(`/${params.type}`, processParams(url.searchParams)), {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -95,7 +95,7 @@ export async function fetchPageBundleWithDuration(
 ) {
   const start = Date.now();
 
-  const res = await fetch(`${base}/${params.type}/__page/${pageId}`, {
+  const res = await fetch(backendUrl(`/${params.type}/__page/${pageId}`), {
     headers: { Accept: 'application/fhir+json' }
   });
 

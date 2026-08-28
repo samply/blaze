@@ -6,12 +6,12 @@ import type {
   Parameters,
   ParametersParameter
 } from 'fhir/r4';
-import { base, resolve } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { error, fail, type NumericRange } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    `${base}/CodeSystem?_id=${params.id}&_elements=version,title,description`,
+    backendUrl('/CodeSystem', `_id=${params.id}&_elements=version,title,description`),
     {
       headers: {
         Accept: 'application/fhir+json'
@@ -66,7 +66,7 @@ export const actions = {
       });
     }
 
-    const res = await fetch(resolve('/CodeSystem/[id=id]/$lookup', params), {
+    const res = await fetch(backendUrl(`/CodeSystem/${params.id}/$lookup`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({
