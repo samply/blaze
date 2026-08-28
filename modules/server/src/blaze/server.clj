@@ -29,22 +29,29 @@
 
 (defmethod m/pre-init-spec :blaze/server [_]
   (s/keys :req-un [::port ::handler ::version]
-          :opt-un [::name ::async? ::min-threads ::max-threads]))
+          :opt-un [::name ::async? ::thread-pool ::min-threads ::max-threads]))
 
 (defmethod ig/init-key :blaze/server
-  [_ {:keys [name port handler version async? min-threads max-threads]
+  [_ {:keys [name port handler version async? thread-pool min-threads
+             max-threads]
       :or {name "main" async? false min-threads 8 max-threads 50}}]
   (log/info (format "Start %s server on port %d" name port))
   (ring-jetty/run-jetty
    (wrap-server handler (str "Blaze/" version))
-   {:port port
-    :async? async?
-    ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
-    :async-timeout 3610000                                  ; 1 h and 10 s
-    :join? false
-    :send-server-version? false
-    :min-threads min-threads
-    :max-threads max-threads}))
+   (cond->
+    {:port port
+     :async? async?
+     ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
+     :async-timeout 3610000                                 ; 1 h and 10 s
+     :join? false
+     :send-server-version? false}
+     thread-pool
+     (assoc :thread-pool thread-pool)
+
+     ;; the adapter only creates a thread pool of its own if none is given, so
+     ;; the sizing options would be silently ignored otherwise
+     (nil? thread-pool)
+     (assoc :min-threads min-threads :max-threads max-threads))))
 
 (defmethod ig/halt-key! :blaze/server
   [_ server]

@@ -5,6 +5,7 @@
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.server]
    [blaze.server.spec]
+   [blaze.server.thread-pool]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -84,6 +85,13 @@
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.server/version]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid thread-pool"
+    (given-failed-system (assoc-in (config (find-free-port!)) [:blaze/server :thread-pool] ::invalid)
+      :key := :blaze/server
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.server/thread-pool]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn async-ok-handler [_ respond _]
@@ -102,6 +110,11 @@
    (async-config port async-ok-handler))
   ([port handler]
    {:blaze/server {:port port :handler handler :version "1.0" :async? true}}))
+
+(defn- with-thread-pool [config]
+  (-> (assoc-in config [:blaze/server :thread-pool]
+                (ig/ref :blaze.server/thread-pool))
+      (assoc :blaze.server/thread-pool {})))
 
 (deftest server-test
   (let [port (find-free-port!)]
@@ -130,6 +143,18 @@
         (with-system [_ (async-config port async-error-handler)]
           (given (ba/try-anomaly (hc/get (str "http://localhost:" port)))
             :status := 500))))
+
+    (testing "with a given thread pool"
+      (with-system [_ (with-thread-pool (config port))]
+        (given (hc/get (str "http://localhost:" port))
+          :status := 200
+          :body := "OK"))
+
+      (testing "async"
+        (with-system [_ (with-thread-pool (async-config port))]
+          (given (hc/get (str "http://localhost:" port))
+            :status := 200
+            :body := "OK"))))
 
     (testing "with already bound port"
       (with-system [_ (config port)]

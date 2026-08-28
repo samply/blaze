@@ -358,6 +358,16 @@ The port of the main HTTP server
 
 **Default:** 8080
 
+#### `SERVER_MAX_THREADS` <Badge type="warning" text="Since 1.12.0"/>
+
+The maximum number of threads of the main HTTP server thread pool. That pool accepts connections and processes requests.
+
+The value has to be at least 8, because the server takes a few threads out of the pool for connection management before any request is processed. There is no upper bound, because what a thread costs to hold depends on the deployment.
+
+Raise it if many clients connect concurrently or read their responses slowly, because a slow client can hold a thread of this pool until it has read the whole response.
+
+**Default:** 50
+
 #### `METRICS_SERVER_PORT` <Badge type="warning" text="Since 0.6"/>
 
 The port of the Prometheus metrics server

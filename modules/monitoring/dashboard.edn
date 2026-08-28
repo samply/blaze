@@ -360,6 +360,41 @@
      [{:expr "histogram_quantile(${quantile:raw}, sum(rate(fhir_generate_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (format, le))"
        :legend "{{format}}"}]}]}
 
+  {:title "HTTP Server Thread Pool"
+   :panels
+   [{:title "Threads"
+     :description "Number of threads in the HTTP server thread pool and how many of them are busy. The pool accepts connections, processes requests and generates and writes the responses. Its maximum is set by SERVER_MAX_THREADS."
+     :unit "short"
+     :width 6
+     :queries
+     [{:expr "queued_thread_pool_threads{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}} total"}
+      {:expr "queued_thread_pool_busy_threads{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}} busy"}]}
+    {:title "Utilization Rate"
+     :description "Ratio of busy threads to the threads available to the application, so excluding the threads the server leases for connection management. Approaching one means requests start to queue."
+     :unit "percentunit"
+     :width 6
+     :max 1
+     :queries
+     [{:expr "queued_thread_pool_utilization_rate{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}}"}]}
+    {:title "Queue Size"
+     :description "Number of jobs waiting for a free thread. Persistently above zero, the pool is the bottleneck."
+     :unit "short"
+     :width 6
+     :queries
+     [{:expr "queued_thread_pool_queue_size{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}}"}]}
+    {:title "Low on Threads"
+     :description "One while the pool considers itself out of threads, zero otherwise. Raise SERVER_MAX_THREADS if this happens under normal load."
+     :unit "short"
+     :width 6
+     :max 1
+     :queries
+     [{:expr "queued_thread_pool_low_on_threads{job=~\"$job\",instance=~\"$instance\"}"
+       :legend "{{name}}"}]}]}
+
   {:title "Interaction Search Type"
    :panels
    [{:title "Durations $quantile Quantile"

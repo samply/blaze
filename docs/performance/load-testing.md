@@ -40,20 +40,32 @@ The transaction test sweeps over the concurrency levels 1 to 128, one after the 
 BASE=http://localhost:8080/fhir VUS=64 DURATION=300 k6 run transaction.js
 ```
 
-## Single Patient Reads
+## Type Search
+
+This read test measures the throughput and latency of a type search that returns a large bundle.
+
+The [`search-type.js`](load-testing/search-type.js) script repeatedly searches for all Observations of one Patient: `Observation?patient=<id>&_count=1000`, without `_elements`, so the full resources are serialized. With the 1M dataset that is about 600 Observations per request, which fits in one page.
+
+The patients the searches are built from are read in `setup`, which samples `PATIENTS` (default 10,000) of the first `POOL` (default 100,000) patients of the type index. Reading a prefix of the index instead of the whole dataset keeps the setup short, and sampling inside that prefix keeps the working set from being one contiguous range of it. `setup` also issues `WARMUP` (default 100) requests, so that the first scenario doesn't measure a cold system.
+
+The test only reads. Unlike the [Transaction](#transaction) test, which starts from an empty database and grows it with every request, it needs a server that already holds the dataset and leaves that dataset unchanged. Runs are therefore repeatable and can be interrupted at any point.
+
+It records `timings.duration` rather than the `timings.waiting` of the other tests. The server buffers about 32 KB, so on a bundle of this size the first flush happens partway through generating it and the time to first byte would miss most of the response generation.
+
+It sweeps over the concurrency levels 1 to 128, and its `DURATION`, `VUS` and `SYSTEM` environment variables work as in the [Transaction](#transaction) test:
+
+```sh
+BASE=http://localhost:8080/fhir SYSTEM=A5N46 k6 run search-type.js
+```
+
+Two things to know when reading the server side:
+
+* `http_fhir_request_duration_seconds` cannot see the response generation at all. It is observed in the outermost middleware, and the respond callbacks run inside out, so it fires before the response is generated and written.
+* `fhir_generate_duration_seconds` is the useful server-side view, because it is observed while the body is written to the socket and so includes backpressure from the client.
 
 ### Results
 
-| Dataset | System | VUs | Req/s |  med |  q95 |  q99 |
-|---------|--------|----:|------:|-----:|-----:|-----:|
-| 1M      | A5N46  |   1 |  1405 | 0.50 | 0.74 | 1.47 |
-| 1M      | A5N46  |   2 |  3907 | 0.45 | 0.57 | 0.67 |
-| 1M      | A5N46  |   4 |  7248 | 0.53 | 0.59 | 0.69 |
-| 1M      | A5N46  |   8 | 13381 | 0.55 | 0.67 | 0.88 |
-| 1M      | A5N46  |  16 | 23678 | 0.60 | 0.82 | 1.21 |
-| 1M      | A5N46  |  32 | 38314 | 0.73 | 1.13 | 1.90 |
-| 1M      | A5N46  |  48 | 45679 | 0.89 | 1.58 | 3.22 |
-| 1M      | A5N46  |  64 | 48868 | 1.07 | 2.20 | 4.12 |
+No run is committed yet.
 
 ## Patient Everything
 

@@ -70,6 +70,9 @@
   blaze/page-store-cassandra
   {:local/root "modules/page-store-cassandra"}
 
+  blaze/queued-thread-pool-collector
+  {:local/root "modules/queued-thread-pool-collector"}
+
   blaze/rest-api
   {:local/root "modules/rest-api"}
 
@@ -230,6 +233,7 @@
     "-d" "modules/page-id-cipher"
     "-d" "modules/page-store"
     "-d" "modules/page-store-cassandra"
+    "-d" "modules/queued-thread-pool-collector"
     "-d" "modules/rest-api"
     "-d" "modules/rest-util"
     "-d" "modules/rocksdb"

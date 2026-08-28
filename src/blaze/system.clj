@@ -145,11 +145,18 @@
    {:rest-api (ig/ref :blaze/rest-api)
     :health-handler (ig/ref :blaze.handler/health)}
 
+   :blaze.server/thread-pool
+   {:max-threads (->Cfg "SERVER_MAX_THREADS" pos-int? 50)}
+
+   :blaze/queued-thread-pool-collector
+   {:thread-pool (ig/ref :blaze.server/thread-pool)}
+
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)
     :handler (ig/ref :blaze.handler/app)
     :version (ig/ref :blaze/version)
-    :async? true}
+    :async? true
+    :thread-pool (ig/ref :blaze.server/thread-pool)}
 
    :blaze/thread-pool-executor-collector
    {:executors (->RefMap :blaze.metrics/thread-pool-executor)}

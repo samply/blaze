@@ -243,6 +243,7 @@ jobs:
         - page-id-cipher
         - page-store
         - page-store-cassandra
+        - queued-thread-pool-collector
         - rest-api
         - rest-util
         - rocksdb
