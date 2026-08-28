@@ -1,4 +1,5 @@
-import { error, type NumericRange } from '@sveltejs/kit';
+import type { Bundle } from 'fhir/r4';
+import { fetchFhir, type ErrorSource } from '$lib/fetch.js';
 import { processParams } from '$lib/util.js';
 import { transformBundle, type FhirObjectBundle } from '$lib/resource/resource-card.js';
 import type { SummaryState } from '$lib/summary.js';
@@ -32,24 +33,24 @@ export function historySummaryFromUrl(params: URLSearchParams): SummaryState {
 }
 
 /**
- * Loads a history bundle from the given URL, applying the shared
- * default-count and _summary handling and transforming the result for rendering.
+ * Reads the history bundle at `url`, transformed for rendering.
  *
- * On a non-ok response it aborts with the given SvelteKit error body.
+ * @param fetch the `fetch` of the load
+ * @param url the URL of the history to read, as built by `backendUrl`
+ * @param searchParams the search params of the page, which the shared
+ * default-count and `_summary` handling is applied to
+ * @param error the error body a failed request aborts the load with
+ * @returns the transformed bundle
+ * @throws HttpError with the status of the response and the body built
+ * from `error` if the response is not ok
  */
 export async function fetchHistoryBundle(
   fetch: typeof window.fetch,
   url: string,
   searchParams: URLSearchParams,
-  errorBody: App.Error | string
+  error: ErrorSource
 ): Promise<FhirObjectBundle> {
-  const res = await fetch(`${url}?${processParams(searchParams)}`, {
-    headers: { Accept: 'application/fhir+json' }
-  });
+  const bundle = await fetchFhir<Bundle>(fetch, `${url}?${processParams(searchParams)}`, { error });
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, errorBody);
-  }
-
-  return transformBundle(fetch, await res.json());
+  return transformBundle(fetch, bundle);
 }

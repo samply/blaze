@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 
 import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson, loadError } from '$lib/fetch.js';
 import { toTitleCase } from '$lib/util.js';
 import { pascalCase } from 'change-case';
 
@@ -19,26 +19,17 @@ export interface Data {
 }
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(
+  const columnFamily = pascalCase(params.cfId);
+  const database = toTitleCase(params.dbId);
+
+  return fetchJson<Data>(
+    fetch,
     backendUrl(`/__admin/dbs/${params.dbId}/column-families/${params.cfId}/metadata`),
     {
-      headers: { Accept: 'application/json' }
+      error: loadError({
+        404: `The column family ${columnFamily} was not found in database ${database}.`,
+        default: `An error happened while loading the column family ${columnFamily} of database ${database}. Please try again later.`
+      })
     }
   );
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : undefined,
-      message:
-        res.status == 404
-          ? `The column family ${pascalCase(params.cfId)} was not found in database ${toTitleCase(
-              params.dbId
-            )}.`
-          : `An error happened while loading the column family ${pascalCase(
-              params.cfId
-            )} of database ${toTitleCase(params.dbId)}. Please try again later.`
-    });
-  }
-
-  return (await res.json()) as Data;
 };
