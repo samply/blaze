@@ -1,7 +1,7 @@
 <script lang="ts">
   import { preventDefault } from 'svelte/legacy';
 
-  import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+  import type { SearchMetadata } from '$lib/search-metadata.js';
   import { initQueryParams, selectParam, submitParams } from './query-param.js';
   import {
     insertAtIndex,
@@ -25,20 +25,21 @@
 
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
-  import { error, type NumericRange } from '@sveltejs/kit';
   import Dropdown from '$lib/tailwind/dropdown.svelte';
   import Toggle from '$lib/tailwind/toggle.svelte';
 
   interface Props {
-    searchParams: CapabilityStatementRestResourceSearchParam[];
+    searchMetadata: SearchMetadata;
     type: string;
   }
 
-  let { searchParams, type }: Props = $props();
+  let { searchMetadata, type }: Props = $props();
 
   // Filter out _summary from the dropdown options — it is managed by the
   // Result control, not the form's param rows.
-  let filteredSearchParams = $derived(searchParams.filter((p) => p.name !== '_summary'));
+  let filteredSearchParams = $derived(
+    searchMetadata.searchParams.filter((p) => p.name !== '_summary')
+  );
 
   let { queryParams: initialQueryParams, queryPlan: initialQueryPlan } = initQueryParams(
     page.url.searchParams
@@ -53,33 +54,6 @@
       queryPlanState = init.queryPlan;
     }
   });
-
-  async function loadSearchIncludes(type: string): Promise<string[]> {
-    const res = await fetch(resolve('/[type=type]/__search-includes', { type: type }), {
-      headers: { Accept: 'application/json' }
-    });
-
-    if (!res.ok) {
-      error(res.status as NumericRange<400, 599>, 'error while fetching the search includes');
-    }
-
-    return (await res.json()).searchIncludes;
-  }
-
-  async function loadSearchRevIncludes(type: string): Promise<string[]> {
-    const res = await fetch(resolve('/[type=type]/__search-rev-includes', { type: type }), {
-      headers: { Accept: 'application/json' }
-    });
-
-    if (!res.ok) {
-      error(
-        res.status as NumericRange<400, 599>,
-        'error while fetching the search reverse includes'
-      );
-    }
-
-    return (await res.json()).searchRevIncludes;
-  }
 
   function send() {
     const params = submitParams(
@@ -118,17 +92,17 @@
           bind:selected={queryParam.name}
         />
         {#if queryParam.name === '_include'}
-          {#await loadSearchIncludes(type)}
-            <ValueComboBox {index} bind:selected={queryParam.value} />
-          {:then searchIncludes}
-            <ValueComboBox options={searchIncludes} {index} bind:selected={queryParam.value} />
-          {/await}
+          <ValueComboBox
+            options={searchMetadata.searchIncludes}
+            {index}
+            bind:selected={queryParam.value}
+          />
         {:else if queryParam.name === '_revinclude'}
-          {#await loadSearchRevIncludes(type)}
-            <ValueComboBox {index} bind:selected={queryParam.value} />
-          {:then searchRevIncludes}
-            <ValueComboBox options={searchRevIncludes} {index} bind:selected={queryParam.value} />
-          {/await}
+          <ValueComboBox
+            options={searchMetadata.searchRevIncludes}
+            {index}
+            bind:selected={queryParam.value}
+          />
         {:else}
           <QueryParamValue {index} bind:value={queryParam.value} />
         {/if}

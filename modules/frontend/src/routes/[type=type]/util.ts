@@ -4,6 +4,7 @@ import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '$lib/util.js';
 import { transformBundle } from '$lib/resource/resource-card.js';
+import type { SearchMetadata } from '$lib/search-metadata.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
   return (await res.json()) as OperationOutcome;
@@ -32,6 +33,27 @@ export async function appError(params: RouteParams, res: Response) {
         message: `An error happened while loading the ${params.type}s. Please try again later.`
       };
   }
+}
+
+/**
+ * Fetches the search metadata of the resource type `type`.
+ *
+ * The search params, includes and reverse includes all come from a single
+ * request, because they are all derived from the same CapabilityStatement.
+ */
+export async function fetchSearchMetadata(
+  fetch: typeof window.fetch,
+  type: string
+): Promise<SearchMetadata> {
+  const res = await fetch(resolve('/[type=type]/__search-params', { type: type }), {
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!res.ok) {
+    error(res.status as NumericRange<400, 599>, 'error while fetching the search metadata');
+  }
+
+  return await res.json();
 }
 
 export async function fetchBundleWithDuration(
