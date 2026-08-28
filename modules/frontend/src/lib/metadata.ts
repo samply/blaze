@@ -1,11 +1,11 @@
 import type { Bundle, StructureDefinition } from 'fhir/r4';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 const structureDefinitionStore = new Map<string, Promise<StructureDefinition>>();
 
 function structureDefinitionUrl(type: string) {
-  return `${base}/StructureDefinition?url=http://hl7.org/fhir/StructureDefinition/${type}`;
+  return `${resolve('/[type=type]', { type: 'StructureDefinition' })}?url=http://hl7.org/fhir/StructureDefinition/${type}`;
 }
 
 async function loadStructureDefinition(fetch: typeof window.fetch, type: string) {
@@ -42,7 +42,14 @@ export async function fetchStructureDefinition(
     return cached;
   }
 
-  const load = loadStructureDefinition(fetch, type);
+  // Only successful loads stay in the cache. A failed one is removed before the
+  // rejection is passed on, so that the next call retries it. The cached
+  // promise is the one returned by `catch`, so concurrent callers all observe
+  // the same rejection.
+  const load = loadStructureDefinition(fetch, type).catch((e) => {
+    structureDefinitionStore.delete(type);
+    throw e;
+  });
 
   structureDefinitionStore.set(type, load);
 
