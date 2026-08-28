@@ -4,7 +4,7 @@
   import { resolve } from '$app/paths';
 
   import Entry from './entry.svelte';
-  import { title } from '$lib/resource.js';
+  import { versionedTitle } from '$lib/resource.js';
 
   interface Props {
     type: string;
@@ -15,7 +15,7 @@
 
   let { type, id, resource, last = false }: Props = $props();
 
-  let name = $derived(resource ? title(resource) : id);
+  let name = $derived((resource ? versionedTitle(resource) : undefined) ?? id);
 </script>
 
 <Entry>
