@@ -3,7 +3,21 @@ import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { sequence } from '@sveltejs/kit/hooks';
 import { handle as handleAuthentication } from '$lib/server/auth';
-import { base } from '$app/paths';
+import { resolve as resolveRoute } from '$app/paths';
+
+const signInPath = resolveRoute('/__sign-in');
+
+/**
+ * Builds the sign-in URL, remembering `target` as the page to return to
+ * after signing in.
+ *
+ * Only the path and the query are kept, percent-encoded: unencoded, the
+ * target's own `&` would end the `redirect` param and truncate the query,
+ * and its origin has no business in a callback URL handed to Auth.js.
+ */
+function signInUrl(target: URL): string {
+  return `${signInPath}?redirect=${encodeURIComponent(target.pathname + target.search)}`;
+}
 
 export const handleAuthorization: Handle = async ({ event, resolve }) => {
   if (event.route.id != '/__sign-in') {
@@ -11,7 +25,7 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
     const session = await event.locals.auth();
 
     if (!session || !session.expiresAt || session.expiresAt - Date.now() < 10000) {
-      throw redirect(307, `${base}/__sign-in?redirect=${event.url}`);
+      redirect(307, signInUrl(event.url));
     }
 
     event.locals.session = session;
