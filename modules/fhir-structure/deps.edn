@@ -20,7 +20,7 @@
   {:mvn/version "2.22.2"}
 
   metosin/jsonista
-  {:mvn/version "1.0.0"}
+  {:mvn/version "1.0.1"}
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/alexanderkiel/spec-alpha2.git"
