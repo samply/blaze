@@ -5,21 +5,37 @@
    [java.time LocalDate]))
 
 (def lib 'samply/blaze)
-(def version "1.11.0")
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
-(def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
+(def uber-file (format "target/%s-standalone.jar" (name lib)))
 
 (defn clean [_]
   (b/delete {:path "target"}))
+
+(defn- git
+  "Returns the trimmed output of the Git command with `args` or nil if it
+  produces no output or Git isn't available at all."
+  [& args]
+  (try
+    (b/git-process {:git-args (vec args)})
+    (catch Exception _ nil)))
+
+(defn- write-version-file []
+  ;; the only tags used are release tags like `v1.11.0`, so the version is the
+  ;; tag HEAD points at without its leading `v`
+  (let [version (or (some-> (git "tag" "--points-at" "HEAD") (subs 1))
+                    (git "rev-parse" "--short" "HEAD")
+                    "unknown")]
+    (println "Build version:" version)
+    (b/write-file {:path (str class-dir "/blaze/version.edn")
+                   :content {:blaze/version version
+                             :blaze/release-date (str (LocalDate/now))}})))
 
 (defn uber [_]
   (clean nil)
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
-  (b/write-file {:path (str class-dir "/blaze/version.edn")
-                 :content {:blaze/version version
-                           :blaze/release-date (str (LocalDate/now))}})
+  (write-version-file)
   (b/compile-clj {:basis basis
                   :class-dir class-dir
                   :ns-compile
