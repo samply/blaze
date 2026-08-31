@@ -37,7 +37,7 @@
    :exclusions [ring/ring-core]}
 
   metosin/muuntaja
-  {:mvn/version "0.6.11"
+  {:mvn/version "0.6.12"
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ring/ring-core
