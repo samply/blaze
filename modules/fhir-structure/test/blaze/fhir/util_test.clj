@@ -11,7 +11,9 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
-   [juxt.iota :refer [given]]))
+   [juxt.iota :refer [given]])
+  (:import
+   [java.time Instant]))
 
 (st/instrument)
 (ig/init-key :blaze.fhir/structure-definition-repo {})
@@ -273,12 +275,55 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing value."))))
 
+(deftest coerce-date-test
+  (testing "valid"
+    (is (= #system/date"2024" (fu/coerce-date #fhir/date #system/date"2024"))))
+
+  (testing "invalid"
+    (doseq [x [#fhir/string "2024" nil]]
+      (given (fu/coerce-date x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be a date.")))
+
+  (testing "missing value"
+    (given (fu/coerce-date #fhir/date{:id "0"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing value.")))
+
+(deftest coerce-instant-test
+  (testing "valid"
+    (is (= Instant/EPOCH (fu/coerce-instant #fhir/instant #system/date-time"1970-01-01T00:00:00Z"))))
+
+  (testing "invalid"
+    (doseq [x [#fhir/string "1970-01-01T00:00:00Z" nil]]
+      (given (fu/coerce-instant x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be an instant.")))
+
+  (testing "missing value"
+    (given (fu/coerce-instant #fhir/instant{:id "0"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing value.")))
+
 (deftest coerce-params-test
   (testing "simple copy"
     (given (fu/coerce-params
             {"a" {:action :copy}}
             (fu/parameters "a" #fhir/string "b"))
       :a := "b")
+
+    (testing "uses the value of the primitive without :coerce"
+      (are [x v] (= v (:a (fu/coerce-params {"a" {:action :copy}} (fu/parameters "a" x))))
+        #fhir/uri"b" "b"
+        #fhir/code"b" "b"
+        #fhir/boolean true true
+        #fhir/integer 1 1
+        #fhir/string{:id "0"} nil)
+
+      (testing "a false boolean value isn't confused with a missing one"
+        (is (false? (:a (fu/coerce-params
+                         {"a" {:action :copy}}
+                         (fu/parameters "a" #fhir/boolean false)))))))
 
     (testing "camelCase name"
       (given (fu/coerce-params
@@ -307,6 +352,30 @@
             (fu/parameters "a" #fhir/string "b,c" "a" #fhir/string "d"))
       :as := ["b" "c" "d"]))
 
+  (testing "renaming the key"
+    (given (fu/coerce-params
+            {"_since" {:action :copy :key :since}}
+            (fu/parameters "_since" #fhir/string "a"))
+      :since := "a")
+
+    (testing "of a complex type param"
+      (given (fu/coerce-params
+              {"a" {:action :copy-complex-type :key :b}}
+              (fu/parameters "a" #fhir/Coding{:code #fhir/code"c"}))
+        :b := #fhir/Coding{:code #fhir/code"c"}))
+
+    (testing "of a resource param"
+      (given (fu/coerce-params
+              {"a" {:action :copy-resource :key :b}}
+              (fu/parameters "a" {:fhir/type :fhir/Patient :id "0"}))
+        :b := {:fhir/type :fhir/Patient :id "0"}))
+
+    (testing "with cardinality many, the key isn't pluralized"
+      (given (fu/coerce-params
+              {"a" {:action :copy :key :bs :cardinality :many}}
+              (fu/parameters "a" #fhir/string "b" "a" #fhir/string "c"))
+        :bs := ["b" "c"])))
+
   (testing "coercion"
     (given (fu/coerce-params
             {"a" {:action :copy :coerce (comp parse-long :value)}}
@@ -318,7 +387,24 @@
               {"a" {:action :copy :coerce (constantly (ba/incorrect "msg-183537"))}}
               (fu/parameters "a" #fhir/string "1"))
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid value for parameter `a`. msg-183537")))
+        ::anom/message := "Invalid value for parameter `a`. msg-183537")
+
+      (testing "the first error is returned"
+        (given (fu/coerce-params
+                {"a" {:action :copy :coerce (constantly (ba/incorrect "msg-183537"))}
+                 "b" {:action :copy :coerce (constantly (ba/incorrect "msg-104115"))}}
+                (fu/parameters "a" #fhir/string "1" "b" #fhir/string "2"))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid value for parameter `a`. msg-183537"))
+
+      (testing "processing stops after the error"
+        (given (fu/coerce-params
+                {"a" {:action :copy :coerce (constantly (ba/incorrect "msg-183537"))}
+                 "b" {:action :copy}}
+                (fu/parameters "a" #fhir/string "1" "b" #fhir/string "2"))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid value for parameter `a`. msg-183537"
+          :b := nil))))
 
   (testing "complex type copy"
     (given (fu/coerce-params

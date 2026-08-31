@@ -4,7 +4,9 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.tx-log :as tx-log]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [link-url]]
+   [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.search.util :as search-util]
@@ -27,7 +29,7 @@
    [reitit.core :as reitit]
    [taoensso.timbre :as log])
   (:import
-   [java.time Instant]))
+   [java.time Instant ZoneOffset]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -207,33 +209,246 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [{:keys [status body]}
-            @(handler {:path-params {:id "0"}
-                       :query-params {"start" "invalid"}})]
+      (testing "GET"
+        (let [{:keys [status body]}
+              @(handler {:path-params {:id "0"}
+                         :query-params {"start" "invalid"}})]
 
-        (is (= 400 status))
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code "error"
-          [:issue 0 :code] := #fhir/code "invalid"
-          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `start` is no valid date."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `start` is no valid date.")))
+
+      (testing "POST"
+        (doseq [[request-body msg]
+                [[(fu/parameters "start" #fhir/string "invalid")
+                  "Invalid value for parameter `start`. Has to be a date."]
+                 [(fu/parameters "start" #fhir/date{:id "0"})
+                  "Invalid value for parameter `start`. Missing value."]]]
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "0"}
+                           :body request-body})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := (type/string msg)))))))
 
   (testing "invalid end date"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
+      (testing "GET"
+        (let [{:keys [status body]}
+              @(handler {:path-params {:id "0"}
+                         :query-params {"end" "invalid"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `end` is no valid date.")))
+
+      (testing "POST"
+        (let [{:keys [status body]}
+              @(handler {:request-method :post
+                         :path-params {:id "0"}
+                         :body (fu/parameters "end" #fhir/string "invalid")})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `end`. Has to be a date.")))))
+
+  (testing "invalid _since"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "GET ignores the value"
+        (let [{:keys [status body]}
+              @(handler {:path-params {:id "0"}
+                         :query-params {"_since" "invalid"}})]
+
+          (is (= 200 status))
+
+          (is (= #fhir/unsignedInt 1 (:total body)))))
+
+      (testing "POST"
+        (doseq [[request-body msg]
+                [[(fu/parameters "_since" #fhir/string "invalid")
+                  "Invalid value for parameter `_since`. Has to be an instant."]
+                 [(fu/parameters "_since" #fhir/instant{:id "0"})
+                  "Invalid value for parameter `_since`. Missing value."]]]
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "0"}
+                           :body request-body})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := (type/string msg)))))))
+
+  (testing "invalid _count"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "GET ignores the value"
+        (doseq [value ["invalid" "-1"]]
+          (let [{:keys [status body]}
+                @(handler {:path-params {:id "0"}
+                           :query-params {"_count" value}})]
+
+            (is (= 200 status))
+
+            (is (= #fhir/unsignedInt 1 (:total body))))))
+
+      (testing "POST"
+        (testing "with a non-integer value"
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "0"}
+                           :body (fu/parameters "_count" #fhir/string "2")})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `_count`. Has to be an integer.")))
+
+        (testing "without a value"
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "0"}
+                           :body (fu/parameters "_count" #fhir/integer{:id "0"})})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `_count`. Missing value.")))
+
+        (testing "with a negative value"
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "0"}
+                           :body (fu/parameters "_count" #fhir/integer -1)})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `_count`. Has to be a non-negative integer."))))))
+
+  (testing "the unsupported param _type"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (doseq [request [{:path-params {:id "0"}
+                        :query-params {"_type" "Observation"}}
+                       {:request-method :post
+                        :path-params {:id "0"}
+                        :body (fu/parameters "_type" #fhir/code "Observation")}]]
+        (let [{:keys [status body]} @(handler request)]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "not-supported"
+            [:issue 0 :diagnostics] := #fhir/string "Unsupported parameter `_type`.")))))
+
+  (testing "unknown params are ignored"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (doseq [request [{:path-params {:id "0"}
+                        :query-params {"_summary" "count"}}
+                       {:request-method :post
+                        :path-params {:id "0"}
+                        :body (fu/parameters "_summary" #fhir/code "count")}]]
+        (let [{:keys [status body]} @(handler request)]
+
+          (is (= 200 status))
+
+          (is (= #fhir/unsignedInt 2 (:total body)))))))
+
+  (testing "a body that isn't a Parameters resource is ignored"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
       (let [{:keys [status body]}
-            @(handler {:path-params {:id "0"}
-                       :query-params {"end" "invalid"}})]
+            @(handler {:request-method :post
+                       :path-params {:id "0"}
+                       :body {:fhir/type :fhir/Patient :id "0"}})]
 
-        (is (= 400 status))
+        (is (= 200 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code "error"
-          [:issue 0 :code] := #fhir/code "invalid"
-          [:issue 0 :diagnostics] := #fhir/string "The value `invalid` of the query param `end` is no valid date.")))))
+        (is (= #fhir/unsignedInt 1 (:total body))))))
+
+  (testing "query params take precedence over the params of the body"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :effective #fhir/dateTime #system/date-time "2023-01-04T23:45:50Z"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
+
+      (testing "the start date of the query params wins"
+        (let [{:keys [status] {[_ second-entry] :entry :as body} :body}
+              @(handler {:request-method :post
+                         :path-params {:id "0"}
+                         :query-params {"start" "2024"}
+                         :body (fu/parameters "start" #fhir/date #system/date "2023")})]
+
+          (is (= 200 status))
+
+          (is (= #fhir/unsignedInt 2 (:total body)))
+
+          (given (:resource second-entry)
+            :fhir/type := :fhir/Observation
+            :id := "1")))
+
+      (testing "params missing in the query params are taken from the body"
+        (let [{:keys [status] {[_ second-entry] :entry :as body} :body}
+              @(handler {:request-method :post
+                         :path-params {:id "0"}
+                         :query-params {"start" "2024"}
+                         :body (fu/parameters "end" #fhir/date #system/date "2024")})]
+
+          (is (= 200 status))
+
+          (is (= #fhir/unsignedInt 2 (:total body)))
+
+          (given (:resource second-entry)
+            :fhir/type := :fhir/Observation
+            :id := "1"))))))
 
 (deftest patient-only
   (testing "Patient only"
@@ -423,59 +638,63 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
                :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
-      (let [{:keys [status]
-             {[first-entry second-entry] :entry :as body} :body}
-            @(handler {:path-params {:id "0"}
-                       :query-params {"start" "2024"}})]
+      (doseq [request [{:path-params {:id "0"}
+                        :query-params {"start" "2024"}}
+                       {:request-method :post
+                        :path-params {:id "0"}
+                        :body (fu/parameters "start" #fhir/date #system/date "2024")}]]
+        (let [{:keys [status]
+               {[first-entry second-entry] :entry :as body} :body}
+              @(handler request)]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
 
-        (testing "the bundle id is an LUID"
-          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code "searchset" (:type body))))
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
 
-        (testing "the total count is 2"
-          (is (= #fhir/unsignedInt 2 (:total body))))
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
 
-        (testing "the bundle contains two entries"
-          (is (= 2 (count (:entry body)))))
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
 
-        (testing "the first entry has the right fullUrl"
-          (is (= (str base-url context-path "/Patient/0")
-                 (-> first-entry :fullUrl :value))))
+          (testing "the first entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value))))
 
-        (testing "the first entry has the right resource"
-          (given (:resource first-entry)
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
-        (testing "the first entry has the right search mode"
-          (given (:search first-entry)
-            :fhir/type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match"))
+          (testing "the first entry has the right search mode"
+            (given (:search first-entry)
+              :fhir/type := :fhir.Bundle.entry/search
+              :mode := #fhir/code "match"))
 
-        (testing "the second entry has the right fullUrl"
-          (is (= (str base-url context-path "/Observation/1")
-                 (-> second-entry :fullUrl :value))))
+          (testing "the second entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/1")
+                   (-> second-entry :fullUrl :value))))
 
-        (testing "the second entry has the right resource"
-          (given (:resource second-entry)
-            :fhir/type := :fhir/Observation
-            :id := "1"
-            [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "1"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
-        (testing "the second entry has the right search mode"
-          (given (:search second-entry)
-            :fhir/type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match"))))))
+          (testing "the second entry has the right search mode"
+            (given (:search second-entry)
+              :fhir/type := :fhir.Bundle.entry/search
+              :mode := #fhir/code "match")))))))
 
 (deftest end-date
   (testing "with end date"
@@ -487,59 +706,63 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
                :effective #fhir/dateTime #system/date-time "2024-01-04T23:45:50Z"}]]]
 
-      (let [{:keys [status]
-             {[first-entry second-entry] :entry :as body} :body}
-            @(handler {:path-params {:id "0"}
-                       :query-params {"end" "2024"}})]
+      (doseq [request [{:path-params {:id "0"}
+                        :query-params {"end" "2024"}}
+                       {:request-method :post
+                        :path-params {:id "0"}
+                        :body (fu/parameters "end" #fhir/date #system/date "2024")}]]
+        (let [{:keys [status]
+               {[first-entry second-entry] :entry :as body} :body}
+              @(handler request)]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
 
-        (testing "the bundle id is an LUID"
-          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code "searchset" (:type body))))
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
 
-        (testing "the total count is 2"
-          (is (= #fhir/unsignedInt 2 (:total body))))
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
 
-        (testing "the bundle contains two entries"
-          (is (= 2 (count (:entry body)))))
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
 
-        (testing "the first entry has the right fullUrl"
-          (is (= (str base-url context-path "/Patient/0")
-                 (-> first-entry :fullUrl :value))))
+          (testing "the first entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value))))
 
-        (testing "the first entry has the right resource"
-          (given (:resource first-entry)
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
+          (testing "the first entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
-        (testing "the first entry has the right search mode"
-          (given (:search first-entry)
-            :fhir/type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match"))
+          (testing "the first entry has the right search mode"
+            (given (:search first-entry)
+              :fhir/type := :fhir.Bundle.entry/search
+              :mode := #fhir/code "match"))
 
-        (testing "the second entry has the right fullUrl"
-          (is (= (str base-url context-path "/Observation/1")
-                 (-> second-entry :fullUrl :value))))
+          (testing "the second entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/1")
+                   (-> second-entry :fullUrl :value))))
 
-        (testing "the second entry has the right resource"
-          (given (:resource second-entry)
-            :fhir/type := :fhir/Observation
-            :id := "1"
-            [:meta :versionId] := #fhir/id "1"
-            [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
+          (testing "the second entry has the right resource"
+            (given (:resource second-entry)
+              :fhir/type := :fhir/Observation
+              :id := "1"
+              [:meta :versionId] := #fhir/id "1"
+              [:meta :lastUpdated] := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))
 
-        (testing "the second entry has the right search mode"
-          (given (:search second-entry)
-            :fhir/type := :fhir.Bundle.entry/search
-            :mode := #fhir/code "match")))))
+          (testing "the second entry has the right search mode"
+            (given (:search second-entry)
+              :fhir/type := :fhir.Bundle.entry/search
+              :mode := #fhir/code "match"))))))
 
   (testing "Patient with various resources"
     (with-handler [handler]
@@ -657,39 +880,44 @@
                       :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]))
         (range 4))]
 
-      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
-            @(handler {::reitit/match match
-                       :path-params {:id "0"}
-                       :query-params {"_count" "2"}})]
+      (doseq [request [{::reitit/match match
+                        :path-params {:id "0"}
+                        :query-params {"_count" "2"}}
+                       {::reitit/match match
+                        :request-method :post
+                        :path-params {:id "0"}
+                        :body (fu/parameters "_count" #fhir/integer 2)}]]
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler request)]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
 
-        (testing "the bundle id is an LUID"
-          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code "searchset" (:type body))))
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
 
-        (testing "the total count is not given"
-          (is (nil? (:total body))))
+          (testing "the total count is not given"
+            (is (nil? (:total body))))
 
-        (testing "has a next link"
-          (is (= (page-url page-id-cipher {"_count" "2" "__t" "1" "__page-offset" "2"})
-                 (link-url body "next"))))
+          (testing "has a next link"
+            (is (= (page-url page-id-cipher {"_count" "2" "__t" "1" "__page-offset" "2"})
+                   (link-url body "next"))))
 
-        (testing "the bundle contains two entries"
-          (is (= 2 (count (:entry body)))))
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
 
-        (testing "the first entry has the right fullUrl"
-          (is (= (str base-url context-path "/Patient/0")
-                 (-> first-entry :fullUrl :value))))
+          (testing "the first entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value))))
 
-        (testing "the second entry has the right fullUrl"
-          (is (= (str base-url context-path "/Observation/0")
-                 (-> second-entry :fullUrl :value)))))
+          (testing "the second entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/0")
+                   (-> second-entry :fullUrl :value))))))
 
       (testing "following the first next link"
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
@@ -1077,35 +1305,40 @@
               [:meta :versionId] := #fhir/id "2"))))
 
       (testing "since after initialization"
-        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
-              @(handler {:path-params {:id "0"}
-                         :query-params {"_since" (str after-init)}})]
+        (doseq [request [{:path-params {:id "0"}
+                          :query-params {"_since" (str after-init)}}
+                         {:request-method :post
+                          :path-params {:id "0"}
+                          :body (fu/parameters
+                                 "_since" (type/instant (.atOffset ^Instant after-init ZoneOffset/UTC)))}]]
+          (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+                @(handler request)]
 
-          (is (= 200 status))
+            (is (= 200 status))
 
-          (testing "the body contains a bundle"
-            (is (= :fhir/Bundle (:fhir/type body))))
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
 
-          (testing "the bundle type is searchset"
-            (is (= #fhir/code "searchset" (:type body))))
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code "searchset" (:type body))))
 
-          (testing "the total count is 2"
-            (is (= #fhir/unsignedInt 2 (:total body))))
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
 
-          (testing "the bundle contains two entries"
-            (is (= 2 (count (:entry body)))))
+            (testing "the bundle contains two entries"
+              (is (= 2 (count (:entry body)))))
 
-          (testing "the first entry has the right resource"
-            (given (:resource first-entry)
-              :fhir/type := :fhir/Patient
-              :id := "0"
-              [:meta :versionId] := #fhir/id "1"))
+            (testing "the first entry has the right resource"
+              (given (:resource first-entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                [:meta :versionId] := #fhir/id "1"))
 
-          (testing "the second entry has the right resource"
-            (given (:resource second-entry)
-              :fhir/type := :fhir/Observation
-              :id := "1"
-              [:meta :versionId] := #fhir/id "2")))
+            (testing "the second entry has the right resource"
+              (given (:resource second-entry)
+                :fhir/type := :fhir/Observation
+                :id := "1"
+                [:meta :versionId] := #fhir/id "2"))))
 
         (testing "with paging"
           (let [{:keys [status] {[entry] :entry :as body} :body}
