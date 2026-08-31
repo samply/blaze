@@ -36,10 +36,6 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
 
 export const handle = sequence(handleAuthentication, handleAuthorization);
 
-function isApiRoute(url: string) {
-  return url.endsWith('__search-params');
-}
-
 const origin = env.ORIGIN || '';
 const forwarded = `host=${new URL(origin).host};proto=${new URL(origin).protocol.replace(':', '')}`;
 
@@ -48,15 +44,11 @@ function translateUrl(request: Request) {
 }
 
 export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
-  if (isApiRoute(request.url)) {
-    return fetch(request);
-  }
-
   const session = event.locals.session;
 
   if (!session?.accessToken) {
-    console.log('no session -> 401');
     error(401, {
+      status: 401,
       short: undefined,
       message: `Unauthorized.`
     });

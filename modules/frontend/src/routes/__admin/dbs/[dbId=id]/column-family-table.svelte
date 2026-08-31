@@ -1,7 +1,7 @@
 <script lang="ts">
   import Table from '$lib/tailwind/table/table.svelte';
   import ColumnFamilyRow from './column-family-row.svelte';
-  import type { ColumnFamilyData } from './+page.js';
+  import type { ColumnFamilyData } from './+page.server.js';
 
   interface Props {
     dbId: string;

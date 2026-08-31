@@ -1,6 +1,6 @@
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
-import { resolve } from '$app/paths';
+import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { toTitleCase } from '$lib/util.js';
 import { pascalCase } from 'change-case';
@@ -18,9 +18,9 @@ export interface Data {
   levels: Level[];
 }
 
-export const load: PageLoad = async ({ fetch, params }) => {
+export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
-    resolve('/__admin/dbs/[dbId=id]/column-families/[cfId=id]/metadata', params),
+    `${base}/__admin/dbs/${params.dbId}/column-families/${params.cfId}/metadata`,
     {
       headers: { Accept: 'application/json' }
     }

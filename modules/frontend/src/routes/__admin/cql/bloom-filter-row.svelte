@@ -1,6 +1,6 @@
 <script lang="ts">
   import prettyBytes from 'pretty-bytes';
-  import type { BloomFilter } from './+page';
+  import type { BloomFilter } from './+page.server.js';
 
   interface Props {
     bloomFilter: BloomFilter;

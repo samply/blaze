@@ -1,7 +1,7 @@
 <script lang="ts">
   import Table from '$lib/tailwind/table/table.svelte';
   import LevelRow from './level-row.svelte';
-  import type { Level } from './+page.js';
+  import type { Level } from './+page.server.js';
 
   interface Props {
     levels: Level[];

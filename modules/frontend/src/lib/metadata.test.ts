@@ -94,13 +94,16 @@ describe('fetchStructureDefinition test', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  // The status is repeated inside the body because the StructureDefinitions are
+  // loaded while transforming a streamed bundle, whose rejection reaches the
+  // `{:catch}` block with the body alone.
   it('fails with the status of an unsuccessful response', async () => {
     const { fetchStructureDefinition } = await importMetadata();
     const fetch = vi.fn(async () => jsonResponse({}, 503));
 
     await expect(fetchStructureDefinition('Patient', fetch)).rejects.toMatchObject({
       status: 503,
-      body: { message: 'error while loading the Patient StructureDefinition' }
+      body: { status: 503, message: 'error while loading the Patient StructureDefinition' }
     });
   });
 
@@ -109,7 +112,7 @@ describe('fetchStructureDefinition test', () => {
 
     await expect(fetchStructureDefinition('Patient', okFetch(bundle()))).rejects.toMatchObject({
       status: 404,
-      body: { message: 'expected one bundle entry but found none' }
+      body: { status: 404, message: 'expected one bundle entry but found none' }
     });
   });
 
@@ -119,7 +122,7 @@ describe('fetchStructureDefinition test', () => {
 
     await expect(fetchStructureDefinition('Patient', okFetch(twoEntries))).rejects.toMatchObject({
       status: 404,
-      body: { message: 'expected one bundle entry but found 2' }
+      body: { status: 404, message: 'expected one bundle entry but found 2' }
     });
   });
 
