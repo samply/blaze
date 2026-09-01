@@ -120,7 +120,8 @@
   :ret ac/completable-future?)
 
 (s/fdef ac/retry
-  :args (s/cat :f ifn? :action-name string? :num-retries pos-int?)
+  :args (s/cat :f ifn? :action-name string? :num-retries pos-int?
+               :retryable? (s/? ifn?))
   :ret ac/completable-future?)
 
 (s/fdef ac/retry2

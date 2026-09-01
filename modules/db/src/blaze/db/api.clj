@@ -56,9 +56,13 @@
   transaction in case of success or will complete exceptionally with an anomaly
   in case of a transaction error or other errors. Fails with an unavailable
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
-  transaction up anymore. Fails with a busy anomaly if `node` already has the
-  maximum number of transactions submitted but not yet indexed, before anything
-  of the transaction is written.
+  transaction up anymore. Fails with a busy anomaly of
+  `:blaze.db.anom/category` `:submit-rejected` if `node` already has the maximum
+  number of transactions submitted but not yet indexed. Such a rejection happens
+  before anything of the transaction is written, so it's the only failure of a
+  transaction that can be safely retried by submitting it again. Every other
+  busy anomaly, especially the one of a timeout, can also mean that the
+  transaction was applied after all.
 
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
