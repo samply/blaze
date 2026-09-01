@@ -122,6 +122,17 @@
   (is (= -1 (fu/version-cmp "1" "1.1")))
   (is (= 1 (fu/version-cmp "1.1" "1"))))
 
+(deftest split-canonical-test
+  (are [canonical expected] (= expected (fu/split-canonical canonical))
+    "" [""]
+    "|" [""]
+    "url" ["url"]
+    "url|" ["url"]
+    "url| " ["url"]
+    "url|1.2.3" ["url" "1.2.3"]
+    "|1.2.3" ["" "1.2.3"]
+    "url|1.2.3|extra" ["url" "1.2.3|extra"]))
+
 (deftest sort-by-priority-test
   (testing "empty"
     (is (empty? (fu/sort-by-priority []))))
