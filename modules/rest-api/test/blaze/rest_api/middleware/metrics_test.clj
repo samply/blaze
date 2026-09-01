@@ -1,6 +1,7 @@
 (ns blaze.rest-api.middleware.metrics-test
   (:require
    [blaze.rest-api.middleware.metrics :as metrics]
+   [blaze.rest-api.middleware.metrics-spec]
    [blaze.test-util :as tu]
    [blaze.util :as u]
    [clojure.spec.test.alpha :as st]

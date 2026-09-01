@@ -9,6 +9,7 @@
    [blaze.middleware.fhir.output-spec]
    [blaze.middleware.fhir.resource-spec]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.rest-api.middleware.ensure-form-body-spec]
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.routes :as routes]
    [blaze.rest-api.routes-spec]

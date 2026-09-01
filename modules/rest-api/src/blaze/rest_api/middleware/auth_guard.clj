@@ -12,7 +12,7 @@
    {:system #fhir/uri-interned "http://terminology.hl7.org/CodeSystem/operation-outcome"
     :code #fhir/code "MSG_AUTH_REQUIRED"})
 
-(defn not-authenticated-response [request]
+(defn- not-authenticated-response [request]
   (log/warn (format-request request) "- 401 - Unauthorized")
   (ac/completed-future
    (-> (ring/response

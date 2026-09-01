@@ -5,7 +5,9 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef db/wrap-db
-  :args (s/cat :handler ifn? :node :blaze.db/node :timeout pos-int?))
+  :args (s/cat :handler fn? :node :blaze.db/node :timeout pos-int?)
+  :ret fn?)
 
 (s/fdef db/wrap-snapshot-db
-  :args (s/cat :handler ifn? :node :blaze.db/node :timeout pos-int?))
+  :args (s/cat :handler fn? :node :blaze.db/node :timeout pos-int?)
+  :ret fn?)

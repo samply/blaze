@@ -6,8 +6,10 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef fhir-output/wrap-output
-  :args (s/cat :handler ifn? :writing-context :blaze.fhir/writing-context
-               :opts (s/? map?)))
+  :args (s/cat :handler fn? :writing-context :blaze.fhir/writing-context
+               :opts (s/? map?))
+  :ret fn?)
 
 (s/fdef fhir-output/wrap-binary-output
-  :args (s/cat :handler ifn? :writing-context :blaze.fhir/writing-context))
+  :args (s/cat :handler fn? :writing-context :blaze.fhir/writing-context)
+  :ret fn?)
