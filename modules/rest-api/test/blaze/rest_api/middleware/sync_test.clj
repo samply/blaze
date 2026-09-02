@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.rest-api.middleware.sync :refer [wrap-sync]]
+   [blaze.rest-api.middleware.sync-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]

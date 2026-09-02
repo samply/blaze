@@ -6,8 +6,10 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef resource/wrap-resource
-  :args (s/cat :handler ifn? :parsing-context :blaze.fhir/parsing-context
-               :type :fhir.resource/type))
+  :args (s/cat :handler fn? :parsing-context :blaze.fhir/parsing-context
+               :type :fhir.resource/type)
+  :ret fn?)
 
 (s/fdef resource/wrap-binary-data
-  :args (s/cat :handler ifn? :parsing-context :blaze.fhir/parsing-context))
+  :args (s/cat :handler fn? :parsing-context :blaze.fhir/parsing-context)
+  :ret fn?)

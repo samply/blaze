@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
+   [blaze.rest-api.middleware.auth-guard-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]

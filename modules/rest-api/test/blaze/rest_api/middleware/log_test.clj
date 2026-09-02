@@ -2,6 +2,7 @@
   (:require
    [blaze.module.test-util.ring :refer [call]]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
+   [blaze.rest-api.middleware.log-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
