@@ -22,7 +22,7 @@
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
@@ -62,7 +62,26 @@
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :search-system-handler success-handler
     :transaction-handler success-handler
-    :resource-patterns (ig/ref ::rest-api/resource-patterns)}
+    :resource-patterns (ig/ref ::rest-api/resource-patterns)
+    :operations
+    [#:blaze.rest-api.operation
+      {:code "totals"
+       :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
+       :affects-state false
+       :system-handler success-handler}
+     #:blaze.rest-api.operation
+      {:code "evaluate-measure"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+       :affects-state false
+       :resource-types ["Measure"]
+       :type-handler success-handler
+       :instance-handler success-handler}
+     #:blaze.rest-api.operation
+      {:code "everything"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
+       :affects-state false
+       :resource-types ["Patient"]
+       :instance-handler success-handler}]}
    ::rest-api/resource-patterns
    {:default
     {:read
@@ -300,6 +319,19 @@
                              :headers {"accept" "text/html"}})
         :status := 404
         :body := nil))))
+
+(deftest url-encoded-dollar-test
+  (testing "operations can also be invoked with a URL encoded dollar sign"
+    (with-system [{:blaze/keys [rest-api]} config]
+      (are [uri] (= 200 (:status (call rest-api {:request-method :get :uri uri})))
+        "/$totals"
+        "/%24totals"
+        "/Measure/$evaluate-measure"
+        "/Measure/%24evaluate-measure"
+        "/Measure/0/$evaluate-measure"
+        "/Measure/0/%24evaluate-measure"
+        "/Patient/0/$everything"
+        "/Patient/0/%24everything"))))
 
 (deftest method-not-allowed-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]

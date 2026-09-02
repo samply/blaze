@@ -11,6 +11,7 @@
    [blaze.module :as m :refer [reg-collector]]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
    [blaze.rest-api.middleware.metrics :as metrics]
+   [blaze.rest-api.middleware.uri :refer [wrap-decode-dollar]]
    [blaze.rest-api.routes :as routes]
    [blaze.rest-api.spec]
    [blaze.rest-api.structure-definitions :as structure-definitions]
@@ -46,6 +47,7 @@
         (cond-> [[wrap-job-scheduler job-scheduler]]
           (seq auth-backends)
           (conj #(apply wrap-authentication % auth-backends)))})
+      wrap-decode-dollar
       wrap-log))
 
 (defmethod m/pre-init-spec :blaze/rest-api [_]
