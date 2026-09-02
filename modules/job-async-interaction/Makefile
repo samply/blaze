@@ -26,9 +26,6 @@ cloc-prod:
 cloc-test:
 	cloc test
 
-validator_cli.jar:
-	wget https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
-
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
