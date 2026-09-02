@@ -12,3 +12,6 @@ validator_cli.jar.asc
 # Claude Code (track shared settings, ignore local/machine-specific files)
 .claude/settings.local.json
 .claude/worktrees/
+
+# Local Docker Compose Override Files
+docker-compose.override.yml
