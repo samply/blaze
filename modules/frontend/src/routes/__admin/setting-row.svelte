@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Setting } from './+layout';
+  import type { Setting } from './+layout.server.js';
 
   let { name, value, masked, defaultValue }: Setting = $props();
 </script>

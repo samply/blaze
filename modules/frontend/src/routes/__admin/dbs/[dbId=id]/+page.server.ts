@@ -1,7 +1,8 @@
-import type { Actions, PageServerLoad } from './$types';
-import { resolve } from '$app/paths';
+import type { Actions, PageServerLoad, RouteParams } from './$types';
+import { base, resolve } from '$app/paths';
 import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
 import { url } from '$lib/canonical';
+import { toTitleCase } from '$lib/util.js';
 import {
   defaultParameters,
   latestResults,
@@ -11,6 +12,73 @@ import {
   type DiskPerfJob
 } from '$lib/jobs/disk-perf';
 import type { Bundle, OperationOutcome, Task } from 'fhir/r4';
+
+type Fetch = typeof window.fetch;
+
+export interface BlockCacheStats {
+  capacity: number;
+  usage: number;
+}
+
+export interface CompactionStats {
+  pending: number;
+  running: number;
+}
+
+export interface Stats {
+  name: string;
+  estimateLiveDataSize: number;
+  usableSpace: number;
+  blockCache?: BlockCacheStats;
+  compactions: CompactionStats;
+}
+
+export interface ColumnFamilyData {
+  name: string;
+  estimateNumKeys: number;
+  liveSstFilesSize: number;
+  sizeAllMemTables: number;
+}
+
+async function loadStats(fetch: Fetch, params: RouteParams): Promise<Stats> {
+  const res = await fetch(`${base}/__admin/dbs/${params.dbId}/stats`, {
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!res.ok) {
+    error(res.status as NumericRange<400, 599>, {
+      short: res.status == 404 ? 'Not Found' : undefined,
+      message:
+        res.status == 404
+          ? `The ${toTitleCase(params.dbId)} database stats were not found.`
+          : `An error happened while loading the ${toTitleCase(
+              params.dbId
+            )} database stats. Please try again later.`
+    });
+  }
+
+  return await res.json();
+}
+
+async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<ColumnFamilyData[]> {
+  const res = await fetch(`${base}/__admin/dbs/${params.dbId}/column-families`, {
+    headers: { Accept: 'application/json' }
+  });
+
+  if (!res.ok) {
+    error(res.status as NumericRange<400, 599>, {
+      short: res.status == 404 ? 'Not Found' : undefined,
+      message:
+        res.status == 404
+          ? `The ${toTitleCase(params.dbId)} database column families were not found.`
+          : `An error happened while loading the ${toTitleCase(
+              params.dbId
+            )} database column families. Please try again later.`
+    });
+  }
+
+  return await res.json();
+}
 
 async function loadDiskPerfJobs(fetch: typeof window.fetch): Promise<DiskPerfJob[]> {
   const query = `?code=${encodeURIComponent(url('CodeSystem/JobType') + '|disk-perf')}&_sort=-_lastUpdated&_count=100`;
@@ -34,12 +102,20 @@ async function loadDiskPerfJobs(fetch: typeof window.fetch): Promise<DiskPerfJob
 }
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const jobs = await loadDiskPerfJobs(fetch);
+  // The three requests are independent, so they go out together.
+  const [jobs, stats, columnFamilies] = await Promise.all([
+    loadDiskPerfJobs(fetch),
+    loadStats(fetch, params),
+    loadColumnFamilies(fetch, params)
+  ]);
+
   return {
     diskPerf: {
       results: latestResults(jobs, params.dbId),
       running: runningJob(jobs, params.dbId)
-    }
+    },
+    stats,
+    columnFamilies
   };
 };
 

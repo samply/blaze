@@ -66,6 +66,6 @@
       <NoResultsCard />
     {/if}
   {:catch error}
-    <ErrorCard status={error.status} error={error.body} />
+    <ErrorCard status={error.status} {error} />
   {/await}
 </main>

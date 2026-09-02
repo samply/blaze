@@ -9,7 +9,7 @@ vi.mock('$lib/server/auth', () => ({
     (input.resolve as (e: unknown) => unknown)(input.event)
 }));
 
-const { handleAuthorization } = await import('./hooks.server.js');
+const { handleAuthorization, handleFetch } = await import('./hooks.server.js');
 
 function mockEvent(options: {
   routeId?: string | null;
@@ -104,5 +104,67 @@ describe('handleAuthorization test', () => {
     } catch (e) {
       expect(isRedirect(e)).toBe(true);
     }
+  });
+});
+
+function fetchEvent(options: { accessToken?: string; url?: string }) {
+  return {
+    url: new URL(options.url ?? 'http://localhost/fhir/Patient'),
+    locals: { session: options.accessToken ? { accessToken: options.accessToken } : undefined }
+  };
+}
+
+async function callHandleFetch(
+  event: ReturnType<typeof fetchEvent>,
+  response: Response,
+  requestUrl = 'http://localhost/fhir/Patient'
+) {
+  const fetch = vi.fn().mockResolvedValue(response);
+  const result = await handleFetch({
+    request: new Request(requestUrl),
+    fetch,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    event: event as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+  return { result, fetch };
+}
+
+describe('handleFetch test', () => {
+  it('sends the request to the backend with the access token', async () => {
+    const event = fetchEvent({ accessToken: 'token' });
+
+    const { fetch } = await callHandleFetch(event, new Response('ok'));
+
+    const request = fetch.mock.calls[0][0] as Request;
+    expect(request.url).toBe('http://backend:8080/fhir/Patient');
+    expect(request.headers.get('Authorization')).toBe('Bearer token');
+  });
+
+  // The status is repeated inside the body because a request made from a
+  // streamed load reaches the `{:catch}` block with the body alone.
+  it('fails with 401 when there is no access token', async () => {
+    const event = fetchEvent({});
+
+    await expect(callHandleFetch(event, new Response('ok'))).rejects.toMatchObject({
+      status: 401,
+      body: { status: 401, message: 'Unauthorized.' }
+    });
+  });
+
+  it('passes a successful response through', async () => {
+    const event = fetchEvent({ accessToken: 'token' });
+
+    const { result } = await callHandleFetch(event, new Response('ok'));
+
+    expect(await result.text()).toBe('ok');
+  });
+
+  it('passes error responses through', async () => {
+    const event = fetchEvent({ accessToken: 'token' });
+
+    const { result } = await callHandleFetch(event, new Response('', { status: 404 }));
+
+    expect(result.status).toBe(404);
   });
 });

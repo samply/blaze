@@ -1,12 +1,12 @@
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 import type { Bundle, GraphDefinition } from 'fhir/r4';
 
-import { resolve } from '$app/paths';
+import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { fhirObject, transformBundle } from '$lib/resource/resource-card';
 
-export const load: PageLoad = async ({ fetch, params, url }) => {
-  const resourceRes = await fetch(resolve('/[type=type]/[id=id]', params), {
+export const load: PageServerLoad = async ({ fetch, params, url }) => {
+  const resourceRes = await fetch(`${base}/${params.type}/${params.id}`, {
     headers: {
       Accept: 'application/fhir+json'
     }
@@ -27,7 +27,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 
   const resource = await resourceRes.json();
 
-  const graphDefinitionsRes = await fetch(`${resolve('/GraphDefinition')}?_summary=true`, {
+  const graphDefinitionsRes = await fetch(`${base}/GraphDefinition?_summary=true`, {
     headers: {
       Accept: 'application/fhir+json'
     }
@@ -45,7 +45,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
   let graphRes = undefined;
   if (url.searchParams.get('graph') !== null) {
     graphRes = await fetch(
-      `${resolve('/[type=type]/[id=id]/$graph', params)}?graph=${url.searchParams.get('graph')}`,
+      `${base}/${params.type}/${params.id}/$graph?graph=${url.searchParams.get('graph')}`,
       {
         headers: {
           Accept: 'application/fhir+json'

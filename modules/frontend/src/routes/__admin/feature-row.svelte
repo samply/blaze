@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Feature } from './+layout';
+  import type { Feature } from './+layout.server.js';
 
   let { feature }: { feature: Feature } = $props();
 </script>

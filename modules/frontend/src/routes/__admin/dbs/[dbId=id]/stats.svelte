@@ -1,6 +1,6 @@
 <script lang="ts">
   import SimpleStats from '$lib/tailwind/stats/simple.svelte';
-  import type { Stats } from './+page.js';
+  import type { Stats } from './+page.server.js';
   import prettyBytes from 'pretty-bytes';
 
   interface Props {

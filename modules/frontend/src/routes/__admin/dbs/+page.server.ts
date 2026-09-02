@@ -1,11 +1,11 @@
-import type { PageLoad } from './$types';
+import type { PageServerLoad } from './$types';
 
-import { resolve } from '$app/paths';
+import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import type { Stats } from './[dbId=id]/+page.js';
+import type { Stats } from './[dbId=id]/+page.server.js';
 
-export const load: PageLoad = async ({ fetch }) => {
-  const res = await fetch(resolve('/__admin/dbs'), {
+export const load: PageServerLoad = async ({ fetch }) => {
+  const res = await fetch(`${base}/__admin/dbs`, {
     headers: { Accept: 'application/json' }
   });
 

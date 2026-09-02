@@ -1,7 +1,7 @@
 <script lang="ts">
   import Card from '$lib/tailwind/logo-card/card.svelte';
   import Row from '$lib/tailwind/logo-card/row.svelte';
-  import type { Stats } from './[dbId=id]/+page.js';
+  import type { Stats } from './[dbId=id]/+page.server.js';
   import { toTitleCase } from '$lib/util.js';
   import { resolve } from '$app/paths';
   import prettyBytes from 'pretty-bytes';
