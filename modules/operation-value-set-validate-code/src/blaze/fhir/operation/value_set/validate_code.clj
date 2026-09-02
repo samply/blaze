@@ -31,7 +31,7 @@
    "abstract" {}
    "displayLanguage" {:action :copy :coerce #(type/string %2)}
    "useSupplement" {}
-   "inferSystem" {:action :copy :coerce fu/coerce-boolean}
+   "inferSystem" {:action :copy :coerce fhir-util/coerce-query-boolean}
    "system-version" {:action :copy :coerce #(type/canonical %2)}
    "tx-resource" {:action :complex}})
 
@@ -53,7 +53,7 @@
 (defn- validate-params* [{:keys [request-method] :as request}]
   (if (= :post request-method)
     (body-params request)
-    (fu/validate-query-params parameter-specs (query-params request))))
+    (fhir-util/validate-query-params parameter-specs (query-params request))))
 
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
   (if-ok [params (validate-params* request)]

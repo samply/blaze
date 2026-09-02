@@ -254,29 +254,28 @@
    "displayLanguage" {:action :copy}
    "tx-resource" {:action :copy-resource :cardinality :many}})
 
-(defn- coerce-nat-long [value]
-  (if-some [value (:value value)]
+(defn- coerce-nat-int [value]
+  (when-ok [value (fu/coerce-integer value)]
     (if-not (neg? value)
       value
-      (ba/incorrect "Has to be a non-negative integer."))
-    (ba/incorrect "Missing value.")))
+      (ba/incorrect "Has to be a non-negative integer."))))
 
 (def ^:private vs-expand-param-specs
-  {"url" {:action :copy}
+  {"url" {:action :copy :coerce fu/coerce-uri}
    "valueSet" {:action :copy-resource}
-   "valueSetVersion" {:action :copy}
+   "valueSetVersion" {:action :copy :coerce fu/coerce-string}
    "context" {}
    "contextDirection" {}
-   "filter" {:action :copy}
+   "filter" {:action :copy :coerce fu/coerce-string}
    "date" {}
-   "offset" {:action :copy :coerce coerce-nat-long}
-   "count" {:action :copy :coerce coerce-nat-long}
-   "includeDesignations" {:action :copy}
+   "offset" {:action :copy :coerce coerce-nat-int}
+   "count" {:action :copy :coerce coerce-nat-int}
+   "includeDesignations" {:action :copy :coerce fu/coerce-boolean}
    "designation" {}
-   "includeDefinition" {:action :copy}
-   "activeOnly" {:action :copy}
+   "includeDefinition" {:action :copy :coerce fu/coerce-boolean}
+   "activeOnly" {:action :copy :coerce fu/coerce-boolean}
    "useSupplement" {}
-   "excludeNested" {:action :copy}
+   "excludeNested" {:action :copy :coerce fu/coerce-boolean}
    "excludeNotForUI" {}
    "excludePostCoordinated" {}
    "displayLanguage" {:action :copy}
@@ -309,11 +308,11 @@
    "abstract" {}
    "displayLanguage" {:action :copy :coerce coerce-display-language :cardinality :many}
    "useSupplement" {}
-   "inferSystem" {:action :copy}
+   "inferSystem" {:action :copy :coerce fu/coerce-boolean}
    "system-version" {:action :copy :coerce identity :cardinality :many}
    "tx-resource" {:action :copy-resource :cardinality :many}
-   "lenient-display-validation" {:action :copy}
-   "activeOnly" {:action :copy}})
+   "lenient-display-validation" {:action :copy :coerce fu/coerce-boolean}
+   "activeOnly" {:action :copy :coerce fu/coerce-boolean}})
 
 (defn- db [vnode]
   (if-some [node @vnode]

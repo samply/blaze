@@ -2,7 +2,8 @@
   (:require
    [blaze.fhir.spec.spec]
    [blaze.fhir.util :as fu]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef fu/subsetted?
   :args (s/cat :coding map?)
@@ -22,4 +23,20 @@
 
 (s/fdef fu/coerce-params
   :args (s/cat :specs map? :parameters :fhir/Parameters)
-  :ret map?)
+  :ret (s/or :params (s/map-of simple-keyword? any?) :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-integer
+  :args (s/cat :x any?)
+  :ret (s/or :value int? :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-boolean
+  :args (s/cat :x any?)
+  :ret (s/or :value boolean? :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-string
+  :args (s/cat :x any?)
+  :ret (s/or :value string? :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-uri
+  :args (s/cat :x any?)
+  :ret (s/or :value string? :anomaly ::anom/anomaly))

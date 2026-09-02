@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.spec]
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util.spec]
    [blaze.http.spec]
@@ -126,3 +127,15 @@
                                       :blaze.preference/return])
                :entries (s/coll-of :fhir.Bundle/entry))
   :ret (s/or :response-entry :fhir.Bundle/entry :anomaly ::anom/anomaly))
+
+(s/fdef fhir-util/coerce-query-boolean
+  :args (s/cat :name string? :value string?)
+  :ret (s/or :value type/boolean? :anomaly ::anom/anomaly))
+
+(s/fdef fhir-util/coerce-query-integer
+  :args (s/cat :name string? :value string?)
+  :ret (s/or :value type/integer? :anomaly ::anom/anomaly))
+
+(s/fdef fhir-util/validate-query-params
+  :args (s/cat :specs map? :parameters :ring.request/query-params)
+  :ret (s/or :parameters :fhir/Parameters :anomaly ::anom/anomaly))

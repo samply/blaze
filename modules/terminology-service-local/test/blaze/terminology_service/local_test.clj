@@ -1916,11 +1916,23 @@
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported parameter `excludePostCoordinated`."))
 
-    (testing "invalid negative parameter count"
+    (testing "parameter count without a value"
       (given-failed-future (expand-value-set ts
                              "count" #fhir/integer{:id "0"})
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid value for parameter `count`. Missing value."))
+
+    (testing "non-integer parameter count"
+      (given-failed-future (expand-value-set ts
+                             "count" #fhir/string "1")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `count`. Has to be an integer."))
+
+    (testing "non-integer parameter offset"
+      (given-failed-future (expand-value-set ts
+                             "offset" #fhir/string "0")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `offset`. Has to be an integer."))
 
     (testing "invalid negative parameter count"
       (given-failed-future (expand-value-set ts
@@ -1933,6 +1945,36 @@
                              "offset" #fhir/integer 1)
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid non-zero value for parameter `offset`."))
+
+    (testing "non-boolean value of a boolean parameter"
+      (doseq [name ["includeDesignations" "includeDefinition" "activeOnly"
+                    "excludeNested"]]
+        (given-failed-future (expand-value-set ts
+                               "url" #fhir/uri "value-set-161213"
+                               name #fhir/string "true")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (str "Invalid value for parameter `" name "`. Has to be a boolean."))))
+
+    (testing "boolean parameter without a value"
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri "value-set-161213"
+                             "activeOnly" #fhir/boolean{:id "0"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `activeOnly`. Missing value."))
+
+    (testing "non-string value of a string parameter"
+      (doseq [name ["filter" "valueSetVersion"]]
+        (given-failed-future (expand-value-set ts
+                               "url" #fhir/uri "value-set-161213"
+                               name #fhir/integer 5)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (str "Invalid value for parameter `" name "`. Has to be a string."))))
+
+    (testing "non-uri value of the url parameter"
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/integer 5)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `url`. Has to be a uri."))
 
     (testing "both url and valueSet parameters"
       (given-failed-future (expand-value-set ts
@@ -5984,6 +6026,15 @@
                              "url" #fhir/uri "http://fhir.org/VCL?v1=(")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid VCL expression `(`. Expected code at position 1"))
+
+    (testing "non-boolean value of a boolean parameter"
+      (doseq [name ["inferSystem" "lenient-display-validation" "activeOnly"]]
+        (given-failed-future (value-set-validate-code ts
+                               "url" #fhir/uri "value-set-161213"
+                               "code" #fhir/code "code-182832"
+                               name #fhir/string "true")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (str "Invalid value for parameter `" name "`. Has to be a boolean."))))
 
     (testing "missing code"
       (given @(value-set-validate-code ts

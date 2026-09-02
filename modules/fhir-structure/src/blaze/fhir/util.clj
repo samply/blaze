@@ -150,6 +150,53 @@
     (str (subs s 0 (dec (count s))) "ies")
     (str s "s")))
 
+(defn coerce-integer
+  "Returns the int value of the integer `x`.
+
+  Returns an anomaly if `x` isn't an integer or has no value."
+  [x]
+  (if (type/integer? x)
+    (if-some [value (:value x)]
+      value
+      (ba/incorrect "Missing value."))
+    (ba/incorrect "Has to be an integer.")))
+
+(defn coerce-boolean
+  "Returns the boolean value of the boolean `x`.
+
+  Returns an anomaly if `x` isn't a boolean or has no value."
+  [x]
+  (if (type/boolean? x)
+    (if-some [value (:value x)]
+      value
+      (ba/incorrect "Missing value."))
+    (ba/incorrect "Has to be a boolean.")))
+
+(defn coerce-string
+  "Returns the string value of the string `x`.
+
+  Returns an anomaly if `x` isn't a string or has no value."
+  [x]
+  (if (type/string? x)
+    (if-some [value (:value x)]
+      value
+      (ba/incorrect "Missing value."))
+    (ba/incorrect "Has to be a string.")))
+
+(defn coerce-uri
+  "Returns the string value of `x`.
+
+  Accepts any FHIR type with a string-valued value, not just uri, for
+  robustness reasons.
+
+  Returns an anomaly if `x` doesn't have a string value."
+  [x]
+  (if-some [value (:value x)]
+    (if (string? value)
+      value
+      (ba/incorrect "Has to be a uri."))
+    (ba/incorrect "Missing value.")))
+
 (defn- assoc-via [params {:keys [cardinality]} name value]
   (if (identical? :many cardinality)
     (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
@@ -226,37 +273,3 @@
   (when-ok [new-params (coerce-params* specs params)
             _ (check-required-params specs params)]
     new-params))
-
-(defn coerce-boolean [name value]
-  (if-some [value (parse-boolean value)]
-    (type/boolean value)
-    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
-
-(defn coerce-integer [name value]
-  (if-let [value (parse-long value)]
-    (type/integer value)
-    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be an integer." name))))
-
-(defn- validate-query-params* [parameter-specs params]
-  (reduce-kv
-   (fn [new-params name value]
-     (if-let [{:keys [action coerce]} (parameter-specs name)]
-       (case action
-         :copy
-         (if-ok [value (coerce name value)]
-           (conj new-params (parameter name value))
-           reduced)
-
-         :complex
-         (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
-                                  :http/status 400))
-
-         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                  :http/status 400)))
-       new-params))
-   []
-   params))
-
-(defn validate-query-params [parameter-specs query-params]
-  (when-ok [params (validate-query-params* parameter-specs query-params)]
-    {:fhir/type :fhir/Parameters :parameter params}))

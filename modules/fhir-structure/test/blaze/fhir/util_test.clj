@@ -1,7 +1,7 @@
 (ns blaze.fhir.util-test
   (:require
    [blaze.anomaly :as ba]
-   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type]
    [blaze.fhir.structure-definition-repo]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
@@ -198,6 +198,81 @@
              [{:fhir/type :fhir/CodeSystem :id "2"}
               {:fhir/type :fhir/CodeSystem :id "1"}])))))
 
+(deftest coerce-integer-test
+  (testing "valid"
+    (is (= 1 (fu/coerce-integer #fhir/integer 1))))
+
+  (testing "invalid"
+    (doseq [x [#fhir/string "1" #fhir/boolean true nil]]
+      (given (fu/coerce-integer x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be an integer.")))
+
+  (testing "missing value"
+    (given (fu/coerce-integer #fhir/integer{:id "0"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing value.")))
+
+(deftest coerce-boolean-test
+  (testing "valid"
+    (is (true? (fu/coerce-boolean #fhir/boolean true)))
+
+    (testing "a false value isn't confused with a missing one"
+      (is (false? (fu/coerce-boolean #fhir/boolean false)))))
+
+  (testing "invalid"
+    (doseq [x [#fhir/string "true" #fhir/integer 1 nil]]
+      (given (fu/coerce-boolean x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be a boolean.")))
+
+  (testing "missing value"
+    (given (fu/coerce-boolean #fhir/boolean{:id "0"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing value.")))
+
+(deftest coerce-string-test
+  (testing "valid"
+    (is (= "1" (fu/coerce-string #fhir/string "1"))))
+
+  (testing "invalid"
+    (doseq [x [#fhir/integer 1 #fhir/uri "1" nil]]
+      (given (fu/coerce-string x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be a string.")))
+
+  (testing "missing value"
+    (given (fu/coerce-string #fhir/string{:id "0"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing value.")))
+
+(deftest coerce-uri-test
+  (testing "valid"
+    (testing "any FHIR type with a string-valued value is accepted, not just
+              uri, for robustness reasons"
+      (are [x s] (= s (fu/coerce-uri x))
+        #fhir/uri "1" "1"
+        #fhir/url "1" "1"
+        #fhir/canonical "1" "1"
+        #fhir/code "1" "1"
+        #fhir/id "1" "1"
+        #fhir/oid "urn:oid:1.2.3" "urn:oid:1.2.3"
+        #fhir/uuid "urn:uuid:53fefa32-fcbb-4ff8-8a92-55ee120877b7" "urn:uuid:53fefa32-fcbb-4ff8-8a92-55ee120877b7"
+        #fhir/markdown "1" "1"
+        #fhir/string "1" "1")))
+
+  (testing "invalid"
+    (doseq [x [#fhir/integer 1 #fhir/boolean true]]
+      (given (fu/coerce-uri x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Has to be a uri.")))
+
+  (testing "missing value"
+    (doseq [x [#fhir/uri{:id "0"} nil]]
+      (given (fu/coerce-uri x)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing value."))))
+
 (deftest coerce-params-test
   (testing "simple copy"
     (given (fu/coerce-params
@@ -283,72 +358,3 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing required parameter `a`."
         :http/status := 400))))
-
-(deftest validate-query-params-test
-  (testing "empty parameter spec"
-    (given (fu/validate-query-params
-            {}
-            {"param" "param-165900"})
-      [:parameter count] := 0))
-
-  (testing "param not in spec ignored"
-    (given (fu/validate-query-params
-            {"code" {:action :copy :coerce #(type/code %2)}}
-            {"different-param" "code-165900"})
-      [:parameter count] := 0))
-
-  (testing "param action :complex not supported with GET"
-    (given (fu/validate-query-params
-            {"coding" {:action :complex}}
-            {"coding" #fhir/Coding {:system #fhir/uri "system-115910"
-                                    :version #fhir/string "version-152300"
-                                    :code #fhir/code "code-115927"}})
-      ::anom/category := ::anom/unsupported
-      ::anom/message := "Unsupported parameter `coding` in GET request. Please use POST."))
-
-  (testing "param not supported"
-    (given (fu/validate-query-params
-            {"code" {}}
-            {"code" "code-165900"})
-      ::anom/category := ::anom/unsupported
-      ::anom/message := "Unsupported parameter `code`."))
-
-  (testing "type/code"
-    (given (fu/validate-query-params
-            {"code" {:action :copy :coerce #(type/code %2)}}
-            {"code" "code-165900"})
-      [:parameter count] := 1
-      [:parameter 0 :name] := #fhir/string "code"
-      [:parameter 0 :value] := #fhir/code "code-165900"))
-
-  (testing "type/boolean"
-    (doseq [value [true false]]
-      (given (fu/validate-query-params
-              {"param-boolean" {:action :copy :coerce fu/coerce-boolean}}
-              {"param-boolean" (str value)})
-        [:parameter count] := 1
-        [:parameter 0 :name] := #fhir/string "param-boolean"
-        [:parameter 0 :value] := (type/boolean value)))
-
-    (doseq [value ["True" "False" "123" "1.5" "nil"]]
-      (given (fu/validate-query-params
-              {"param-boolean" {:action :copy :coerce fu/coerce-boolean}}
-              {"param-boolean" value})
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid value for parameter `param-boolean`. Has to be a boolean.")))
-
-  (testing "type/integer"
-    (doseq [value [123 -123]]
-      (given (fu/validate-query-params
-              {"param-integer" {:action :copy :coerce fu/coerce-integer}}
-              {"param-integer" (str value)})
-        [:parameter count] := 1
-        [:parameter 0 :name] := #fhir/string "param-integer"
-        [:parameter 0 :value] := (type/integer value)))
-
-    (doseq [value ["true" "false" "1.5" "nil"]]
-      (given (fu/validate-query-params
-              {"param-integer" {:action :copy :coerce fu/coerce-integer}}
-              {"param-integer" value})
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid value for parameter `param-integer`. Has to be an integer."))))

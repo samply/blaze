@@ -32,7 +32,7 @@
 (defn- validate-params* [{:keys [request-method body query-params]}]
   (if (= :post request-method)
     body
-    (fu/validate-query-params parameter-specs query-params)))
+    (fhir-util/validate-query-params parameter-specs query-params)))
 
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
   (if-ok [params (validate-params* request)]

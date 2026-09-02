@@ -23,14 +23,14 @@
    "contextDirection" {}
    "filter" {:action :copy :coerce #(type/string %2)}
    "date" {}
-   "offset" {:action :copy :coerce fu/coerce-integer}
-   "count" {:action :copy :coerce fu/coerce-integer}
-   "includeDesignations" {:action :copy :coerce fu/coerce-boolean}
+   "offset" {:action :copy :coerce fhir-util/coerce-query-integer}
+   "count" {:action :copy :coerce fhir-util/coerce-query-integer}
+   "includeDesignations" {:action :copy :coerce fhir-util/coerce-query-boolean}
    "designation" {}
-   "includeDefinition" {:action :copy :coerce fu/coerce-boolean}
-   "activeOnly" {:action :copy :coerce fu/coerce-boolean}
+   "includeDefinition" {:action :copy :coerce fhir-util/coerce-query-boolean}
+   "activeOnly" {:action :copy :coerce fhir-util/coerce-query-boolean}
    "useSupplement" {}
-   "excludeNested" {:action :copy :coerce fu/coerce-boolean}
+   "excludeNested" {:action :copy :coerce fhir-util/coerce-query-boolean}
    "excludeNotForUI" {}
    "excludePostCoordinated" {}
    "displayLanguage" {:action :copy :coerce #(type/code %2)}
@@ -44,7 +44,7 @@
 (defn- validate-params* [{:keys [request-method body query-params]}]
   (if (= :post request-method)
     body
-    (fu/validate-query-params parameter-specs query-params)))
+    (fhir-util/validate-query-params parameter-specs query-params)))
 
 (defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
   (if-ok [params (validate-params* request)]
