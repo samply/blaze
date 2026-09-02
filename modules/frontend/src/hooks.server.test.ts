@@ -167,4 +167,57 @@ describe('handleFetch test', () => {
 
     expect(result.status).toBe(404);
   });
+
+  // The backend rejecting the access token even though `handleAuthorization`
+  // found the Auth.js session valid — revoked at the identity provider, clock
+  // skew, a realm mismatch. Recovering here rather than in the load that made
+  // the request is what keeps the return-to target: `event.url` is the page
+  // the user is on, which the load cannot read.
+  it('redirects to the sign-in page when the backend rejects the access token', async () => {
+    const event = fetchEvent({ accessToken: 'token' });
+
+    try {
+      await callHandleFetch(event, new Response('', { status: 401 }));
+      expect.fail('expected handleFetch to throw');
+    } catch (e) {
+      expect(isRedirect(e)).toBe(true);
+      expect((e as { status: number }).status).toBe(307);
+      expect((e as { location: string }).location).toBe(
+        '/fhir/__sign-in?redirect=%2Ffhir%2FPatient'
+      );
+    }
+  });
+
+  // The redirect has to point at the page, not at the backend request that
+  // failed. Those differ whenever a load fetches something other than the
+  // resource the page shows.
+  it('returns to the page, not to the backend URL that was rejected', async () => {
+    const event = fetchEvent({
+      accessToken: 'token',
+      url: 'http://localhost/fhir/Patient?_count=50&_summary=true'
+    });
+
+    try {
+      await callHandleFetch(
+        event,
+        new Response('', { status: 401 }),
+        'http://localhost/fhir/metadata'
+      );
+      expect.fail('expected handleFetch to throw');
+    } catch (e) {
+      const location = (e as { location: string }).location;
+
+      expect(new URL(location, 'http://localhost').searchParams.get('redirect')).toBe(
+        '/fhir/Patient?_count=50&_summary=true'
+      );
+    }
+  });
+
+  it('passes a 403 through rather than redirecting', async () => {
+    const event = fetchEvent({ accessToken: 'token' });
+
+    const { result } = await callHandleFetch(event, new Response('', { status: 403 }));
+
+    expect(result.status).toBe(403);
+  });
 });
