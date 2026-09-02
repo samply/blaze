@@ -29,7 +29,7 @@ env:
 
   # renovate: datasource=github-release-attachments depName=hapifhir/org.hl7.fhir.core
   VALIDATOR_VERSION: 6.10.3
-  VALIDATOR_CHECKSUM: b2cd1c761dbb79722d7a1ccb149c3c522195c37c9f1b8951b23b1340828b691b
+  VALIDATOR_CHECKSUM: 91e4da9d1bd4c11d9a05c0ec0837c0c830ef800bc37faed6873e26f6702bceba
 
 jobs:
   fmt:
