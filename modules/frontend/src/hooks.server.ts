@@ -75,5 +75,20 @@ export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
     duplex: 'half'
   });
 
-  return fetch(request);
+  const res = await fetch(request);
+
+  // The backend rejected a token that `handleAuthorization` considered valid:
+  // revoked at the identity provider, clock skew, a realm mismatch. Recovering
+  // here rather than in the load that made the request is what keeps the
+  // return-to target — `event.url` is the page the user is on, which the load
+  // cannot read.
+  //
+  // Both streamed loads await a backend request before they start streaming,
+  // which is what lets this redirect still reach the browser; see
+  // `docs/implementation/frontend.md`.
+  if (res.status === 401) {
+    redirect(307, signInUrl(event.url));
+  }
+
+  return res;
 };

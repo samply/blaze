@@ -34,6 +34,17 @@ request was made. SvelteKit puts it into the right envelope by itself:
 | `__data.json` data request     | `{ type: 'redirect' }`, which the client router turns into a `goto`   |
 | `use:enhance`d form submission | a redirect `ActionResult`, which `applyAction` turns into a navigation |
 
+### Rejected access tokens
+
+`handleAuthorization` only knows what the Auth.js session claims, which is its `expiresAt`. The backend can still reject 
+the access token that session carries — revoked at the identity provider, clock skew, a realm mismatch — and
+answers 401. `handleFetch` redirects to the sign-in page in that case, for the same reason `handleAuthorization` can: 
+the request it was serving is one SvelteKit turns into a navigation.
+
+The recovery lives in the hook rather than in the load that made the request, because `event.url` — the page the 
+user is on, and so the return-to target — is not something a load can read. A 403 is passed through instead:
+there the token was accepted, and the user simply may not do this, which signing in again does not change.
+
 ### Backend URLs
 
 Backend request URLs are built by prefixing `base` from `$app/paths`, for example
@@ -58,6 +69,18 @@ the `{:catch}` block as the jsonified error *body* — SvelteKit runs it through
 therefore carries an optional `status`, which the `appError` functions in `src/routes/[type=type]/util.ts` and
 `src/lib/metadata.ts` set. Every `error(…)` body that can surface in such a block has to carry it — that includes the
 StructureDefinition loads made while transforming a streamed bundle and the one `handleFetch` throws.
+
+Both streamed loads — `src/routes/[type=type]/+page.server.ts` and
+`src/routes/[type=type]/__page/[pageId=pageId]/+page.server.ts` — await `fetchSearchMetadata` before they return the
+streamed promise. That ordering is what lets a rejected access token still reach the sign-in page: a `redirect` thrown
+after `load` has returned cannot become a navigation, because SvelteKit has already committed to the response and
+serializes the rejection into the streamed chunk, where it surfaces as a generic 500. `fetchSearchMetadata` hits
+`/metadata`, which Blaze protects with the same `wrap-auth-guard` as everything else
+(`modules/rest-api/src/blaze/rest_api/routes.clj`, applied at the root `""` level), so `handleFetch` sees the 401 while
+a redirect can still be acted upon.
+
+The StructureDefinition loads are the exception: they run inside the streamed promise, via `transformBundle`. A token
+revoked between the `/metadata` call and them ends in an error card rather than the sign-in page.
 
 [1]: <https://authjs.dev>
 [2]: <https://www.npmjs.com/package/@auth/sveltekit>
