@@ -426,6 +426,52 @@
     (given (call rest-api {:request-method :delete :uri "/Patient"})
       :status := 200)))
 
+(def ^:private binary-handler
+  (constantly
+   (ac/completed-future
+    (ring/response
+     {:fhir/type :fhir/Binary :id "0"
+      :contentType #fhir/code"application/zip"
+      :data #fhir/base64Binary"UEsDBAo="}))))
+
+(def ^:private binary-config
+  (assoc config
+         ::rest-api/resource-patterns
+         {:default
+          {:read #:blaze.rest-api.interaction{:handler binary-handler}
+           :vread #:blaze.rest-api.interaction{:handler binary-handler}}}))
+
+(deftest binary-test
+  (testing "read"
+    (with-system [{:blaze/keys [rest-api]} binary-config]
+      (testing "with binary accept header"
+        (given (call rest-api {:request-method :get :uri "/Binary/0"
+                               :headers {"accept" "application/zip"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/zip"
+          [:body vec] := [0x50 0x4B 0x03 0x04 0x0A]))
+
+      (testing "with FHIR accept header"
+        (given (call rest-api {:request-method :get :uri "/Binary/0"
+                               :headers {"accept" "application/fhir+json"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"))))
+
+  (testing "vread"
+    (with-system [{:blaze/keys [rest-api]} binary-config]
+      (testing "with binary accept header"
+        (given (call rest-api {:request-method :get :uri "/Binary/0/_history/1"
+                               :headers {"accept" "application/zip"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/zip"
+          [:body vec] := [0x50 0x4B 0x03 0x04 0x0A]))
+
+      (testing "with FHIR accept header"
+        (given (call rest-api {:request-method :get :uri "/Binary/0/_history/1"
+                               :headers {"accept" "application/fhir+json"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/fhir+json;charset=utf-8")))))
+
 (def auth-config
   (-> (assoc-in config [:blaze/rest-api :auth-backends] [(ig/ref ::auth-backend)])
       (assoc ::auth-backend {})))

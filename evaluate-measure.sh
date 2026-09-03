@@ -123,7 +123,7 @@ base=$1
 [[ -z "$base" ]] && usage
 
 subject_type_lower=$(echo $subject_type | tr '[:upper:]' '[:lower:]')
-data=$(base64 < "$file" | tr -d '\n')
+data=$(base64 -w 0 < "$file")
 library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 

@@ -118,7 +118,7 @@ base="http://localhost:8080/fhir"
 name=$1
 expected_count=$2
 
-data=$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql" | tr -d '\n')
+data=$(base64 -w 0 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql")
 library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 

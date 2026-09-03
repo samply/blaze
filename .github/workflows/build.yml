@@ -1726,6 +1726,9 @@ jobs:
     - name: Binary Content Download - found (via XML)
       run: .github/scripts/read-binary-content-via-xml-found.sh
 
+    - name: Binary Content Download - found (via vread)
+      run: .github/scripts/vread-binary-content-found.sh
+
     - name: Binary Content Upload (via raw data)
       run: .github/scripts/write-binary-content-via-raw-data.sh
 

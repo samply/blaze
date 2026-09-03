@@ -214,6 +214,8 @@
                                           :blaze.rest-api.interaction/handler)}))]
           ["/{vid}"
            (cond-> {:name (keyword name "versioned-instance")}
+             (= name "Binary")
+             (assoc :response-type :binary)
              (contains? interactions :vread)
              (assoc :get {:interaction "vread"
                           :middleware [[wrap-db node db-sync-timeout]]

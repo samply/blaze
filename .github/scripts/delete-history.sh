@@ -63,7 +63,7 @@ echo "▶️create patient"
 patient_id=$(create | jq -r '.id')
 
 # update the patient to create a second version
-patient "$patient_id" "male" | update "$patient_id"
+patient "$patient_id" "male" | update "$patient_id" > /dev/null
 
 # expect the history to contain two entries
 history="$(get_instance_history "$patient_id")"
