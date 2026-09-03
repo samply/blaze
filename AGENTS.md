@@ -24,6 +24,7 @@ Rigorous adherence to these patterns is required:
   * Define `m/pre-init-spec` for dependency validation.
 * **Specs:**
   * Every public function must have a spec.
+  * **Return Values:** Every `s/fdef` must have a `:ret` spec. `st/instrument` checks only `:args`, so a wrong or missing `:ret` never fails a test run — that's the reason to be deliberate about it, not a reason to leave it out. For a function returning either a value or an anomaly, use `(s/or :value <pred> :anomaly ::anom/anomaly)`.
   * **Location:** Specs must never be defined inline in the implementation namespace. There are two distinct spec namespace conventions:
     * `s/def` (data/attribute specs) → dot-separated `*.spec` namespace (e.g., `blaze.db.node.spec` for `blaze.db.node`), in a `spec.clj` file nested under the namespace directory.
     * `s/fdef` (function specs) → hyphen-separated `*-spec` namespace (e.g., `blaze.db.node-spec` for `blaze.db.node`), as a sibling file to the implementation.
