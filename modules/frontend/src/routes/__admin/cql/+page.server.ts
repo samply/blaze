@@ -1,4 +1,4 @@
-import { base } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { error, type NumericRange } from '@sveltejs/kit';
 
 export interface BloomFilter {
@@ -14,7 +14,7 @@ export interface Data {
 }
 
 export async function load({ fetch }): Promise<Data> {
-  const res = await fetch(`${base}/__admin/cql/bloom-filters`, {
+  const res = await fetch(backendUrl('/__admin/cql/bloom-filters'), {
     headers: { Accept: 'application/json' }
   });
 

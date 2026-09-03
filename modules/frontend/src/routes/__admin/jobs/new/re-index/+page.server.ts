@@ -1,6 +1,7 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { resolve } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { url } from '$lib/canonical';
 import { fail, redirect } from '@sveltejs/kit';
 
@@ -9,7 +10,7 @@ export const actions = {
     const data = await request.formData();
     const searchParamUrl = data.get('search-param-url') as string;
 
-    const res = await fetch('/fhir/__admin/Task', {
+    const res = await fetch(backendUrl('/__admin/Task'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({

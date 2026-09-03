@@ -1,14 +1,17 @@
 import type { Actions, PageServerLoad } from './$types';
 import type { Bundle, OperationOutcome, Parameters, ParametersParameter, ValueSet } from 'fhir/r4';
-import { base, resolve } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { error, fail, type NumericRange } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(`${base}/ValueSet?_id=${params.id}&_elements=version,title,description`, {
-    headers: {
-      Accept: 'application/fhir+json'
+  const res = await fetch(
+    backendUrl('/ValueSet', `_id=${params.id}&_elements=version,title,description`),
+    {
+      headers: {
+        Accept: 'application/fhir+json'
+      }
     }
-  });
+  );
 
   if (!res.ok) {
     error(res.status as NumericRange<400, 599>, {
@@ -81,7 +84,7 @@ export const actions = {
       });
     }
 
-    const res = await fetch(resolve('/ValueSet/[id=id]/$validate-code', params), {
+    const res = await fetch(backendUrl(`/ValueSet/${params.id}/$validate-code`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({

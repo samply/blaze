@@ -47,19 +47,26 @@ there the token was accepted, and the user simply may not do this, which signing
 
 ### Backend URLs
 
-Backend request URLs are built by prefixing `base` from `$app/paths`, for example
-`` `${base}/${params.type}/${params.id}` ``. `resolve` from `$app/paths` is for links and navigation targets —
-`redirect(303, …)` after a form action, `href` — and must not be used for a backend request made from a **load**.
+Backend request URLs are built by `backendUrl` from `src/lib/backend.ts`, for example
+`` backendUrl(`/${params.type}/${params.id}`) `` or `backendUrl('/Patient', url.searchParams)`. It is the only place
+that reads the base path. `resolve` from `$app/paths` is for links and navigation targets — `redirect(303, …)` after a
+form action, `href` — and must not be used for a backend request.
 
 The two look interchangeable, because the frontend is mounted under the same path as the backend's FHIR base, but they
-are not. With SvelteKit's default `paths.relative`, `resolve` returns a path relative to the page being rendered and
-computes its depth from the URL the browser is at. For a `__data.json` request that URL has one segment more than the
-`event.url` the event's `fetch` resolves a relative URL against, so a `resolve`d backend URL silently loses the base
-path on every client-side navigation.
+are built from different inputs and are not always equal, so a call site should say which of the two it means. Two
+concrete reasons `resolve` cannot serve a backend URL:
 
-A **form action** is the one place where a `resolve`d backend URL is still correct: it is posted to the page's own URL,
-which never carries the extra `__data.json` segment, so the relative path resolves to the same depth the load would
-have used. The terminology actions rely on that.
+* Some backend paths are not routes of this app at all — there is none for `/$totals` or
+  `/__admin/Task/{id}/$pause`. That the generated `Pathname` type admits them anyway is an accident of the
+  `[type=type]` routes widening it to `/${string}`.
+* With SvelteKit's default `paths.relative`, `resolve` returns a path relative to the page being rendered and computes
+  its depth from the URL the browser is at. For a `__data.json` request that URL has one segment more than the
+  `event.url` the event's `fetch` resolves a relative URL against, so a `resolve`d backend URL silently loses the base
+  path on every client-side navigation.
+
+The second reason does not apply to a **form action**, which is posted to the page's own URL and so never carries the
+extra `__data.json` segment. The terminology actions used to rely on that; they use `backendUrl` now as well, because
+the distinction is what makes a call site readable, not the depth arithmetic.
 
 ### Streamed load data
 

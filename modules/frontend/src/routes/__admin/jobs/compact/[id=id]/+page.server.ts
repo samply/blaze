@@ -1,10 +1,11 @@
 import type { PageServerLoad } from './$types';
 import { error, type NumericRange } from '@sveltejs/kit';
 
+import { backendUrl } from '$lib/backend.js';
 import { toJob } from '$lib/jobs/compact';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(`/fhir/__admin/Task/${params.id}`, {
+  const res = await fetch(backendUrl(`/__admin/Task/${params.id}`), {
     headers: { Accept: 'application/fhir+json' }
   });
 

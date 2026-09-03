@@ -2,6 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { resolve } from '$app/paths';
 import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
 import { pascalCase } from 'change-case';
+import { backendUrl } from '$lib/backend.js';
 import { type Job, toJob } from '$lib/jobs';
 import {
   extractRequest,
@@ -78,8 +79,8 @@ function toSummaryJob(job: Task, includes: BundleEntry[]): SummaryJob | undefine
 }
 
 async function loadJobs(fetch: typeof window.fetch, status?: string): Promise<SummaryJob[]> {
-  const query = (status ? `?status=${status}&` : '?') + '_sort=-_lastUpdated&_include=Task:input';
-  const res = await fetch(`/fhir/__admin/Task${query}`, {
+  const query = (status ? `status=${status}&` : '') + '_sort=-_lastUpdated&_include=Task:input';
+  const res = await fetch(backendUrl('/__admin/Task', query), {
     headers: { Accept: 'application/fhir+json' }
   });
 
@@ -109,7 +110,7 @@ export const actions = {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`/fhir/__admin/Task/${jobId}/$pause`, {
+    const res = await fetch(backendUrl(`/__admin/Task/${jobId}/$pause`), {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });
@@ -124,7 +125,7 @@ export const actions = {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`/fhir/__admin/Task/${jobId}/$resume`, {
+    const res = await fetch(backendUrl(`/__admin/Task/${jobId}/$resume`), {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });
@@ -139,7 +140,7 @@ export const actions = {
     const data = await request.formData();
     const jobId = data.get('job-id');
 
-    const res = await fetch(`/fhir/__admin/Task/${jobId}/$cancel`, {
+    const res = await fetch(backendUrl(`/__admin/Task/${jobId}/$cancel`), {
       method: 'POST',
       headers: { Accept: 'application/fhir+json' }
     });

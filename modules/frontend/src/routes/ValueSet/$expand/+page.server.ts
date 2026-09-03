@@ -1,6 +1,6 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, ParametersParameter, ValueSet } from 'fhir/r4';
-import { resolve } from '$app/paths';
+import { backendUrl } from '$lib/backend.js';
 import { fail } from '@sveltejs/kit';
 
 export const actions = {
@@ -91,7 +91,7 @@ export const actions = {
       });
     }
 
-    const res = await fetch(resolve('/ValueSet/$expand'), {
+    const res = await fetch(backendUrl('/ValueSet/$expand'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/fhir+json', Accept: 'application/fhir+json' },
       body: JSON.stringify({
