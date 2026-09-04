@@ -280,6 +280,18 @@
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
 
+(def ^:private constructors
+  [`ba/unavailable `ba/interrupted `ba/incorrect `ba/forbidden `ba/unsupported
+   `ba/not-found `ba/conflict `ba/fault `ba/busy])
+
+(deftest constructor-check-test
+  (testing "no argument list the args spec allows produces an invalid anomaly"
+    (doseq [sym constructors]
+      (testing (name sym)
+        (given (first (st/check sym {:clojure.spec.test.check/opts {:num-tests 100}}))
+          :sym := sym
+          :failure := nil)))))
+
 (deftest anomaly-test
   (testing "CompletionException"
     (given (ba/anomaly (CompletionException. (Exception. "msg-184245")))

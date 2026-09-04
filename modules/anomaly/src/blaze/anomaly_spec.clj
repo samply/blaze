@@ -33,40 +33,45 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(def ^:private constructor-args
+  "The message is only optional together with the key-value pairs, because the
+  constructors bind their first argument to the message positionally."
+  (s/? (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))))
+
 (s/fdef ba/unavailable
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/interrupted
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/incorrect
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/forbidden
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/unsupported
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/not-found
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/conflict
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/fault
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/busy
-  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args constructor-args
   :ret ::anom/anomaly)
 
 (s/fdef ba/anomaly
