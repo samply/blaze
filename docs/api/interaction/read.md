@@ -16,6 +16,19 @@ ETag: W/"23"
 
 The version id in the `ETag` header is identical to `meta.versionId` of the returned resource and can be used in an `If-Match` header of a subsequent [update](update.md) to detect concurrent modifications.
 
+## Binary Resources <Badge type="warning" text="Since 0.31"/>
+
+`Binary` resources can be read either as FHIR resource or in binary form. Blaze decides based on the `Accept` header of the request:
+
+* `application/fhir+json` and `application/fhir+xml` (as well as `*/*` or a missing `Accept` header) return the `Binary` resource itself, with its content Base64 encoded in `Binary.data`,
+* every other media type returns the raw content of `Binary.data`.
+
+```sh
+curl -H 'Accept: application/pdf' "http://localhost:8080/fhir/Binary/AT4S2E5FQTPTIQPP"
+```
+
+The `Content-Type` header of such a binary response is taken from `Binary.contentType`, defaulting to `application/octet-stream` if that property is missing. Blaze doesn't match it against the media types requested in the `Accept` header.
+
 ## Handling Errors
 
 | Status Code       | Description                                                                                                                                                                                                               |

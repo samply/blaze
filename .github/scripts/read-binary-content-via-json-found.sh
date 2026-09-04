@@ -7,7 +7,7 @@ set -euo pipefail
 base="http://localhost:8080/fhir"
 
 # 10 KiB of random data, base64 encoded
-data="$(openssl rand -base64 10240 | tr -d '\n')"
+data="$(openssl rand 10240 | base64 -w 0)"
 
 binary() {
 cat <<END
@@ -27,7 +27,7 @@ echo "  - via JSON, with ID: $id_via_json"
 
 
 # Retrieve the Binary resource, and Base64 encode it so it can be safely handled by Bash (JSON)
-base64_encoded_binary_resource_via_json=$(curl -sfH 'Accept: application/pdf' "$base/Binary/$id_via_json" | base64 | tr -d '\n')
+base64_encoded_binary_resource_via_json=$(curl -sfH 'Accept: application/pdf' "$base/Binary/$id_via_json" | base64 -w 0)
 
 
 echo "Binary data retrieved. Verifying content... (JSON version)"

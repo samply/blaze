@@ -77,7 +77,7 @@ evaluate-measure() {
 
 base="http://localhost:8080/fhir"
 file="modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql"
-data=$(base64 "$file" | tr -d '\n')
+data=$(base64 -w 0 < "$file")
 library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 measure_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
 

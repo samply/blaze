@@ -68,6 +68,7 @@ Rigorous adherence to these patterns is required:
 ## Documentation
 
 * **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
+* **API Behaviour:** Before finishing, state whether the change alters what a client can observe on an existing interaction or operation (accepted header, parameter, status code, response media type). If it does, update the corresponding page under `docs/api/`, including the sibling pages sharing that behaviour, and badge new sections with the version of the issue's GitHub milestone (`gh issue view <issue-number> --json milestone`). If it's unclear whether a behaviour change is user-facing, ask rather than guess.
 
 ## Release Notes
 

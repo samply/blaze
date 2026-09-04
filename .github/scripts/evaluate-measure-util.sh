@@ -97,7 +97,7 @@ create_measure() {
 create_bundle_library_measure() {
   local measure_uri="$1"
   local name="$2"
-  local data="$(base64 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql" | tr -d '\n')"
+  local data="$(base64 -w 0 < "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$name.cql")"
   local library_uri=$(uuidgen | tr '[:upper:]' '[:lower:]')
   local library="$(create_library "$library_uri" "$data")"
   local measure="$(create_measure "$measure_uri" "$library_uri")"

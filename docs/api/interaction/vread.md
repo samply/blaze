@@ -14,6 +14,19 @@ Last-Modified: Tue, 24 Jun 2025 09:03:22 GMT
 ETag: W/"23"
 ```
 
+## Binary Resources <Badge type="warning" text="Since 1.12.0"/>
+
+As with the [read](read.md) interaction, every version of a `Binary` resource can be retrieved either as FHIR resource or in binary form. Blaze decides based on the `Accept` header of the request:
+
+* `application/fhir+json` and `application/fhir+xml` (as well as `*/*` or a missing `Accept` header) return the `Binary` resource itself, with its content Base64 encoded in `Binary.data`,
+* every other media type returns the raw content of `Binary.data`.
+
+```sh
+curl -H 'Accept: application/pdf' "http://localhost:8080/fhir/Binary/AT4S2E5FQTPTIQPP/_history/2"
+```
+
+The `Content-Type` header of such a binary response is taken from `Binary.contentType` of that version, defaulting to `application/octet-stream` if that property is missing. Blaze doesn't match it against the media types requested in the `Accept` header.
+
 ## Handling Errors
 
 | Status Code       | Description                                                                                                                        |
