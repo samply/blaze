@@ -2,7 +2,7 @@
   "Utilities for FHIR interactions."
   (:refer-clojure :exclude [str sync])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -19,7 +19,7 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
-   [java.time Instant OffsetDateTime ZoneId ZonedDateTime]
+   [java.time Instant OffsetDateTime ZonedDateTime ZoneId]
    [java.time.format DateTimeFormatter DateTimeParseException]
    [java.util.concurrent TimeUnit]))
 
@@ -632,3 +632,77 @@
   "Processes `entries` of a batch bundle using :batch-handler from `context`."
   [context entries]
   (process-batch-entries* context entries 0 []))
+
+(defn coerce-query-boolean
+  "Coerces the query param `value` with `name` into a FHIR boolean."
+  [name value]
+  (if-some [value (parse-boolean value)]
+    (type/boolean value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
+
+(defn coerce-query-integer
+  "Coerces the query param `value` with `name` into a FHIR integer."
+  [name value]
+  (let [value (parse-long value)]
+    (if (and value (<= Integer/MIN_VALUE value Integer/MAX_VALUE))
+      (type/integer value)
+      (ba/incorrect (format "Invalid value for parameter `%s`. Has to be an integer." name)))))
+
+(defn- coerce-query-param-values [name coerce values]
+  (transduce
+   (comp (map (partial coerce name))
+         (halt-when ba/anomaly?)
+         (map (partial fu/parameter name)))
+   conj
+   []
+   values))
+
+(defn- validate-query-params* [specs params]
+  (reduce-kv
+   (fn [new-params name value]
+     (if-let [{:keys [action coerce]} (specs name)]
+       (case action
+         :copy
+         (if-ok [params (coerce-query-param-values name coerce (u/to-seq value))]
+           (into new-params params)
+           reduced)
+
+         :complex
+         (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
+                                  :http/status 400))
+
+         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
+                                  :http/status 400)))
+       new-params))
+   []
+   params))
+
+(defn validate-query-params
+  "Converts `query-params` into a Parameters resource according to `specs`.
+
+  The `specs` argument is a map from parameter name to a specification map with
+  the following keys:
+   * :action - :copy for a parameter that can be given in the query string,
+               :complex for a parameter that can only be given via POST
+   * :coerce - a function taking the parameter name and the string value of the
+               query param, returning the FHIR value or an anomaly (only for
+               :action :copy)
+
+  Parameters with :action :copy are coerced with :coerce and put into the
+  resulting Parameters resource. A query param value is either a string, or,
+  in case the same parameter is given multiple times in the query string, a
+  collection of strings. In the latter case, :coerce is called once for each
+  string in the collection, producing one Parameters.parameter entry per
+  string. The :coerce function itself only ever sees a single string value and
+  has to convert it into the FHIR type of the parameter.
+
+  Query params that are not in `specs` are ignored. Parameters that are known
+  but not supported can be declared with a specification without :action, so
+  that they result in an anomaly instead of being ignored silently. Parameters
+  with :action :complex result in an anomaly telling the client to use POST.
+
+  Returns the Parameters resource or an anomaly in case of coercion errors or
+  unsupported parameters."
+  [specs query-params]
+  (when-ok [params (validate-query-params* specs query-params)]
+    {:fhir/type :fhir/Parameters :parameter params}))

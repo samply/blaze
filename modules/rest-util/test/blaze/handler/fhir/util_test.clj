@@ -1004,3 +1004,120 @@
                                       :url #fhir/uri "Patient"}}])
       ::anom/category := ::anom/interrupted
       ::anom/message := "msg-152801")))
+
+(deftest coerce-query-boolean-test
+  (testing "valid"
+    (are [value coerced] (= coerced (fhir-util/coerce-query-boolean "param-boolean" value))
+      "true" #fhir/boolean true
+      "false" #fhir/boolean false))
+
+  (testing "invalid"
+    (doseq [value ["True" "False" "123" "1.5" "nil" ""]]
+      (given (fhir-util/coerce-query-boolean "param-boolean" value)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-boolean`. Has to be a boolean."))))
+
+(deftest coerce-query-integer-test
+  (testing "valid"
+    (are [value coerced] (= coerced (fhir-util/coerce-query-integer "param-integer" value))
+      "0" #fhir/integer 0
+      "123" #fhir/integer 123
+      "-123" #fhir/integer -123
+      "2147483647" #fhir/integer 2147483647
+      "-2147483648" #fhir/integer -2147483648))
+
+  (testing "invalid"
+    (doseq [value ["true" "false" "1.5" "nil" ""]]
+      (given (fhir-util/coerce-query-integer "param-integer" value)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-integer`. Has to be an integer.")))
+
+  (testing "outside the range of a 32-bit integer"
+    (doseq [value ["2147483648" "-2147483649" "9223372036854775808"]]
+      (given (fhir-util/coerce-query-integer "param-integer" value)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-integer`. Has to be an integer."))))
+
+(deftest validate-query-params-test
+  (testing "empty parameter spec"
+    (given (fhir-util/validate-query-params
+            {}
+            {"param" "param-165900"})
+      [:parameter count] := 0))
+
+  (testing "param not in spec ignored"
+    (given (fhir-util/validate-query-params
+            {"code" {:action :copy :coerce #(type/code %2)}}
+            {"different-param" "code-165900"})
+      [:parameter count] := 0))
+
+  (testing "param action :complex not supported with GET"
+    (given (fhir-util/validate-query-params
+            {"coding" {:action :complex}}
+            {"coding" "system-115910|code-115927"})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported parameter `coding` in GET request. Please use POST."))
+
+  (testing "param not supported"
+    (given (fhir-util/validate-query-params
+            {"code" {}}
+            {"code" "code-165900"})
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported parameter `code`."))
+
+  (testing "type/code"
+    (given (fhir-util/validate-query-params
+            {"code" {:action :copy :coerce #(type/code %2)}}
+            {"code" "code-165900"})
+      [:parameter count] := 1
+      [:parameter 0 :name] := #fhir/string "code"
+      [:parameter 0 :value] := #fhir/code "code-165900"))
+
+  (testing "type/boolean"
+    (doseq [value [true false]]
+      (given (fhir-util/validate-query-params
+              {"param-boolean" {:action :copy :coerce fhir-util/coerce-query-boolean}}
+              {"param-boolean" (str value)})
+        [:parameter count] := 1
+        [:parameter 0 :name] := #fhir/string "param-boolean"
+        [:parameter 0 :value] := (type/boolean value)))
+
+    (doseq [value ["True" "False" "123" "1.5" "nil"]]
+      (given (fhir-util/validate-query-params
+              {"param-boolean" {:action :copy :coerce fhir-util/coerce-query-boolean}}
+              {"param-boolean" value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-boolean`. Has to be a boolean.")))
+
+  (testing "type/integer"
+    (doseq [value [123 -123]]
+      (given (fhir-util/validate-query-params
+              {"param-integer" {:action :copy :coerce fhir-util/coerce-query-integer}}
+              {"param-integer" (str value)})
+        [:parameter count] := 1
+        [:parameter 0 :name] := #fhir/string "param-integer"
+        [:parameter 0 :value] := (type/integer value)))
+
+    (doseq [value ["true" "false" "1.5" "nil"]]
+      (given (fhir-util/validate-query-params
+              {"param-integer" {:action :copy :coerce fhir-util/coerce-query-integer}}
+              {"param-integer" value})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-integer`. Has to be an integer.")))
+
+  (testing "collection of strings"
+    (given (fhir-util/validate-query-params
+            {"code" {:action :copy :coerce #(type/code %2)}}
+            {"code" ["code-1" "code-2"]})
+      [:parameter count] := 2
+      [:parameter 0 :name] := #fhir/string "code"
+      [:parameter 0 :value] := #fhir/code "code-1"
+      [:parameter 1 :name] := #fhir/string "code"
+      [:parameter 1 :value] := #fhir/code "code-2")
+
+    (testing "with an invalid value"
+      (given (fhir-util/validate-query-params
+              {"param-boolean" {:action :copy :coerce fhir-util/coerce-query-boolean}}
+              {"param-boolean" ["true" "invalid"]})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid value for parameter `param-boolean`. Has to be a boolean."))))
