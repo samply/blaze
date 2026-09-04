@@ -134,11 +134,15 @@ Interactions and operations that return a large list of resources support paging
 
 ### Stable
 
-Paging sessions operate on a stable database snapshot. Next links will point to custom paging session endpoints. The endpoints will expire after one hour in order to constrain the usage of a paging session. That also means that clients which have access to a paging session, will be able to access deleted and changed resources for up to one hour.
+Paging sessions operate on a stable database snapshot. Next and previous links point to custom paging session endpoints. Those links expire in order to constrain the usage of a paging session (see Expire). That also means that clients which have access to a paging session, will be able to access resources that were deleted or changed after the session started, for as long as their paging links stay valid.
 
 ### Expire
 
-Paging sessions will expire after one hour without activity. Activities are requesting the first or next page.
+Paging links expire because the encryption key their page ID was encrypted with is rotated out of the key set (see Encrypted). A paging link stays usable for at least three hours and is guaranteed to be unusable five hours after it was handed out.
+
+Every page response carries freshly encrypted links, so a session that is paged continuously renews itself. Only links that are left unused expire.
+
+For searches issued via POST, the query params are additionally kept in the page store. Its entries expire after the duration given by [`PAGE_STORE_EXPIRE`](deployment/environment-variables.md#page-store-expire) (one hour by default) without being accessed, and every page request of the session refreshes them.
 
 ### Fast
 
@@ -152,7 +156,7 @@ The variable part of paging URLs is encrypted to ensure confidentiality and inte
 
 <dl>
   <dt>Key Rotation</dt>
-  <dd>Encryption keys are rotated every two hours. Each key is valid for a maximum of four hours, with a total of three keys stored at any time.</dd>
+  <dd>Encryption keys are rotated every hour. At most three keys are stored at any time. A new key is first added as a non-primary key, becomes the primary key used for encryption on the next rotation and is only removed three rotations after it stopped being primary. That way a page ID stays decryptable for at least three and at most five hours after it was created.</dd>
   <dt>Storage</dt>
   <dd>Currently, encryption keys are stored in plain text within the admin database. While these keys are not accessible via an API, they are also not encrypted with an external key encryption method.</dd>
   <dt>Future Improvements</dt>
@@ -161,7 +165,7 @@ The variable part of paging URLs is encrypted to ensure confidentiality and inte
 
 ### Backwards Navigation
 
-Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 30 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
+Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 10 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
 
 ## Absolute URLs
 
