@@ -9,6 +9,7 @@
   (:import
    [blaze.fhir.spec.type Base]
    [com.google.common.base CaseFormat]
+   [java.time OffsetDateTime]
    [java.util Comparator]))
 
 (set! *warn-on-reflection* true)
@@ -197,10 +198,39 @@
       (ba/incorrect "Has to be a uri."))
     (ba/incorrect "Missing value.")))
 
-(defn- assoc-via [params {:keys [cardinality]} name value]
-  (if (identical? :many cardinality)
-    (update params (keyword (plural (camel->kebab name))) (fnil into []) (if (sequential? value) value [value]))
-    (assoc params (keyword (camel->kebab name)) value)))
+(defn coerce-date
+  "Returns the System.Date value of the date `x`.
+
+  Returns an anomaly if `x` isn't a date or has no value."
+  [x]
+  (if (type/date? x)
+    (if-some [value (:value x)]
+      value
+      (ba/incorrect "Missing value."))
+    (ba/incorrect "Has to be a date.")))
+
+(defn coerce-instant
+  "Returns the java.time.Instant value of the instant `x`.
+
+  Returns an anomaly if `x` isn't an instant or has no value."
+  [x]
+  (if (type/instant? x)
+    (if-some [value (:value x)]
+      (.toInstant ^OffsetDateTime value)
+      (ba/incorrect "Missing value."))
+    (ba/incorrect "Has to be an instant.")))
+
+(defn- param-key [{:keys [key cardinality]} name]
+  (or key
+      (keyword (cond-> (camel->kebab name)
+                 (identical? :many cardinality)
+                 plural))))
+
+(defn- assoc-via [params {:keys [cardinality] :as spec} name value]
+  (let [key (param-key spec name)]
+    (if (identical? :many cardinality)
+      (update params key (fnil into []) (if (sequential? value) value [value]))
+      (assoc params key value))))
 
 (defn- unsupported-parameter-anom [name]
   (ba/unsupported (format "Unsupported parameter `%s`." name) :http/status 400))
@@ -214,7 +244,7 @@
          (if-ok [value ((:coerce spec :value) (:value param))]
            (assoc-via new-params spec name value)
            (fn [e]
-             (update e ::anom/message (partial str (format "Invalid value for parameter `%s`. " name)))))
+             (reduced (update e ::anom/message (partial str (format "Invalid value for parameter `%s`. " name))))))
 
          :copy-complex-type
          (assoc-via new-params spec name (:value param))
@@ -247,6 +277,7 @@
    * :action      - one of :copy, :copy-complex-type or :copy-resource
    * :cardinality - :many if the parameter can appear multiple times
    * :coerce      - a function to coerce the value (only for :action :copy)
+   * :key         - the key to use in the result instead of the derived one
    * :required    - true if the parameter must be present
 
   The :action determines how the value is extracted:
@@ -255,11 +286,14 @@
    * :copy-resource     - uses the resource of the parameter
 
   If :coerce is given, the value is passed to that function. If the function
-  returns an anomaly, the processing stops and the anomaly is returned.
+  returns an anomaly, the processing stops and the anomaly is returned. Without
+  :coerce, the value of the primitive is used as is.
 
   The keys of the resulting map are the kebab-cased parameter names. If
   :cardinality is :many, the key is pluralized and the values are collected in
   a vector. If the coerced value is sequential, it is flattened into the vector.
+  A :key given in the specification is used as is, without kebab-casing or
+  pluralizing.
 
   Parameters in `parameters` that are not in `specs` are ignored. Parameters in
   `specs` that are not in `parameters` don't appear in the result, unless they

@@ -1,6 +1,7 @@
 (ns blaze.fhir.util-spec
   (:require
    [blaze.fhir.spec.spec]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
@@ -40,3 +41,11 @@
 (s/fdef fu/coerce-uri
   :args (s/cat :x any?)
   :ret (s/or :value string? :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-date
+  :args (s/cat :x any?)
+  :ret (s/or :value system/date? :anomaly ::anom/anomaly))
+
+(s/fdef fu/coerce-instant
+  :args (s/cat :x any?)
+  :ret (s/or :value inst? :anomaly ::anom/anomaly))

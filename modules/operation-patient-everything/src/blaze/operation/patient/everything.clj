@@ -6,6 +6,7 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as fu]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
@@ -78,15 +79,75 @@
       (nil? page-size)
       (assoc :total (type/unsignedInt (count entries))))))
 
+(defn- coerce-count [value]
+  (when-ok [value (fu/coerce-integer value)]
+    (if (nat-int? value)
+      (min value max-size)
+      (ba/incorrect "Has to be a non-negative integer."))))
+
+(def ^:private param-specs
+  "Specs of the params, coerced from a Parameters resource.
+
+  The param `_type` of the R4 operation isn't supported. It has no :action, so
+  that it is reported as unsupported instead of being silently ignored."
+  {"start" {:action :copy :coerce fu/coerce-date}
+   "end" {:action :copy :coerce fu/coerce-date}
+   "_since" {:action :copy :key :since :coerce fu/coerce-instant}
+   "_count" {:action :copy :key :page-size :coerce coerce-count}
+   "_type" {}})
+
+(def ^:private unsupported-params
+  "Names of the params that are known but not supported, taken from
+  `param-specs`."
+  (into #{} (keep (fn [[name {:keys [action]}]] (when-not action name))) param-specs))
+
+(defn- check-unsupported-params [query-params]
+  (some
+   (fn [name]
+     (when (contains? query-params name)
+       (ba/unsupported (format "Unsupported parameter `%s`." name)
+                       :http/status 400)))
+   unsupported-params))
+
+(defn- params-from-query
+  "Returns the params taken from `query-params`.
+
+  Only params that are actually given are part of the result."
+  [query-params]
+  (when-ok [_ (check-unsupported-params query-params)
+            start (fhir-util/date query-params "start")
+            end (fhir-util/date query-params "end")]
+    (let [since (fhir-util/since query-params)
+          page-size (fhir-util/page-size query-params max-size nil)]
+      (cond-> {}
+        start (assoc :start start)
+        end (assoc :end end)
+        since (assoc :since since)
+        page-size (assoc :page-size page-size)))))
+
+(defn- params-from-body
+  "Returns the params taken from the Parameters resource `body` or nil if `body`
+  isn't a Parameters resource."
+  [body]
+  (when (identical? :fhir/Parameters (:fhir/type body))
+    (fu/coerce-params param-specs body)))
+
+(defn- params
+  "Returns the params of `request`.
+
+  The params are taken from a Parameters resource in the body of a POST request,
+  overridden by the query params."
+  [{:keys [body query-params]}]
+  (when-ok [params (params-from-query query-params)
+            body-params (params-from-body body)]
+    (cond->> params body-params (merge body-params))))
+
 (defn- handler [context]
   (fn [{:blaze/keys [db]
         {:keys [id]} :path-params
         :keys [query-params] :as request}]
-    (let [page-size (fhir-util/page-size query-params max-size nil)
-          page-offset (fhir-util/page-offset query-params)
-          since (fhir-util/since query-params)]
-      (when-ok [start (fhir-util/date query-params "start")
-                end (fhir-util/date query-params "end")
+    (let [page-offset (fhir-util/page-offset query-params)]
+      (when-ok [{:keys [start end since page-size]} (params request)
                 {:keys [handles next-offset]}
                 (handles db id start end page-offset page-size since)]
         (do-sync [resources (d/pull-many db handles)]
