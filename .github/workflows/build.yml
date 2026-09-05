@@ -2173,8 +2173,9 @@ jobs:
     - name: Check Total Number of Resources
       run: .github/scripts/check-total-number-of-resources.sh 345
 
+    # the expected number depends on the IG versions of the validator image
     - name: Check Number of Invalid Resources
-      run: .github/integration-test-kds/check-invalid-resources.sh 67
+      run: .github/integration-test-kds/check-invalid-resources.sh 70
 
     - name: Download MedicationStatement Resources with ATC Code B01AC06
       run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
@@ -2187,6 +2188,14 @@ jobs:
 
     - name: Run Observation Quality Report
       run: .github/integration-test-kds/evaluate-measure.sh quality-report-observation 53
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+      if: always()
+
+    - name: Docker Logs on Failure
+      run: docker compose -f .github/integration-test-kds/docker-compose.yml logs -t
+      if: failure()
 
   integration-test-extern-terminology:
     if: github.event_name != 'push' || github.ref_type == 'tag'
