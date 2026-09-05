@@ -161,12 +161,14 @@
            (.maximumWeight max-size-in-bytes)
            (.recordStats)
            (.buildAsync
+            ;; asyncLoadAll is deliberately not implemented. Resource stores
+            ;; don't load in bulk, they issue one get per key anyway. Caffeine
+            ;; falls back to loading each key individually, which keeps the
+            ;; loader's own future as the cache entry. Its bulk path instead
+            ;; holds proxy futures that are completed by whichever caller
+            ;; happens to load them, which would execute functions applied
+            ;; after the futures of all other callers on that arbitrary thread.
             (reify AsyncCacheLoader
               (asyncLoad [_ key _]
-                (rs/get resource-store key))
-
-              (asyncLoadAll [_ keys _]
-               ;; use the protocol method directly because keys will not
-               ;; satisfy the spec of the rs/multi-get function
-                (rs/-multi-get resource-store keys)))))
+                (rs/get resource-store key)))))
        resource-store))))

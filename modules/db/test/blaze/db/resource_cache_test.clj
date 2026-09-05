@@ -285,6 +285,53 @@
 
           (is (= size-before (cache-size cache))))))))
 
+(deftype CountingResourceStore [store gets multi-gets]
+  rs/ResourceStore
+  (-get [_ key]
+    (swap! gets inc)
+    (rs/-get store key))
+
+  (-multi-get [_ keys]
+    (swap! multi-gets inc)
+    (rs/-multi-get store keys))
+
+  (-put [_ entries]
+    (rs/-put store entries)))
+
+(defmethod ig/init-key ::counting-store
+  [_ {:keys [store gets multi-gets]}]
+  (->CountingResourceStore store gets multi-gets))
+
+(defn- counting-config [gets multi-gets]
+  (-> (assoc-in config [:blaze.db/resource-cache :resource-store]
+                (ig/ref ::counting-store))
+      (assoc ::counting-store {:store (ig/ref ::rs/kv)
+                               :gets gets
+                               :multi-gets multi-gets})))
+
+(deftest no-bulk-loading-test
+  (testing "the cache loads every key individually"
+    ;; Resource stores don't load in bulk, so implementing asyncLoadAll would
+    ;; gain nothing but would make Caffeine use its bulk path, where cache
+    ;; entries are proxy futures completed by whichever caller happens to load
+    ;; them. Functions applied after the futures of all other callers would be
+    ;; executed on that arbitrary thread.
+    (let [gets (atom 0)
+          multi-gets (atom 0)]
+      (with-system [{cache :blaze.db/resource-cache store ::rs/kv}
+                    (counting-config gets multi-gets)]
+        @(rs/put! store {patient-0-hash patient-0
+                         patient-1-hash patient-1})
+
+        (is (= {[:fhir/Patient patient-0-hash :complete] patient-0
+                [:fhir/Patient patient-1-hash :complete] patient-1}
+               @(st/with-instrument-disabled
+                  (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
+                                       [:fhir/Patient patient-1-hash :complete]]))))
+
+        (is (= 2 @gets))
+        (is (zero? @multi-gets))))))
+
 (deftest stats-test
   (testing "with non-zero max size"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
