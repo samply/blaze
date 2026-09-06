@@ -1092,7 +1092,7 @@
            extension (extensions)
            modifierExtension (extensions)
            function (nilable (codeable-concept))
-           actor (reference)}}]
+           actor (reference :reference (gen/return nil))}}]
   (->> (gen/tuple id extension modifierExtension function actor)
        (to-map [:id :extension :modifierExtension :function :actor])
        (fhir-type :fhir.ImagingStudy.series/performer)))
@@ -1109,10 +1109,10 @@
            modality (coding)
            description (nilable (string))
            numberOfInstances (nilable (unsignedInt))
-           endpoint (gen/vector (reference) 0 5)
+           endpoint (gen/vector (reference :reference (gen/return nil)) 0 5)
            bodySite (nilable (coding))
            laterality (nilable (coding))
-           specimen (gen/vector (reference) 0 5)
+           specimen (gen/vector (reference :reference (gen/return nil)) 0 5)
            started (nilable (dateTime))
            performer (gen/vector (imaging-study-series-performer) 0 5)
            instance (gen/vector (imaging-study-series-instance) 0 5)}}]
