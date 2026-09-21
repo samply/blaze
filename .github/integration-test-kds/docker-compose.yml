@@ -48,8 +48,6 @@ services:
       TX_SERVER: "http://terminology-server:8080/fhir"
     ports:
     - "8084:8080"
-    volumes:
-    - ./fhir-settings.json:/app/fhir-settings.json:ro
     depends_on:
       terminology-server:
         condition: service_healthy

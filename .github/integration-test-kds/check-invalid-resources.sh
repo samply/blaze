@@ -13,7 +13,14 @@ set -euo pipefail
 #     reference, its id is opaque — with at least one issue of severity `error`
 #     or `fatal`.
 #
-# Usage: check-invalid-resources.sh <expected-count>
+# The number of invalid resources is reported but not asserted. It depends on
+# the content of the MII Implementation Guides, which the validator resolves
+# against the live FHIR package registry, so every upstream release can move it
+# without anything changing here. Ideally it would be zero, which no assertion
+# on the count would survive anyway. What is asserted is the structure above,
+# and that holds for every invalid resource however many there are.
+#
+# Usage: check-invalid-resources.sh
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/../scripts/util.sh"
@@ -22,19 +29,14 @@ base="http://localhost:8080/fhir"
 tag_system="https://blaze-server.org/fhir/CodeSystem/ValidationStatus"
 outcome_ext="https://blaze-server.org/fhir/StructureDefinition/validation-outcome"
 
-expected_count="$1"
-
 # Gather all invalid resources across all resource types via the system-wide
 # `_tag` search into a JSON stream (one resource per line). blazectl handles
 # paging.
 invalid=$(blazectl --server "$base" download -q "_tag=${tag_system}|invalid" 2>/dev/null)
 
-# --- assert the number of invalid resources ---------------------------------
+# --- report the number of invalid resources ---------------------------------
 
-count=$(echo "$invalid" | jq -s 'length')
-test "number of invalid resources" "$count" "$expected_count"
-
-echo "ℹ️ invalid resources by type:"
+echo "ℹ️ $(echo "$invalid" | jq -s 'length') invalid resources by type:"
 echo "$invalid" | jq -rs 'group_by(.resourceType)[] | "  \(length) \(.[0].resourceType)"'
 
 # --- assert every invalid resource has a proper validation OperationOutcome --

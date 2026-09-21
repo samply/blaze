@@ -2173,9 +2173,8 @@ jobs:
     - name: Check Total Number of Resources
       run: .github/scripts/check-total-number-of-resources.sh 345
 
-    # the expected number depends on the IG versions of the validator image
-    - name: Check Number of Invalid Resources
-      run: .github/integration-test-kds/check-invalid-resources.sh 70
+    - name: Check Invalid Resources
+      run: .github/integration-test-kds/check-invalid-resources.sh
 
     - name: Download MedicationStatement Resources with ATC Code B01AC06
       run: .github/scripts/download-resources-query.sh MedicationStatement "medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
