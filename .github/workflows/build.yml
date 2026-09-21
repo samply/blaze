@@ -3188,16 +3188,18 @@ jobs:
     - name: Compare Source and Destination Patients
       run: diff src-patients.ndjson dst-patients.ndjson
 
-  big-binary-test:
+  large-binary-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
     runs-on: ubuntu-24.04
 
     strategy:
       matrix:
+        # size of the random data in MiB
         binary-size:
-        - '8388608'
-        - '67108864'
+        - '8'
+        - '64'
+        - '512'
       fail-fast: false
 
     steps:
@@ -3215,7 +3217,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3223,17 +3225,8 @@ jobs:
     - name: Docker Logs
       run: docker logs blaze
 
-    - name: Generate Large Binary Resources (JSON and XML)
-      run: .github/scripts/generate-large-binary-resource.sh ${{ matrix.binary-size }}
-
-    - name: Post Large Binary JSON Resource
-      run:  curl -f -H Content-Type:application/fhir+json -H Prefer:return=minimal -d @large-binary.json http://localhost:8080/fhir/Binary
-
-    - name: Post Large Binary XML Resource
-      run:  curl -f -H Content-Type:application/fhir+xml -H Prefer:return=minimal -d @large-binary.xml http://localhost:8080/fhir/Binary
-
-    - name: Download Both Resources
-      run:  test "2" = "$(curl -s http://localhost:8080/fhir/Binary | jq .total)"
+    - name: Large Binary Resource Test
+      run: .github/scripts/test-large-binary-resource.sh ${{ matrix.binary-size }}
 
   frontend-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -3539,7 +3532,7 @@ jobs:
     - jepsen-distributed-test
     - openid-auth-test
     - doc-copy-data-test
-    - big-binary-test
+    - large-binary-test
     - frontend-test
     - missing-resource-content-test
     - custom-search-parameters-test
