@@ -7,6 +7,6 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 compose_file="$1"
 service="$2"
 
-log_line="$(docker compose -f "$compose_file" logs "$service" | grep "Heap:" | head -1)"
+log_lines="$(docker compose -f "$compose_file" logs "$service" | grep "Heap:" || true)"
 
-test_non_empty "JVM metrics log line" "$log_line"
+test_non_empty "JVM metrics log lines" "$log_lines"
