@@ -33,7 +33,7 @@
   {:mvn/version "5.4.3"}
 
   metosin/reitit-ring
-  {:mvn/version "0.10.1"
+  {:mvn/version "0.11.0"
    :exclusions [ring/ring-core]}
 
   metosin/muuntaja
