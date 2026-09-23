@@ -23,7 +23,7 @@
     "@types/dom-view-transitions": "1.0.6",
     "@types/fhir": "0.0.44",
     "@types/humanize-duration": "3.27.4",
-    "@types/node": "24.13.3",
+    "@types/node": "24.13.6",
     "change-case": "5.4.4",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
