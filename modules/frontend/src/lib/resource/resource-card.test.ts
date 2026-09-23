@@ -1,4 +1,4 @@
-import type { Bundle, ElementDefinition, StructureDefinition } from 'fhir/r4';
+import type { Bundle, ElementDefinition, Patient, StructureDefinition } from 'fhir/r4';
 import { describe, expect, it } from 'vitest';
 import { calcPropertiesDeep, type FhirObject, getTypeElements } from './resource-card.js';
 import { readFileSync } from 'fs';
@@ -214,6 +214,10 @@ describe('calcPropertiesDeep test', () => {
     });
   });
   it('contained resource', () => {
+    const containedPatient: Patient = {
+      resourceType: 'Patient',
+      gender: 'female'
+    };
     expect(
       calcPropertiesDeep(
         readStructureDefinition,
@@ -221,12 +225,7 @@ describe('calcPropertiesDeep test', () => {
         structureDefinitionPatient,
         {
           resourceType: 'Patient',
-          contained: [
-            {
-              resourceType: 'Patient',
-              gender: 'female'
-            }
-          ]
+          contained: [containedPatient]
         }
       )
     ).toStrictEqual({

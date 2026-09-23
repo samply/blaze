@@ -28,11 +28,11 @@ export function isPrimitive(type: Type) {
   return type.code[0].toLowerCase() == type.code[0];
 }
 
-export interface FhirObjectBundle extends Bundle {
+export interface FhirObjectBundle extends Bundle<FhirResource> {
   fhirObjectEntry?: FhirObjectBundleEntry[];
 }
 
-export interface FhirObjectBundleEntry extends BundleEntry {
+export interface FhirObjectBundleEntry extends BundleEntry<FhirResource> {
   fhirObject?: FhirObject;
 }
 
@@ -82,13 +82,13 @@ export interface FhirPrimitive extends FhirType {
 
 export async function transformBundle(
   fetch: typeof window.fetch,
-  bundle: Bundle
+  bundle: Bundle<FhirResource>
 ): Promise<FhirObjectBundle> {
   return bundle.entry !== undefined
     ? {
         ...bundle,
         fhirObjectEntry: await Promise.all(
-          bundle.entry.map(async (e: BundleEntry) =>
+          bundle.entry.map(async (e: BundleEntry<FhirResource>) =>
             e.resource !== undefined ? { ...e, fhirObject: await fhirObject(e.resource, fetch) } : e
           )
         )
