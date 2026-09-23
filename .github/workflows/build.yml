@@ -38,7 +38,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       env:
         # renovate: datasource=github-releases depName=weavejester/cljfmt
         CLJFMT_VERSION: 0.16.5
@@ -57,7 +57,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       env:
         # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
         CLJ_KONDO_VERSION: 2026.08.04
@@ -117,7 +117,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -153,7 +153,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -273,7 +273,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -358,7 +358,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -426,7 +426,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -480,7 +480,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -560,7 +560,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -646,7 +646,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -734,7 +734,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -2987,7 +2987,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
@@ -3438,7 +3438,7 @@ jobs:
         java-version: '25'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@4c7a6f613e5089821bb3bb2a33a3ee115578580d # 13.6.1
+      uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       with:
         cli: ${{ env.CLOJURE_CLI_VERSION }}
 
