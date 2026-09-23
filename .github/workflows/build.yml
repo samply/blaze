@@ -34,7 +34,7 @@ env:
 jobs:
   fmt:
     if: github.event_name != 'push' || github.ref_type == 'tag'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Clojure
@@ -53,7 +53,7 @@ jobs:
 
   lint:
     if: github.event_name != 'push' || github.ref_type == 'tag'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Clojure
@@ -78,7 +78,7 @@ jobs:
       run: make lint
 
   ig:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -107,7 +107,7 @@ jobs:
         path: modules/ig/fsh-generated/resources/*.json
 
   prep-deps:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -143,7 +143,7 @@ jobs:
 
   dashboard:
     needs: prep-deps
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -263,7 +263,7 @@ jobs:
       fail-fast: false
 
     needs: [ ig, prep-deps ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -348,7 +348,7 @@ jobs:
       fail-fast: false
 
     needs: [ ig, prep-deps ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -416,7 +416,7 @@ jobs:
       fail-fast: false
 
     needs: prep-deps
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -470,7 +470,7 @@ jobs:
       fail-fast: false
 
     needs: [ ig, prep-deps ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -550,7 +550,7 @@ jobs:
       fail-fast: false
 
     needs: [ ig, prep-deps ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -611,7 +611,7 @@ jobs:
   upload-coverage:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: [ test, test-coverage-db ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -632,7 +632,7 @@ jobs:
 
   build:
     needs: [ ig, prep-deps ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     permissions:
       contents: read
@@ -721,7 +721,7 @@ jobs:
 
   build-frontend:
     needs: prep-deps
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     permissions:
       contents: read
@@ -783,7 +783,7 @@ jobs:
   # holds packages: write.
   build-frontend-image:
     needs: build-frontend
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     permissions:
       contents: read
@@ -823,7 +823,7 @@ jobs:
   image-scan:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: [ build, build-frontend-image ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       security-events: write
     strategy:
@@ -865,7 +865,7 @@ jobs:
   cql-expr-cache-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -1840,7 +1840,7 @@ jobs:
   integration-test-synthea-1000:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2092,7 +2092,7 @@ jobs:
   integration-test-kds:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2199,7 +2199,7 @@ jobs:
   integration-test-extern-terminology:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     strategy:
       matrix:
@@ -2301,7 +2301,7 @@ jobs:
   integration-test-patient-purge:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2367,7 +2367,7 @@ jobs:
   integration-test-value-set-expand:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2444,7 +2444,7 @@ jobs:
   integration-test-validation:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -2544,7 +2544,7 @@ jobs:
   terminology-tests:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -2627,7 +2627,7 @@ jobs:
   not-enforcing-referential-integrity-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2681,7 +2681,7 @@ jobs:
   admin-api-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2733,7 +2733,7 @@ jobs:
   small-transactions-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2784,7 +2784,7 @@ jobs:
   big-transaction-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2829,7 +2829,7 @@ jobs:
   evaluate-measure-timeout-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2877,7 +2877,7 @@ jobs:
   include-without-referential-integrity-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2908,7 +2908,7 @@ jobs:
   chaining-without-referential-integrity-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2941,7 +2941,7 @@ jobs:
   bundle-with-references-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -2977,7 +2977,7 @@ jobs:
   jepsen-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -3057,7 +3057,7 @@ jobs:
   openid-auth-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3109,7 +3109,7 @@ jobs:
   custom-search-parameters-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3143,7 +3143,7 @@ jobs:
   doc-copy-data-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3191,7 +3191,7 @@ jobs:
   large-binary-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     strategy:
       matrix:
@@ -3239,7 +3239,7 @@ jobs:
   frontend-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: [ build, build-frontend-image ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3324,7 +3324,7 @@ jobs:
   missing-resource-content-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3377,7 +3377,7 @@ jobs:
   build-patient-last-change-index-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Check out Git repository
@@ -3428,7 +3428,7 @@ jobs:
   jepsen-distributed-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - name: Setup Java
@@ -3545,7 +3545,7 @@ jobs:
     - missing-resource-content-test
     - custom-search-parameters-test
     - build-patient-last-change-index-test
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: always()
     steps:
     - name: Check if any job failed
@@ -3561,7 +3561,7 @@ jobs:
     if: ${{ !cancelled() && needs.pre-push-image.result == 'success' }}
     needs:
     - pre-push-image
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       packages: write
       id-token: write
@@ -3646,7 +3646,7 @@ jobs:
     needs:
     - dashboard
     - push-image
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 

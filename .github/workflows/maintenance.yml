@@ -11,7 +11,7 @@ permissions: read-all
 jobs:
   ghcr-cleanup:
     name: Cleanup GHCR
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         image: [ blaze, blaze-frontend ]
@@ -43,7 +43,7 @@ jobs:
 
   cache-cleanup:
     name: Remove old Trivy Caches
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       actions: write   # required to delete caches
       contents: read
