@@ -1,0 +1,28 @@
+services:
+  terminology-server:
+    image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx8g"
+      ENABLE_TERMINOLOGY_SERVICE: "true"
+      ENABLE_TERMINOLOGY_LOINC: "true"
+      ENABLE_TERMINOLOGY_SNOMED_CT: "true"
+      SNOMED_CT_RELEASE_PATH: "/app/sct-release"
+      LOG_LEVEL: debug
+    ports:
+    - "8080:8080"
+    - "8081:8081"
+    volumes:
+    - "blaze-terminology-data:/app/data"
+    - "./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  blaze-terminology-data:

@@ -56,6 +56,33 @@ The search covers:
 
 Results are ranked by relevance, with closer matches scored higher.
 
+## Existing Expansions <Badge type="warning" text="Since 1.12.0"/>
+
+A ValueSet may already contain an expansion, for example a stored expansion that ships with a terminology package. Before using it, Blaze checks whether the In Parameters are consistent with the parameters recorded in `ValueSet.expansion.parameter`.
+
+* If the parameters are consistent, the existing expansion is used. The following In Parameters are applied on top of it with the same result as expanding the compose:
+  * `count` — the existing concepts are truncated
+  * `activeOnly` — inactive concepts are removed if the existing concepts carry `inactive` flags
+  * `includeDesignations` — designations are removed unless `includeDesignations` is true
+  * `includeDefinition` — the compose is removed unless `includeDefinition` is true
+  * `excludeNested` — nested concepts are flattened
+* If the parameters are inconsistent and the ValueSet has a compose, the compose is expanded.
+* If the parameters are inconsistent and the ValueSet has no compose, an error with status `409 Conflict` is returned.
+
+The parameters are inconsistent if one of the following applies:
+
+* the requested `filter` differs from the one recorded in the existing expansion, including a `filter` requested for an existing expansion without a recorded one
+* the existing expansion records `activeOnly` true, but it isn't requested, or `activeOnly` is requested, but the existing concepts carry no `inactive` flags
+* `includeDesignations` is requested, but not recorded in the existing expansion
+* the requested `displayLanguage` differs from the recorded one
+* the requested `property` codes differ from the recorded ones
+* a `system-version` is requested for a code system with a different or unknown version in the existing expansion
+* the existing expansion is incomplete (it records a `count`, has an `offset` greater than 0 or a `total` greater than the number of concepts) and isn't requested with the same `count` and no additional `activeOnly`
+
+A `filter` isn't applied on top of an existing expansion, because the concepts of an existing expansion usually lack the designations the [Filter Parameter](#filter-parameter) searches in the code system. So a ValueSet with an existing expansion and a compose is filtered by expanding the compose.
+
+A new `ValueSet.expansion.identifier` is only generated if the existing expansion was changed.
+
 ## Resolution of ValueSet and CodeSystem Resources
 
 More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
