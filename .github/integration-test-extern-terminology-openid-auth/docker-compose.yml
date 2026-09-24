@@ -15,6 +15,9 @@ services:
 
   data-server:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       DB_BLOCK_CACHE_SIZE: "2048"
@@ -40,6 +43,9 @@ services:
 
   terminology-server:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx5g"
       ENABLE_TERMINOLOGY_SERVICE: "true"

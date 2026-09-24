@@ -43,6 +43,9 @@ services:
 
   backend:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
       LOG_LEVEL: "debug"

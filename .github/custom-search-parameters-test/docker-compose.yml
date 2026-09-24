@@ -1,6 +1,9 @@
 services:
   blaze:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
       LOG_LEVEL: trace

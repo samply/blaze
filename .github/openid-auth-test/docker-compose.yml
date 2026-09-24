@@ -15,6 +15,9 @@ services:
 
   blaze:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
@@ -34,6 +37,9 @@ services:
 
   blaze-wrong-iss:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
@@ -54,6 +60,9 @@ services:
 
   blaze-wrong-aud:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
@@ -74,6 +83,9 @@ services:
 
   blaze-correct-claims:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
