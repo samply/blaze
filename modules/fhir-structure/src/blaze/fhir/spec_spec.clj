@@ -46,6 +46,10 @@
   :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
   :ret (s/or :result string? :anomaly ::anom/anomaly))
 
+(s/fdef fhir-spec/write-xml
+  :args (s/cat :context :blaze.fhir/writing-context
+               :out #(instance? OutputStream %) :value :fhir/value))
+
 (s/fdef fhir-spec/write-cbor
   :args (s/cat :context :blaze.fhir/writing-context :value :fhir/value)
   :ret (s/or :result bytes? :anomaly ::anom/anomaly))
