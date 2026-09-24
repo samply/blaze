@@ -354,11 +354,12 @@
 
   (testing "with second call successful"
     (testing "first call retryable"
-      (let [counter (atom 0)
-            future-fn #(ac/completed-future
-                        (let [n (swap! counter inc)]
-                          (if (= 2 n) ::x (ba/busy))))]
-        (is (= ::x @(ac/retry future-fn "action-114844" 1)))))
+      (doseq [anomaly [(ba/busy) (ba/unavailable)]]
+        (let [counter (atom 0)
+              future-fn #(ac/completed-future
+                          (let [n (swap! counter inc)]
+                            (if (= 2 n) ::x anomaly)))]
+          (is (= ::x @(ac/retry future-fn "action-114844" 1))))))
 
     (testing "first call not retryable"
       (let [counter (atom 0)

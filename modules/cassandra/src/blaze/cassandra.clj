@@ -8,7 +8,8 @@
    [cognitect.anomalies :as anom])
   (:import
    [com.datastax.oss.driver.api.core
-    CqlSession DriverTimeoutException RequestThrottlingException]
+    AllNodesFailedException CqlSession DriverTimeoutException
+    RequestThrottlingException]
    [com.datastax.oss.driver.api.core.cql
     AsyncResultSet PreparedStatement Row Statement SimpleStatement]
    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException]))
@@ -45,6 +46,9 @@
   (.close ^CqlSession session))
 
 (extend-protocol ba/ToAnomaly
+  AllNodesFailedException
+  (-anomaly [e]
+    (ba/unavailable (str "Cassandra " (ex-message e))))
   DriverTimeoutException
   (-anomaly [e]
     (ba/busy (str "Cassandra " (ex-message e))))

@@ -13,7 +13,7 @@
    [juxt.iota :refer [given]])
   (:import
    [com.datastax.oss.driver.api.core
-    ConsistencyLevel CqlSession DriverTimeoutException
+    AllNodesFailedException ConsistencyLevel CqlSession DriverTimeoutException
     RequestThrottlingException]
    [com.datastax.oss.driver.api.core.cql
     AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement
@@ -21,6 +21,7 @@
    [com.datastax.oss.driver.api.core.servererrors
     WriteTimeoutException WriteType]
    [java.nio ByteBuffer]
+   [java.util List]
    [java.util.concurrent CompletionStage]))
 
 (set! *warn-on-reflection* true)
@@ -133,4 +134,9 @@
   (testing "RequestThrottlingException"
     (given (ba/anomaly (RequestThrottlingException. "msg-163725"))
       ::anom/category := ::anom/busy
-      ::anom/message := "Cassandra msg-163725")))
+      ::anom/message := "Cassandra msg-163725"))
+
+  (testing "NoNodeAvailableException"
+    (given (ba/anomaly (AllNodesFailedException/fromErrors ^List (list)))
+      ::anom/category := ::anom/unavailable
+      ::anom/message := "Cassandra No node was available to execute the query")))
