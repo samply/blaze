@@ -10,3 +10,5 @@
 # Cursive-generated, derived from deps.edn — regenerated on sync
 /libraries/
 /modules.xml
+# Machine-specific SDK names
+/misc.xml
