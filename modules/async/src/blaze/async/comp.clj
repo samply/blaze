@@ -300,7 +300,7 @@
       ~@body)))
 
 (defn- retryable? [{::anom/keys [category]}]
-  (#{::anom/busy} category))
+  (#{::anom/busy ::anom/unavailable} category))
 
 (defn- retry* [future-fn action-name max-retries num-retry]
   (-> (future-fn)
@@ -323,7 +323,7 @@
   result.
 
   Otherwise retries by calling `f` again with no arguments if the anomaly is of
-  category `::anom/busy`. Waits between retries starting with 100 ms growing
+  category `::anom/busy` or `::anom/unavailable`. Waits between retries starting with 100 ms growing
   exponentially.
 
   Please be aware that `num-retries` shouldn't be higher than the max stack
