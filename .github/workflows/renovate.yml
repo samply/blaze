@@ -19,7 +19,7 @@ concurrency:
 
 env:
   # renovate: datasource=npm depName=renovate
-  RENOVATE_VERSION: 43.288.0
+  RENOVATE_VERSION: 44.104.2
 
 jobs:
   dry-run:
