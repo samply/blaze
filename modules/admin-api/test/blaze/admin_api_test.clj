@@ -429,7 +429,7 @@
         (is (= 200 status)))
 
       (testing "openapi version"
-        (is (= "3.1.0" (get body "openapi"))))
+        (is (= "3.2.0" (get body "openapi"))))
 
       (testing "info"
         (given (get body "info")
