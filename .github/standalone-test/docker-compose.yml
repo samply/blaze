@@ -1,6 +1,9 @@
 services:
   blaze:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       LOG_LEVEL: "debug"

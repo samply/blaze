@@ -1,6 +1,9 @@
 services:
   data-server:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
@@ -22,6 +25,9 @@ services:
 
   terminology-server:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx8g"
       ENABLE_TERMINOLOGY_SERVICE: "true"

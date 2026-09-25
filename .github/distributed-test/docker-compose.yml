@@ -127,6 +127,9 @@ services:
 
   blaze-1:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       LOG_LEVEL: "debug"
@@ -180,6 +183,9 @@ services:
 
   blaze-2:
     image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       LOG_LEVEL: "debug"
