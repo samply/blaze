@@ -41,7 +41,7 @@ jobs:
       uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       env:
         # renovate: datasource=github-releases depName=weavejester/cljfmt
-        CLJFMT_VERSION: 0.16.5
+        CLJFMT_VERSION: 0.16.6
       with:
         cljfmt: ${{ env.CLJFMT_VERSION }}
 

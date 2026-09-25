@@ -44,7 +44,7 @@ CLOJURE_CLI_VERSION="1.12.6.1673"
 # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
 CLJ_KONDO_VERSION="2026.08.04"
 # renovate: datasource=github-releases depName=weavejester/cljfmt
-CLJFMT_VERSION="0.16.5"
+CLJFMT_VERSION="0.16.6"
 # Pinned to match .github/scripts/install-actionlint.sh.
 # renovate: datasource=github-releases depName=rhysd/actionlint extractVersion=^v(?<version>.+)$
 ACTIONLINT_VERSION="1.7.12"
