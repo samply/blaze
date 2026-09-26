@@ -146,6 +146,23 @@ public final class Signature extends AbstractElement implements Complex, Extensi
                 (Code) m.valAt(SIG_FORMAT), (Base64Binary) m.valAt(DATA));
     }
 
+    /**
+     * Creates a Signature from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Signature fromSlots(Object[] slots) {
+        return new Signature(ExtensionData.fromSlots(slots), Lists.nullToEmpty(slots[2]), (Instant) slots[3],
+                (Reference) slots[4], (Reference) slots[5], (Code) slots[6],
+                (Code) slots[7], (Base64Binary) slots[8]);
+    }
+
+    /**
+     * Returns the keys of all fields of Signature in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public List<Coding> type() {
         return type;
     }

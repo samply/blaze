@@ -147,6 +147,23 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                 Base.listFrom(m, DATE_FILTER), (PositiveInt) m.valAt(LIMIT), Base.listFrom(m, SORT));
     }
 
+    /**
+     * Creates a DataRequirement from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static DataRequirement fromSlots(Object[] slots) {
+        return new DataRequirement(ExtensionData.fromSlots(slots), (Code) slots[2], Lists.nullToEmpty(slots[3]),
+                (Element) slots[4], Lists.nullToEmpty(slots[5]), Lists.nullToEmpty(slots[6]),
+                Lists.nullToEmpty(slots[7]), (PositiveInt) slots[8], Lists.nullToEmpty(slots[9]));
+    }
+
+    /**
+     * Returns the keys of all fields of DataRequirement in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code type() {
         return type;
     }
@@ -492,6 +509,22 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                     (Canonical) m.valAt(VALUE_SET), Base.listFrom(m, CODE));
         }
 
+        /**
+         * Creates a CodeFilter from {@code slots} holding the values of the keys of
+         * {@link #fields()} at the same index.
+         */
+        public static CodeFilter fromSlots(Object[] slots) {
+            return new CodeFilter(ExtensionData.fromSlots(slots), (String) slots[2], (String) slots[3],
+                    (Canonical) slots[4], Lists.nullToEmpty(slots[5]));
+        }
+
+        /**
+         * Returns the keys of all fields of CodeFilter in slot order.
+         */
+        public static Keyword[] fields() {
+            return FIELDS.clone();
+        }
+
         public String path() {
             return path;
         }
@@ -725,6 +758,22 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                     (ExtensionValue) m.valAt(VALUE));
         }
 
+        /**
+         * Creates a DateFilter from {@code slots} holding the values of the keys of
+         * {@link #fields()} at the same index.
+         */
+        public static DateFilter fromSlots(Object[] slots) {
+            return new DateFilter(ExtensionData.fromSlots(slots), (String) slots[2], (String) slots[3],
+                    (ExtensionValue) slots[4]);
+        }
+
+        /**
+         * Returns the keys of all fields of DateFilter in slot order.
+         */
+        public static Keyword[] fields() {
+            return FIELDS.clone();
+        }
+
         public String path() {
             return path;
         }
@@ -930,6 +979,21 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         public static Sort create(IPersistentMap m) {
             return new Sort(ExtensionData.fromMap(m), (String) m.valAt(PATH), (Code) m.valAt(DIRECTION));
+        }
+
+        /**
+         * Creates a Sort from {@code slots} holding the values of the keys of
+         * {@link #fields()} at the same index.
+         */
+        public static Sort fromSlots(Object[] slots) {
+            return new Sort(ExtensionData.fromSlots(slots), (String) slots[2], (Code) slots[3]);
+        }
+
+        /**
+         * Returns the keys of all fields of Sort in slot order.
+         */
+        public static Keyword[] fields() {
+            return FIELDS.clone();
         }
 
         public String path() {

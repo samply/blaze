@@ -125,6 +125,23 @@ public final class Identifier extends AbstractElement implements Complex, Extens
                 (Reference) m.valAt(ASSIGNER));
     }
 
+    /**
+     * Creates a Identifier from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Identifier fromSlots(Object[] slots) {
+        return new Identifier(ExtensionData.fromSlots(slots), (Code) slots[2],
+                (CodeableConcept) slots[3], (Uri) slots[4], (String) slots[5], (Period) slots[6],
+                (Reference) slots[7]);
+    }
+
+    /**
+     * Returns the keys of all fields of Identifier in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code use() {
         return use;
     }

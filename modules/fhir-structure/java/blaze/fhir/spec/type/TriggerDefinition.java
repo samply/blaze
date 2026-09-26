@@ -118,6 +118,22 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
                 (Element) m.valAt(TIMING), Base.listFrom(m, DATA), (Expression) m.valAt(CONDITION));
     }
 
+    /**
+     * Creates a TriggerDefinition from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static TriggerDefinition fromSlots(Object[] slots) {
+        return new TriggerDefinition(ExtensionData.fromSlots(slots), (Code) slots[2], (String) slots[3],
+                (Element) slots[4], Lists.nullToEmpty(slots[5]), (Expression) slots[6]);
+    }
+
+    /**
+     * Returns the keys of all fields of TriggerDefinition in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code type() {
         return type;
     }

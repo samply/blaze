@@ -73,6 +73,21 @@ public final class UsageContext extends AbstractElement implements Complex, Exte
         return new UsageContext(ExtensionData.fromMap(m), (Coding) m.valAt(CODE), (ExtensionValue) m.valAt(VALUE));
     }
 
+    /**
+     * Creates a UsageContext from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static UsageContext fromSlots(Object[] slots) {
+        return new UsageContext(ExtensionData.fromSlots(slots), (Coding) slots[2], (ExtensionValue) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of UsageContext in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Coding code() {
         return code;
     }

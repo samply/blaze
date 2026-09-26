@@ -93,6 +93,22 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                 (Repeat) m.valAt(REPEAT), (CodeableConcept) m.valAt(CODE));
     }
 
+    /**
+     * Creates a Timing from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Timing fromSlots(Object[] slots) {
+        return new Timing(ExtensionData.fromSlots(slots), Lists.nullToEmpty(slots[2]), Lists.nullToEmpty(slots[3]),
+                (Repeat) slots[4], (CodeableConcept) slots[5]);
+    }
+
+    /**
+     * Returns the keys of all fields of Timing in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return false;
@@ -489,6 +505,31 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                     (Decimal) m.valAt(PERIOD), (Decimal) m.valAt(PERIOD_MAX), (Code) m.valAt(PERIOD_UNIT),
                     Base.listFrom(m, DAY_OF_WEEK), Base.listFrom(m, TIME_OF_DAY), Base.listFrom(m, WHEN),
                     (UnsignedInt) m.valAt(OFFSET));
+        }
+
+        /**
+         * Creates a Repeat from {@code slots} holding the values of the keys of
+         * {@link #fields()} at the same index.
+         */
+        public static Repeat fromSlots(Object[] slots) {
+            Object bounds = slots[2];
+            if (bounds != null && !(bounds instanceof Duration || bounds instanceof Range || bounds instanceof Period)) {
+                throw new IllegalArgumentException("Expecting bounds to be either a Duration, Range or Period but was a `" +
+                        bounds.getClass().getSimpleName() + "`.");
+            }
+            return new Repeat(ExtensionData.fromSlots(slots), (Element) bounds, (PositiveInt) slots[3],
+                    (PositiveInt) slots[4], (Decimal) slots[5], (Decimal) slots[6],
+                    (Code) slots[7], (PositiveInt) slots[8], (PositiveInt) slots[9],
+                    (Decimal) slots[10], (Decimal) slots[11], (Code) slots[12],
+                    Lists.nullToEmpty(slots[13]), Lists.nullToEmpty(slots[14]), Lists.nullToEmpty(slots[15]),
+                    (UnsignedInt) slots[16]);
+        }
+
+        /**
+         * Returns the keys of all fields of Repeat in slot order.
+         */
+        public static Keyword[] fields() {
+            return FIELDS.clone();
         }
 
         @Override

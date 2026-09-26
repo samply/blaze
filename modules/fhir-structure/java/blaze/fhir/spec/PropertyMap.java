@@ -1,90 +1,163 @@
 package blaze.fhir.spec;
 
-import java.util.ArrayList;
+import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import clojure.lang.RT;
+
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A mutable map collecting the properties of a FHIR object while parsing.
  * <p>
- * The properties are stored as alternating keys and values, like in a {@link clojure.lang.PersistentArrayMap}.
+ * The properties are stored in an object array of slots. Each key of the FHIR object has a fixed slot index. An empty
+ * slot holds {@code null}. Values can't be {@code null}, so the number of non-empty slots can be tracked on
+ * {@link #put(int, Object)}.
  * <p>
- * Separately from the properties, the keys of lists of primitive values which contain null placeholders are tracked.
- * So that tracking never ends up in the finalized FHIR object.
+ * Separately from the properties, the slots of lists of primitive values which contain null placeholders are tracked.
+ * In JSON, a null in an array of primitive values is a placeholder for an element that has only extended properties
+ * given in the array of the corresponding {@code _} property. Because both arrays can come in any order, remaining
+ * nulls can only be detected at the end of the object. The tracking allows checking only the marked slots.
  */
 public final class PropertyMap {
 
-    private final ArrayList<Object> keysAndValues;
-    private Map<Object, String> nullElementKeys;
+    private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "type");
+
+    private final Object[] slots;
+    private int count;
+    private Map<Integer, String> nullElementSlots;
 
     /**
-     * @param initialCapacity the initial capacity of keys and values together
+     * @param numSlots the number of slots
      */
-    public PropertyMap(int initialCapacity) {
-        keysAndValues = new ArrayList<>(initialCapacity);
+    public PropertyMap(int numSlots) {
+        slots = new Object[numSlots];
     }
 
     /**
-     * Returns the value under {@code key} or {@code notFound} if there is no such value.
+     * Returns the value at {@code slot} or {@code null} if the slot is empty.
      *
-     * @param key      the key of the value
-     * @param notFound the value to return if there is no value under {@code key}
-     * @return the value under {@code key} or {@code notFound}
+     * @param slot the index of the slot
+     * @return the value at {@code slot} or {@code null}
      */
-    public Object get(Object key, Object notFound) {
-        int idx = keysAndValues.indexOf(key);
-        return idx < 0 ? notFound : keysAndValues.get(idx + 1);
+    public Object get(int slot) {
+        return slots[slot];
     }
 
     /**
-     * Puts {@code value} under {@code key}, replacing an existing value.
+     * Returns the value at {@code slot} or {@code notFound} if the slot is empty.
      *
-     * @param key   the key of the value
-     * @param value the value to put
+     * @param slot     the index of the slot
+     * @param notFound the value to return if the slot is empty
+     * @return the value at {@code slot} or {@code notFound}
+     */
+    public Object get(int slot, Object notFound) {
+        Object value = slots[slot];
+        return value == null ? notFound : value;
+    }
+
+    /**
+     * Puts {@code value} at {@code slot}, replacing an existing value.
+     *
+     * @param slot  the index of the slot
+     * @param value the value to put, never {@code null}
      * @return this property map
+     * @throws NullPointerException if {@code value} is {@code null}
      */
-    public PropertyMap put(Object key, Object value) {
-        int idx = keysAndValues.indexOf(key);
-        if (idx < 0) {
-            keysAndValues.add(key);
-            keysAndValues.add(value);
-        } else {
-            keysAndValues.set(idx + 1, value);
-        }
+    public PropertyMap put(int slot, Object value) {
+        Objects.requireNonNull(value);
+        if (slots[slot] == null) count++;
+        slots[slot] = value;
         return this;
     }
 
     /**
-     * Returns a new array of the alternating keys and values.
+     * Returns the slots of this property map.
+     * <p>
+     * The slots are not copied, so they must not be modified.
      *
-     * @return a new array of the alternating keys and values
+     * @return the slots of this property map
      */
-    public Object[] toArray() {
-        return keysAndValues.toArray();
+    public Object[] slots() {
+        return slots;
     }
 
     /**
-     * Marks the list of primitive values under {@code key} as possibly containing null elements.
-     * <p>
-     * Keeps the order in which keys are marked first.
+     * Returns the number of non-empty slots.
      *
-     * @param key          the key of the list of primitive values
+     * @return the number of non-empty slots
+     */
+    public int count() {
+        return count;
+    }
+
+    /**
+     * Returns a persistent map of all non-empty slots using {@code keys}, which are indexed by slot. Additionally
+     * associates {@code fhirType} under {@code :fhir/type} as the first entry.
+     *
+     * @param keys     the keys of the slots
+     * @param fhirType the value to associate under {@code :fhir/type}
+     * @return a persistent map of all non-empty slots
+     */
+    public IPersistentMap toPersistentMap(Object[] keys, Object fhirType) {
+        Object[] kvs = new Object[2 * count + 2];
+        kvs[0] = FHIR_TYPE;
+        kvs[1] = fhirType;
+        int n = 2;
+        for (int i = 0; n < kvs.length; i++) {
+            Object value = slots[i];
+            if (value != null) {
+                kvs[n++] = keys[i];
+                kvs[n++] = value;
+            }
+        }
+        return RT.mapUniqueKeys(kvs);
+    }
+
+    /**
+     * Marks the list of primitive values at {@code slot} as possibly containing null elements.
+     * <p>
+     * Keeps the order in which slots are marked first.
+     *
+     * @param slot         the index of the slot of the list of primitive values
      * @param expectedType the expected type of the elements of the list, used in error messages
      */
-    public void markNullElements(Object key, String expectedType) {
-        if (nullElementKeys == null) {
-            nullElementKeys = new LinkedHashMap<>(4);
+    public void markNullElements(int slot, String expectedType) {
+        if (nullElementSlots == null) {
+            nullElementSlots = new LinkedHashMap<>(4);
         }
-        nullElementKeys.putIfAbsent(key, expectedType);
+        nullElementSlots.putIfAbsent(slot, expectedType);
     }
 
     /**
-     * Returns the keys marked by {@link #markNullElements(Object, String)} in marking order, mapped to their expected
-     * types, or {@code null} if no key was marked.
+     * Returns the first null element of the lists of primitive values marked by
+     * {@link #markNullElements(int, String)}, looking at the lists in marking order, or {@code null} if the marked lists
+     * contain no null element.
      *
-     * @return the marked keys or {@code null}
+     * @return the first null element or {@code null}
      */
-    public Map<Object, String> nullElementKeys() {
-        return nullElementKeys;
+    public NullElement firstNullElement() {
+        if (nullElementSlots != null) {
+            for (Map.Entry<Integer, String> entry : nullElementSlots.entrySet()) {
+                int slot = entry.getKey();
+                int index = ((List<?>) slots[slot]).indexOf(null);
+                if (index >= 0) {
+                    return new NullElement(slot, index, entry.getValue());
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A null element in a list of primitive values.
+     *
+     * @param slot         the index of the slot of the list
+     * @param index        the index of the null element in the list
+     * @param expectedType the expected type of the elements of the list
+     */
+    public record NullElement(int slot, int index, String expectedType) {
     }
 }

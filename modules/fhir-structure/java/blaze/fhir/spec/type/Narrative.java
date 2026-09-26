@@ -74,6 +74,21 @@ public final class Narrative extends AbstractElement implements Complex, Extensi
         return new Narrative(ExtensionData.fromMap(m), (Code) m.valAt(STATUS), (Xhtml) m.valAt(DIV));
     }
 
+    /**
+     * Creates a Narrative from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Narrative fromSlots(Object[] slots) {
+        return new Narrative(ExtensionData.fromSlots(slots), (Code) slots[2], (Xhtml) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of Narrative in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code status() {
         return status;
     }

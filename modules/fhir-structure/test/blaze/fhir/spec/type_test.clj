@@ -19,7 +19,15 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.fhir.spec.type Base Primitive RatioRange]
+   [blaze.fhir.spec.type
+    Address Age Annotation Attachment Base BundleEntrySearch CodeableConcept
+    Coding ContactDetail ContactPoint Contributor Count DataRequirement
+    DataRequirement$CodeFilter DataRequirement$DateFilter
+    DataRequirement$Sort Distance Dosage Dosage$DoseAndRate Duration
+    Expression Extension HumanName Identifier Meta Money Narrative
+    ParameterDefinition Period Primitive Quantity Range Ratio RatioRange
+    Reference RelatedArtifact SampledData Signature Timing Timing$Repeat
+    TriggerDefinition UsageContext]
    [blaze.fhir.spec.type.system DateTime]
    [com.fasterxml.jackson.databind ObjectMapper]
    [com.fasterxml.jackson.databind.module SimpleModule]
@@ -2958,9 +2966,19 @@
 (def ^:private markdown-extension-gen
   (fg/extension :value (fg/markdown :value fg/markdown-value)))
 
+(defn- slots
+  "Returns the values of `x` in the slot order of `fields`."
+  [x fields]
+  (object-array (map #(get x %) fields)))
+
 (deftest address-test
   (testing "type"
     (is (= :fhir/Address (:fhir/type #fhir/Address{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/address)]
+        (= x (Address/fromSlots (slots x (Address/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3072,6 +3090,11 @@
   (testing "type"
     (is (= :fhir/Age (:fhir/type #fhir/Age{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/age)]
+        (= x (Age/fromSlots (slots x (Age/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Age{:id "foo"}
@@ -3118,6 +3141,11 @@
 (deftest annotation-test
   (testing "type"
     (is (= :fhir/Annotation (:fhir/type #fhir/Annotation{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/annotation)]
+        (= x (Annotation/fromSlots (slots x (Annotation/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3168,6 +3196,11 @@
 (deftest attachment-test
   (testing "type"
     (is (= :fhir/Attachment (:fhir/type #fhir/Attachment{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/attachment)]
+        (= x (Attachment/fromSlots (slots x (Attachment/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3249,6 +3282,11 @@
   (testing "type"
     (is (= :fhir.Bundle.entry/search (:fhir/type #fhir.Bundle.entry/search{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/bundle-entry-search)]
+        (= x (BundleEntrySearch/fromSlots (slots x (BundleEntrySearch/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Bundle.entry/search{:id "foo"}
@@ -3328,6 +3366,11 @@
   (testing "type"
     (is (= :fhir/CodeableConcept (:fhir/type #fhir/CodeableConcept{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/codeable-concept)]
+        (= x (CodeableConcept/fromSlots (slots x (CodeableConcept/fields)))))))
+
   (testing "interning"
     (testing "instances with ids are not interned"
       (satisfies-prop 100
@@ -3405,6 +3448,11 @@
   (testing "type"
     (is (= :fhir/Coding (:fhir/type #fhir/Coding{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/coding)]
+        (= x (Coding/fromSlots (slots x (Coding/fields)))))))
+
   (testing "interning"
     (testing "instances with ids are not interned"
       (satisfies-prop 100
@@ -3479,6 +3527,11 @@
   (testing "type"
     (is (= :fhir/ContactDetail (:fhir/type #fhir/ContactDetail{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/contact-detail)]
+        (= x (ContactDetail/fromSlots (slots x (ContactDetail/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ContactDetail{:id "foo"}
@@ -3527,6 +3580,11 @@
   (testing "type"
     (is (= :fhir/ContactPoint (:fhir/type #fhir/ContactPoint{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/contact-point)]
+        (= x (ContactPoint/fromSlots (slots x (ContactPoint/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ContactPoint{:id "foo"}
@@ -3573,6 +3631,11 @@
 (deftest contributor-test
   (testing "type"
     (is (= :fhir/Contributor (:fhir/type #fhir/Contributor{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/contributor)]
+        (= x (Contributor/fromSlots (slots x (Contributor/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3623,6 +3686,11 @@
   (testing "type"
     (is (= :fhir/Count (:fhir/type #fhir/Count{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/count)]
+        (= x (Count/fromSlots (slots x (Count/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Count{:id "foo"}
@@ -3669,6 +3737,11 @@
 (deftest data-requirement-test
   (testing "type"
     (is (= :fhir/DataRequirement (:fhir/type #fhir/DataRequirement{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/data-requirement)]
+        (= x (DataRequirement/fromSlots (slots x (DataRequirement/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3738,6 +3811,11 @@
   (testing "type"
     (is (= :fhir.DataRequirement/codeFilter (:fhir/type #fhir.DataRequirement/codeFilter{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/data-requirement-code-filter)]
+        (= x (DataRequirement$CodeFilter/fromSlots (slots x (DataRequirement$CodeFilter/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.DataRequirement/codeFilter{:id "foo"}
@@ -3794,6 +3872,11 @@
   (testing "type"
     (is (= :fhir.DataRequirement/dateFilter (:fhir/type #fhir.DataRequirement/dateFilter{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/data-requirement-date-filter)]
+        (= x (DataRequirement$DateFilter/fromSlots (slots x (DataRequirement$DateFilter/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.DataRequirement/dateFilter{:id "foo"}
@@ -3847,6 +3930,11 @@
   (testing "type"
     (is (= :fhir.DataRequirement/sort (:fhir/type #fhir.DataRequirement/sort{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/data-requirement-sort)]
+        (= x (DataRequirement$Sort/fromSlots (slots x (DataRequirement$Sort/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.DataRequirement/sort{:id "foo"}
@@ -3897,6 +3985,11 @@
   (testing "type"
     (is (= :fhir/Distance (:fhir/type #fhir/Distance{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/distance)]
+        (= x (Distance/fromSlots (slots x (Distance/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Distance{:id "foo"}
@@ -3943,6 +4036,11 @@
 (deftest duration-test
   (testing "type"
     (is (= :fhir/Duration (:fhir/type #fhir/Duration{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/duration)]
+        (= x (Duration/fromSlots (slots x (Duration/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -3991,6 +4089,11 @@
   (testing "type"
     (is (= :fhir/Expression (:fhir/type #fhir/Expression{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/expression)]
+        (= x (Expression/fromSlots (slots x (Expression/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Expression{:id "foo"}
@@ -4037,6 +4140,11 @@
 (deftest dosage-test
   (testing "type"
     (is (= :fhir/Dosage (:fhir/type #fhir/Dosage{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/dosage)]
+        (= x (Dosage/fromSlots (slots x (Dosage/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4114,6 +4222,11 @@
   (testing "type"
     (is (= :fhir.Dosage/doseAndRate (:fhir/type #fhir.Dosage/doseAndRate{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/dosage-dose-and-rate)]
+        (= x (Dosage$DoseAndRate/fromSlots (slots x (Dosage$DoseAndRate/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Dosage/doseAndRate{:id "foo"}
@@ -4158,6 +4271,11 @@
 (deftest extension-test
   (testing "type"
     (is (= :fhir/Extension (:fhir/type #fhir/Extension{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/extension)]
+        (= x (Extension/fromSlots (slots x (Extension/fields)))))))
 
   (testing "interning"
     (testing "instances with code values are interned"
@@ -4246,6 +4364,11 @@
 (deftest human-name-test
   (testing "type"
     (is (= :fhir/HumanName (:fhir/type #fhir/HumanName{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/human-name)]
+        (= x (HumanName/fromSlots (slots x (HumanName/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4353,6 +4476,11 @@
   (testing "type"
     (is (= :fhir/Identifier (:fhir/type #fhir/Identifier{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/identifier)]
+        (= x (Identifier/fromSlots (slots x (Identifier/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Identifier{:id "foo"}
@@ -4438,6 +4566,11 @@
 (deftest meta-test
   (testing "type"
     (is (= :fhir/Meta (:fhir/type #fhir/Meta{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/meta)]
+        (= x (Meta/fromSlots (slots x (Meta/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4554,6 +4687,11 @@
   (testing "type"
     (is (= :fhir/Money (:fhir/type #fhir/Money{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/money)]
+        (= x (Money/fromSlots (slots x (Money/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Money{:id "foo"}
@@ -4611,6 +4749,11 @@
 (deftest narrative-test
   (testing "type"
     (is (= :fhir/Narrative (:fhir/type #fhir/Narrative{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/narrative)]
+        (= x (Narrative/fromSlots (slots x (Narrative/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4674,6 +4817,11 @@
   (testing "type"
     (is (= :fhir/ParameterDefinition (:fhir/type #fhir/ParameterDefinition{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/parameter-definition)]
+        (= x (ParameterDefinition/fromSlots (slots x (ParameterDefinition/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/ParameterDefinition{:id "foo"}
@@ -4736,6 +4884,11 @@
 (deftest period-test
   (testing "type"
     (is (= :fhir/Period (:fhir/type #fhir/Period{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/period)]
+        (= x (Period/fromSlots (slots x (Period/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4803,6 +4956,11 @@
 (deftest quantity-test
   (testing "type"
     (is (= :fhir/Quantity (:fhir/type #fhir/Quantity{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/quantity)]
+        (= x (Quantity/fromSlots (slots x (Quantity/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -4898,6 +5056,11 @@
   (testing "type"
     (is (= :fhir/Range (:fhir/type #fhir/Range{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/range)]
+        (= x (Range/fromSlots (slots x (Range/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Range{:id "foo"}
@@ -4967,6 +5130,11 @@
 (deftest ratio-test
   (testing "type"
     (is (= :fhir/Ratio (:fhir/type #fhir/Ratio{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/ratio)]
+        (= x (Ratio/fromSlots (slots x (Ratio/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -5047,6 +5215,11 @@
 (deftest reference-test
   (testing "type"
     (is (= :fhir/Reference (:fhir/type #fhir/Reference{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/reference)]
+        (= x (Reference/fromSlots (slots x (Reference/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -5192,6 +5365,11 @@
   (testing "type"
     (is (= :fhir/RelatedArtifact (:fhir/type #fhir/RelatedArtifact{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/related-artifact)]
+        (= x (RelatedArtifact/fromSlots (slots x (RelatedArtifact/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/RelatedArtifact{:id "foo"}
@@ -5240,6 +5418,11 @@
 (deftest sampled-data-test
   (testing "type"
     (is (= :fhir/SampledData (:fhir/type #fhir/SampledData{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/sampled-data)]
+        (= x (SampledData/fromSlots (slots x (SampledData/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -5301,6 +5484,11 @@
 (deftest signature-test
   (testing "type"
     (is (= :fhir/Signature (:fhir/type #fhir/Signature{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/signature)]
+        (= x (Signature/fromSlots (slots x (Signature/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)
@@ -5371,6 +5559,11 @@
   (testing "type"
     (is (= :fhir/Timing (:fhir/type #fhir/Timing{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/timing)]
+        (= x (Timing/fromSlots (slots x (Timing/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/Timing{:id "foo"}
@@ -5433,6 +5626,11 @@
   (testing "type"
     (is (= :fhir.Timing/repeat (:fhir/type #fhir.Timing/repeat{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/timing-repeat)]
+        (= x (Timing$Repeat/fromSlots (slots x (Timing$Repeat/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir.Timing/repeat{:id "foo"}
@@ -5493,6 +5691,11 @@
   (testing "type"
     (is (= :fhir/TriggerDefinition (:fhir/type #fhir/TriggerDefinition{}))))
 
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/trigger-definition)]
+        (= x (TriggerDefinition/fromSlots (slots x (TriggerDefinition/fields)))))))
+
   (testing "interning"
     (are [x y] (not-interned? x y)
       #fhir/TriggerDefinition{:id "foo"}
@@ -5549,6 +5752,11 @@
 (deftest usage-context-test
   (testing "type"
     (is (= :fhir/UsageContext (:fhir/type #fhir/UsageContext{}))))
+
+  (testing "from-slots"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/usage-context)]
+        (= x (UsageContext/fromSlots (slots x (UsageContext/fields)))))))
 
   (testing "interning"
     (are [x y] (not-interned? x y)

@@ -128,6 +128,22 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
                 (Code) m.valAt(CODE), (String) m.valAt(DISPLAY), (Boolean) m.valAt(USER_SELECTED));
     }
 
+    /**
+     * Creates a Coding from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Coding fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), (Uri) slots[2], (String) slots[3],
+                (Code) slots[4], (String) slots[5], (Boolean) slots[6]);
+    }
+
+    /**
+     * Returns the keys of all fields of Coding in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

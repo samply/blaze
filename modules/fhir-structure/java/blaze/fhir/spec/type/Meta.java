@@ -146,6 +146,22 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
                 (Uri) m.valAt(SOURCE), Base.listFrom(m, PROFILE), Base.listFrom(m, SECURITY), Base.listFrom(m, TAG));
     }
 
+    /**
+     * Creates a Meta from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Meta fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), (Id) slots[2], (Instant) slots[3],
+                (Uri) slots[4], Lists.nullToEmpty(slots[5]), Lists.nullToEmpty(slots[6]), Lists.nullToEmpty(slots[7]));
+    }
+
+    /**
+     * Returns the keys of all fields of Meta in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

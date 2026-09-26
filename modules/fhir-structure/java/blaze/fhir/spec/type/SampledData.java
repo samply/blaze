@@ -137,6 +137,23 @@ public final class SampledData extends AbstractElement implements Complex, Exten
                 (PositiveInt) m.valAt(DIMENSIONS), (String) m.valAt(DATA));
     }
 
+    /**
+     * Creates a SampledData from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static SampledData fromSlots(Object[] slots) {
+        return new SampledData(ExtensionData.fromSlots(slots), (Quantity) slots[2], (Decimal) slots[3],
+                (Decimal) slots[4], (Decimal) slots[5], (Decimal) slots[6],
+                (PositiveInt) slots[7], (String) slots[8]);
+    }
+
+    /**
+     * Returns the keys of all fields of SampledData in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Quantity origin() {
         return origin;
     }

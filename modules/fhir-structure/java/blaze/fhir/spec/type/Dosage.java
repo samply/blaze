@@ -223,6 +223,26 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
                 (Quantity) m.valAt(MAX_DOSE_PER_LIFETIME));
     }
 
+    /**
+     * Creates a Dosage from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Dosage fromSlots(Object[] slots) {
+        return new Dosage(ExtensionData.fromSlots(slots), Lists.nullToEmpty(slots[2]), (Integer) slots[3],
+                (String) slots[4], Lists.nullToEmpty(slots[5]), (String) slots[6],
+                (Timing) slots[7], (Element) slots[8], (CodeableConcept) slots[9],
+                (CodeableConcept) slots[10], (CodeableConcept) slots[11], Lists.nullToEmpty(slots[12]),
+                (Ratio) slots[13], (Quantity) slots[14],
+                (Quantity) slots[15]);
+    }
+
+    /**
+     * Returns the keys of all fields of Dosage in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Integer sequence() {
         return sequence;
     }
@@ -674,6 +694,22 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         public static DoseAndRate create(IPersistentMap m) {
             return new DoseAndRate(ExtensionData.fromMap(m), (CodeableConcept) m.valAt(TYPE), (Element) m.valAt(DOSE),
                     (Element) m.valAt(RATE));
+        }
+
+        /**
+         * Creates a DoseAndRate from {@code slots} holding the values of the keys of
+         * {@link #fields()} at the same index.
+         */
+        public static DoseAndRate fromSlots(Object[] slots) {
+            return new DoseAndRate(ExtensionData.fromSlots(slots), (CodeableConcept) slots[2], (Element) slots[3],
+                    (Element) slots[4]);
+        }
+
+        /**
+         * Returns the keys of all fields of DoseAndRate in slot order.
+         */
+        public static Keyword[] fields() {
+            return FIELDS.clone();
         }
 
         public CodeableConcept type() {

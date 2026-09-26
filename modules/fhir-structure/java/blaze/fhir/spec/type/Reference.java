@@ -82,6 +82,22 @@ public final class Reference extends AbstractElement implements Complex, Extensi
                 (Identifier) m.valAt(IDENTIFIER), (String) m.valAt(DISPLAY));
     }
 
+    /**
+     * Creates a Reference from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Reference fromSlots(Object[] slots) {
+        return new Reference(ExtensionData.fromSlots(slots), (String) slots[2], (Uri) slots[3],
+                (Identifier) slots[4], (String) slots[5]);
+    }
+
+    /**
+     * Returns the keys of all fields of Reference in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public String reference() {
         return reference;
     }

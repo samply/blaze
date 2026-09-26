@@ -112,6 +112,22 @@ public final class ContactPoint extends AbstractElement implements Complex, Exte
                 (Code) m.valAt(USE), (PositiveInt) m.valAt(RANK), (Period) m.valAt(PERIOD));
     }
 
+    /**
+     * Creates a ContactPoint from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static ContactPoint fromSlots(Object[] slots) {
+        return new ContactPoint(ExtensionData.fromSlots(slots), (Code) slots[2], (String) slots[3],
+                (Code) slots[4], (PositiveInt) slots[5], (Period) slots[6]);
+    }
+
+    /**
+     * Returns the keys of all fields of ContactPoint in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code system() {
         return system;
     }

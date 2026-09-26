@@ -72,7 +72,7 @@ public sealed abstract class AbstractQuantity extends AbstractElement implements
      * 4 or 8 byte - code reference
      */
     private static final int MEM_SIZE_OBJECT = MEM_SIZE_OBJECT_HEADER + 6 * MEM_SIZE_REFERENCE;
-    private static final Keyword[] FIELDS = {ID, EXTENSION, VALUE, COMPARATOR, UNIT, SYSTEM, CODE};
+    static final Keyword[] FIELDS = {ID, EXTENSION, VALUE, COMPARATOR, UNIT, SYSTEM, CODE};
 
     private static final FieldName FIELD_NAME_VALUE = FieldName.of("value");
     private static final FieldName FIELD_NAME_COMPARATOR = FieldName.of("comparator");

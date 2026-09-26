@@ -7,9 +7,10 @@
   from the token stream without an intermediate tree, so a resource is built in
   a single pass.
 
-  Use `create-type-handlers` to build a map of type-handlers from a
-  StructureDefinition snapshot, then pass it to `parse-json` / `parse-cbor`
-  (read) or `write-json` / `write-cbor` (write).
+  Use `create-type-handlers` to build a map of type-handlers from
+  StructureDefinition snapshots, then pass it to `parse-json` / `parse-cbor`
+  (read). Use `write-json` / `write-cbor` with the type-handlers of the writing
+  context (write).
 
   A locator is a list of path segments already parsed in order to report the
   location of an error. Path segments are either strings of field names or
@@ -17,13 +18,16 @@
   front. In case of an error, the locator list is reversed.
 
   A type-handler in this namespace is a function of two arities. On arity-0 the
-  function returns the name of the type as string. On arity-3 it takes a map of
-  all type handlers, a parser and a locator and returns either a FHIR value or
-  an anomaly in case of errors.
+  function returns the name of the type as string. On arity-2 it takes a parser
+  and a locator and returns either a FHIR value or an anomaly in case of errors.
 
-  A property-handler in this namespace is a function taking a map of all type
-  handlers, a parser, a locator and a partially constructed FHIR value and
-  returns either the FHIR value with data added or an anomaly in case of errors.
+  A property-handler in this namespace is a function taking a parser, a locator
+  and a partially constructed FHIR value and returns either the FHIR value with
+  data added or an anomaly in case of errors.
+
+  Type-handlers of complex types don't look up other type-handlers while
+  parsing. Instead they hold references to them, which are filled after all
+  type-handlers are created (see `create-type-handlers`).
 
   Summary variant: when `create-type-handlers` is called with
   `:include-summary-only true`, it builds a second, summary-only handler for
@@ -51,9 +55,17 @@
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
-   [blaze.fhir.spec PropertyMap]
-   [blaze.fhir.spec.type Lists]
-   [clojure.lang PersistentArrayMap RT]
+   [blaze.fhir.spec PropertyMap TypeHandlerRef]
+   [blaze.fhir.spec.type
+    Address Age Annotation Attachment BundleEntrySearch CodeableConcept
+    Coding ContactDetail ContactPoint Contributor Count DataRequirement
+    DataRequirement$CodeFilter DataRequirement$DateFilter
+    DataRequirement$Sort Distance Dosage Dosage$DoseAndRate Duration
+    Expression Extension HumanName Identifier Meta Money Narrative
+    ParameterDefinition Period Quantity Range Ratio Reference
+    RelatedArtifact SampledData Signature Timing Timing$Repeat
+    TriggerDefinition UsageContext Lists]
+   [clojure.lang RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
    [com.fasterxml.jackson.core.io JsonEOFException]
@@ -61,7 +73,7 @@
    [com.fasterxml.jackson.databind.node TreeTraversingParser]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.io InputStream OutputStream Reader]
-   [java.util ArrayList Arrays List]))
+   [java.util ArrayList HashMap List]))
 
 (set! *warn-on-reflection* true)
 
@@ -506,7 +518,7 @@
 (defn- create-system-string-handler
   "Returns a property-handler for System.String properties."
   [assoc-fn path expected-type]
-  (fn system-string-handler [_ parser locator m]
+  (fn system-string-handler [parser locator m]
     (cond-next-token parser locator
       JsonToken/VALUE_STRING
       (when-ok [value (get-text parser (cons path locator))]
@@ -518,48 +530,43 @@
     (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
 
 (defn- get-value
-  "Gets the value from mutable property `map` at `key` or returns optional
-  `not-found`."
-  ([map key]
-   (get-value map key nil))
-  ([map key not-found]
-   (.get ^PropertyMap map key not-found)))
+  "Gets the value from mutable property `map` at `slot` or returns optional
+  `not-found` if the slot is empty."
+  ([map ^long slot]
+   (.get ^PropertyMap map (unchecked-int slot)))
+  ([map ^long slot not-found]
+   (.get ^PropertyMap map (unchecked-int slot) not-found)))
 
 (defn- put-value!
-  "Puts `value` into mutable property `map` at `key`. Returns `map`."
-  [map key value]
-  (.put ^PropertyMap map key value))
+  "Puts `value` into mutable property `map` at `slot`. Returns `map`."
+  [map ^long slot value]
+  (.put ^PropertyMap map (unchecked-int slot) value))
 
 (defn- check-null-elements
   "Returns an anomaly if a list of primitive values marked as possibly
   containing null elements in mutable property `map` still contains a null
-  element. Returns `map` otherwise.
+  element. Returns `map` otherwise. Uses `keys` indexed by slot for the location
+  of errors.
 
   Nulls in JSON arrays of primitive values are placeholders that have to be
   matched by extended properties. Because the JSON array of values and the
   JSON array of extended properties can come in any order, remaining nulls can
   only be detected at the end of the object."
-  [^PropertyMap map locator]
-  (if-some [keys (.nullElementKeys map)]
-    (or (some
-         (fn [[key expected-type]]
-           (let [idx (.indexOf ^List (get-value map key) nil)]
-             (when-not (neg? idx)
-               (incorrect-value-anom* "value null" (cons idx (cons (name key) locator))
-                                      expected-type))))
-         keys)
-        map)
+  [^objects keys ^PropertyMap map locator]
+  (if-some [e (.firstNullElement map)]
+    (incorrect-value-anom* "value null" (cons (.index e) (cons (name (aget keys (.slot e))) locator))
+                           (.expectedType e))
     map))
 
 (defn- add-null-placeholder!
   "Adds a null placeholder to the `list` of primitive values of `expected-type`
-  under `key` in mutable property `map` if `index` is at the end of `list`.
+  at `slot` in mutable property `map` if `index` is at the end of `list`.
   Marks the list as possibly containing null elements in that case, which have
   to be checked with `check-null-elements` at the end of the object. Returns
   `list`."
-  [^PropertyMap map key expected-type ^List list index]
+  [^PropertyMap map slot expected-type ^List list index]
   (when (= index (.size list))
-    (.markNullElements map key expected-type)
+    (.markNullElements map (int slot) expected-type)
     (.add list nil))
   list)
 
@@ -570,72 +577,69 @@
     (< index (.size list)) (doto list (.set index value))
     (= index (.size list)) (doto list (.add value))))
 
-(defn- persist-array-map
-  "Creates an PersistentArrayMap from mutable property `map`.
-
-  Should be only used if the map is consumed by a complex type constructor."
-  [^PropertyMap map]
-  (PersistentArrayMap. (.toArray map)))
-
-(defn- persist-map
-  "Creates an IPersistentMap from mutable property `map`."
-  [^PropertyMap map]
-  (RT/mapUniqueKeys (.toArray map)))
-
-(defn- assoc-primitive-value
-  "Associates `value` to `m` under `key`.
+(defn- primitive-value-assoc
+  "Returns a function taking slots `m`, a `value` and a locator that associates
+  `value` to `m` at the slot of the property-handler definition.
 
   In case an extended primitive value exists already, updates that primitive
   value with `value`. Otherwise uses `constructor` to create a new primitive
   value."
-  [field-name key m constructor value locator]
-  (if-some [primitive-value (get-value m key)]
-    (if (some? (:value primitive-value))
-      (duplicate-property-anom field-name locator)
-      (put-value! m key (assoc primitive-value :value value)))
-    (if-ok [value (constructor value)]
-      (put-value! m key value)
-      #(let [msg (::anom/message %)]
-         (ba/incorrect msg :fhir/issues [(fhir-issue msg (cons (name key) locator))])))))
+  [{:keys [field-name key slot]} constructor]
+  (let [slot (long slot)]
+    (fn assoc-primitive-value [m value locator]
+      (if-some [primitive-value (get-value m slot)]
+        (if (some? (:value primitive-value))
+          (duplicate-property-anom field-name locator)
+          (put-value! m slot (assoc primitive-value :value value)))
+        (if-ok [value (constructor value)]
+          (put-value! m slot value)
+          #(let [msg (::anom/message %)]
+             (ba/incorrect msg :fhir/issues [(fhir-issue msg (cons (name key) locator))])))))))
 
-(defn- assoc-primitive-many-value
-  "Like `assoc-primitive-value` but with a single value for cardinality many.
+(defn- primitive-many-value-assoc
+  "Like `primitive-value-assoc` but with a single value for cardinality many.
 
   The value is the first element of the list. Other elements, already created
   from extended properties, are kept."
-  [{:keys [field-name key]} m constructor value locator]
-  (let [primitive-list (get-value m key [])]
-    (if-some [primitive-value (first primitive-list)]
-      (if (some? (:value primitive-value))
-        (duplicate-property-anom field-name locator)
-        (put-value! m key (assoc primitive-list 0 (assoc primitive-value :value value))))
-      (put-value! m key (assoc primitive-list 0 (constructor value))))))
+  [{:keys [field-name slot]} constructor]
+  (let [slot (long slot)]
+    (fn assoc-primitive-many-value [m value locator]
+      (let [primitive-list (get-value m slot [])]
+        (if-some [primitive-value (first primitive-list)]
+          (if (some? (:value primitive-value))
+            (duplicate-property-anom field-name locator)
+            (put-value! m slot (assoc primitive-list 0 (assoc primitive-value :value value))))
+          (put-value! m slot (assoc primitive-list 0 (constructor value))))))))
 
 (defn- primitive-boolean-value-handler
   "Returns a property-handler for boolean properties."
-  [{:keys [field-name key]}]
-  (fn [_ parser locator m]
-    (cond-next-token parser locator
-      JsonToken/VALUE_TRUE (assoc-primitive-value field-name key m type/boolean true locator)
-      JsonToken/VALUE_FALSE (assoc-primitive-value field-name key m type/boolean false locator)
-      (incorrect-value-anom parser (cons (name key) locator) "boolean"))))
+  [{:keys [key] :as def}]
+  (let [assoc-value (primitive-value-assoc def type/boolean)]
+    (fn [parser locator m]
+      (cond-next-token parser locator
+        JsonToken/VALUE_TRUE (assoc-value m true locator)
+        JsonToken/VALUE_FALSE (assoc-value m false locator)
+        (incorrect-value-anom parser (cons (name key) locator) "boolean")))))
 
 (defn- primitive-value-handler
   "Returns a property-handler for the value part of primitive properties."
   {:arglists '([property-handler-definition constructor token extract-value expected-type])}
-  ([{:keys [field-name key cardinality] :as def} constructor token extract-value expected-type]
-   (let [path (name key)]
+  ([{:keys [field-name key slot cardinality] :as def} constructor token extract-value expected-type]
+   (let [path (name key)
+         slot (long slot)
+         assoc-value (primitive-value-assoc def constructor)
+         assoc-many-value (primitive-many-value-assoc def constructor)]
      (if (= :single cardinality)
-       (fn primitive-property-handler-one-token-cardinality-single [_ parser locator m]
+       (fn primitive-property-handler-one-token-cardinality-single [parser locator m]
          (cond-next-token parser locator
            token
            (when-ok [value (extract-value parser (cons path locator))]
-             (assoc-primitive-value field-name key m constructor value locator))
+             (assoc-value m value locator))
            (incorrect-value-anom parser (cons path locator) expected-type)))
-       (fn primitive-property-handler-one-token-cardinality-many [_ parser locator m]
+       (fn primitive-property-handler-one-token-cardinality-many [parser locator m]
          (cond-next-token parser locator
            JsonToken/START_ARRAY
-           (loop [l (ArrayList. ^List (get-value m key [])) i 0]
+           (loop [l (ArrayList. ^List (get-value m slot [])) i 0]
              (when-ok [t (next-token! parser locator)]
                (condp identical? t
                  token
@@ -645,31 +649,34 @@
                        (duplicate-property-anom field-name locator)
                        (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
+                 JsonToken/END_ARRAY (put-value! m slot (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (add-null-placeholder! m key expected-type l i) (inc i))
+                 (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))
            token
            (when-ok [value (extract-value parser (cons path locator))]
-             (assoc-primitive-many-value def m constructor value locator))
+             (assoc-many-value m value locator))
            (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))))
-  ([{:keys [field-name key cardinality] :as def} constructor token-1
+  ([{:keys [field-name key slot cardinality] :as def} constructor token-1
     extract-value-1 token-2 extract-value-2 expected-type]
-   (let [path (name key)]
+   (let [path (name key)
+         slot (long slot)
+         assoc-value (primitive-value-assoc def constructor)
+         assoc-many-value (primitive-many-value-assoc def constructor)]
      (if (= :single cardinality)
-       (fn primitive-property-handler-two-tokens-cardinality-single [_ parser locator m]
+       (fn primitive-property-handler-two-tokens-cardinality-single [parser locator m]
          (cond-next-token parser locator
            token-1
            (when-ok [value (extract-value-1 parser (cons path locator))]
-             (assoc-primitive-value field-name key m constructor value locator))
+             (assoc-value m value locator))
            token-2
            (when-ok [value (extract-value-2 parser (cons path locator))]
-             (assoc-primitive-value field-name key m constructor value locator))
+             (assoc-value m value locator))
            (incorrect-value-anom parser (cons path locator) expected-type)))
-       (fn primitive-property-handler-two-tokens-cardinality-many [_ parser locator m]
+       (fn primitive-property-handler-two-tokens-cardinality-many [parser locator m]
          (cond-next-token parser locator
            JsonToken/START_ARRAY
-           (loop [l (ArrayList. ^List (get-value m key [])) i 0]
+           (loop [l (ArrayList. ^List (get-value m slot [])) i 0]
              (when-ok [t (next-token! parser locator)]
                (condp identical? t
                  token-1
@@ -686,16 +693,16 @@
                        (duplicate-property-anom field-name locator)
                        (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
+                 JsonToken/END_ARRAY (put-value! m slot (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (add-null-placeholder! m key expected-type l i) (inc i))
+                 (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) expected-type))))
            token-1
            (when-ok [value (extract-value-1 parser (cons path locator))]
-             (assoc-primitive-many-value def m constructor value locator))
+             (assoc-many-value m value locator))
            token-2
            (when-ok [value (extract-value-2 parser (cons path locator))]
-             (assoc-primitive-many-value def m constructor value locator))
+             (assoc-many-value m value locator))
            (incorrect-value-anom parser (cons path locator) expected-type)))))))
 
 (defmacro recur-ok [expr-form]
@@ -706,11 +713,21 @@
   "A property-handler for id properties."
   (create-system-string-handler #(assoc %1 :id %2) "id" "string"))
 
-(defn- parse-complex-list [handler type-handlers parser locator]
+(defn- type-handler-ref
+  "Returns the reference to the type-handler under `type-key` from the volatile
+  map `refs`, creating the reference if it doesn't exist.
+
+  The reference is linked by `link-type-handlers!` after all type-handlers are
+  created. That way type-handlers can reference each other, even recursively."
+  [refs type-key]
+  (or (@refs type-key)
+      ((vswap! refs assoc type-key (TypeHandlerRef.)) type-key)))
+
+(defn- parse-complex-list [handler parser locator]
   (loop [list (ArrayList.)]
     (cond-next-token parser locator
       JsonToken/START_OBJECT
-      (when-ok [value (handler type-handlers parser (cons (.size list) locator))]
+      (when-ok [value (handler parser (cons (.size list) locator))]
         (recur (doto list (.add value))))
       JsonToken/END_ARRAY (Lists/intern list)
       (incorrect-value-anom parser (cons (.size list) locator) (handler)))))
@@ -719,20 +736,20 @@
   (ba/unsupported (format "Unsupported type `%s`." type)))
 
 (defn- parse-extended-primitive-properties
-  [type-handlers parser locator data]
+  [^TypeHandlerRef extension-handler-ref parser locator data]
   (loop [data data]
     (cond-next-token parser locator
       JsonToken/FIELD_NAME
       (condp = (current-name parser)
-        "id" (recur-ok (primitive-id-handler type-handlers parser locator data))
+        "id" (recur-ok (primitive-id-handler parser locator data))
         "extension"
-        (when-some [extension-handler (get type-handlers :Extension)]
+        (when-some [extension-handler (.get extension-handler-ref)]
           (cond-next-token parser locator
             JsonToken/START_ARRAY
-            (when-ok [list (parse-complex-list extension-handler type-handlers parser (cons "extension" locator))]
+            (when-ok [list (parse-complex-list extension-handler parser (cons "extension" locator))]
               (recur (assoc data :extension list)))
             JsonToken/START_OBJECT
-            (when-ok [extension (extension-handler type-handlers parser (cons 0 (cons "extension" locator)))]
+            (when-ok [extension (extension-handler parser (cons 0 (cons "extension" locator)))]
               (recur (assoc data :extension (Lists/intern [extension]))))
             (incorrect-value-anom parser (cons "extension" locator) "Extension[]")))
         (unknown-property-anom locator (current-name parser)))
@@ -748,22 +765,23 @@
 
 (defn- extended-primitive-handler
   "Returns a property-handler."
-  [{:keys [key cardinality]} constructor expected-type]
-  (let [path (name key)]
+  [{:keys [key slot cardinality extension-handler-ref]} constructor expected-type]
+  (let [path (name key)
+        slot (long slot)]
     (if (= :single cardinality)
-      (fn [type-handlers parser locator m]
+      (fn [parser locator m]
         (cond-next-token parser locator
           JsonToken/START_OBJECT
-          (if-some [primitive-value (get-value m key)]
-            (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
-              (put-value! m key primitive-value))
-            (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-              (put-value! m key (constructor data))))
+          (if-some [primitive-value (get-value m slot)]
+            (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
+              (put-value! m slot primitive-value))
+            (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
+              (put-value! m slot (constructor data))))
           (incorrect-value-anom parser (cons path locator) "primitive extension map")))
-      (fn [type-handlers parser locator m]
+      (fn [parser locator m]
         (cond-next-token parser locator
           JsonToken/START_ARRAY
-          (let [^List values (get-value m key [])
+          (let [^List values (get-value m slot [])
                 ;; only nils added here are trimmed, because nils of values
                 ;; aren't replaced by extended properties
                 num-values (.size values)]
@@ -772,21 +790,21 @@
                 (condp identical? t
                   JsonToken/START_OBJECT
                   (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                    (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
+                    (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
                       (recur (doto l (.set i primitive-value)) (inc i)))
-                    (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
+                    (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
                       (recur (set-value! l i (constructor data)) (inc i))))
-                  JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l num-values)))
+                  JsonToken/END_ARRAY (put-value! m slot (Lists/intern (trim-trailing-nils l num-values)))
                   JsonToken/VALUE_NULL
-                  (recur (add-null-placeholder! m key expected-type l i) (inc i))
+                  (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                   (incorrect-value-anom parser (cons path locator) "primitive extension map")))))
           JsonToken/START_OBJECT
-          (let [primitive-list (get-value m key [])]
+          (let [primitive-list (get-value m slot [])]
             (if-some [primitive-value (first primitive-list)]
-              (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
-                (put-value! m key (assoc primitive-list 0 primitive-value)))
-              (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-                (put-value! m key (assoc primitive-list 0 (constructor data))))))
+              (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
+                (put-value! m slot (assoc primitive-list 0 primitive-value)))
+              (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
+                (put-value! m slot (assoc primitive-list 0 (constructor data))))))
           JsonToken/VALUE_NULL m
           (incorrect-value-anom parser (cons path locator) "primitive extension map"))))))
 
@@ -863,41 +881,44 @@
   delegates handling of the property value to the type-handler of the complex
   type of `property-handler-definition`."
   {:arglists '([opts property-handler-definition])}
-  [{:keys [summary-only]} {:keys [field-name key type cardinality]}]
+  [{:keys [summary-only type-handler-ref]} {:keys [field-name key slot type cardinality]}]
   {field-name
    (let [type-name (if (= "backboneElement" (namespace type))
                      "BackboneElement"
                      (name type))
          type-key (if summary-only (keyword "summary" (name type)) (keyword (name type)))
-         path (name key)]
+         ^TypeHandlerRef handler-ref (type-handler-ref type-key)
+         path (name key)
+         slot (long slot)]
      (if (= :single cardinality)
-       (fn complex-property-handler-cardinality-single [type-handlers parser locator m]
-         (if-some [handler (type-handlers type-key)]
+       (fn complex-property-handler-cardinality-single [parser locator m]
+         (if-some [handler (.get handler-ref)]
            (cond-next-token parser locator
              JsonToken/START_OBJECT
-             (when-ok [value (handler type-handlers parser (cons path locator))]
-               (put-value! m key value))
+             (when-ok [value (handler parser (cons path locator))]
+               (put-value! m slot value))
              (incorrect-value-anom parser (cons path locator) type-name))
            (unsupported-type-anom (name type))))
-       (fn complex-property-handler-cardinality-many [type-handlers parser locator m]
-         (if-some [handler (type-handlers type-key)]
+       (fn complex-property-handler-cardinality-many [parser locator m]
+         (if-some [handler (.get handler-ref)]
            (cond-next-token parser locator
              JsonToken/START_ARRAY
-             (when-ok [list (parse-complex-list handler type-handlers parser (cons path locator))]
-               (put-value! m key list))
+             (when-ok [list (parse-complex-list handler parser (cons path locator))]
+               (put-value! m slot list))
              JsonToken/START_OBJECT
-             (when-ok [value (handler type-handlers parser (cons 0 (cons path locator)))]
-               (put-value! m key [value]))
+             (when-ok [value (handler parser (cons 0 (cons path locator)))]
+               (put-value! m slot [value]))
              (incorrect-value-anom parser (cons path locator) type-name))
            (unsupported-type-anom (name type))))))})
 
 (defn- create-property-handlers*
   "Returns a map of JSON property names to handlers."
   {:arglists '([opts property-handler-definition])}
-  [{:keys [use-regex] :as opts} {:keys [field-name key type] :as def}]
+  [{:keys [use-regex] :as opts} {:keys [field-name key slot type] :as def}]
   (condp = type
     :system/string
-    {field-name (create-system-string-handler #(put-value! %1 key %2) (name key) "string")}
+    (let [slot (long slot)]
+      {field-name (create-system-string-handler #(put-value! %1 slot %2) (name key) "string")})
 
     :primitive/boolean
     (primitive-handler def type/boolean "boolean" (primitive-boolean-value-handler def))
@@ -978,74 +999,94 @@
       (create-complex-property-handler opts def)
       (unsupported-type-anom (name type)))))
 
+(defn- assoc-slots
+  "Associates the index of its key in `keys` as :slot to each of the
+  property-handler `definitions`."
+  [keys definitions]
+  (let [slots (zipmap keys (range))]
+    (map #(assoc % :slot (slots (:key %))) definitions)))
+
 (defn- create-property-handlers
-  "Returns a map of JSON property names to property handlers."
-  [type {:keys [summary-only] :as opts} element-definitions]
+  "Returns a function from JSON property names to property handlers."
+  [{:keys [type-handler-ref] :as opts} definitions]
   (transduce
-   (mapcat (partial property-handler-definitions type summary-only))
+   ;; extended primitive properties can have extensions
+   (map #(assoc % :extension-handler-ref (type-handler-ref :Extension)))
    (fn
      ([m]
-      (let [s (sort-by first (seq m))
-            names (object-array (map first s))
-            handlers (object-array (map second s))]
-        (fn find-property-handler [field-name]
-          (let [idx (Arrays/binarySearch names field-name)]
-            (when-not (neg? idx)
-              (aget handlers idx))))))
+      (if (ba/anomaly? m)
+        m
+        ;; Jackson interns field names, so interning the names here lets the
+        ;; lookup hit on identity with the cached String hash
+        (let [handlers (HashMap/newHashMap (count m))]
+          (run! (fn [[field-name handler]] (.put handlers (.intern ^String field-name) handler)) m)
+          (fn find-property-handler [field-name]
+            (.get handlers field-name)))))
      ([handlers property-handler-definition]
       (if-ok [handler (create-property-handlers* opts property-handler-definition)]
         (into handlers handler)
         reduced)))
    {}
-   element-definitions))
+   definitions))
 
 (defn- fhir-type-keyword [type]
   (let [parts (cons "fhir" (seq (str/split type #"\.")))]
     (keyword (str/join "." (butlast parts)) (last parts))))
 
-(defn- complex-type-finalizer [type]
+(defmacro ^:private slot-constructor
+  "Expands to a tuple of the keys of all fields of `class` in slot order and a
+  function that constructs a value of `class` from the slots of a mutable
+  property map."
+  [class]
+  (let [map (with-meta (gensym "map") {:tag `PropertyMap})]
+    `[(. ~class ~'fields) (fn [~map] (. ~class ~'fromSlots (.slots ~map)))]))
+
+(defn- complex-type-constructor
+  "Returns a tuple of the keys of all fields of the complex `type` in slot order
+  and a function that constructs a value of `type` from a mutable property map
+  or nil if `type` has no constructor."
+  [type]
   (condp = type
-    "Address" #(type/address (persist-array-map %))
-    "Age" #(type/age (persist-array-map %))
-    "Annotation" #(type/annotation (persist-array-map %))
-    "Attachment" #(type/attachment (persist-array-map %))
-    "Bundle.entry.search" #(type/bundle-entry-search (persist-array-map %))
-    "CodeableConcept" #(type/codeable-concept (persist-array-map %))
-    "Coding" #(type/coding (persist-array-map %))
-    "ContactDetail" #(type/contact-detail (persist-array-map %))
-    "ContactPoint" #(type/contact-point (persist-array-map %))
-    "Contributor" #(type/contributor (persist-array-map %))
-    "Count" #(type/count (persist-array-map %))
-    "DataRequirement" #(type/data-requirement (persist-array-map %))
-    "DataRequirement.codeFilter" #(type/data-requirement-code-filter (persist-array-map %))
-    "DataRequirement.dateFilter" #(type/data-requirement-date-filter (persist-array-map %))
-    "DataRequirement.sort" #(type/data-requirement-sort (persist-array-map %))
-    "Distance" #(type/distance (persist-array-map %))
-    "Dosage" #(type/dosage (persist-array-map %))
-    "Dosage.doseAndRate" #(type/dosage-dose-and-rate (persist-array-map %))
-    "Duration" #(type/duration (persist-array-map %))
-    "Expression" #(type/expression (persist-array-map %))
-    "Extension" #(type/extension (persist-array-map %))
-    "HumanName" #(type/human-name (persist-array-map %))
-    "Identifier" #(type/identifier (persist-array-map %))
-    "Meta" #(type/meta (persist-array-map %))
-    "Money" #(type/money (persist-array-map %))
-    "Narrative" #(type/narrative (persist-array-map %))
-    "ParameterDefinition" #(type/parameter-definition (persist-array-map %))
-    "Period" #(type/period (persist-array-map %))
-    "Quantity" #(type/quantity (persist-array-map %))
-    "Range" #(type/range (persist-array-map %))
-    "Ratio" #(type/ratio (persist-array-map %))
-    "Reference" #(type/reference (persist-array-map %))
-    "RelatedArtifact" #(type/related-artifact (persist-array-map %))
-    "SampledData" #(type/sampled-data (persist-array-map %))
-    "Signature" #(type/signature (persist-array-map %))
-    "Timing" #(type/timing (persist-array-map %))
-    "Timing.repeat" #(type/timing-repeat (persist-array-map %))
-    "TriggerDefinition" #(type/trigger-definition (persist-array-map %))
-    "UsageContext" #(type/usage-context (persist-array-map %))
-    (let [fhir-type-kw (fhir-type-keyword type)]
-      #(persist-map (put-value! % :fhir/type fhir-type-kw)))))
+    "Address" (slot-constructor Address)
+    "Age" (slot-constructor Age)
+    "Annotation" (slot-constructor Annotation)
+    "Attachment" (slot-constructor Attachment)
+    "Bundle.entry.search" (slot-constructor BundleEntrySearch)
+    "CodeableConcept" (slot-constructor CodeableConcept)
+    "Coding" (slot-constructor Coding)
+    "ContactDetail" (slot-constructor ContactDetail)
+    "ContactPoint" (slot-constructor ContactPoint)
+    "Contributor" (slot-constructor Contributor)
+    "Count" (slot-constructor Count)
+    "DataRequirement" (slot-constructor DataRequirement)
+    "DataRequirement.codeFilter" (slot-constructor DataRequirement$CodeFilter)
+    "DataRequirement.dateFilter" (slot-constructor DataRequirement$DateFilter)
+    "DataRequirement.sort" (slot-constructor DataRequirement$Sort)
+    "Distance" (slot-constructor Distance)
+    "Dosage" (slot-constructor Dosage)
+    "Dosage.doseAndRate" (slot-constructor Dosage$DoseAndRate)
+    "Duration" (slot-constructor Duration)
+    "Expression" (slot-constructor Expression)
+    "Extension" (slot-constructor Extension)
+    "HumanName" (slot-constructor HumanName)
+    "Identifier" (slot-constructor Identifier)
+    "Meta" (slot-constructor Meta)
+    "Money" (slot-constructor Money)
+    "Narrative" (slot-constructor Narrative)
+    "ParameterDefinition" (slot-constructor ParameterDefinition)
+    "Period" (slot-constructor Period)
+    "Quantity" (slot-constructor Quantity)
+    "Range" (slot-constructor Range)
+    "Ratio" (slot-constructor Ratio)
+    "Reference" (slot-constructor Reference)
+    "RelatedArtifact" (slot-constructor RelatedArtifact)
+    "SampledData" (slot-constructor SampledData)
+    "Signature" (slot-constructor Signature)
+    "Timing" (slot-constructor Timing)
+    "Timing.repeat" (slot-constructor Timing$Repeat)
+    "TriggerDefinition" (slot-constructor TriggerDefinition)
+    "UsageContext" (slot-constructor UsageContext)
+    nil))
 
 (def ^:private update-meta
   (fnil update #fhir/Meta{}))
@@ -1070,11 +1111,16 @@
     (.skipChildren ^JsonParser parser)
     nil))
 
-(defn- finalize-resource [fhir-type-kw resource]
-  (persist-map (put-value! resource :fhir/type fhir-type-kw)))
-
 (defn- append-subsetted [resource]
   (update resource :meta update-meta :tag u/conj-vec fu/subsetted))
+
+(defn- check-keys
+  "Returns an anomaly if a key of the property-handler `definitions` isn't one
+  of `keys`."
+  [type keys definitions]
+  (let [keys (set keys)]
+    (when-some [key (some #(when-not (keys (:key %)) (:key %)) definitions)]
+      (ba/fault (format "The complex type `%s` has no field `%s`." type (name key))))))
 
 (defn- create-type-handler
   "Creates a handler for `type` using `element-definitions`.
@@ -1092,61 +1138,62 @@
   handler and is skipped via `skip-value!` without being materialized, and the
   returned value carries the SUBSETTED meta tag."
   [kind type element-definitions {:keys [fail-on-unknown-property summary-only] :as opts}]
-  (when-ok [property-handlers (create-property-handlers type opts element-definitions)]
-    (let [capacity (int (* 2 (count element-definitions)))
-          fhir-type-kw (keyword "fhir" type)
-          finalize-resource (cond->> #(finalize-resource fhir-type-kw %)
-                              summary-only (comp append-subsetted))]
+  (let [definitions (into [] (mapcat (partial property-handler-definitions type summary-only)) element-definitions)
+        [constructor-keys construct] (when (= :complex-type kind) (complex-type-constructor type))
+        ^objects keys (or constructor-keys (object-array (distinct (map :key definitions))))
+        num-slots (alength keys)]
+    (when-ok [_ (check-keys type keys definitions)
+              property-handlers (create-property-handlers opts (assoc-slots keys definitions))]
       (condp = kind
         :resource
-        (fn resource-handler
-          ([] type)
-          ([type-handlers parser locator]
-           (loop [resource (PropertyMap. capacity)]
-             (cond-next-token parser locator
-               JsonToken/FIELD_NAME
-               (let [field-name (current-name parser)]
-                 (if-some [handler (property-handlers field-name)]
-                   (recur-ok (handler type-handlers parser locator resource))
-                   (if (= "resourceType" field-name)
-                     (cond-next-token parser locator
-                       JsonToken/VALUE_STRING
-                       (when-ok [s (get-text parser locator)]
-                         (if (= type s)
-                           (recur resource)
-                           (incorrect-type-anom locator s type))))
-                     (if fail-on-unknown-property
-                       (unknown-property-anom locator field-name)
-                       (do (skip-value! parser locator) (recur resource))))))
-               JsonToken/END_OBJECT
-               (when-ok [resource (check-null-elements resource locator)]
-                 (finalize-resource resource))))))
-        :complex-type
-        (let [finalize (complex-type-finalizer type)]
-          (fn complex-type-handler
+        (let [fhir-type-kw (keyword "fhir" type)
+              finalize (cond->> #(.toPersistentMap ^PropertyMap % keys fhir-type-kw)
+                         summary-only (comp append-subsetted))]
+          (fn resource-handler
             ([] type)
-            ([type-handlers parser locator]
-             (loop [value (PropertyMap. capacity)]
+            ([parser locator]
+             (loop [resource (PropertyMap. num-slots)]
                (cond-next-token parser locator
                  JsonToken/FIELD_NAME
                  (let [field-name (current-name parser)]
                    (if-some [handler (property-handlers field-name)]
-                     (recur-ok (handler type-handlers parser locator value))
+                     (recur-ok (handler parser locator resource))
+                     (if (= "resourceType" field-name)
+                       (cond-next-token parser locator
+                         JsonToken/VALUE_STRING
+                         (when-ok [s (get-text parser locator)]
+                           (if (= type s)
+                             (recur resource)
+                             (incorrect-type-anom locator s type))))
+                       (if fail-on-unknown-property
+                         (unknown-property-anom locator field-name)
+                         (do (skip-value! parser locator) (recur resource))))))
+                 JsonToken/END_OBJECT
+                 (when-ok [resource (check-null-elements keys resource locator)]
+                   (finalize resource)))))))
+        :complex-type
+        (let [finalize (or construct
+                           (let [fhir-type-kw (fhir-type-keyword type)]
+                             #(.toPersistentMap ^PropertyMap % keys fhir-type-kw)))]
+          (fn complex-type-handler
+            ([] type)
+            ([parser locator]
+             (loop [value (PropertyMap. num-slots)]
+               (cond-next-token parser locator
+                 JsonToken/FIELD_NAME
+                 (let [field-name (current-name parser)]
+                   (if-some [handler (property-handlers field-name)]
+                     (recur-ok (handler parser locator value))
                      (if fail-on-unknown-property
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur value)))))
                  JsonToken/END_OBJECT
-                 (when-ok [value (check-null-elements value locator)]
+                 (when-ok [value (check-null-elements keys value locator)]
                    (finalize value)))))))))))
 
-(defn create-type-handlers
-  "Creates a map of keyword type names to type-handlers from the snapshot
-  `element-definitions` of a StructureDefinition resource.
-
-  With `:include-summary-only true` in `opts`, each type additionally gets a
-  summary-only handler keyed under the `summary` namespace (e.g. both `:Patient`
-  and `:summary/Patient`), so callers can parse either the full or the summary
-  projection of a resource (see `parse-cbor`).
+(defn- create-type-handlers*
+  "Creates a map of keyword type names to unlinked type-handlers from the
+  snapshot `element-definitions` of a StructureDefinition resource.
 
   Returns an anomaly in case of errors."
   {:arglists '([kind element-definitions opts])}
@@ -1168,33 +1215,74 @@
    {}
    (separate-element-definitions parent-type more)))
 
-(defn- findResourceType [^JsonNode node]
+(defn- find-resource-type [^JsonNode node]
   (when-let [node (.get node "resourceType")]
     (when (.isTextual node)
       (.asText node))))
 
-(def resource-handler
-  "A special type-handler that works for all resources. It first reads the
-  `resourceType` property and delegates the handling to the corresponding
-  type-handler."
+(defn- resource-handler
+  "Returns a special type-handler that works for all resources. It first reads
+  the `resourceType` property and delegates the handling to the corresponding
+  type-handler of `type-handlers`."
+  [type-handlers]
   (fn
     ([] "Resource")
-    ([type-handlers ^JsonParser parser locator]
+    ([^JsonParser parser locator]
      (let [^JsonNode tree (.readValueAsTree parser)]
-       (if-let [type (findResourceType tree)]
+       (if-let [type (find-resource-type tree)]
          (if-let [type-handler (get type-handlers (keyword type))]
            (with-open [parser (TreeTraversingParser. tree (.getCodec parser))]
              ;; skip the first token
              (next-token! parser locator)
-             (type-handler type-handlers parser (if (empty? locator) [type] locator)))
+             (type-handler parser (if (empty? locator) [type] locator)))
            (unsupported-type-anom type))
          (let [msg "Missing property `resourceType`."]
            (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))))
 
-(defn- read-value* [type-handlers parser locator handler]
+(defn- link-type-handlers!
+  "Links all references in `refs` to the type-handlers of `type-handlers`.
+
+  References to types without a type-handler stay unlinked."
+  [refs type-handlers]
+  (run!
+   (fn [[type-key ref]]
+     (when-some [handler (get type-handlers type-key)]
+       (.link ^TypeHandlerRef ref handler)))
+   refs))
+
+(defn create-type-handlers
+  "Creates a map of keyword type names to type-handlers from the snapshots of
+  `structure-definitions`. Additionally contains the special type-handler
+  `:Resource` which works for all resources.
+
+  The type-handlers are linked to each other on creation. So replacing a
+  type-handler in the returned map doesn't affect the other type-handlers.
+
+  With `:include-summary-only true` in `opts`, each type additionally gets a
+  summary-only handler keyed under the `summary` namespace (e.g. both `:Patient`
+  and `:summary/Patient`), so callers can parse either the full or the summary
+  projection of a resource (see `parse-cbor`).
+
+  Returns an anomaly in case of errors."
+  [structure-definitions opts]
+  (let [refs (volatile! {})
+        opts (assoc opts :type-handler-ref (partial type-handler-ref refs))]
+    (when-ok [type-handlers
+              (reduce
+               (fn [res {:keys [kind] {elements :element} :snapshot}]
+                 (if-ok [handlers (create-type-handlers* (keyword kind) elements opts)]
+                   (into res handlers)
+                   reduced))
+               {}
+               structure-definitions)]
+      (let [type-handlers (assoc type-handlers :Resource (resource-handler type-handlers))]
+        (link-type-handlers! @refs type-handlers)
+        type-handlers))))
+
+(defn- read-value* [parser locator handler]
   (cond-next-token parser locator
     JsonToken/START_OBJECT
-    (when-ok [type (handler type-handlers parser locator)
+    (when-ok [type (handler parser locator)
               token (next-token! parser locator)]
       (if token
         (ba/incorrect (format "incorrect trailing token %s" token))
@@ -1211,8 +1299,8 @@
   locator has to be a list not a vector.
 
   The handler will determine the type of the value."
-  [type-handlers parser locator handler]
-  (-> (read-value* type-handlers parser locator handler)
+  [parser locator handler]
+  (-> (read-value* parser locator handler)
       (ba/exceptionally #(update % ::anom/message prefix-msg))))
 
 (def ^:private stream-read-constraints
@@ -1254,11 +1342,11 @@
   Returns an anomaly in case of errors."
   ([type-handlers source]
    (with-open [parser (-create-parser source json-factory)]
-     (read-value type-handlers parser nil resource-handler)))
+     (read-value parser nil (:Resource type-handlers))))
   ([type-handlers type source]
    (if-some [handler (get type-handlers (keyword type))]
      (with-open [parser (-create-parser source json-factory)]
-       (read-value type-handlers parser (RT/list type) handler))
+       (read-value parser (RT/list type) handler))
      (unsupported-type-anom type))))
 
 (defn write-json [type-handlers out value]
@@ -1287,7 +1375,7 @@
   [type-handlers type variant source]
   (if-some [handler (get type-handlers (if (= :summary variant) (keyword "summary" type) (keyword type)))]
     (with-open [parser (.createParser ^JsonFactory cbor-factory ^bytes source)]
-      (read-value type-handlers parser (RT/list type) handler))
+      (read-value parser (RT/list type) handler))
     (unsupported-type-anom type)))
 
 (defn write-cbor [type-handlers out value]

@@ -66,6 +66,22 @@ public final class Contributor extends AbstractElement implements Complex, Exten
                 Base.listFrom(m, CONTACT));
     }
 
+    /**
+     * Creates a Contributor from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Contributor fromSlots(Object[] slots) {
+        return new Contributor(ExtensionData.fromSlots(slots), (Code) slots[2], (String) slots[3],
+                Lists.nullToEmpty(slots[4]));
+    }
+
+    /**
+     * Returns the keys of all fields of Contributor in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code type() {
         return type;
     }

@@ -141,6 +141,23 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
                 (Period) m.valAt(PERIOD));
     }
 
+    /**
+     * Creates a HumanName from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static HumanName fromSlots(Object[] slots) {
+        return new HumanName(ExtensionData.fromSlots(slots), (Code) slots[2], (String) slots[3],
+                (String) slots[4], Lists.nullToEmpty(slots[5]), Lists.nullToEmpty(slots[6]), Lists.nullToEmpty(slots[7]),
+                (Period) slots[8]);
+    }
+
+    /**
+     * Returns the keys of all fields of HumanName in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code use() {
         return use;
     }

@@ -87,6 +87,21 @@ public final class Period extends AbstractElement implements Complex, ExtensionV
         return maybeIntern(ExtensionData.fromMap(m), (DateTime) m.valAt(START), (DateTime) m.valAt(END));
     }
 
+    /**
+     * Creates a Period from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Period fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), (DateTime) slots[2], (DateTime) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of Period in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

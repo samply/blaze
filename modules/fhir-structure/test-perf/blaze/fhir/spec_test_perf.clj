@@ -112,4 +112,7 @@
   ;; Read Performance
 
   ;; 3071,643 µs <> 3078,915 µs
-  (bench-read-json "Bundle" (slurp kds-bundle-filename)))
+  (bench-read-json "Bundle" (slurp kds-bundle-filename))
+
+  (dotimes [_ 10000]
+    (read-json "Bundle" (slurp kds-bundle-filename))))

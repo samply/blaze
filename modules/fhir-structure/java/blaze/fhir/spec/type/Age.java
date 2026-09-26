@@ -43,6 +43,22 @@ public final class Age extends AbstractQuantity {
                 (String) m.valAt(UNIT), (Uri) m.valAt(SYSTEM), (Code) m.valAt(CODE));
     }
 
+    /**
+     * Creates a Age from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Age fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), (Decimal) slots[2], (Code) slots[3],
+                (String) slots[4], (Uri) slots[5], (Code) slots[6]);
+    }
+
+    /**
+     * Returns the keys of all fields of Age in slot order.
+     */
+    public static Keyword[] fields() {
+        return AbstractQuantity.FIELDS.clone();
+    }
+
     @Override
     public ILookupThunk getLookupThunk(Keyword key) {
         return key == FHIR_TYPE_KEY ? FHIR_TYPE_LOOKUP_THUNK : super.getLookupThunk(key);
