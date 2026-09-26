@@ -375,12 +375,6 @@
                                result-values
                                (into extended-properties [nil nil]))]]
 
-      (given-parse-json "MolecularSequence"
-        {:quality {:roc {:precision values}}}
-        :fhir/type := :fhir/MolecularSequence
-        [:quality count] := 1
-        [:quality 0 :roc :precision] := (mapv #(some-> % type/decimal) result-values))
-
       (testing "extended properties before value"
         (given-parse-json "MolecularSequence"
           {:quality {:roc {:_precision extended-properties :precision values}}}
@@ -1184,6 +1178,94 @@
       {:period {:start "2025"}}
       :fhir/type := :fhir/HumanName
       :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2025"})))
+
+(def ^:private null-in-primitive-array-msg
+  "Invalid JSON representation of a resource. Error on value null. Expected a value or extension.")
+
+(deftest parse-json-null-in-primitive-array-test
+  (testing "nulls without extended properties are invalid"
+    (doseq [[given index] [[[nil] 0]
+                           [[nil "given-120511"] 0]
+                           [["given-120511" nil] 1]
+                           [["given-120511" nil "given-120527"] 1]]]
+      (given-parse-json "HumanName"
+        {:given given}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := null-in-primitive-array-msg
+        [:fhir/issues 0 :fhir.issues/expression] := (format "HumanName.given[%d]" index))))
+
+  (testing "null extended properties without values are invalid"
+    (doseq [[extended-properties index] [[[nil {:id "id-120708"}] 0]
+                                         [[{:id "id-120708"} nil {:id "id-120731"}] 1]]]
+      (given-parse-json "HumanName"
+        {:_given extended-properties}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := null-in-primitive-array-msg
+        [:fhir/issues 0 :fhir.issues/expression] := (format "HumanName.given[%d]" index))))
+
+  (testing "trailing null extended properties without values are ignored"
+    (doseq [[extended-properties given] [[[nil] []]
+                                         [[{:id "id-120708"} nil] [#fhir/string{:id "id-120708"}]]]]
+      (given-parse-json "HumanName"
+        {:_given extended-properties}
+        :fhir/type := :fhir/HumanName
+        :given := given)))
+
+  (testing "nulls with null extended properties are invalid"
+    (testing "extended properties before value"
+      (given-parse-json "HumanName"
+        {:_given [nil nil]
+         :given ["given-120511" nil]}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := null-in-primitive-array-msg
+        [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[1]"))
+
+    (testing "extended properties after value"
+      (given-parse-json "HumanName"
+        {:given ["given-120511" nil]
+         :_given [nil nil]}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := null-in-primitive-array-msg
+        [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[1]")))
+
+  (testing "nulls with extended properties are valid"
+    (doseq [data [{:given ["given-120511" nil]
+                   :_given [nil {:id "id-120708"}]}
+                  {:_given [nil {:id "id-120708"}]
+                   :given ["given-120511" nil]}]]
+      (given-parse-json "HumanName"
+        data
+        :fhir/type := :fhir/HumanName
+        :given := [#fhir/string "given-120511"
+                   #fhir/string{:id "id-120708"}])))
+
+  (testing "decimal values"
+    (given-parse-json "MolecularSequence"
+      {:quality {:roc {:precision [1 nil]}}}
+      ::anom/category := ::anom/incorrect
+      ::anom/message := null-in-primitive-array-msg
+      [:fhir/issues 0 :fhir.issues/expression] := "MolecularSequence.quality[0].roc.precision[1]"))
+
+  (testing "resource"
+    (given-parse-json "Questionnaire"
+      {:subjectType ["Patient" nil]}
+      ::anom/category := ::anom/incorrect
+      ::anom/message := null-in-primitive-array-msg
+      [:fhir/issues 0 :fhir.issues/expression] := "Questionnaire.subjectType[1]"))
+
+  (testing "nested complex type"
+    (given-parse-json "Patient"
+      {:name [{:given ["given-120511" nil]}]}
+      ::anom/category := ::anom/incorrect
+      ::anom/message := null-in-primitive-array-msg
+      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].given[1]"))
+
+  (testing "CBOR"
+    (given-parse-cbor "Patient"
+                      {:name [{:given ["given-120511" nil]}]}
+                      ::anom/category := ::anom/incorrect
+                      ::anom/message := null-in-primitive-array-msg
+                      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].given[1]")))
 
 (deftest parse-json-reference-test
   (testing "id"
