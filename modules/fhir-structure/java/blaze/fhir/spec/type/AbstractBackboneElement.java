@@ -2,12 +2,14 @@ package blaze.fhir.spec.type;
 
 import clojure.lang.ILookupThunk;
 import clojure.lang.Keyword;
+import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.io.SerializedString;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
 import static java.util.Objects.requireNonNull;
@@ -45,6 +47,11 @@ abstract class AbstractBackboneElement extends AbstractElement {
     public Object valAt(Object key, Object notFound) {
         if (key == MODIFIER_EXTENSION) return modifierExtension;
         return super.valAt(key, notFound);
+    }
+
+    @Override
+    public Stream<PersistentVector> references() {
+        return Stream.concat(super.references(), modifierExtension.stream().flatMap(Extension::references));
     }
 
     protected void serializeJsonBase(JsonGenerator generator) throws IOException {

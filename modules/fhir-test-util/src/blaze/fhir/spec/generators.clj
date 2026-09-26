@@ -871,13 +871,14 @@
        (gen/fmap type/usage-context)))
 
 (defn bundle-entry-search
-  [& {:keys [id extension mode score]
+  [& {:keys [id extension modifierExtension mode score]
       :or {id (often-nil id-value)
            extension (extensions)
+           modifierExtension (extensions)
            mode (rare-nil (code))
            score (often-nil (decimal))}}]
-  (->> (gen/tuple id extension mode score)
-       (to-map [:id :extension :mode :score])
+  (->> (gen/tuple id extension modifierExtension mode score)
+       (to-map [:id :extension :modifierExtension :mode :score])
        (gen/fmap type/bundle-entry-search)))
 
 (defn- fhir-type [fhir-type gen]

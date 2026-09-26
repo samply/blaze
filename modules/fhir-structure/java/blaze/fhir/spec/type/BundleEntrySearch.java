@@ -6,22 +6,24 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
 @SuppressWarnings("DuplicatedCode")
-public final class BundleEntrySearch extends AbstractElement implements Complex {
+public final class BundleEntrySearch extends AbstractBackboneElement implements Complex {
 
     /**
      * Memory size.
      * <p>
      * 8 byte - object header
      * 4 or 8 byte - extension data reference
+     * 4 or 8 byte - modifierExtension reference
      * 4 or 8 byte - mode reference
      * 4 or 8 byte - score reference
      */
-    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 3 * MEM_SIZE_REFERENCE + 7) & ~7;
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 4 * MEM_SIZE_REFERENCE + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir.Bundle.entry", "search");
 
@@ -35,26 +37,30 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
     private static final Keyword MODE = RT.keyword(null, "mode");
     private static final Keyword SCORE = RT.keyword(null, "score");
 
-    private static final Keyword[] FIELDS = {ID, EXTENSION, MODE, SCORE};
+    private static final Keyword[] FIELDS = {ID, EXTENSION, MODIFIER_EXTENSION, MODE, SCORE};
 
     private static final FieldName FIELD_NAME_MODE = FieldName.of("mode");
     private static final FieldName FIELD_NAME_SCORE = FieldName.of("score");
 
     private static final byte HASH_MARKER = 45;
 
-    private static final BundleEntrySearch EMPTY = new BundleEntrySearch(ExtensionData.EMPTY, null, null);
+    @SuppressWarnings("unchecked")
+    private static final BundleEntrySearch EMPTY = new BundleEntrySearch(ExtensionData.EMPTY, PersistentVector.EMPTY, null,
+            null);
 
     private final Code mode;
     private final Decimal score;
 
-    private BundleEntrySearch(ExtensionData extensionData, Code mode, Decimal score) {
-        super(extensionData);
+    private BundleEntrySearch(ExtensionData extensionData, List<Extension> modifierExtension, Code mode,
+                              Decimal score) {
+        super(extensionData, modifierExtension);
         this.mode = mode;
         this.score = score;
     }
 
     public static BundleEntrySearch create(IPersistentMap m) {
-        return new BundleEntrySearch(ExtensionData.fromMap(m), (Code) m.valAt(MODE), (Decimal) m.valAt(SCORE));
+        return new BundleEntrySearch(ExtensionData.fromMap(m), Base.listFrom(m, MODIFIER_EXTENSION),
+                (Code) m.valAt(MODE), (Decimal) m.valAt(SCORE));
     }
 
     public Code mode() {
@@ -83,6 +89,7 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
         ISeq seq = PersistentList.EMPTY;
         seq = appendElement(seq, SCORE, score);
         seq = appendElement(seq, MODE, mode);
+        seq = appendElement(seq, MODIFIER_EXTENSION, modifierExtension);
         return extensionData.append(seq);
     }
 
@@ -98,16 +105,19 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
 
     @Override
     public BundleEntrySearch assoc(Object key, Object val) {
-        if (key == MODE) return new BundleEntrySearch(extensionData, (Code) val, score);
-        if (key == SCORE) return new BundleEntrySearch(extensionData, mode, (Decimal) val);
-        if (key == EXTENSION) return new BundleEntrySearch(extensionData.withExtension(val), mode, score);
-        if (key == ID) return new BundleEntrySearch(extensionData.withId(val), mode, score);
+        if (key == MODE) return new BundleEntrySearch(extensionData, modifierExtension, (Code) val, score);
+        if (key == SCORE) return new BundleEntrySearch(extensionData, modifierExtension, mode, (Decimal) val);
+        if (key == MODIFIER_EXTENSION)
+            return new BundleEntrySearch(extensionData, Lists.nullToEmpty(val), mode, score);
+        if (key == EXTENSION)
+            return new BundleEntrySearch(extensionData.withExtension(val), modifierExtension, mode, score);
+        if (key == ID) return new BundleEntrySearch(extensionData.withId(val), modifierExtension, mode, score);
         return this;
     }
 
     @Override
     public BundleEntrySearch withMeta(IPersistentMap meta) {
-        return new BundleEntrySearch(extensionData.withMeta(meta), mode, score);
+        return new BundleEntrySearch(extensionData.withMeta(meta), modifierExtension, mode, score);
     }
 
     @Override
@@ -136,11 +146,18 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
             sink.putByte((byte) 3);
             score.hashInto(sink);
         }
+        // modifierExtension was added after mode and score, so it gets the next
+        // index in order to keep the hashes of existing values stable
+        if (!modifierExtension.isEmpty()) {
+            sink.putByte((byte) 4);
+            Base.hashIntoList(modifierExtension, sink);
+        }
     }
 
     @Override
     public int memSize() {
-        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(mode) + Base.memSize(score);
+        return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(modifierExtension) + Base.memSize(mode) +
+                Base.memSize(score);
     }
 
     @Override
@@ -148,6 +165,7 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
         if (this == o) return true;
         return o instanceof BundleEntrySearch that &&
                 extensionData.equals(that.extensionData) &&
+                modifierExtension.equals(that.modifierExtension) &&
                 Objects.equals(mode, that.mode) &&
                 Objects.equals(score, that.score);
     }
@@ -155,6 +173,7 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
     @Override
     public int hashCode() {
         int result = extensionData.hashCode();
+        result = 31 * result + modifierExtension.hashCode();
         result = 31 * result + Objects.hashCode(mode);
         result = 31 * result + Objects.hashCode(score);
         return result;
@@ -164,6 +183,7 @@ public final class BundleEntrySearch extends AbstractElement implements Complex 
     public java.lang.String toString() {
         return "BundleEntrySearch{" +
                 extensionData +
+                ", modifierExtension=" + modifierExtension +
                 ", mode=" + mode +
                 ", score=" + score +
                 '}';

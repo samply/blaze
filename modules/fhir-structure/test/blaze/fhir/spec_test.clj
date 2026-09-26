@@ -3091,6 +3091,9 @@
         {:id "id-134805"}
         #fhir.Bundle.entry/search{:id "id-134805"}
 
+        {:modifierExtension [{:url "url-120000"}]}
+        #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{:url "url-120000"}]}
+
         {:mode "match"}
         #fhir.Bundle.entry/search{:mode #fhir/code "match"})
 
@@ -3109,6 +3112,9 @@
 
         {:id "id-134805"}
         #fhir.Bundle.entry/search{:id "id-134805"}
+
+        {:modifierExtension [{:url "url-120000"}]}
+        #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{:url "url-120000"}]}
 
         {:mode "match"}
         #fhir.Bundle.entry/search{:mode #fhir/code "match"})
@@ -3136,6 +3142,9 @@
         #fhir.Bundle.entry/search{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
+        #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{}]}
+        {:modifierExtension [{}]}
+
         #fhir.Bundle.entry/search{:mode #fhir/code "match"}
         {:mode "match"}
 
@@ -3156,6 +3165,9 @@
         #fhir.Bundle.entry/search{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
+        #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{}]}
+        {:modifierExtension [{}]}
+
         #fhir.Bundle.entry/search{:mode #fhir/code "match"}
         {:mode "match"}
 
@@ -3171,7 +3183,7 @@
 
   (testing "examples"
     (mem-size-test "Bundle.entry.search"
-      {:score 11} 72 96)))
+      {:score 11} 72 104)))
 
 (deftest codeable-concept-test
   (testing "FHIR spec"
