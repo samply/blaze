@@ -538,6 +538,57 @@
       (doto map (.add key) (.add value))
       (doto map (.set (unchecked-inc-int idx) value)))))
 
+(defn- remove-value!
+  "Removes `key` and its value from special ArrayList `map`.
+
+  Works like an PersistentArrayMap only that the ArrayList is mutable."
+  [^List map key]
+  (let [idx (.indexOf map key)]
+    (doto map
+      (.remove (unchecked-int (unchecked-inc idx)))
+      (.remove (unchecked-int idx)))))
+
+(defn- mark-null-elements!
+  "Marks the list of primitive values under `key` in special ArrayList `map` as
+  possibly containing null elements, which have to be checked with
+  `check-null-elements` at the end of the object."
+  [map key]
+  (put-value! map ::null-element-keys (conj (get-value map ::null-element-keys #{}) key)))
+
+(defn- null-element-anom [locator]
+  (let [msg "Error on value null. Expected a value or extension."]
+    (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
+
+(defn- check-null-elements
+  "Returns an anomaly if a list of primitive values marked by
+  `mark-null-elements!` in special ArrayList `map` still contains a null
+  element. Returns `map` without the marks otherwise.
+
+  Nulls in JSON arrays of primitive values are placeholders that have to be
+  matched by extended properties. Because the JSON array of values and the
+  JSON array of extended properties can come in any order, remaining nulls can
+  only be detected at the end of the object."
+  [map locator]
+  (if-some [keys (get-value map ::null-element-keys)]
+    (or (some
+         (fn [key]
+           (let [idx (.indexOf ^List (get-value map key) nil)]
+             (when-not (neg? idx)
+               (null-element-anom (cons idx (cons (name key) locator))))))
+         keys)
+        (remove-value! map ::null-element-keys))
+    map))
+
+(defn- add-null-placeholder!
+  "Adds a null placeholder to the `list` of primitive values under `key` in
+  special ArrayList `map` if `index` is at the end of `list`. Marks the list
+  with `mark-null-elements!` in that case. Returns `list`."
+  [map key ^List list index]
+  (when (= index (.size list))
+    (mark-null-elements! map key)
+    (.add list nil))
+  list)
+
 (defn- set-value!
   "Sets `value` at `index` in `list`."
   [^List list index value]
@@ -618,7 +669,7 @@
                      (recur (set-value! l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
+                 (recur (add-null-placeholder! m key l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))
            token
            (when-ok [value (extract-value parser (cons path locator))]
@@ -659,7 +710,7 @@
                      (recur (set-value! l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
+                 (recur (add-null-placeholder! m key l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) expected-type))))
            token-1
            (when-ok [value (extract-value-1 parser (cons path locator))]
@@ -709,13 +760,13 @@
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
 
-(defn- trim-trailing-nils [^List vector]
-  (loop [i (.size vector)]
-    (if (zero? i)
-      (ArrayList.)
-      (if (nil? (.get vector (dec i)))
-        (recur (dec i))
-        (.subList vector 0 i)))))
+(defn- trim-trailing-nils
+  "Removes the trailing nils of `list` with an index of at least `start`."
+  [^List list start]
+  (loop [i (.size list)]
+    (if (and (< start i) (nil? (.get list (dec i))))
+      (recur (dec i))
+      (.subList list 0 i))))
 
 (defn- extended-primitive-handler
   "Returns a property-handler."
@@ -734,19 +785,23 @@
       (fn [type-handlers parser locator m]
         (cond-next-token parser locator
           JsonToken/START_ARRAY
-          (loop [l (ArrayList. ^List (get-value m key [])) i 0]
-            (when-ok [t (next-token! parser (cons path locator))]
-              (condp identical? t
-                JsonToken/START_OBJECT
-                (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                  (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
-                    (recur (doto l (.set i primitive-value)) (inc i)))
-                  (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-                    (recur (set-value! l i (constructor data)) (inc i))))
-                JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l)))
-                JsonToken/VALUE_NULL
-                (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
-                (incorrect-value-anom parser (cons path locator) "primitive extension map"))))
+          (let [^List values (get-value m key [])
+                ;; only nils added here are trimmed, because nils of values
+                ;; aren't replaced by extended properties
+                num-values (.size values)]
+            (loop [l (ArrayList. values) i 0]
+              (when-ok [t (next-token! parser (cons path locator))]
+                (condp identical? t
+                  JsonToken/START_OBJECT
+                  (if-some [primitive-value (when (< i (.size l)) (.get l i))]
+                    (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
+                      (recur (doto l (.set i primitive-value)) (inc i)))
+                    (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
+                      (recur (set-value! l i (constructor data)) (inc i))))
+                  JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l num-values)))
+                  JsonToken/VALUE_NULL
+                  (recur (add-null-placeholder! m key l i) (inc i))
+                  (incorrect-value-anom parser (cons path locator) "primitive extension map")))))
           JsonToken/START_OBJECT
           (if-some [primitive-list (get-value m key)]
             (if (zero? (count primitive-list))
@@ -1087,7 +1142,9 @@
                      (if fail-on-unknown-property
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur resource))))))
-               JsonToken/END_OBJECT (finalize-resource resource)))))
+               JsonToken/END_OBJECT
+               (when-ok [resource (check-null-elements resource locator)]
+                 (finalize-resource resource))))))
         :complex-type
         (let [finalize (complex-type-finalizer type)]
           (fn complex-type-handler
@@ -1102,7 +1159,9 @@
                      (if fail-on-unknown-property
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur value)))))
-                 JsonToken/END_OBJECT (finalize value))))))))))
+                 JsonToken/END_OBJECT
+                 (when-ok [value (check-null-elements value locator)]
+                   (finalize value)))))))))))
 
 (defn create-type-handlers
   "Creates a map of keyword type names to type-handlers from the snapshot
