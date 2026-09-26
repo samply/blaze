@@ -37,7 +37,8 @@
   skipped as well. `parse-cbor` selects this variant via its `variant` argument;
   the resulting resource is tagged with the SUBSETTED meta tag.
 
-  This namespace uses some advanced optimizations like mutable ArrayLists.
+  This namespace uses some advanced optimizations like mutable ArrayLists and
+  mutable property maps.
   Please change with care."
   (:refer-clojure :exclude [str])
   (:require
@@ -50,6 +51,7 @@
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
+   [blaze.fhir.spec PropertyMap]
    [blaze.fhir.spec.type Lists]
    [clojure.lang PersistentArrayMap RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
@@ -516,27 +518,50 @@
     (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
 
 (defn- get-value
-  "Gets the value from special ArrayList `map` at `key` or returns optional
-  `not-found`.
-
-  Works like an PersistentArrayMap only that the ArrayList is mutable."
+  "Gets the value from mutable property `map` at `key` or returns optional
+  `not-found`."
   ([map key]
    (get-value map key nil))
-  ([^List map key not-found]
-   (let [idx (.indexOf map key)]
-     (if (neg? idx)
-       not-found
-       (.get map (unchecked-inc-int idx))))))
+  ([map key not-found]
+   (.get ^PropertyMap map key not-found)))
 
 (defn- put-value!
-  "Puts `value` into special ArrayList `map` at `key`.
+  "Puts `value` into mutable property `map` at `key`. Returns `map`."
+  [map key value]
+  (.put ^PropertyMap map key value))
 
-  Works like an PersistentArrayMap only that the ArrayList is mutable."
-  [^List map key value]
-  (let [idx (.indexOf map key)]
-    (if (neg? idx)
-      (doto map (.add key) (.add value))
-      (doto map (.set (unchecked-inc-int idx) value)))))
+(defn- check-null-elements
+  "Returns an anomaly if a list of primitive values marked as possibly
+  containing null elements in mutable property `map` still contains a null
+  element. Returns `map` otherwise.
+
+  Nulls in JSON arrays of primitive values are placeholders that have to be
+  matched by extended properties. Because the JSON array of values and the
+  JSON array of extended properties can come in any order, remaining nulls can
+  only be detected at the end of the object."
+  [^PropertyMap map locator]
+  (if-some [keys (.nullElementKeys map)]
+    (or (some
+         (fn [[key expected-type]]
+           (let [idx (.indexOf ^List (get-value map key) nil)]
+             (when-not (neg? idx)
+               (incorrect-value-anom* "value null" (cons idx (cons (name key) locator))
+                                      expected-type))))
+         keys)
+        map)
+    map))
+
+(defn- add-null-placeholder!
+  "Adds a null placeholder to the `list` of primitive values of `expected-type`
+  under `key` in mutable property `map` if `index` is at the end of `list`.
+  Marks the list as possibly containing null elements in that case, which have
+  to be checked with `check-null-elements` at the end of the object. Returns
+  `list`."
+  [^PropertyMap map key expected-type ^List list index]
+  (when (= index (.size list))
+    (.markNullElements map key expected-type)
+    (.add list nil))
+  list)
 
 (defn- set-value!
   "Sets `value` at `index` in `list`."
@@ -546,15 +571,15 @@
     (= index (.size list)) (doto list (.add value))))
 
 (defn- persist-array-map
-  "Creates an PersistentArrayMap from special ArrayList `map`.
+  "Creates an PersistentArrayMap from mutable property `map`.
 
   Should be only used if the map is consumed by a complex type constructor."
-  [^List map]
+  [^PropertyMap map]
   (PersistentArrayMap. (.toArray map)))
 
 (defn- persist-map
-  "Creates an IPersistentMap from special ArrayList `map`."
-  [^List map]
+  "Creates an IPersistentMap from mutable property `map`."
+  [^PropertyMap map]
   (RT/mapUniqueKeys (.toArray map)))
 
 (defn- assoc-primitive-value
@@ -574,13 +599,17 @@
          (ba/incorrect msg :fhir/issues [(fhir-issue msg (cons (name key) locator))])))))
 
 (defn- assoc-primitive-many-value
-  "Like `assoc-primitive-value` but with a single value for cardinality many."
+  "Like `assoc-primitive-value` but with a single value for cardinality many.
+
+  The value is the first element of the list. Other elements, already created
+  from extended properties, are kept."
   [{:keys [field-name key]} m constructor value locator]
-  (if-some [primitive-value (first (get-value m key))]
-    (if (some? (:value primitive-value))
-      (duplicate-property-anom field-name locator)
-      (put-value! m key [(assoc primitive-value :value value)]))
-    (put-value! m key [(constructor value)])))
+  (let [primitive-list (get-value m key [])]
+    (if-some [primitive-value (first primitive-list)]
+      (if (some? (:value primitive-value))
+        (duplicate-property-anom field-name locator)
+        (put-value! m key (assoc primitive-list 0 (assoc primitive-value :value value))))
+      (put-value! m key (assoc primitive-list 0 (constructor value))))))
 
 (defn- primitive-boolean-value-handler
   "Returns a property-handler for boolean properties."
@@ -618,7 +647,7 @@
                      (recur (set-value! l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
+                 (recur (add-null-placeholder! m key expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))
            token
            (when-ok [value (extract-value parser (cons path locator))]
@@ -659,7 +688,7 @@
                      (recur (set-value! l i (constructor value)) (inc i))))
                  JsonToken/END_ARRAY (put-value! m key (Lists/intern l))
                  JsonToken/VALUE_NULL
-                 (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
+                 (recur (add-null-placeholder! m key expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) expected-type))))
            token-1
            (when-ok [value (extract-value-1 parser (cons path locator))]
@@ -709,17 +738,17 @@
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
 
-(defn- trim-trailing-nils [^List vector]
-  (loop [i (.size vector)]
-    (if (zero? i)
-      (ArrayList.)
-      (if (nil? (.get vector (dec i)))
-        (recur (dec i))
-        (.subList vector 0 i)))))
+(defn- trim-trailing-nils
+  "Removes the trailing nils of `list` with an index of at least `start`."
+  [^List list start]
+  (loop [i (.size list)]
+    (if (and (< start i) (nil? (.get list (dec i))))
+      (recur (dec i))
+      (.subList list 0 i))))
 
 (defn- extended-primitive-handler
   "Returns a property-handler."
-  [{:keys [key cardinality]} constructor]
+  [{:keys [key cardinality]} constructor expected-type]
   (let [path (name key)]
     (if (= :single cardinality)
       (fn [type-handlers parser locator m]
@@ -734,28 +763,30 @@
       (fn [type-handlers parser locator m]
         (cond-next-token parser locator
           JsonToken/START_ARRAY
-          (loop [l (ArrayList. ^List (get-value m key [])) i 0]
-            (when-ok [t (next-token! parser (cons path locator))]
-              (condp identical? t
-                JsonToken/START_OBJECT
-                (if-some [primitive-value (when (< i (.size l)) (.get l i))]
-                  (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
-                    (recur (doto l (.set i primitive-value)) (inc i)))
-                  (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-                    (recur (set-value! l i (constructor data)) (inc i))))
-                JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l)))
-                JsonToken/VALUE_NULL
-                (recur (cond-> l (= i (.size l)) (doto (.add nil))) (inc i))
-                (incorrect-value-anom parser (cons path locator) "primitive extension map"))))
+          (let [^List values (get-value m key [])
+                ;; only nils added here are trimmed, because nils of values
+                ;; aren't replaced by extended properties
+                num-values (.size values)]
+            (loop [l (ArrayList. values) i 0]
+              (when-ok [t (next-token! parser (cons path locator))]
+                (condp identical? t
+                  JsonToken/START_OBJECT
+                  (if-some [primitive-value (when (< i (.size l)) (.get l i))]
+                    (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
+                      (recur (doto l (.set i primitive-value)) (inc i)))
+                    (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
+                      (recur (set-value! l i (constructor data)) (inc i))))
+                  JsonToken/END_ARRAY (put-value! m key (Lists/intern (trim-trailing-nils l num-values)))
+                  JsonToken/VALUE_NULL
+                  (recur (add-null-placeholder! m key expected-type l i) (inc i))
+                  (incorrect-value-anom parser (cons path locator) "primitive extension map")))))
           JsonToken/START_OBJECT
-          (if-some [primitive-list (get-value m key)]
-            (if (zero? (count primitive-list))
+          (let [primitive-list (get-value m key [])]
+            (if-some [primitive-value (first primitive-list)]
+              (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) primitive-value)]
+                (put-value! m key (assoc primitive-list 0 primitive-value)))
               (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-                (put-value! m key [(constructor data)]))
-              (when-ok [primitive-value (parse-extended-primitive-properties type-handlers parser (cons path locator) (first primitive-list))]
-                (put-value! m key (assoc primitive-list 0 primitive-value))))
-            (when-ok [data (parse-extended-primitive-properties type-handlers parser (cons path locator) {})]
-              (put-value! m key [(constructor data)])))
+                (put-value! m key (assoc primitive-list 0 (constructor data))))))
           JsonToken/VALUE_NULL m
           (incorrect-value-anom parser (cons path locator) "primitive extension map"))))))
 
@@ -763,17 +794,17 @@
   "Returns a map of two property-handlers, one for the field-name of
   `property-handler-definition` and one for _field-name for handling extended
   primitive data."
-  {:arglists '([property-handler-definition constructor value-handler])}
-  [{:keys [field-name] :as def} constructor value-handler]
+  {:arglists '([property-handler-definition constructor expected-type value-handler])}
+  [{:keys [field-name] :as def} constructor expected-type value-handler]
   {field-name value-handler
-   (str "_" field-name) (extended-primitive-handler def constructor)})
+   (str "_" field-name) (extended-primitive-handler def constructor expected-type)})
 
 (defn- primitive-integer-handler
   "Returns a property-handler for integer properties."
   [def constructor]
   (->> (primitive-value-handler def constructor JsonToken/VALUE_NUMBER_INT
                                 get-long "integer")
-       (primitive-handler def constructor)))
+       (primitive-handler def constructor "integer")))
 
 (defn- primitive-decimal-handler
   "A handler that reads an integer or decimal value and creates the internal
@@ -782,7 +813,7 @@
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
                                 get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
                                 "decimal")
-       (primitive-handler def type/decimal)))
+       (primitive-handler def type/decimal "decimal")))
 
 (defn- get-text-pattern [pattern]
   (fn [parser locator expected-type]
@@ -817,7 +848,7 @@
          def constructor JsonToken/VALUE_STRING
          (system-value-parser system-parser expected-type)
          expected-type)
-        (primitive-handler def constructor)))
+        (primitive-handler def constructor expected-type)))
   ([def constructor system-parser expected-type pattern use-regex]
    (->> (primitive-value-handler
          def constructor JsonToken/VALUE_STRING
@@ -825,7 +856,7 @@
            (system-value-parser system-parser expected-type pattern)
            (system-value-parser system-parser expected-type))
          expected-type)
-        (primitive-handler def constructor))))
+        (primitive-handler def constructor expected-type))))
 
 (defn- create-complex-property-handler
   "Returns a map of a single JSON property name to a property-handler that
@@ -869,7 +900,7 @@
     {field-name (create-system-string-handler #(put-value! %1 key %2) (name key) "string")}
 
     :primitive/boolean
-    (primitive-handler def type/boolean (primitive-boolean-value-handler def))
+    (primitive-handler def type/boolean "boolean" (primitive-boolean-value-handler def))
 
     :primitive/integer
     (primitive-integer-handler def type/integer)
@@ -1071,7 +1102,7 @@
         (fn resource-handler
           ([] type)
           ([type-handlers parser locator]
-           (loop [resource (ArrayList. capacity)]
+           (loop [resource (PropertyMap. capacity)]
              (cond-next-token parser locator
                JsonToken/FIELD_NAME
                (let [field-name (current-name parser)]
@@ -1087,13 +1118,15 @@
                      (if fail-on-unknown-property
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur resource))))))
-               JsonToken/END_OBJECT (finalize-resource resource)))))
+               JsonToken/END_OBJECT
+               (when-ok [resource (check-null-elements resource locator)]
+                 (finalize-resource resource))))))
         :complex-type
         (let [finalize (complex-type-finalizer type)]
           (fn complex-type-handler
             ([] type)
             ([type-handlers parser locator]
-             (loop [value (ArrayList. capacity)]
+             (loop [value (PropertyMap. capacity)]
                (cond-next-token parser locator
                  JsonToken/FIELD_NAME
                  (let [field-name (current-name parser)]
@@ -1102,7 +1135,9 @@
                      (if fail-on-unknown-property
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur value)))))
-                 JsonToken/END_OBJECT (finalize value))))))))))
+                 JsonToken/END_OBJECT
+                 (when-ok [value (check-null-elements value locator)]
+                   (finalize value)))))))))))
 
 (defn create-type-handlers
   "Creates a map of keyword type names to type-handlers from the snapshot
