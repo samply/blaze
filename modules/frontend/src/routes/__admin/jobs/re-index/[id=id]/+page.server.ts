@@ -1,27 +1,18 @@
 import type { PageServerLoad } from './$types';
-import { error, type NumericRange } from '@sveltejs/kit';
+import type { Task } from 'fhir/r4';
+import { error } from '@sveltejs/kit';
 
 import { backendUrl } from '$lib/backend.js';
+import { fetchFhir } from '$lib/fetch.js';
+import { jobError } from '$lib/jobs.js';
 import { toJob } from '$lib/jobs/re-index';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(backendUrl(`/__admin/Task/${params.id}`), {
-    headers: { Accept: 'application/fhir+json' }
+  const task = await fetchFhir<Task>(fetch, backendUrl(`/__admin/Task/${params.id}`), {
+    error: jobError(params.id)
   });
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : res.status == 410 ? 'Gone' : undefined,
-      message:
-        res.status == 404
-          ? `The job with ID ${params.id} was not found.`
-          : res.status == 410
-            ? `The job with ID ${params.id} was deleted. Please look into the history.`
-            : `An error happened while loading the job with ID ${params.id}. Please try again later.`
-    });
-  }
-
-  const job = toJob(await res.json());
+  const job = toJob(task);
   if (job === undefined) {
     error(500, 'Problem while reading the Job');
   }

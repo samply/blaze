@@ -2,7 +2,7 @@ import type { Task } from 'fhir/r4';
 
 import { describe, expect, it } from 'vitest';
 import { base, oldBase } from './canonical.js';
-import { number, output, statusReason, toJob } from './jobs.js';
+import { jobError, number, output, statusReason, toJob } from './jobs.js';
 
 // A minimal re-index job on `b` (either the current or the legacy base), as
 // stored by Blaze.
@@ -69,6 +69,33 @@ describe.each([
       type: { code: 're-index', display: '(Re)Index a Search Parameter' },
       authoredOn: '2024-04-13T10:05:20.927Z',
       error: 'boom'
+    });
+  });
+});
+
+describe('jobError test', () => {
+  function response(status: number) {
+    return new Response('{}', { status });
+  }
+
+  it('reports a missing job on 404', async () => {
+    expect(await jobError('AAAAAAAAAAAAAAAA')(response(404))).toEqual({
+      short: 'Not Found',
+      message: 'The job with ID AAAAAAAAAAAAAAAA was not found.'
+    });
+  });
+
+  it('reports a deleted job on 410 without pointing at a history', async () => {
+    expect(await jobError('AAAAAAAAAAAAAAAA')(response(410))).toEqual({
+      short: 'Gone',
+      message: 'The job with ID AAAAAAAAAAAAAAAA was deleted.'
+    });
+  });
+
+  it('reports a generic failure on any other status', async () => {
+    expect(await jobError('AAAAAAAAAAAAAAAA')(response(503))).toEqual({
+      message:
+        'An error happened while loading the job with ID AAAAAAAAAAAAAAAA. Please try again later.'
     });
   });
 });
