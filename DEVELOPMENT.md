@@ -55,6 +55,9 @@ The latest LTS/stable releases of:
 * [actionlint](https://github.com/rhysd/actionlint)
 * [dashboard-linter](https://github.com/grafana/dashboard-linter), only needed to run `make -C modules/monitoring lint-dashboard`
 
+Only needed to render the Implementation Guide locally via `make -C modules/ig publish`:
+* [Jekyll](https://jekyllrb.com/) — the FHIR IG Publisher shells out to it to assemble the final HTML site. `make -C modules/ig build` and `test` do not need it.
+
 ## Building Blaze
 
 Blaze is built as a single Docker image, along with a separate frontend image.

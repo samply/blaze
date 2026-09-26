@@ -63,12 +63,12 @@ It is set through the `VALIDATOR_FAILURE_MODE` environment variable:
 | `VALIDATOR_FAILURE_MODE` | `tag-outcome` | One of `tag-only`, `tag-outcome`, `reject`. |
 
 * **`tag-only`** — store the invalid resource, but add a tag with system
-  `https://blaze-server.org/fhir/CodeSystem/ValidationStatus` and code `invalid`
+  [`https://blaze-server.org/fhir/CodeSystem/ValidationStatus`](https://blaze-server.org/fhir/CodeSystem/ValidationStatus) and code `invalid`
   to its `meta`.
 * **`tag-outcome`** (default) — like `tag-only`, but additionally store the
   validator's OperationOutcome as a [contained][3] resource referenced from a
   `meta` extension with URL
-  `https://blaze-server.org/fhir/StructureDefinition/validation-outcome`. The
+  [`https://blaze-server.org/fhir/StructureDefinition/validation-outcome`](https://blaze-server.org/fhir/StructureDefinition/validation-outcome). The
   contained resource's id is opaque and not fixed — locate the OperationOutcome
   by following the extension's reference, not by assuming a well-known id.
 * **`reject`** — reject the resource with `400 Bad Request` and an
@@ -93,7 +93,7 @@ curl -s 'http://localhost:8080/fhir?_tag=https://blaze-server.org/fhir/CodeSyste
 With `tag-outcome`, the reason a resource was flagged is available in a
 contained OperationOutcome. Locate it by following the reference in the
 resource's `meta` extension (URL
-`https://blaze-server.org/fhir/StructureDefinition/validation-outcome`); the
+[`https://blaze-server.org/fhir/StructureDefinition/validation-outcome`](https://blaze-server.org/fhir/StructureDefinition/validation-outcome)); the
 contained resource's id is opaque and not fixed, so do not rely on it.
 
 ## Concurrency
