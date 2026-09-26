@@ -2132,7 +2132,7 @@ jobs:
       run: make -C .github/test-data kds-testdata-2024.0.1/tx
 
     - name: Install All KDS Terminology Resources
-      run: make -C .github/value-set-expand install
+      run: make -C .github/integration-test-value-set-expand install
 
     - name: Wait for the Servers
       run: docker compose -f .github/integration-test-kds/docker-compose.yml up --wait
@@ -2159,7 +2159,7 @@ jobs:
       run: .github/scripts/check-sct-version-no-auth.sh http://snomed.info/sct/900000000000207008/version/20250701 http://localhost:8082/fhir
 
     - name: Upload KDS Terminology Resources into the Terminology Server
-      run: .github/value-set-expand/upload-all.sh http://localhost:8082/fhir
+      run: .github/integration-test-value-set-expand/upload-all.sh http://localhost:8082/fhir
 
     - name: Check Terminology Capabilities of the Terminology Server
       run: .github/scripts/check-terminology-capabilities-no-auth.sh http://localhost:8082/fhir
@@ -2403,16 +2403,16 @@ jobs:
         filename: SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
 
     - name: Unzip SNOMED CT Release
-      run: unzip SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
+      run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d .github/integration-test-value-set-expand
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release blaze:latest
+      run: docker compose -f .github/integration-test-value-set-expand/docker-compose.yml up -d
 
     - name: Install All KDS Terminology Resources
-      run: make -C .github/value-set-expand install
+      run: make -C .github/integration-test-value-set-expand install
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+      run: docker compose -f .github/integration-test-value-set-expand/docker-compose.yml up --wait
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement-terminology-service.sh
@@ -2424,7 +2424,7 @@ jobs:
       run: .github/scripts/test-terminology-service-graph-cache-metrics.sh
 
     - name: Upload KDS Terminology Resources
-      run: .github/value-set-expand/upload-all.sh
+      run: .github/integration-test-value-set-expand/upload-all.sh
 
     - name: Check Terminology Capabilities
       run: .github/scripts/check-terminology-capabilities-no-auth.sh
@@ -2433,13 +2433,21 @@ jobs:
       run: .github/scripts/read-code-system-translations.sh
 
     - name: Expand KDS Terminology Resources
-      run: .github/value-set-expand/expand.sh
+      run: .github/integration-test-value-set-expand/expand.sh
 
     - name: Expand KDS SNOMED CT Terminology Resources
-      run: .github/value-set-expand/expand-sct.sh
+      run: .github/integration-test-value-set-expand/expand-sct.sh
 
     - name: Expand Most KDS Terminology Resources
-      run: .github/value-set-expand/expand-most.sh
+      run: .github/integration-test-value-set-expand/expand-most.sh
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+      if: always()
+
+    - name: Docker Logs on Failure
+      run: docker compose -f .github/integration-test-value-set-expand/docker-compose.yml logs
+      if: failure()
 
   integration-test-validation:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -2506,7 +2514,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release blaze:latest
 
     - name: Install All KDS Terminology Resources
-      run: make -C .github/value-set-expand install
+      run: make -C .github/integration-test-value-set-expand install
 
     - name: Download and Unzip MII Test Data
       run: make -C .github/test-data kds-testdata-2024.0.1
@@ -2524,7 +2532,7 @@ jobs:
       run: .github/scripts/check-versions.sh
 
     - name: Upload KDS Terminology Resources
-      run: .github/value-set-expand/upload-all.sh
+      run: .github/integration-test-value-set-expand/upload-all.sh
 
     - name: Check Terminology Capabilities
       run: .github/scripts/check-terminology-capabilities-no-auth.sh

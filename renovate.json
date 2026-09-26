@@ -35,7 +35,7 @@
     },
     {
       "matchFileNames": [
-        ".github/value-set-expand/**"
+        ".github/integration-test-value-set-expand/**"
       ],
       "registryUrls": [
         "https://gitlab.com/api/v4/packages/npm/"

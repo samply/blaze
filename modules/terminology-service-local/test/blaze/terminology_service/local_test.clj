@@ -2330,6 +2330,48 @@
         ::anom/message := "Error while expanding the value set `value-set-170829`. Can't use the code system `system-180814` because it's content is not one of complete, fragment. It's content is `example`."
         :t := 1))))
 
+(def ^:private existing-expansion-identifier
+  #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8")
+
+(defn- existing-expansion-value-set
+  "Returns a value set with url `value-set-135750`, an existing expansion
+  containing `concepts` and recording `parameters`."
+  [concepts & {:as expansion}]
+  {:fhir/type :fhir/ValueSet
+   :url #fhir/uri "value-set-135750"
+   :expansion
+   (merge
+    {:fhir/type :fhir.ValueSet/expansion
+     :identifier existing-expansion-identifier
+     :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
+     :contains concepts}
+    expansion)})
+
+(defn- expansion-parameter [name value]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name (type/string name)
+   :value value})
+
+(defn- expansion-concept [code display & {:as more}]
+  (merge
+   {:fhir/type :fhir.ValueSet.expansion/contains
+    :system #fhir/uri "system-115910"
+    :code (type/code code)
+    :display (type/string display)}
+   more))
+
+(def ^:private blood-pressure
+  (expansion-concept "code-115927" "Blood pressure"))
+
+(def ^:private heart-rate
+  (expansion-concept "code-093316" "Heart rate"))
+
+(def ^:private respiratory-rate
+  (expansion-concept "code-100912" "Respiratory rate"))
+
+(defn- inconsistent-msg [parameter-name]
+  (format "Error while expanding the value set `value-set-135750`. The existing expansion is inconsistent with the parameter `%s` and there is no compose to expand instead." parameter-name))
+
 (deftest expand-value-set-existing-expansion-test
   (testing "retains already existing expansion"
     (with-system-data [{ts ::ts/local} config]
@@ -2343,7 +2385,7 @@
                   :system #fhir/uri "system-115910"}]}
                :expansion
                {:fhir/type :fhir.ValueSet/expansion
-                :identifier #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
+                :identifier existing-expansion-identifier
                 :timestamp #fhir/dateTime #system/date-time "1970-01-01T00:00:00Z"
                 :contains
                 [{:fhir/type :fhir.ValueSet.expansion/contains
@@ -2356,11 +2398,455 @@
                        "valueSetVersion" #fhir/string "version-143955"]]]
         (given @(apply expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
-          [:expansion :identifier] := #fhir/uri "urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
+          [:expansion :identifier] := existing-expansion-identifier
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri "system-115910"
           [:expansion :contains 0 :code] := #fhir/code "code-115927"
-          [:expansion :contains 0 :display] := #fhir/string "display-115927")))))
+          [:expansion :contains 0 :display] := #fhir/string "display-115927"))))
+
+  (testing "filter"
+    (with-system [{ts ::ts/local} config]
+      (testing "is inconsistent without a recorded filter"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet" (existing-expansion-value-set [blood-pressure heart-rate])
+           "filter" #fhir/string "blood")
+          ::anom/category := ::anom/conflict
+          ::anom/message := (inconsistent-msg "filter")))
+
+      (testing "is consistent with the same recorded filter"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :parameter [(expansion-parameter "filter" #fhir/string "blood")])
+                  "filter" #fhir/string "blood")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier
+          [:expansion :contains count] := 1))
+
+      (testing "is inconsistent with a different recorded filter"
+        (doseq [params [[] ["filter" #fhir/string "heart"]]]
+          (given-failed-future
+           (apply expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :parameter [(expansion-parameter "filter" #fhir/string "blood")])
+                  params)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "filter"))))))
+
+  (testing "count"
+    (with-system [{ts ::ts/local} config]
+      (testing "is applied on top of the existing expansion"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set [blood-pressure heart-rate])
+                  "count" #fhir/integer 1)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] :!= existing-expansion-identifier
+          [:expansion (parameter "count") 0 :value] := #fhir/integer 1
+          [:expansion :total] := #fhir/integer 2
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "returns only the total with zero count"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set [blood-pressure heart-rate])
+                  "count" #fhir/integer 0)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 2
+          [:expansion :contains] := nil))
+
+      (testing "retains the existing expansion if it isn't smaller"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set [blood-pressure heart-rate])
+                  "count" #fhir/integer 2)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier
+          [:expansion :contains count] := 2))
+
+      (testing "is consistent with the same recorded count"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :total #fhir/integer 2
+                              :parameter [(expansion-parameter "count" #fhir/integer 1)])
+                  "count" #fhir/integer 1)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier
+          [:expansion :total] := #fhir/integer 2
+          [:expansion :contains count] := 1))
+
+      (testing "is inconsistent with an incomplete expansion"
+        (doseq [[expansion params]
+                [[[:parameter [(expansion-parameter "count" #fhir/integer 1)]] []]
+                 [[:parameter [(expansion-parameter "count" #fhir/integer 1)]]
+                  ["count" #fhir/integer 1 "activeOnly" #fhir/boolean true]]
+                 [[:total #fhir/integer 2] []]
+                 [[:offset #fhir/integer 1] []]
+                 [[:parameter [(expansion-parameter "offset" #fhir/integer 1)]] []]]]
+          (given-failed-future
+           (apply expand-value-set ts
+                  "valueSet" (apply existing-expansion-value-set
+                                    [(expansion-concept "code-115927" "Blood pressure"
+                                                        :inactive #fhir/boolean false)]
+                                    expansion)
+                  params)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "count"))))))
+
+  (testing "activeOnly"
+    (with-system [{ts ::ts/local} config]
+      (testing "is applied on top of an existing expansion with inactive flags"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure
+                               (expansion-concept "code-093316" "Heart rate"
+                                                  :inactive #fhir/boolean true)])
+                  "activeOnly" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] :!= existing-expansion-identifier
+          [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean true
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "is applied on top of an existing expansion with inactive flags on nested concepts"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [{:fhir/type :fhir.ValueSet.expansion/contains
+                                :abstract #fhir/boolean true
+                                :display #fhir/string "Vital signs"
+                                :contains
+                                [blood-pressure
+                                 (expansion-concept "code-093316" "Heart rate"
+                                                    :inactive #fhir/boolean true)]}]
+                              :total #fhir/integer 2)
+                  "activeOnly" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] :!= existing-expansion-identifier
+          [:expansion :total] := #fhir/integer 1
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "is consistent with the same recorded activeOnly"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :parameter [(expansion-parameter "activeOnly" #fhir/boolean true)])
+                  "activeOnly" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier))
+
+      (testing "is inconsistent without inactive flags"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet" (existing-expansion-value-set [blood-pressure heart-rate])
+           "activeOnly" #fhir/boolean true)
+          ::anom/category := ::anom/conflict
+          ::anom/message := (inconsistent-msg "activeOnly")))
+
+      (testing "is inconsistent with a recorded activeOnly"
+        (doseq [params [[] ["activeOnly" #fhir/boolean false]]]
+          (given-failed-future
+           (apply expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :parameter [(expansion-parameter "activeOnly" #fhir/boolean true)])
+                  params)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "activeOnly"))))))
+
+  (testing "includeDesignations"
+    (with-system [{ts ::ts/local} config]
+      (let [value-set
+            (existing-expansion-value-set
+             [(expansion-concept
+               "code-093316" "Heart rate"
+               :designation
+               [{:fhir/type :fhir.ValueSet.compose.include.concept/designation
+                 :value #fhir/string "Puls"}])]
+             :parameter [(expansion-parameter "includeDesignations" #fhir/boolean true)])]
+
+        (testing "removes designations by default"
+          (doseq [params [[] ["includeDesignations" #fhir/boolean false]]]
+            (given @(apply expand-value-set ts "valueSet" value-set params)
+              :fhir/type := :fhir/ValueSet
+              [:expansion :identifier] :!= existing-expansion-identifier
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :code] := #fhir/code "code-093316"
+              [:expansion :contains 0 :designation] := nil)))
+
+        (testing "removes designations of nested concepts"
+          (given @(expand-value-set ts
+                    "valueSet" (existing-expansion-value-set
+                                [{:fhir/type :fhir.ValueSet.expansion/contains
+                                  :abstract #fhir/boolean true
+                                  :display #fhir/string "Vital signs"
+                                  :contains (-> value-set :expansion :contains)}]))
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains 0 :display] := #fhir/string "Vital signs"
+            [:expansion :contains 0 :contains 0 :code] := #fhir/code "code-093316"
+            [:expansion :contains 0 :contains 0 :designation] := nil))
+
+        (testing "is consistent with the same recorded includeDesignations"
+          (given @(expand-value-set ts
+                    "valueSet" value-set
+                    "includeDesignations" #fhir/boolean true)
+            :fhir/type := :fhir/ValueSet
+            [:expansion :identifier] := existing-expansion-identifier
+            [:expansion :contains 0 :designation 0 :value] := #fhir/string "Puls")))
+
+      (testing "is inconsistent without recorded includeDesignations"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet" (existing-expansion-value-set [blood-pressure])
+           "includeDesignations" #fhir/boolean true)
+          ::anom/category := ::anom/conflict
+          ::anom/message := (inconsistent-msg "includeDesignations")))))
+
+  (testing "displayLanguage"
+    (with-system [{ts ::ts/local} config]
+      (testing "is consistent with the same recorded displayLanguage"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set
+                              [blood-pressure]
+                              :parameter [(expansion-parameter "displayLanguage" #fhir/code "de")])
+                  "displayLanguage" #fhir/code "de")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier))
+
+      (testing "is inconsistent with a different recorded displayLanguage"
+        (doseq [[expansion params]
+                [[[] ["displayLanguage" #fhir/code "de"]]
+                 [[:parameter [(expansion-parameter "displayLanguage" #fhir/code "de")]] []]
+                 [[:parameter [(expansion-parameter "displayLanguage" #fhir/code "de")]]
+                  ["displayLanguage" #fhir/code "en"]]]]
+          (given-failed-future
+           (apply expand-value-set ts
+                  "valueSet" (apply existing-expansion-value-set [blood-pressure] expansion)
+                  params)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "displayLanguage"))))))
+
+  (testing "property"
+    (with-system [{ts ::ts/local} config]
+      (testing "is consistent with the same recorded property"
+        (doseq [expansion [[:parameter [(expansion-parameter "property" #fhir/code "status")]]
+                           [:property [{:fhir/type :fhir.ValueSet.expansion/property
+                                        :code #fhir/code "status"}]]]]
+          (given @(expand-value-set ts
+                    "valueSet" (apply existing-expansion-value-set [blood-pressure] expansion)
+                    "property" #fhir/string "status")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :identifier] := existing-expansion-identifier)))
+
+      (testing "is inconsistent with a different recorded property"
+        (doseq [[expansion params]
+                [[[] ["property" #fhir/string "status"]]
+                 [[:parameter [(expansion-parameter "property" #fhir/code "status")]] []]]]
+          (given-failed-future
+           (apply expand-value-set ts
+                  "valueSet" (apply existing-expansion-value-set [blood-pressure] expansion)
+                  params)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "property"))))))
+
+  (testing "system-version"
+    (with-system [{ts ::ts/local} config]
+      (testing "is consistent with the version used in the existing expansion"
+        (doseq [[concepts expansion]
+                [[[blood-pressure] [:parameter [(expansion-parameter "version" #fhir/uri "system-115910|2.0.0")]]]
+                 [[blood-pressure] [:parameter [(expansion-parameter "used-codesystem" #fhir/uri "system-115910|2.0.0")]]]
+                 [[(expansion-concept "code-115927" "Blood pressure" :version #fhir/string "2.0.0")] []]
+                 [[{:fhir/type :fhir.ValueSet.expansion/contains
+                    :abstract #fhir/boolean true
+                    :display #fhir/string "Vital signs"
+                    :contains [(expansion-concept "code-115927" "Blood pressure" :version #fhir/string "2.0.0")]}] []]]]
+          (given @(expand-value-set ts
+                    "valueSet" (apply existing-expansion-value-set concepts expansion)
+                    "system-version" #fhir/canonical "system-115910|2.0.0")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :identifier] := existing-expansion-identifier)))
+
+      (testing "is consistent for code systems not used in the existing expansion"
+        (given @(expand-value-set ts
+                  "valueSet" (existing-expansion-value-set [blood-pressure])
+                  "system-version" #fhir/canonical "system-154516|2.0.0")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] := existing-expansion-identifier))
+
+      (testing "is inconsistent with a different or unknown version"
+        (doseq [expansion [[:parameter [(expansion-parameter "version" #fhir/uri "system-115910|1.0.0")]]
+                           []]]
+          (given-failed-future
+           (expand-value-set ts
+             "valueSet" (apply existing-expansion-value-set [blood-pressure] expansion)
+             "system-version" #fhir/canonical "system-115910|2.0.0")
+            ::anom/category := ::anom/conflict
+            ::anom/message := (inconsistent-msg "system-version"))))))
+
+  (testing "excludeNested flattens nested concepts"
+    (with-system [{ts ::ts/local} config]
+      (given @(expand-value-set ts
+                "valueSet" (existing-expansion-value-set
+                            [{:fhir/type :fhir.ValueSet.expansion/contains
+                              :abstract #fhir/boolean true
+                              :display #fhir/string "Vital signs"
+                              :contains [blood-pressure heart-rate]}])
+                "excludeNested" #fhir/boolean true)
+        :fhir/type := :fhir/ValueSet
+        [:expansion :identifier] :!= existing-expansion-identifier
+        [:expansion (parameter "excludeNested") 0 :value] := #fhir/boolean true
+        [:expansion :total] := #fhir/integer 2
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :code] := #fhir/code "code-115927"
+        [:expansion :contains 1 :code] := #fhir/code "code-093316")))
+
+  (testing "with compose"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri "system-155434"
+               :content #fhir/code "complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code "code-093316"
+                 :display #fhir/string "Heart rate"}]}]
+        [:put (assoc
+               (existing-expansion-value-set
+                [(expansion-concept "code-115927" "Blood pressure"
+                                    :system #fhir/uri "system-155434")])
+               :id "0"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri "system-155434"}]})]]]
+
+      (testing "uses the existing expansion if consistent"
+        (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
+          :fhir/type := :fhir/ValueSet
+          :compose := nil
+          [:expansion :identifier] := existing-expansion-identifier
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "retains the compose with includeDefinition"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "includeDefinition" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:compose :include 0 :system] := #fhir/uri "system-155434"
+          [:expansion :identifier] := existing-expansion-identifier
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "expands the compose if inconsistent"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "activeOnly" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] :!= existing-expansion-identifier
+          [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean true
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-093316"))
+
+      (testing "expands the compose with filter"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-135750"
+                  "filter" #fhir/string "heart")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :identifier] :!= existing-expansion-identifier
+          [:expansion (parameter "filter") 0 :value] := #fhir/string "heart"
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-093316")))
+
+    (testing "without the code system of the compose"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put (assoc
+                 (existing-expansion-value-set [blood-pressure])
+                 :id "0"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri "system-115910"}]})]]]
+
+        (testing "uses the existing expansion without parameters"
+          (given @(expand-value-set ts "url" #fhir/uri "value-set-135750")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :identifier] := existing-expansion-identifier
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri "system-115910"
+            [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+        (testing "fails if inconsistent"
+          (given-failed-future
+           (expand-value-set ts
+             "url" #fhir/uri "value-set-135750"
+             "filter" #fhir/string "blood")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910` was not found.")))))
+
+  (testing "included value set"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put (-> (existing-expansion-value-set [blood-pressure heart-rate])
+                  (assoc :id "0"))]
+        [:put {:fhir/type :fhir/ValueSet :id "1"
+               :url #fhir/uri "value-set-161213"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :valueSet [#fhir/canonical "value-set-135750"]}]}}]
+        [:put (-> (existing-expansion-value-set [respiratory-rate blood-pressure])
+                  (assoc :id "2" :url #fhir/uri "value-set-100845"))]
+        [:put {:fhir/type :fhir/ValueSet :id "3"
+               :url #fhir/uri "value-set-100927"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :valueSet [#fhir/canonical "value-set-135750"]}]
+                :exclude
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :valueSet [#fhir/canonical "value-set-100845"]}]}}]]]
+
+      (testing "applies the count only to the outer expansion"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-161213"
+                  "count" #fhir/integer 1)
+          :fhir/type := :fhir/ValueSet
+          [:expansion (parameter "count") count] := 1
+          [:expansion :total] := #fhir/integer 2
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :code] := #fhir/code "code-115927"))
+
+      (testing "returns the total of the outer expansion with zero count"
+        (given @(expand-value-set ts
+                  "url" #fhir/uri "value-set-161213"
+                  "count" #fhir/integer 0)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :total] := #fhir/integer 2
+          [:expansion :contains] := nil))
+
+      (testing "applies excluded value sets completely"
+        (doseq [[n codes] [[0 []] [1 [#fhir/code "code-093316"]]]]
+          (given @(expand-value-set ts
+                    "url" #fhir/uri "value-set-100927"
+                    "count" (type/integer n))
+            :fhir/type := :fhir/ValueSet
+            [:expansion :total] := #fhir/integer 1
+            [:expansion :contains (partial mapv :code)] := codes)))
+
+      (testing "fails if inconsistent"
+        (doseq [[name value] [["activeOnly" #fhir/boolean true]
+                              ["filter" #fhir/string "heart"]]]
+          (given-failed-future
+           (expand-value-set ts
+             "url" #fhir/uri "value-set-161213"
+             name value)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (str "Error while expanding the value set `value-set-161213`. "
+                                   (inconsistent-msg name))))))))
 
 (deftest expand-value-set-include-concept-test
   (testing "with one code system"

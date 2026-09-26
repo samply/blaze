@@ -5,6 +5,9 @@
    [blaze.terminology-service.local.value-set.expand :as-alias vs-expand]
    [clojure.spec.alpha :as s]))
 
+(s/def ::filter
+  string?)
+
 (s/def ::count
   nat-int?)
 
@@ -20,6 +23,9 @@
 (s/def ::exclude-nested
   boolean?)
 
+(s/def ::display-language
+  string?)
+
 (s/def ::properties
   (s/coll-of string?))
 
@@ -29,11 +35,13 @@
 (s/def ::vs-expand/params
   (s/keys
    :opt-un
-   [::count
+   [::filter
+    ::count
     ::include-designations
     ::include-definition
     ::active-only
     ::exclude-nested
+    ::display-language
     ::properties
     ::system-versions]))
 

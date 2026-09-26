@@ -41,6 +41,7 @@ test_csv "mii-vs-consent-signaturetypes" "$(expand "https://www.medizininformati
 
 test_csv "ICD-10-GM-E10" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<E10")"
 test_csv "ICD-10-GM-E10-E14" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<E10-E14")"
+test_csv "ICD-10-GM_filter" "$(expand_filter "http://fhir.de/ValueSet/bfarm/icd-10-gm" "Blutung")"
 
 test_csv "OPS-3-20" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<3-20")"
 test_csv "OPS-8-19" "$(expand "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/ops)concept<<8-19")"
