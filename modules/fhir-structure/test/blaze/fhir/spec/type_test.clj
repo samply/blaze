@@ -3207,6 +3207,9 @@
       #fhir.Bundle.entry/search{:extension [#fhir/Extension{}]}
       "f24daf4f"
 
+      #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{}]}
+      "d2425818"
+
       #fhir.Bundle.entry/search{:mode #fhir/code "match"}
       "5912b48c"
 
@@ -3219,10 +3222,23 @@
       #fhir.Bundle.entry/search{:id "id-130825"} 96
       #fhir.Bundle.entry/search{:extension [#fhir/Extension{}]} 24
       #fhir.Bundle.entry/search{:mode #fhir/code "match"} 24
-      #fhir.Bundle.entry/search{:score #fhir/decimal 1M} 72))
+      #fhir.Bundle.entry/search{:score #fhir/decimal 1M} 72
+      #fhir.Bundle.entry/search{:modifierExtension [#fhir/Extension{}]} 80))
 
   (testing "references"
-    (is (empty? (type/references #fhir.Bundle.entry/search{}))))
+    (are [x refs] (= refs (type/references x))
+      #fhir.Bundle.entry/search{}
+      []
+
+      #fhir.Bundle.entry/search
+       {:extension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/0"}}]}
+      [["Patient" "0"]]
+
+      #fhir.Bundle.entry/search
+       {:modifierExtension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
+      [["Patient" "1"]]))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3858,6 +3874,21 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Dosage{} 72
       #fhir/Dosage{:id "foo"} 136))
+
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      #fhir/Dosage{}
+      []
+
+      #fhir/Dosage
+       {:extension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
+      [["Patient" "1"]]
+
+      #fhir/Dosage
+       {:modifierExtension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/2"}}]}
+      [["Patient" "2"]]))
 
   (testing "rejects null elements in additionalInstruction"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
@@ -4967,6 +4998,21 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Timing{} 32
       #fhir/Timing{:id "foo"} 96))
+
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      #fhir/Timing{}
+      []
+
+      #fhir/Timing
+       {:extension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
+      [["Patient" "1"]]
+
+      #fhir/Timing
+       {:modifierExtension
+        [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/2"}}]}
+      [["Patient" "2"]]))
 
   (testing "rejects null elements in event"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
