@@ -545,6 +545,13 @@
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Missing property `resourceType`."
       [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource"))
 
+  (testing "Bundle.entry.response.status is interned"
+    (given (write-parse-json
+            {:resourceType "Bundle"
+             :type "batch-response"
+             :entry [{:response {:status "200 OK"}}]})
+      [:entry 0 :response :status] :? #(identical? #fhir/string-interned "200 OK" %)))
+
   (testing "invalid Observation.value.value"
     (given (write-parse-json {:resourceType "Observation" :valueQuantity {:value "a"}})
       ::anom/category := ::anom/incorrect
@@ -1014,6 +1021,14 @@
       ::anom/message := "Invalid XML representation of a resource."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `<:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>foo</:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>`. Expected type is `Resource`."))
+
+  (testing "Bundle.entry.response.status is interned"
+    (given (conform-xml
+            [::f/Bundle {:xmlns "http://hl7.org/fhir"}
+             [::f/entry
+              [::f/response
+               [::f/status {:value "200 OK"}]]]])
+      [:entry 0 :response :status] :? #(identical? #fhir/string-interned "200 OK" %)))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
@@ -1491,6 +1506,15 @@
                                          [(type/extension {:url extension-url})]
                                          :value value})))))))))
 
+(def ^:private visible-uri-values
+  "Valid uri, url and canonical values the ASCII-only generators don't cover."
+  ["" "!" "~" "http://example.com/fhir|1.0.0" "http://example.com/ü"
+   "ü" "😀"])
+
+(def ^:private invisible-uri-values
+  ["\n" " " "a b" "\t" "\u001e" "\u007F" "\u0081" " " " "
+   "ü b" "\uD800"])
+
 (deftest fhir-uri-test
   (testing "parsing"
     (testing "XML"
@@ -1498,6 +1522,9 @@
         (satisfies-prop 500
           (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.xml/uri (sexp-value value)))))
+
+        (doseq [value visible-uri-values]
+          (is (= (type/uri value) (s2/conform :fhir.xml/uri (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
@@ -1514,8 +1541,8 @@
                                [::f/extension {:url extension-url}]])))))))
 
       (testing "invalid"
-        (are [v] (s2/invalid? (s2/conform :fhir.xml/uri (sexp-value v)))
-          " "))))
+        (doseq [value invisible-uri-values]
+          (is (s2/invalid? (s2/conform :fhir.xml/uri (sexp-value value))))))))
 
   (testing "writing"
     (testing "XML"
@@ -1551,6 +1578,9 @@
           (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.xml/url (sexp-value value)))))
 
+        (doseq [value visible-uri-values]
+          (is (= (type/url value) (s2/conform :fhir.xml/url (sexp-value value)))))
+
         (testing "with extension"
           (satisfies-prop 100
             (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
@@ -1566,10 +1596,8 @@
                                [::f/extension {:url extension-url}]])))))))
 
       (testing "invalid"
-        (are [v] (s2/invalid? (s2/conform :fhir.xml/url (sexp-value v)))
-          " "
-          "\u001e"
-          "\u0081"))))
+        (doseq [value invisible-uri-values]
+          (is (s2/invalid? (s2/conform :fhir.xml/url (sexp-value value))))))))
 
   (testing "writing"
     (testing "XML"
@@ -1605,6 +1633,9 @@
           (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.xml/canonical (sexp-value value)))))
 
+        (doseq [value visible-uri-values]
+          (is (= (type/canonical value) (s2/conform :fhir.xml/canonical (sexp-value value)))))
+
         (testing "with extension"
           (satisfies-prop 100
             (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
@@ -1620,10 +1651,8 @@
                                [::f/extension {:url extension-url}]])))))))
 
       (testing "invalid"
-        (are [v] (s2/invalid? (s2/conform :fhir.xml/canonical (sexp-value v)))
-          " "
-          "\u001e"
-          "\u0081"))))
+        (doseq [value invisible-uri-values]
+          (is (s2/invalid? (s2/conform :fhir.xml/canonical (sexp-value value))))))))
 
   (testing "writing"
     (testing "XML"
@@ -3370,7 +3399,16 @@
         (are [xml key value] (identical? value (key (s2/conform :fhir.xml/Coding xml)))
           (sexp [nil {} [:system {:value "145550"}]]) :system #fhir/uri-interned "145550"
           (sexp [nil {} [:version {:value "145938"}]]) :version #fhir/string-interned "145938"
-          (sexp [nil {} [:display {:value "150034"}]]) :display #fhir/string-interned "150034")))
+          (sexp [nil {} [:display {:value "150034"}]]) :display #fhir/string-interned "150034"))
+
+      (testing "valid system"
+        (doseq [value visible-uri-values]
+          (is (= (type/uri-interned value)
+                 (:system (s2/conform :fhir.xml/Coding (sexp [nil {} [:system {:value value}]])))))))
+
+      (testing "invalid system"
+        (doseq [value invisible-uri-values]
+          (is (s2/invalid? (s2/conform :fhir.xml/Coding (sexp [nil {} [:system {:value value}]])))))))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (write-parse-cbor "Coding" json))

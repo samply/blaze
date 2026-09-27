@@ -7,6 +7,10 @@
   :args (s/cat :s string?)
   :ret string?)
 
+(s/fdef su/visible?
+  :args (s/cat :s string?)
+  :ret boolean?)
+
 (s/fdef su/pascal->kebab
   :args (s/cat :s string?)
   :ret string?)

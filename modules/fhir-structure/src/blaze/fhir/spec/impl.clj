@@ -152,7 +152,7 @@
        "Address.country"
        "Age.unit"
        "Bundle.link.relation"
-       "Bundle.response.status"
+       "Bundle.entry.response.status"
        "CodeableConcept.text"
        "Coding.version"
        "Coding.display"
@@ -164,8 +164,7 @@
        "HumanName.suffix"
        "Quantity.unit")
       (xml/primitive-xml-form `type/string-interned `identity)
-      ("Resource.implicitRules"
-       "Account.implicitRules"
+      ("Account.implicitRules"
        "ActivityDefinition.implicitRules"
        "ActivityDefinition.url"
        "AdverseEvent.implicitRules"
@@ -238,7 +237,6 @@
        "DocumentManifest.implicitRules"
        "DocumentManifest.source"
        "DocumentReference.implicitRules"
-       "DomainResource.implicitRules"
        "Duration.system"
        "EffectEvidenceSynthesis.implicitRules"
        "EffectEvidenceSynthesis.url"
@@ -389,13 +387,11 @@
        "ValueSet.expansion.contains.system"
        "VerificationResult.implicitRules"
        "VisionPrescription.implicitRules"
-       "MetadataResource.implicitRules"
-       "MetadataResource.url"
        "Coding.system"
        "Identifier.system"
        "Quantity.system"
        "Reference.type")
-      (xml/primitive-xml-form #"(?U)[\p{Print}&&[^\p{Blank}]]*" `type/uri-interned `identity)
+      (xml/valid-primitive-xml-form `su/visible? `type/uri-interned `identity)
       (keyword "fhir.xml" (:code type)))}])
 
 (defn elem-def->spec-def
@@ -806,9 +802,6 @@
 (defn- pattern [name element]
   (case name
     "string" nil
-    "uri" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
-    "url" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
-    "canonical" #"(?U)[\p{Print}&&[^\p{Blank}]]*"
     "code" nil
     "markdown" nil
     (type-regex (value-type element))))
@@ -816,6 +809,8 @@
 (defn- xml-spec-form [name {:keys [element]}]
   (let [pattern (pattern name element)]
     (case name
+      ("uri" "url" "canonical")
+      (xml/valid-primitive-xml-form `su/visible? (symbol "blaze.fhir.spec.type" name) `identity)
       "boolean" (xml/primitive-xml-form pattern `type/boolean `system/parse-boolean)
       "integer" (xml/primitive-xml-form pattern `type/integer `system/parse-integer)
       "decimal" (xml/primitive-xml-form pattern `type/decimal `system/parse-decimal)

@@ -14,12 +14,19 @@
 (defn element? [x]
   (instance? Element x))
 
-(defn value-matches?
-  {:arglists '([regex element])}
-  [regex {{:keys [value] :as attrs} :attrs content :content}]
-  (or (and (string? value) (.matches (re-matcher regex value)))
+(defn value-valid?
+  "Returns true if the value of `element` satisfies `valid?` or `element` has
+  an id or content instead."
+  {:arglists '([valid? element])}
+  [valid? {{:keys [value] :as attrs} :attrs content :content}]
+  (or (and (string? value) (valid? value))
       (some? (:id attrs))
-      (seq content)))
+      (some? (seq content))))
+
+(defn value-matches?
+  "Like `value-valid?` but with the value having to match `regex`."
+  [regex element]
+  (value-valid? #(.matches (re-matcher regex %)) element))
 
 (defn set-extension-tag [element]
   (some-> element (update :content (partial map #(assoc % :tag ::f/extension)))))
@@ -36,17 +43,24 @@
           (constructor value))
         (fn [_] ::s/invalid)))))
 
+(defn- primitive-xml-form* [value-pred-forms constructor system-constructor]
+  `(s/and
+    element?
+    ~@value-pred-forms
+    (s/conformer remove-character-content set-extension-tag)
+    (s/schema {:content (s/coll-of :fhir.xml/Extension)})
+    (s/conformer (xml-constructor ~constructor ~system-constructor) type/to-xml)))
+
 (defn primitive-xml-form
   ([constructor system-constructor]
-   `(s/and
-     element?
-     (s/conformer remove-character-content set-extension-tag)
-     (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer (xml-constructor ~constructor ~system-constructor) type/to-xml)))
+   (primitive-xml-form* nil constructor system-constructor))
   ([regex constructor system-constructor]
-   `(s/and
-     element?
-     (fn [~'e] (value-matches? ~regex ~'e))
-     (s/conformer remove-character-content set-extension-tag)
-     (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer (xml-constructor ~constructor ~system-constructor) type/to-xml))))
+   (primitive-xml-form* [`(fn [~'e] (value-matches? ~regex ~'e))]
+                        constructor system-constructor)))
+
+(defn valid-primitive-xml-form
+  "Like `primitive-xml-form` but with the value having to satisfy the predicate
+  `valid?`, given as symbol."
+  [valid? constructor system-constructor]
+  (primitive-xml-form* [`(fn [~'e] (value-valid? ~valid? ~'e))]
+                       constructor system-constructor))
