@@ -395,6 +395,178 @@
         ::anom/category := ::anom/unsupported
         ::anom/message := "Invalid JSON representation of a resource. Unsupported type `Resource`."))))
 
+(defn- bundle-with-entry-resource [resource-json]
+  (str "{\"type\":\"collection\",\"entry\":[{\"resource\":" resource-json "}]}"))
+
+(deftest parse-json-resource-handler-test
+  (testing "resourceType as first property"
+    (testing "at top-level"
+      (given (parse-json "{\"resourceType\":\"Patient\",\"gender\":\"female\"}")
+        :fhir/type := :fhir/Patient
+        :gender := #fhir/code "female"))
+
+    (testing "in a Bundle entry"
+      (given (parse-json "Bundle" (bundle-with-entry-resource "{\"resourceType\":\"Patient\",\"gender\":\"female\"}"))
+        [:entry 0 :resource :fhir/type] := :fhir/Patient
+        [:entry 0 :resource :gender] := #fhir/code "female")))
+
+  (testing "resourceType after other properties"
+    (testing "at top-level"
+      (given (parse-json "{\"gender\":\"female\",\"name\":[{\"family\":\"family-163826\"}],\"resourceType\":\"Patient\",\"active\":true}")
+        :fhir/type := :fhir/Patient
+        :gender := #fhir/code "female"
+        :name := [#fhir/HumanName{:family #fhir/string "family-163826"}]
+        :active := #fhir/boolean true))
+
+    (testing "in a Bundle entry"
+      (given (parse-json "Bundle" (bundle-with-entry-resource "{\"gender\":\"female\",\"name\":[{\"family\":\"family-163826\"}],\"resourceType\":\"Patient\",\"active\":true}"))
+        [:entry 0 :resource :fhir/type] := :fhir/Patient
+        [:entry 0 :resource :gender] := #fhir/code "female"
+        [:entry 0 :resource :name] := [#fhir/HumanName{:family #fhir/string "family-163826"}]
+        [:entry 0 :resource :active] := #fhir/boolean true))
+
+    (testing "with unknown property"
+      (given (parse-json "Bundle" (bundle-with-entry-resource "{\"unknown\":{\"a\":1},\"resourceType\":\"Patient\"}"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unknown property `unknown`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource")))
+
+  (testing "keeps the precision of decimal values"
+    (doseq [resource ["{\"resourceType\":\"Observation\",\"valueQuantity\":{\"value\":1.10}}"
+                      "{\"valueQuantity\":{\"value\":1.10},\"resourceType\":\"Observation\"}"]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        [:entry 0 :resource :value :value :value str] := "1.10")))
+
+  (testing "duplicate property"
+    (doseq [resource ["{\"resourceType\":\"Patient\",\"gender\":\"male\",\"gender\":\"female\"}"
+                      "{\"gender\":\"male\",\"gender\":\"female\",\"resourceType\":\"Patient\"}"
+                      "{\"gender\":\"male\",\"resourceType\":\"Patient\",\"gender\":\"female\"}"]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Duplicate property `gender`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource")))
+
+  (testing "different second resourceType"
+    (given (parse-json "Bundle" (bundle-with-entry-resource "{\"resourceType\":\"Patient\",\"resourceType\":\"Observation\"}"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource. Incorrect resource type `Observation`. Expected type is `Patient`."
+      [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource"))
+
+  (testing "missing resourceType"
+    (doseq [resource ["{}" "{\"gender\":\"female\"}" "{\"name\":[{\"family\":\"family-163826\"}]}"]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Missing property `resourceType`."
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource")))
+
+  (testing "resourceType isn't a string"
+    (doseq [[resource value] [["{\"resourceType\":1}" "integer value 1"]
+                              ["{\"resourceType\":{\"a\":1}}" "object start"]
+                              ["{\"gender\":\"female\",\"resourceType\":1}" "integer value 1"]]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Invalid JSON representation of a resource. Error on %s. Expected type is `string`." value)
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource.resourceType")))
+
+  (testing "second resourceType isn't a string"
+    (doseq [[resource value] [["{\"resourceType\":\"Patient\",\"resourceType\":1}" "integer value 1"]
+                              ["{\"resourceType\":\"Patient\",\"resourceType\":null}" "value null"]
+                              ["{\"resourceType\":\"Patient\",\"resourceType\":{}}" "object start"]
+                              ["{\"gender\":\"female\",\"resourceType\":\"Patient\",\"resourceType\":1}" "integer value 1"]]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Invalid JSON representation of a resource. Error on %s. Expected type is `string`." value)
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource.resourceType")))
+
+  (testing "unsupported resourceType"
+    (doseq [resource ["{\"resourceType\":\"Foo\"}" "{\"gender\":\"female\",\"resourceType\":\"Foo\"}"]]
+      (given (parse-json "Bundle" (bundle-with-entry-resource resource))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `Foo`.")))
+
+  (testing "non-resource types aren't supported"
+    (doseq [[type json] [["HumanName" "{\"resourceType\":\"HumanName\",\"family\":\"x\"}"]
+                         ["HumanName" "{\"family\":\"x\",\"resourceType\":\"HumanName\"}"]
+                         ["Bundle.entry" "{\"resourceType\":\"Bundle.entry\",\"fullUrl\":\"x\"}"]
+                         ["Bundle.entry" "{\"fullUrl\":\"x\",\"resourceType\":\"Bundle.entry\"}"]]]
+      (testing "at top-level"
+        (given (parse-json json)
+          ::anom/category := ::anom/unsupported
+          ::anom/message := (format "Invalid JSON representation of a resource. Unsupported type `%s`." type)))
+
+      (testing "in a Bundle entry"
+        (given (parse-json "Bundle" (bundle-with-entry-resource json))
+          ::anom/category := ::anom/unsupported
+          ::anom/message := (format "Invalid JSON representation of a resource. Unsupported type `%s`." type)))))
+
+  (testing "nested resource before the resourceType"
+    (doseq [contained ["{\"resourceType\":\"Patient\",\"gender\":\"female\"}"
+                       "{\"gender\":\"female\",\"resourceType\":\"Patient\"}"]
+            :let [observation (format "{\"contained\":[%s],\"status\":\"final\",\"resourceType\":\"Observation\",\"id\":\"0\"}" contained)]]
+      (testing "at top-level"
+        (given (parse-json observation)
+          :fhir/type := :fhir/Observation
+          :id := "0"
+          :status := #fhir/code "final"
+          [:contained 0 :fhir/type] := :fhir/Patient
+          [:contained 0 :gender] := #fhir/code "female"))
+
+      (testing "in a Bundle entry"
+        (given (parse-json "Bundle" (bundle-with-entry-resource observation))
+          [:entry 0 :resource :fhir/type] := :fhir/Observation
+          [:entry 0 :resource :id] := "0"
+          [:entry 0 :resource :status] := #fhir/code "final"
+          [:entry 0 :resource :contained 0 :fhir/type] := :fhir/Patient
+          [:entry 0 :resource :contained 0 :gender] := #fhir/code "female"))))
+
+  (testing "end of input"
+    (doseq [json ["{\"type\":\"collection\",\"entry\":[{\"resource\":{\"resourceType\":\"Patient\",\"gender\":"
+                  "{\"type\":\"collection\",\"entry\":[{\"resource\":{\"name\":[{\"family\":"]]
+      (given (parse-json "Bundle" json)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input."
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource")))
+
+  (testing "parsing error"
+    (doseq [json ["{\"type\":\"collection\",\"entry\":[{\"resource\":{\"resourceType\":\"Patient\",\"gender\":0e]}}]}"
+                  "{\"type\":\"collection\",\"entry\":[{\"resource\":{\"name\":[{\"family\":0e]}]}}]}"]]
+      (given (parse-json "Bundle" json)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource. JSON parsing error."
+        [:fhir/issues 0 :fhir.issues/expression] := "Bundle.entry[0].resource")))
+
+  (testing "errors before the resourceType at top-level have no expression"
+    (doseq [[json msg] [["{}" "Missing property `resourceType`."]
+                        ["{\"gender\":\"female\"}" "Missing property `resourceType`."]
+                        ["{\"gender\":" "Unexpected end of input."]
+                        ["{\"name\":[{\"family\":0e]}]}" "JSON parsing error."]]]
+      (given (parse-json json)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (str "Invalid JSON representation of a resource. " msg)
+        [:fhir/issues 0 :fhir.issues/diagnostics] := msg
+        [:fhir/issues 0 :fhir.issues/expression] := nil)))
+
+  (testing "CBOR"
+    (doseq [resource [{:resourceType "Observation" :valueQuantity {:value 1.10M}}
+                      {:valueQuantity {:value 1.10M} :resourceType "Observation"}]]
+      (given-parse-cbor "Bundle"
+                        {:type "collection" :entry [{:resource resource}]}
+                        [:entry 0 :resource :fhir/type] := :fhir/Observation
+                        [:entry 0 :resource :value :value :value str] := "1.10"))
+
+    (testing "float values are independent of property order"
+      (doseq [resource [{:resourceType "Observation" :valueQuantity {:value (float 1.1)}}
+                        {:valueQuantity {:value (float 1.1)} :resourceType "Observation"}]]
+        (given-parse-cbor "Bundle"
+                          {:type "collection" :entry [{:resource resource}]}
+                          [:entry 0 :resource :value :value :value str] := "1.1")))
+
+    (testing "summary types aren't supported"
+      (given-parse-cbor "Bundle"
+                        {:type "collection" :entry [{:resource {:resourceType "summary/Patient"}}]}
+                        ::anom/category := ::anom/unsupported
+                        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `summary/Patient`."))))
+
 (deftest parse-json-questionnaire-test
   (given-parse-json "Questionnaire"
     {:item {:linkId "id-130845"}}

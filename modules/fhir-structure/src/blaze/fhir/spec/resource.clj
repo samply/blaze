@@ -69,8 +69,8 @@
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
    [com.fasterxml.jackson.core.io JsonEOFException]
-   [com.fasterxml.jackson.databind JsonNode ObjectMapper]
-   [com.fasterxml.jackson.databind.node TreeTraversingParser]
+   [com.fasterxml.jackson.core.util JsonParserSequence]
+   [com.fasterxml.jackson.databind.util TokenBuffer]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.io InputStream OutputStream Reader]
    [java.util ArrayList HashMap List]))
@@ -438,24 +438,27 @@
         (str sb)))))
 
 (defn- fhir-issue [msg locator]
-  {:fhir.issues/code "invariant"
-   :fhir.issues/diagnostics msg
-   :fhir.issues/expression (expression locator)})
+  (cond-> {:fhir.issues/code "invariant"
+           :fhir.issues/diagnostics msg}
+    (seq locator)
+    (assoc :fhir.issues/expression (expression locator))))
 
 (defn- unexpected-end-of-input-msg [^JsonEOFException e]
   (condp identical? (.getTokenBeingDecoded e)
     JsonToken/FIELD_NAME "Unexpected end of input while parsing a field name."
     "Unexpected end of input."))
 
+(defn- parse-exception-anom [e locator]
+  (let [msg (if (instance? JsonEOFException e)
+              (unexpected-end-of-input-msg e)
+              "JSON parsing error.")]
+    (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
+
 (defn- next-token! [parser locator]
   (try
     (.nextToken ^JsonParser parser)
-    (catch JsonEOFException e
-      (let [msg (unexpected-end-of-input-msg e)]
-        (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
-    (catch JsonParseException _
-      (let [msg "JSON parsing error."]
-        (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))
+    (catch JsonParseException e
+      (parse-exception-anom e locator))))
 
 (defmacro current-name [parser]
   `(.currentName ~(with-meta parser {:tag `JsonParser})))
@@ -1111,6 +1114,14 @@
     (.skipChildren ^JsonParser parser)
     nil))
 
+(defn- read-resource-type
+  "Reads the value of the `resourceType` property. Expects that the field name
+  is already read."
+  [parser locator]
+  (cond-next-token parser locator
+    JsonToken/VALUE_STRING (get-text parser locator)
+    (incorrect-value-anom parser (cons "resourceType" locator) "string")))
+
 (defn- append-subsetted [resource]
   (update resource :meta update-meta :tag u/conj-vec fu/subsetted))
 
@@ -1159,12 +1170,10 @@
                    (if-some [handler (property-handlers field-name)]
                      (recur-ok (handler parser locator resource))
                      (if (= "resourceType" field-name)
-                       (cond-next-token parser locator
-                         JsonToken/VALUE_STRING
-                         (when-ok [s (get-text parser locator)]
-                           (if (= type s)
-                             (recur resource)
-                             (incorrect-type-anom locator s type))))
+                       (when-ok [s (read-resource-type parser locator)]
+                         (if (= type s)
+                           (recur resource)
+                           (incorrect-type-anom locator s type)))
                        (if fail-on-unknown-property
                          (unknown-property-anom locator field-name)
                          (do (skip-value! parser locator) (recur resource))))))
@@ -1215,29 +1224,81 @@
    {}
    (separate-element-definitions parent-type more)))
 
-(defn- find-resource-type [^JsonNode node]
-  (when-let [node (.get node "resourceType")]
-    (when (.isTextual node)
-      (.asText node))))
+(defn- missing-resource-type-anom [locator]
+  (let [msg "Missing property `resourceType`."]
+    (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
+
+(defn- copy-property!
+  "Copies the current property, field name and value, of `parser` into
+  `buffer`.
+
+  Floating-point numbers are copied as BigDecimal, so that they are read with
+  the same value as from `parser` itself. The TokenBuffer would keep CBOR float
+  values as Float, which it reads back through double."
+  [^TokenBuffer buffer ^JsonParser parser locator]
+  (try
+    (.copyCurrentEvent buffer parser)
+    (loop [depth 0]
+      (let [token (.nextToken parser)]
+        (if (identical? JsonToken/VALUE_NUMBER_FLOAT token)
+          (.writeNumber buffer (.getDecimalValue parser))
+          (.copyCurrentEvent buffer parser))
+        (let [depth (if (.isStructStart token)
+                      (inc depth)
+                      (if (.isStructEnd token) (dec depth) depth))]
+          (when (pos? depth)
+            (recur depth)))))
+    (catch JsonParseException e
+      (parse-exception-anom e locator))))
+
+(defn- resource-type-and-parser
+  "Returns a tuple of the resource type and a parser positioned before the
+  first property of the resource other than `resourceType`.
+
+  Expects that the `START_OBJECT` token is already read. If `resourceType` is
+  the first property, `parser` itself is returned. Otherwise the preceding
+  properties are copied into a TokenBuffer which is replayed before the
+  remaining properties of `parser`."
+  [^JsonParser parser locator]
+  (loop [^TokenBuffer buffer nil]
+    (cond-next-token parser locator
+      JsonToken/FIELD_NAME
+      (if (= "resourceType" (current-name parser))
+        (when-ok [type (read-resource-type parser locator)]
+          [type (if buffer
+                  (JsonParserSequence/createFlattened
+                   false (.asParser buffer parser) parser)
+                  parser)])
+        (let [buffer (or buffer (TokenBuffer. parser))]
+          (when-ok [_ (copy-property! buffer parser locator)]
+            (recur buffer))))
+      (missing-resource-type-anom locator))))
 
 (defn- resource-handler
   "Returns a special type-handler that works for all resources. It first reads
   the `resourceType` property and delegates the handling to the corresponding
-  type-handler of `type-handlers`."
-  [type-handlers]
+  type-handler of `resource-handlers`, a map of resource type names to
+  type-handlers."
+  [resource-handlers]
   (fn
     ([] "Resource")
-    ([^JsonParser parser locator]
-     (let [^JsonNode tree (.readValueAsTree parser)]
-       (if-let [type (find-resource-type tree)]
-         (if-let [type-handler (get type-handlers (keyword type))]
-           (with-open [parser (TreeTraversingParser. tree (.getCodec parser))]
-             ;; skip the first token
-             (next-token! parser locator)
-             (type-handler parser (if (empty? locator) [type] locator)))
-           (unsupported-type-anom type))
-         (let [msg "Missing property `resourceType`."]
-           (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))))
+    ([parser locator]
+     (when-ok [[type parser] (resource-type-and-parser parser locator)]
+       (if-let [type-handler (get resource-handlers type)]
+         (type-handler parser (if (empty? locator) (RT/list type) locator))
+         (unsupported-type-anom type))))))
+
+(defn- resource-handlers
+  "Returns a map of resource type names to the type-handlers of `type-handlers`
+  of all resources in `structure-definitions`."
+  [structure-definitions type-handlers]
+  (into
+   {}
+   (keep
+    (fn [{:keys [kind type]}]
+      (when (= "resource" kind)
+        [type (get type-handlers (keyword type))])))
+   structure-definitions))
 
 (defn- link-type-handlers!
   "Links all references in `refs` to the type-handlers of `type-handlers`.
@@ -1275,7 +1336,9 @@
                    reduced))
                {}
                structure-definitions)]
-      (let [type-handlers (assoc type-handlers :Resource (resource-handler type-handlers))]
+      (let [resource-handlers (resource-handlers structure-definitions type-handlers)
+            resource-handler (resource-handler resource-handlers)
+            type-handlers (assoc type-handlers :Resource resource-handler)]
         (link-type-handlers! @refs type-handlers)
         type-handlers))))
 
@@ -1326,10 +1389,9 @@
     (.createParser ^JsonFactory factory ^bytes source)))
 
 (def ^:private ^JsonFactory json-factory
-  (doto (-> (JsonFactory/builder)
-            (.streamReadConstraints stream-read-constraints)
-            (.build))
-    (ObjectMapper.)))
+  (-> (JsonFactory/builder)
+      (.streamReadConstraints stream-read-constraints)
+      (.build)))
 
 (defn parse-json
   "Parses a complex value from JSON `source`.
@@ -1358,10 +1420,9 @@
     (ba/incorrect "Missing type.")))
 
 (def ^:private ^JsonFactory cbor-factory
-  (doto (-> (CBORFactory/builder)
-            (.streamReadConstraints stream-read-constraints)
-            (.build))
-    (ObjectMapper.)))
+  (-> (CBORFactory/builder)
+      (.streamReadConstraints stream-read-constraints)
+      (.build)))
 
 (defn parse-cbor
   "Parses a complex value of `type` and `variant` from CBOR `source`.

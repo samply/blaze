@@ -107,7 +107,7 @@
                                              "Patient" "0"
                                              opts)
         ::anom/category := ::anom/fault
-        ::anom/message :# "Unexpected end-of-input:(.|\\s)*")))
+        ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input.")))
 
   (testing "Server Error without JSON response"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)]
