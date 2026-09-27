@@ -5,7 +5,7 @@ lint:
 	clj-kondo --lint src test build.clj deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -Sthreads 1 -X:deps prep
 
 build: prep
 	clojure -T:build gen
@@ -14,13 +14,13 @@ lint-dashboard: build
 	dashboard-linter lint -c .lint --strict target/blaze-dashboard.json
 
 test: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage: prep
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree

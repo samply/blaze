@@ -6,7 +6,7 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep :aliases '[:test]'
+	clojure -Sthreads 1 -X:deps prep :aliases '[:test]'
 
 cql-test:
     # Please remove --no-check-certificate if the certificate is ok gain.
@@ -19,13 +19,13 @@ cql-test:
 	sed -i.bak '277d' cql-test/CqlArithmeticFunctionsTest.xml
 
 test: cql-test prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage: cql-test prep
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree

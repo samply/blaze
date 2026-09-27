@@ -24,15 +24,15 @@ build-ig:
 
 prep:
 	$(MAKE) -C modules/module-base prep
-	clojure -X:deps prep
+	clojure -Sthreads 1 -X:deps prep
 
 test-root: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test: $(MODULES) test-root
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage: $(MODULES)
 

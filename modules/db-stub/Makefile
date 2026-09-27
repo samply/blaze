@@ -5,7 +5,7 @@ lint:
 	clj-kondo --lint src deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -Sthreads 1 -X:deps prep
 
 test:
 	true

@@ -6,25 +6,25 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep :current true
+	clojure -Sthreads 1 -X:deps prep :current true
 
 test: prep
-	clojure -M:test:kaocha --profile :ci --skip-meta :slow
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --skip-meta :slow
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-slow: prep
-	clojure -M:test:kaocha --profile :ci --focus-meta :slow
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus-meta :slow
 
 test-coverage: prep
-	clojure -M:test:kaocha:coverage --skip-meta :slow
+	clojure -Sthreads 1 -M:test:kaocha:coverage --skip-meta :slow
 
 test-coverage-slow: prep
-	clojure -M:test:kaocha:coverage --focus-meta :slow
+	clojure -Sthreads 1 -M:test:kaocha:coverage --focus-meta :slow
 
 test-coverage-all: prep
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree
