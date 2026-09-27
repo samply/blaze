@@ -4,12 +4,14 @@ import clojure.lang.ILookupThunk;
 import clojure.lang.ISeq;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentList;
+import clojure.lang.PersistentVector;
 import clojure.lang.RT;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -204,6 +206,17 @@ public sealed abstract class AbstractQuantity extends AbstractElement implements
             sink.putByte((byte) 6);
             code.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        if (isInterned()) return;
+        super.collectReferences(refs);
+        Base.collectReferences(value, refs);
+        Base.collectReferences(comparator, refs);
+        Base.collectReferences(unit, refs);
+        Base.collectReferences(system, refs);
+        Base.collectReferences(code, refs);
     }
 
     @Override

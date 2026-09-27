@@ -9,6 +9,7 @@ import com.google.common.hash.PrimitiveSink;
 import java.io.IOException;
 import java.lang.String;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -178,6 +179,14 @@ public final class Period extends AbstractElement implements Complex, ExtensionV
             sink.putByte((byte) 3);
             end.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        if (isInterned()) return;
+        super.collectReferences(refs);
+        Base.collectReferences(start, refs);
+        Base.collectReferences(end, refs);
     }
 
     @Override

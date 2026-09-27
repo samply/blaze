@@ -168,6 +168,14 @@ public final class Contributor extends AbstractElement implements Complex, Exten
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(name, refs);
+        Base.collectReferences(contact, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(type) + Base.memSize(name) +
                 Base.memSize(contact);

@@ -400,6 +400,21 @@ public final class Address extends AbstractElement implements Complex, Extension
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(use, refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(text, refs);
+        Base.collectReferences(line, refs);
+        Base.collectReferences(city, refs);
+        Base.collectReferences(district, refs);
+        Base.collectReferences(state, refs);
+        Base.collectReferences(postalCode, refs);
+        Base.collectReferences(country, refs);
+        Base.collectReferences(period, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(use) + Base.memSize(type) + Base.memSize(text) +
                 Base.memSize(line) + Base.memSize(city) + Base.memSize(district) + Base.memSize(state) +

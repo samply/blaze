@@ -150,6 +150,13 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(name, refs);
+        Base.collectReferences(telecom, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(name) + Base.memSize(telecom);
     }

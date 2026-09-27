@@ -6,9 +6,9 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 
@@ -207,20 +207,24 @@ public final class Reference extends AbstractElement implements Complex, Extensi
         return ID_PATTERN.matcher(x).matches();
     }
 
-    private Stream<PersistentVector> ref() {
+    private void collectRef(List<PersistentVector> refs) {
         var ref = reference == null ? null : reference.value();
         if (ref != null) {
             var parts = ref.split("/");
             if (parts.length == 2 && isType(parts[0]) && isId(parts[1])) {
-                return Stream.of(PersistentVector.adopt(parts));
+                refs.add(PersistentVector.adopt(parts));
             }
         }
-        return Stream.empty();
     }
 
     @Override
-    public Stream<PersistentVector> references() {
-        return Stream.concat(super.references(), ref());
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        collectRef(refs);
+        Base.collectReferences(reference, refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(identifier, refs);
+        Base.collectReferences(display, refs);
     }
 
     @Override

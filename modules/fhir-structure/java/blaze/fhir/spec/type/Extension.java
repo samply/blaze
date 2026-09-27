@@ -10,8 +10,8 @@ import com.google.common.hash.PrimitiveSink;
 import java.io.IOException;
 import java.lang.String;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 import static java.util.Objects.requireNonNull;
@@ -183,8 +183,9 @@ public final class Extension extends AbstractElement implements Complex {
     }
 
     @Override
-    public Stream<PersistentVector> references() {
-        return value == null ? super.references() : Stream.concat(super.references(), value.references());
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(value, refs);
     }
 
     @Override

@@ -511,6 +511,24 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(sequence, refs);
+        Base.collectReferences(text, refs);
+        Base.collectReferences(additionalInstruction, refs);
+        Base.collectReferences(patientInstruction, refs);
+        Base.collectReferences(timing, refs);
+        Base.collectReferences(asNeeded, refs);
+        Base.collectReferences(site, refs);
+        Base.collectReferences(route, refs);
+        Base.collectReferences(method, refs);
+        Base.collectReferences(doseAndRate, refs);
+        Base.collectReferences(maxDosePerPeriod, refs);
+        Base.collectReferences(maxDosePerAdministration, refs);
+        Base.collectReferences(maxDosePerLifetime, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(modifierExtension) + Base.memSize(sequence) +
                 Base.memSize(text) + Base.memSize(additionalInstruction) + Base.memSize(patientInstruction) +
@@ -766,6 +784,14 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
                 sink.putByte((byte) 4);
                 rate.hashInto(sink);
             }
+        }
+
+        @Override
+        public void collectReferences(List<PersistentVector> refs) {
+            super.collectReferences(refs);
+            Base.collectReferences(type, refs);
+            Base.collectReferences(dose, refs);
+            Base.collectReferences(rate, refs);
         }
 
         @Override

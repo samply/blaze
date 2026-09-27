@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.lang.String;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import static blaze.fhir.spec.type.Base.*;
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
@@ -75,8 +74,9 @@ public final class ExtensionData {
         return this == EMPTY || id == null && Base.areAllInterned(extension) && (meta == null || meta.count() == 0);
     }
 
-    Stream<PersistentVector> references() {
-        return extension.stream().flatMap(Extension::references);
+    void collectReferences(List<PersistentVector> refs) {
+        if (extension.isEmpty()) return;
+        for (Extension e : extension) e.collectReferences(refs);
     }
 
     int memSize() {

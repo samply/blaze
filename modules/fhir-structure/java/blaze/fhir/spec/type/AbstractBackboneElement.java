@@ -9,7 +9,6 @@ import com.fasterxml.jackson.core.io.SerializedString;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
 import static java.util.Objects.requireNonNull;
@@ -50,8 +49,10 @@ abstract class AbstractBackboneElement extends AbstractElement {
     }
 
     @Override
-    public Stream<PersistentVector> references() {
-        return Stream.concat(super.references(), modifierExtension.stream().flatMap(Extension::references));
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        if (modifierExtension.isEmpty()) return;
+        for (Extension e : modifierExtension) e.collectReferences(refs);
     }
 
     protected void serializeJsonBase(JsonGenerator generator) throws IOException {

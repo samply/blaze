@@ -6,6 +6,7 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -335,6 +336,19 @@ public final class Attachment extends AbstractElement implements Complex, Extens
             sink.putByte((byte) 9);
             creation.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(contentType, refs);
+        Base.collectReferences(language, refs);
+        Base.collectReferences(data, refs);
+        Base.collectReferences(url, refs);
+        Base.collectReferences(size, refs);
+        Base.collectReferences(hash, refs);
+        Base.collectReferences(title, refs);
+        Base.collectReferences(creation, refs);
     }
 
     @Override
