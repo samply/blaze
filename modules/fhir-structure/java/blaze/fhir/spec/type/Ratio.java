@@ -87,6 +87,21 @@ public final class Ratio extends AbstractElement implements Complex, ExtensionVa
         return maybeIntern(ExtensionData.fromMap(m), (Quantity) m.valAt(NUMERATOR), (Quantity) m.valAt(DENOMINATOR));
     }
 
+    /**
+     * Creates a Ratio from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Ratio fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), (Quantity) slots[2], (Quantity) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of Ratio in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

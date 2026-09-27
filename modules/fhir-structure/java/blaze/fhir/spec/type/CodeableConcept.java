@@ -91,6 +91,21 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
         return maybeIntern(ExtensionData.fromMap(m), Base.listFrom(m, CODING), (String) m.valAt(TEXT));
     }
 
+    /**
+     * Creates a CodeableConcept from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static CodeableConcept fromSlots(Object[] slots) {
+        return maybeIntern(ExtensionData.fromSlots(slots), Lists.nullToEmpty(slots[2]), (String) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of CodeableConcept in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

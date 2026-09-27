@@ -74,6 +74,21 @@ public final class Money extends AbstractElement implements Complex, ExtensionVa
         return new Money(ExtensionData.fromMap(m), (Decimal) m.valAt(VALUE), (Code) m.valAt(CURRENCY));
     }
 
+    /**
+     * Creates a Money from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Money fromSlots(Object[] slots) {
+        return new Money(ExtensionData.fromSlots(slots), (Decimal) slots[2], (Code) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of Money in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Decimal value() {
         return value;
     }

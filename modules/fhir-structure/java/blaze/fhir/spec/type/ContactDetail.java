@@ -63,6 +63,21 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
         return new ContactDetail(ExtensionData.fromMap(m), (String) m.valAt(NAME), Base.listFrom(m, TELECOM));
     }
 
+    /**
+     * Creates a ContactDetail from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static ContactDetail fromSlots(Object[] slots) {
+        return new ContactDetail(ExtensionData.fromSlots(slots), (String) slots[2], Lists.nullToEmpty(slots[3]));
+    }
+
+    /**
+     * Returns the keys of all fields of ContactDetail in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public String name() {
         return name;
     }

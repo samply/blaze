@@ -136,6 +136,23 @@ public final class ParameterDefinition extends AbstractElement implements Comple
                 (Canonical) m.valAt(PROFILE));
     }
 
+    /**
+     * Creates a ParameterDefinition from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static ParameterDefinition fromSlots(Object[] slots) {
+        return new ParameterDefinition(ExtensionData.fromSlots(slots), (Code) slots[2], (Code) slots[3],
+                (Integer) slots[4], (String) slots[5], (String) slots[6], (Code) slots[7],
+                (Canonical) slots[8]);
+    }
+
+    /**
+     * Returns the keys of all fields of ParameterDefinition in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code name() {
         return name;
     }

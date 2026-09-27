@@ -60,6 +60,14 @@ public final class ExtensionData {
         return maybeIntern((String) m.valAt(ID), Base.listFrom(m, EXTENSION), null);
     }
 
+    /**
+     * Creates extension data from {@code slots} holding the id at index 0 and
+     * the extensions at index 1.
+     */
+    static ExtensionData fromSlots(Object[] slots) {
+        return maybeIntern((String) slots[0], Lists.nullToEmpty(slots[1]), null);
+    }
+
     Object valAt(Object key, Object notFound) {
         if (key == EXTENSION) return extension;
         if (key == ID) return id;

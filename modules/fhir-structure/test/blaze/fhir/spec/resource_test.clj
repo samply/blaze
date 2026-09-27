@@ -2,8 +2,10 @@
   (:require
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.resource :as res]
+   [blaze.fhir.spec.resource-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -61,6 +63,26 @@
   {:arglists '[type data & body]}
   [type data & more]
   `(given (parse-cbor ~type (j/write-value-as-bytes ~data cbor-object-mapper)) ~@more))
+
+(defn- complex-type [type]
+  (some #(when (= type (:type %)) %) (sdr/complex-types structure-definition-repo)))
+
+(deftest create-type-handlers-test
+  (testing "fails on a complex type element without a field in its Java class"
+    (let [coding (update-in (complex-type "Coding") [:snapshot :element] conj
+                            {:path "Coding.foo" :max "1" :type [{:code "string"}]})]
+      (given (res/create-type-handlers [coding] {})
+        ::anom/category := ::anom/fault
+        ::anom/message := "The complex type `Coding` has no field `foo`.")))
+
+  (testing "fails on an element with an unsupported type"
+    (let [coding (update-in (complex-type "Coding") [:snapshot :element]
+                            (partial mapv #(cond-> %
+                                             (= "Coding.version" (:path %))
+                                             (assoc :type [{:code "http://hl7.org/fhirpath/System.Boolean"}]))))]
+      (given (res/create-type-handlers [coding] {})
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported type `boolean`."))))
 
 (deftest parse-json-patient-test
   (testing "unknown property"
@@ -322,6 +344,19 @@
       [:contact count] := 1
       [:contact 0 :gender] := #fhir/code "female")))
 
+(deftest parse-json-type-handlers-test
+  (testing "type-handlers are linked to the type-handlers created together"
+    (let [context (assoc json-context
+                         :HumanName (:HumanName cbor-context)
+                         :CodeableConcept (:CodeableConcept cbor-context))]
+
+      (testing "replacing a complex type handler doesn't affect other handlers"
+        (doseq [data [{:name [{:family "family-121314" :unknown "foo"}]}
+                      {:maritalStatus {:text "text-121344" :unknown "foo"}}]]
+          (given (res/parse-json context "Patient" (j/write-value-as-string data))
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid JSON representation of a resource. Unknown property `unknown`."))))))
+
 (deftest parse-json-observation-test
   (testing "unknown property"
     (given-parse-json "Observation"
@@ -344,6 +379,21 @@
     [:entry 0 :fhir/type] := :fhir.Bundle/entry
     [:entry 0 :resource :fhir/type] := :fhir/Patient
     [:entry 0 :resource :gender] := #fhir/code "female"))
+
+(deftest parse-json-resource-type-resource-test
+  (testing "the abstract type Resource isn't supported"
+    (testing "at top-level"
+      (given-parse-json
+       {:resourceType "Resource"}
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `Resource`."))
+
+    (testing "in a Bundle entry"
+      (given-parse-json "Bundle"
+        {:type "collection"
+         :entry [{:resource {:resourceType "Resource"}}]}
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `Resource`."))))
 
 (deftest parse-json-questionnaire-test
   (given-parse-json "Questionnaire"

@@ -67,6 +67,22 @@ public final class Annotation extends AbstractElement implements Complex, Extens
                 (Markdown) m.valAt(TEXT));
     }
 
+    /**
+     * Creates a Annotation from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Annotation fromSlots(Object[] slots) {
+        return new Annotation(ExtensionData.fromSlots(slots), (Element) slots[2], (DateTime) slots[3],
+                (Markdown) slots[4]);
+    }
+
+    /**
+     * Returns the keys of all fields of Annotation in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Base author() {
         return author;
     }

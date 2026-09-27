@@ -176,6 +176,23 @@ public final class Address extends AbstractElement implements Complex, Extension
                 (String) m.valAt(POSTAL_CODE), (String) m.valAt(COUNTRY), (Period) m.valAt(PERIOD));
     }
 
+    /**
+     * Creates a Address from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Address fromSlots(Object[] slots) {
+        return new Address(ExtensionData.fromSlots(slots), (Code) slots[2], (Code) slots[3], (String) slots[4],
+                Lists.nullToEmpty(slots[5]), (String) slots[6], (String) slots[7], (String) slots[8],
+                (String) slots[9], (String) slots[10], (Period) slots[11]);
+    }
+
+    /**
+     * Returns the keys of all fields of Address in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code use() {
         return use;
     }

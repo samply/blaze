@@ -90,6 +90,23 @@ public final class Extension extends AbstractElement implements Complex {
                 (ExtensionValue) m.valAt(VALUE));
     }
 
+    /**
+     * Creates a Extension from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Extension fromSlots(Object[] slots) {
+        var url = (String) slots[2];
+        return maybeIntern(ExtensionData.fromSlots(slots), url == null ? null : URL_INTERNER.intern(url),
+                (ExtensionValue) slots[3]);
+    }
+
+    /**
+     * Returns the keys of all fields of Extension in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     @Override
     public boolean isInterned() {
         return interned;

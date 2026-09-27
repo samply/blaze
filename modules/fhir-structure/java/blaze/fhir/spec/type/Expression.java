@@ -77,6 +77,22 @@ public final class Expression extends AbstractElement implements Complex, Extens
                 (Code) m.valAt(LANGUAGE), (String) m.valAt(EXPRESSION), (Uri) m.valAt(REFERENCE));
     }
 
+    /**
+     * Creates a Expression from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Expression fromSlots(Object[] slots) {
+        return new Expression(ExtensionData.fromSlots(slots), (String) slots[2], (Id) slots[3],
+                (Code) slots[4], (String) slots[5], (Uri) slots[6]);
+    }
+
+    /**
+     * Returns the keys of all fields of Expression in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public String description() {
         return description;
     }

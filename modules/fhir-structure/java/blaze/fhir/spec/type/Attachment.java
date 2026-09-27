@@ -149,6 +149,23 @@ public final class Attachment extends AbstractElement implements Complex, Extens
                 (Base64Binary) m.valAt(HASH), (String) m.valAt(TITLE), (DateTime) m.valAt(CREATION));
     }
 
+    /**
+     * Creates a Attachment from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static Attachment fromSlots(Object[] slots) {
+        return new Attachment(ExtensionData.fromSlots(slots), (Code) slots[2], (Code) slots[3],
+                (Base64Binary) slots[4], (Url) slots[5], (UnsignedInt) slots[6],
+                (Base64Binary) slots[7], (String) slots[8], (DateTime) slots[9]);
+    }
+
+    /**
+     * Returns the keys of all fields of Attachment in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code contentType() {
         return contentType;
     }

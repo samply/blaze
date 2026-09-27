@@ -63,6 +63,22 @@ public final class BundleEntrySearch extends AbstractBackboneElement implements 
                 (Code) m.valAt(MODE), (Decimal) m.valAt(SCORE));
     }
 
+    /**
+     * Creates a BundleEntrySearch from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static BundleEntrySearch fromSlots(Object[] slots) {
+        return new BundleEntrySearch(ExtensionData.fromSlots(slots), Lists.nullToEmpty(slots[2]), (Code) slots[3],
+                (Decimal) slots[4]);
+    }
+
+    /**
+     * Returns the keys of all fields of BundleEntrySearch in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code mode() {
         return mode;
     }

@@ -88,6 +88,23 @@ public final class RelatedArtifact extends AbstractElement implements Complex, E
                 (Attachment) m.valAt(DOCUMENT), (Canonical) m.valAt(RESOURCE));
     }
 
+    /**
+     * Creates a RelatedArtifact from {@code slots} holding the values of the keys of
+     * {@link #fields()} at the same index.
+     */
+    public static RelatedArtifact fromSlots(Object[] slots) {
+        return new RelatedArtifact(ExtensionData.fromSlots(slots), (Code) slots[2], (String) slots[3],
+                (String) slots[4], (Markdown) slots[5], (Url) slots[6],
+                (Attachment) slots[7], (Canonical) slots[8]);
+    }
+
+    /**
+     * Returns the keys of all fields of RelatedArtifact in slot order.
+     */
+    public static Keyword[] fields() {
+        return FIELDS.clone();
+    }
+
     public Code type() {
         return type;
     }
