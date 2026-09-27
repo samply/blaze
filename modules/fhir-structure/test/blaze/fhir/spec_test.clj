@@ -203,7 +203,7 @@
   (testing "fails on unexpected end-of-input"
     (given (parse-json "{")
       ::anom/category := ::anom/incorrect
-      ::anom/message :# "Unexpected end-of-input: expected close marker for Object(.|\\s)*")
+      ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input.")
 
     (given (parse-json "Patient" "{\"id")
       ::anom/category := ::anom/incorrect
@@ -251,7 +251,7 @@
       ::anom/message := "Invalid JSON representation of a resource. Error on value null. Expected type is `Resource`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value null. Expected type is `Resource`."
-      [:fhir/issues 0 :fhir.issues/expression] := ""))
+      [:fhir/issues 0 :fhir.issues/expression] := nil))
 
   (testing "string"
     (given (write-parse-json "foo")
@@ -259,7 +259,7 @@
       ::anom/message := "Invalid JSON representation of a resource. Error on value `foo`. Expected type is `Resource`."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo`. Expected type is `Resource`."
-      [:fhir/issues 0 :fhir.issues/expression] := "")
+      [:fhir/issues 0 :fhir.issues/expression] := nil)
 
     (testing "type Patient"
       (given (write-parse-json "Patient" "foo")
