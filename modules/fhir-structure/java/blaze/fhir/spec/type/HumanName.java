@@ -317,6 +317,18 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(use, refs);
+        Base.collectReferences(text, refs);
+        Base.collectReferences(family, refs);
+        Base.collectReferences(given, refs);
+        Base.collectReferences(prefix, refs);
+        Base.collectReferences(suffix, refs);
+        Base.collectReferences(period, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(use) + Base.memSize(text) + Base.memSize(family) +
                 Base.memSize(given) + Base.memSize(prefix) + Base.memSize(suffix) + Base.memSize(period);

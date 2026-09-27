@@ -6,6 +6,7 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -273,6 +274,17 @@ public final class Identifier extends AbstractElement implements Complex, Extens
             sink.putByte((byte) 7);
             assigner.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(use, refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(system, refs);
+        Base.collectReferences(value, refs);
+        Base.collectReferences(period, refs);
+        Base.collectReferences(assigner, refs);
     }
 
     @Override

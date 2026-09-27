@@ -188,6 +188,14 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        if (isInterned()) return;
+        super.collectReferences(refs);
+        Base.collectReferences(coding, refs);
+        Base.collectReferences(text, refs);
+    }
+
+    @Override
     public int memSize() {
         return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(coding) +
                 Base.memSize(text);

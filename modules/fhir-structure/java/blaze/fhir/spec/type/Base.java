@@ -8,7 +8,6 @@ import com.google.common.hash.PrimitiveSink;
 import java.io.IOException;
 import java.lang.String;
 import java.util.*;
-import java.util.stream.Stream;
 
 public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object>, IRecord, IObj, IHashEq {
 
@@ -194,21 +193,35 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         }
     }
 
-    static Stream<PersistentVector> references(Object x) {
-        return switch (x) {
-            case Base b -> b.references();
-            case Map<?, ?> m -> referencesMap(m);
-            case List<?> v -> v.stream().flatMap(Base::references);
-            default -> Stream.empty();
-        };
+    /**
+     * Returns the local references of {@code x} which are tuples of FHIR resource type name and FHIR resource id.
+     */
+    static PersistentVector references(Object x) {
+        var refs = new ArrayList<PersistentVector>();
+        collectReferences(x, refs);
+        return refs.isEmpty() ? PersistentVector.EMPTY : PersistentVector.create(refs);
     }
 
-    static Stream<PersistentVector> referencesMap(Map<?, ?> m) {
-        if (m.get(FHIR_TYPE_KEY) == FHIR_TYPE_BUNDLE_ENTRY) return Stream.empty();
-        return m.values().stream()
-                .filter(v -> !(v instanceof Keyword))
-                .filter(v -> !(v instanceof String))
-                .flatMap(Base::references);
+    /**
+     * Adds the local references of {@code x} to {@code refs}. {@code x} can be {@code null}.
+     */
+    static void collectReferences(Object x, List<PersistentVector> refs) {
+        switch (x) {
+            case Base b -> b.collectReferences(refs);
+            case Map<?, ?> m -> collectReferencesMap(m, refs);
+            case List<?> v -> {
+                for (Object e : v) collectReferences(e, refs);
+            }
+            case null, default -> {
+            }
+        }
+    }
+
+    private static void collectReferencesMap(Map<?, ?> m, List<PersistentVector> refs) {
+        if (m.get(FHIR_TYPE_KEY) == FHIR_TYPE_BUNDLE_ENTRY) return;
+        for (Object v : m.values()) {
+            if (!(v instanceof Keyword) && !(v instanceof String)) collectReferences(v, refs);
+        }
     }
 
     static int memSize(Object x) {
@@ -282,9 +295,10 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
     @SuppressWarnings("UnstableApiUsage")
     void hashInto(PrimitiveSink sink);
 
-    default Stream<PersistentVector> references() {
-        return Stream.empty();
-    }
+    /**
+     * Adds the local references of this element to {@code refs}.
+     */
+    void collectReferences(List<PersistentVector> refs);
 
     int memSize();
 

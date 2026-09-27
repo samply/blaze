@@ -314,6 +314,18 @@ public final class Signature extends AbstractElement implements Complex, Extensi
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(when, refs);
+        Base.collectReferences(who, refs);
+        Base.collectReferences(onBehalfOf, refs);
+        Base.collectReferences(targetFormat, refs);
+        Base.collectReferences(sigFormat, refs);
+        Base.collectReferences(data, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(type) + Base.memSize(when) +
                 Base.memSize(who) + Base.memSize(onBehalfOf) + Base.memSize(targetFormat) +

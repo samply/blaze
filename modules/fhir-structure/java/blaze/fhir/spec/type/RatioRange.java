@@ -7,6 +7,7 @@ import com.google.common.hash.PrimitiveSink;
 import java.io.IOException;
 import java.lang.String;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -196,6 +197,14 @@ public final class RatioRange extends AbstractElement implements Complex, Extens
             sink.putByte((byte) 4);
             denominator.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(lowNumerator, refs);
+        Base.collectReferences(highNumerator, refs);
+        Base.collectReferences(denominator, refs);
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
@@ -209,6 +210,16 @@ public final class Expression extends AbstractElement implements Complex, Extens
             sink.putByte((byte) 6);
             reference.hashInto(sink);
         }
+    }
+
+    @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(description, refs);
+        Base.collectReferences(name, refs);
+        Base.collectReferences(language, refs);
+        Base.collectReferences(expression, refs);
+        Base.collectReferences(reference, refs);
     }
 
     @Override

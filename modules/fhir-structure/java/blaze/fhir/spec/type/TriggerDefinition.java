@@ -272,6 +272,16 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(name, refs);
+        Base.collectReferences(timing, refs);
+        Base.collectReferences(data, refs);
+        Base.collectReferences(condition, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(type) + Base.memSize(name) +
                 Base.memSize(timing) + Base.memSize(data) + Base.memSize(condition);

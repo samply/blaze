@@ -315,6 +315,18 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        if (isInterned()) return;
+        super.collectReferences(refs);
+        Base.collectReferences(versionId, refs);
+        Base.collectReferences(lastUpdated, refs);
+        Base.collectReferences(source, refs);
+        Base.collectReferences(profile, refs);
+        Base.collectReferences(security, refs);
+        Base.collectReferences(tag, refs);
+    }
+
+    @Override
     public int memSize() {
         return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(versionId) +
                 Base.memSize(lastUpdated) + Base.memSize(source) + Base.memSize(profile) + Base.memSize(security) +

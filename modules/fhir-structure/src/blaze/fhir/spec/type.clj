@@ -26,7 +26,7 @@
     Range Ratio Reference RelatedArtifact SampledData Signature String$Interned
     String$Normal Time Timing Timing$Repeat TriggerDefinition UnsignedInt Uri Uri$Interned
     Uri$Normal Url UsageContext Uuid Xhtml]
-   [clojure.lang IPersistentMap PersistentVector]
+   [clojure.lang IPersistentMap]
    [java.io Writer]
    [java.time LocalTime OffsetDateTime]))
 
@@ -49,7 +49,7 @@
   "Returns a collection of local references which are tuples of FHIR resource
   type name and FHIR resource id."
   [x]
-  (PersistentVector/create (.toList (Base/references x))))
+  (Base/references x))
 
 ;; ---- Macros ----------------------------------------------------------------
 

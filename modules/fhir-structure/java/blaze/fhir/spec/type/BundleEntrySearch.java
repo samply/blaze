@@ -155,6 +155,13 @@ public final class BundleEntrySearch extends AbstractBackboneElement implements 
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(mode, refs);
+        Base.collectReferences(score, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(modifierExtension) + Base.memSize(mode) +
                 Base.memSize(score);

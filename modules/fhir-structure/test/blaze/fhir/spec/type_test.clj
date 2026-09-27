@@ -19,7 +19,7 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.fhir.spec.type Base Primitive]
+   [blaze.fhir.spec.type Base Primitive RatioRange]
    [blaze.fhir.spec.type.system DateTime]
    [com.fasterxml.jackson.databind ObjectMapper]
    [com.fasterxml.jackson.databind.module SimpleModule]
@@ -82,6 +82,23 @@
 
 (def ^:private not-internable-extension
   #fhir/Extension{:url "url-205325" :value #fhir/string "value-205336"})
+
+(def ^:private reference-extension
+  #fhir/Extension{:url "url-102530" :value #fhir/Reference{:reference #fhir/string "Patient/0"}})
+
+(defn- with-reference-extension
+  "Returns `x` with `reference-extension` added. Adds it to each element if `x`
+  is a vector."
+  [x]
+  (if (vector? x)
+    (mapv with-reference-extension x)
+    (assoc x :extension [reference-extension])))
+
+(defn- field-references
+  "Returns the references of `x` with `v` having `reference-extension` under
+  `k`."
+  [x k v]
+  (type/references (assoc x k (with-reference-extension v))))
 
 (deftest boolean-test
   (testing "boolean?"
@@ -3024,6 +3041,20 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/address {:line [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Address{} k v))
+      :extension [#fhir/Extension{}]
+      :use #fhir/code "code-102530"
+      :type #fhir/code "code-102530"
+      :text #fhir/string "string-102530"
+      :line [#fhir/string "string-102530"]
+      :city #fhir/string "string-102530"
+      :district #fhir/string "string-102530"
+      :state #fhir/string "string-102530"
+      :postalCode #fhir/string "string-102530"
+      :country #fhir/string "string-102530"
+      :period #fhir/Period{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Address{} "#fhir/Address{}"
@@ -3062,6 +3093,15 @@
       #fhir/Age{} 0
       #fhir/Age{:id "foo"} 96))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Age{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :comparator #fhir/code "code-102530"
+      :unit #fhir/string "string-102530"
+      :system #fhir/uri "uri-102530"
+      :code #fhir/code "code-102530"))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Age{} "#fhir/Age{}"
@@ -3099,6 +3139,18 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Annotation{} 24
       #fhir/Annotation{:id "foo"} 88))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Annotation{} k v))
+      :extension [#fhir/Extension{}]
+      :author #fhir/Reference{}
+      :author #fhir/string "string-102530"
+      :time #fhir/dateTime #system/date-time "2020"
+      :text #fhir/markdown "markdown-102530")
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/Annotation{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :author)))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3167,6 +3219,18 @@
 
   (testing "references"
     (is (empty? (type/references #fhir/Attachment{}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Attachment{} k v))
+      :extension [#fhir/Extension{}]
+      :contentType #fhir/code "code-102530"
+      :language #fhir/code "code-102530"
+      :data #fhir/base64Binary "YQo="
+      :url #fhir/url "url-102530"
+      :size #fhir/unsignedInt 1
+      :hash #fhir/base64Binary "YQo="
+      :title #fhir/string "string-102530"
+      :creation #fhir/dateTime #system/date-time "2020"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3240,6 +3304,13 @@
         [#fhir/Extension{:value #fhir/Reference{:reference #fhir/string "Patient/1"}}]}
       [["Patient" "1"]]))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.Bundle.entry/search{} k v))
+      :extension [#fhir/Extension{}]
+      :modifierExtension [#fhir/Extension{}]
+      :mode #fhir/code "code-102530"
+      :score #fhir/decimal 1M))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.Bundle.entry/search{} "#fhir.Bundle.entry/search{}"
@@ -3303,6 +3374,12 @@
                           (type/codeable-concept {:coding [nil]})))
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/codeable-concept {:coding [#fhir/Coding{} nil]}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/CodeableConcept{} k v))
+      :extension [#fhir/Extension{}]
+      :coding [#fhir/Coding{}]
+      :text #fhir/string "string-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3376,6 +3453,15 @@
   (testing "references"
     (is (empty? (type/references #fhir/Coding{}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Coding{} k v))
+      :extension [#fhir/Extension{}]
+      :system #fhir/uri "uri-102530"
+      :version #fhir/string "string-102530"
+      :code #fhir/code "code-102530"
+      :display #fhir/string "string-102530"
+      :userSelected #fhir/boolean true))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Coding{} "#fhir/Coding{}"
@@ -3418,6 +3504,12 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/contact-detail {:telecom [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/ContactDetail{} k v))
+      :extension [#fhir/Extension{}]
+      :name #fhir/string "string-102530"
+      :telecom [#fhir/ContactPoint{}]))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/ContactDetail{} "#fhir/ContactDetail{}"
@@ -3455,6 +3547,15 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/ContactPoint{} 32
       #fhir/ContactPoint{:id "foo"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/ContactPoint{} k v))
+      :extension [#fhir/Extension{}]
+      :system #fhir/code "code-102530"
+      :value #fhir/string "string-102530"
+      :use #fhir/code "code-102530"
+      :rank #fhir/positiveInt 1
+      :period #fhir/Period{}))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3498,6 +3599,13 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/contributor {:contact [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Contributor{} k v))
+      :extension [#fhir/Extension{}]
+      :type #fhir/code "code-102530"
+      :name #fhir/string "string-102530"
+      :contact [#fhir/ContactDetail{}]))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Contributor{} "#fhir/Contributor{}"
@@ -3535,6 +3643,15 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Count{} 0
       #fhir/Count{:id "foo"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Count{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :comparator #fhir/code "code-102530"
+      :unit #fhir/string "string-102530"
+      :system #fhir/uri "uri-102530"
+      :code #fhir/code "code-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3587,6 +3704,23 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/data-requirement {:profile [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/DataRequirement{} k v))
+      :extension [#fhir/Extension{}]
+      :type #fhir/code "code-102530"
+      :profile [#fhir/canonical "canonical-102530"]
+      :subject #fhir/CodeableConcept{}
+      :subject #fhir/Reference{}
+      :mustSupport [#fhir/string "string-102530"]
+      :codeFilter [#fhir.DataRequirement/codeFilter{}]
+      :dateFilter [#fhir.DataRequirement/dateFilter{}]
+      :limit #fhir/positiveInt 1
+      :sort [#fhir.DataRequirement/sort{}])
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/DataRequirement{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :subject)))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/DataRequirement{} "#fhir/DataRequirement{}"
@@ -3635,6 +3769,14 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/data-requirement-code-filter {:code [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.DataRequirement/codeFilter{} k v))
+      :extension [#fhir/Extension{}]
+      :path #fhir/string "string-102530"
+      :searchParam #fhir/string "string-102530"
+      :valueSet #fhir/canonical "canonical-102530"
+      :code [#fhir/Coding{}]))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.DataRequirement/codeFilter{} "#fhir.DataRequirement/codeFilter{}"
@@ -3678,6 +3820,15 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir.DataRequirement/dateFilter{} 24
       #fhir.DataRequirement/dateFilter{:id "id-151412"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.DataRequirement/dateFilter{} k v))
+      :extension [#fhir/Extension{}]
+      :path #fhir/string "string-102530"
+      :searchParam #fhir/string "string-102530"
+      :value #fhir/dateTime #system/date-time "2020"
+      :value #fhir/Period{}
+      :value #fhir/Duration{}))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3723,6 +3874,12 @@
       #fhir.DataRequirement/sort{} 24
       #fhir.DataRequirement/sort{:id "id-151412"} 96))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.DataRequirement/sort{} k v))
+      :extension [#fhir/Extension{}]
+      :path #fhir/string "string-102530"
+      :direction #fhir/code "code-102530"))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir.DataRequirement/sort{} "#fhir.DataRequirement/sort{}"
@@ -3760,6 +3917,15 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Distance{} 0
       #fhir/Distance{:id "foo"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Distance{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :comparator #fhir/code "code-102530"
+      :unit #fhir/string "string-102530"
+      :system #fhir/uri "uri-102530"
+      :code #fhir/code "code-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3799,6 +3965,15 @@
       #fhir/Duration{} 0
       #fhir/Duration{:id "foo"} 96))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Duration{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :comparator #fhir/code "code-102530"
+      :unit #fhir/string "string-102530"
+      :system #fhir/uri "uri-102530"
+      :code #fhir/code "code-102530"))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Duration{} "#fhir/Duration{}"
@@ -3836,6 +4011,15 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/Expression{} 32
       #fhir/Expression{:id "foo"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Expression{} k v))
+      :extension [#fhir/Extension{}]
+      :description #fhir/string "string-102530"
+      :name #fhir/id "id-102530"
+      :language #fhir/code "code-102530"
+      :expression #fhir/string "string-102530"
+      :reference #fhir/uri "uri-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3894,6 +4078,25 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/dosage {:additionalInstruction [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Dosage{} k v))
+      :extension [#fhir/Extension{}]
+      :modifierExtension [#fhir/Extension{}]
+      :sequence #fhir/integer 1
+      :text #fhir/string "string-102530"
+      :additionalInstruction [#fhir/CodeableConcept{}]
+      :patientInstruction #fhir/string "string-102530"
+      :timing #fhir/Timing{}
+      :asNeeded #fhir/boolean true
+      :asNeeded #fhir/CodeableConcept{}
+      :site #fhir/CodeableConcept{}
+      :route #fhir/CodeableConcept{}
+      :method #fhir/CodeableConcept{}
+      :doseAndRate [#fhir.Dosage/doseAndRate{}]
+      :maxDosePerPeriod #fhir/Ratio{}
+      :maxDosePerAdministration #fhir/Quantity{}
+      :maxDosePerLifetime #fhir/Quantity{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Dosage{} "#fhir/Dosage{}"
@@ -3928,6 +4131,16 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir.Dosage/doseAndRate{} 24
       #fhir.Dosage/doseAndRate{:id "foo"} 88))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.Dosage/doseAndRate{} k v))
+      :extension [#fhir/Extension{}]
+      :type #fhir/CodeableConcept{}
+      :dose #fhir/Range{}
+      :dose #fhir/Quantity{}
+      :rate #fhir/Ratio{}
+      :rate #fhir/Range{}
+      :rate #fhir/Quantity{}))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -3971,7 +4184,15 @@
     (testing "instances with string values are not interned"
       (are [x y] (not-interned? x y)
         #fhir/Extension{:url "foo" :value #fhir/string "barbar"}
-        #fhir/Extension{:url "foo" :value #fhir/string "barbar"})))
+        #fhir/Extension{:url "foo" :value #fhir/string "barbar"}))
+
+    (testing "instances with Reference values are not interned"
+      (are [x y] (not-interned? x y)
+        #fhir/Extension{:url "foo" :value #fhir/Reference{}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{}}
+
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "Patient/0"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "Patient/0"}})))
 
   (testing "equals"
     (is (= #fhir/Extension{:url ""} #fhir/Extension{:url ""})))
@@ -4104,6 +4325,17 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/human-name {:given [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/HumanName{} k v))
+      :extension [#fhir/Extension{}]
+      :use #fhir/code "code-102530"
+      :text #fhir/string "string-102530"
+      :family #fhir/string "string-102530"
+      :given [#fhir/string "string-102530"]
+      :prefix [#fhir/string "string-102530"]
+      :suffix [#fhir/string "string-102530"]
+      :period #fhir/Period{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/HumanName{} "#fhir/HumanName{}"
@@ -4175,6 +4407,20 @@
 
   (testing "references"
     (is (empty? (type/references #fhir/Identifier{}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Identifier{} k v))
+      :extension [#fhir/Extension{}]
+      :use #fhir/code "code-102530"
+      :type #fhir/CodeableConcept{}
+      :system #fhir/uri "uri-102530"
+      :value #fhir/string "string-102530"
+      :period #fhir/Period{}
+      :assigner #fhir/Reference{})
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/Identifier{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :assigner)))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4281,6 +4527,16 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/meta {:profile [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Meta{} k v))
+      :extension [#fhir/Extension{}]
+      :versionId #fhir/id "id-102530"
+      :lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"
+      :source #fhir/uri "uri-102530"
+      :profile [#fhir/canonical "canonical-102530"]
+      :security [#fhir/Coding{}]
+      :tag [#fhir/Coding{}]))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Meta{} "#fhir/Meta{}"
@@ -4332,6 +4588,12 @@
 
   (testing "references"
     (is (empty? (type/references #fhir/Money{}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Money{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :currency #fhir/code "code-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4389,6 +4651,12 @@
   (testing "references"
     (is (empty? (type/references #fhir/Narrative{}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Narrative{} k v))
+      :extension [#fhir/Extension{}]
+      :status #fhir/code "code-102530"
+      :div #fhir/xhtml "<div xmlns=\"http://www.w3.org/1999/xhtml\"></div>"))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Narrative{} "#fhir/Narrative{}"
@@ -4440,6 +4708,17 @@
 
   (testing "references"
     (is (empty? (type/references #fhir/ParameterDefinition{}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/ParameterDefinition{} k v))
+      :extension [#fhir/Extension{}]
+      :name #fhir/code "code-102530"
+      :use #fhir/code "code-102530"
+      :min #fhir/integer 1
+      :max #fhir/string "string-102530"
+      :documentation #fhir/string "string-102530"
+      :type #fhir/code "code-102530"
+      :profile #fhir/canonical "canonical-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4501,6 +4780,12 @@
 
   (testing "references"
     (is (empty? (type/references #fhir/Period{}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Period{} k v))
+      :extension [#fhir/Extension{}]
+      :start #fhir/dateTime #system/date-time "2020"
+      :end #fhir/dateTime #system/date-time "2020"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4587,6 +4872,15 @@
   (testing "references"
     (is (empty? (type/references #fhir/Quantity{}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Quantity{} k v))
+      :extension [#fhir/Extension{}]
+      :value #fhir/decimal 1M
+      :comparator #fhir/code "code-102530"
+      :unit #fhir/string "string-102530"
+      :system #fhir/uri "uri-102530"
+      :code #fhir/code "code-102530"))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Quantity{} "#fhir/Quantity{}"
@@ -4651,6 +4945,12 @@
   (testing "references"
     (is (empty? (type/references #fhir/Range{}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Range{} k v))
+      :extension [#fhir/Extension{}]
+      :low #fhir/Quantity{}
+      :high #fhir/Quantity{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Range{} "#fhir/Range{}"
@@ -4714,6 +5014,12 @@
   (testing "references"
     (is (empty? (type/references #fhir/Ratio{}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Ratio{} k v))
+      :extension [#fhir/Extension{}]
+      :numerator #fhir/Quantity{}
+      :denominator #fhir/Quantity{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Ratio{} "#fhir/Ratio{}"
@@ -4726,6 +5032,17 @@
     (testing "exceeded print level"
       (binding [*print-level* 0]
         (is (= "#" (pprint-str #fhir/Ratio{:numerator #fhir/Quantity{:id "160542"}})))))))
+
+(deftest ratio-range-test
+  (testing "references"
+    (is (empty? (type/references (RatioRange/create {})))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references (RatioRange/create {}) k v))
+      :extension [#fhir/Extension{}]
+      :lowNumerator #fhir/Quantity{}
+      :highNumerator #fhir/Quantity{}
+      :denominator #fhir/Quantity{})))
 
 (deftest reference-test
   (testing "type"
@@ -4820,7 +5137,29 @@
       #fhir/Reference
        {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]
                                 :value "Patient/0"}}
-      [["Patient" "0"]]))
+      [["Patient" "0"]]
+
+      #fhir/Reference
+       {:reference #fhir/string "Patient/0"
+        :identifier
+        #fhir/Identifier
+         {:assigner
+          #fhir/Reference
+           {:reference #fhir/string "Organization/1"
+            :identifier
+            #fhir/Identifier
+             {:assigner
+              #fhir/Reference
+               {:reference #fhir/string "Organization/2"}}}}}
+      [["Patient" "0"] ["Organization" "1"] ["Organization" "2"]]))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Reference{} k v))
+      :extension [#fhir/Extension{}]
+      :reference #fhir/string "string-102530"
+      :type #fhir/uri "uri-102530"
+      :identifier #fhir/Identifier{}
+      :display #fhir/string "string-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4834,6 +5173,20 @@
     (testing "exceeded print level"
       (binding [*print-level* 0]
         (is (= "#" (pprint-str #fhir/Reference{:reference #fhir/string "Patient/0"})))))))
+
+(deftest interned-complex-type-references-test
+  (doseq [x [#fhir/CodeableConcept{} #fhir/Coding{} #fhir/Meta{} #fhir/Period{}
+             #fhir/Range{} #fhir/Ratio{} #fhir/Quantity{}]]
+    (testing (:fhir/type x)
+      (testing "interned instances have no references"
+        (let [x (assoc x :extension [internable-extension])]
+          (is (Base/isInterned x))
+          (is (empty? (type/references x)))))
+
+      (testing "instances with references are not interned"
+        (let [x (with-reference-extension x)]
+          (is (not (Base/isInterned x)))
+          (is (= [["Patient" "0"]] (type/references x))))))))
 
 (deftest related-artifact-test
   (testing "type"
@@ -4859,6 +5212,17 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/RelatedArtifact{} 40
       #fhir/RelatedArtifact{:id "foo"} 104))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/RelatedArtifact{} k v))
+      :extension [#fhir/Extension{}]
+      :type #fhir/code "code-102530"
+      :label #fhir/string "string-102530"
+      :display #fhir/string "string-102530"
+      :citation #fhir/markdown "markdown-102530"
+      :url #fhir/url "url-102530"
+      :document #fhir/Attachment{}
+      :resource #fhir/canonical "canonical-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4909,6 +5273,17 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/SampledData{} 40
       #fhir/SampledData{:id "id-151412"} 112))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/SampledData{} k v))
+      :extension [#fhir/Extension{}]
+      :origin #fhir/Quantity{}
+      :period #fhir/decimal 1M
+      :factor #fhir/decimal 1M
+      :lowerLimit #fhir/decimal 1M
+      :upperLimit #fhir/decimal 1M
+      :dimensions #fhir/positiveInt 1
+      :data #fhir/string "string-102530"))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -4964,6 +5339,21 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/signature {:type [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Signature{} k v))
+      :extension [#fhir/Extension{}]
+      :type [#fhir/Coding{}]
+      :when #fhir/instant #system/date-time "2020-01-01T00:00:00Z"
+      :who #fhir/Reference{}
+      :onBehalfOf #fhir/Reference{}
+      :targetFormat #fhir/code "code-102530"
+      :sigFormat #fhir/code "code-102530"
+      :data #fhir/base64Binary "YQo=")
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/Signature{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :who :onBehalfOf)))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Signature{} "#fhir/Signature{}"
@@ -5018,6 +5408,14 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/timing {:event [nil]}))))
 
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/Timing{} k v))
+      :extension [#fhir/Extension{}]
+      :modifierExtension [#fhir/Extension{}]
+      :event [#fhir/dateTime #system/date-time "2020"]
+      :repeat #fhir.Timing/repeat{}
+      :code #fhir/CodeableConcept{}))
+
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Timing{} "#fhir/Timing{}"
@@ -5056,6 +5454,27 @@
   (testing "rejects null elements in dayOfWeek"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/timing-repeat {:dayOfWeek [nil]}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir.Timing/repeat{} k v))
+      :extension [#fhir/Extension{}]
+      :bounds #fhir/Duration{}
+      :bounds #fhir/Range{}
+      :bounds #fhir/Period{}
+      :count #fhir/positiveInt 1
+      :countMax #fhir/positiveInt 1
+      :duration #fhir/decimal 1M
+      :durationMax #fhir/decimal 1M
+      :durationUnit #fhir/code "code-102530"
+      :frequency #fhir/positiveInt 1
+      :frequencyMax #fhir/positiveInt 1
+      :period #fhir/decimal 1M
+      :periodMax #fhir/decimal 1M
+      :periodUnit #fhir/code "code-102530"
+      :dayOfWeek [#fhir/code "code-102530"]
+      :timeOfDay [#fhir/time #system/time "13:00:00"]
+      :when [#fhir/code "code-102530"]
+      :offset #fhir/unsignedInt 1))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -5098,6 +5517,21 @@
   (testing "rejects null elements in data"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/trigger-definition {:data [nil]}))))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/TriggerDefinition{} k v))
+      :extension [#fhir/Extension{}]
+      :type #fhir/code "code-102530"
+      :name #fhir/string "string-102530"
+      :timing #fhir/Timing{}
+      :timing #fhir/Reference{}
+      :timing #fhir/dateTime #system/date-time "2020"
+      :data [#fhir/DataRequirement{}]
+      :condition #fhir/Expression{})
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/TriggerDefinition{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :timing)))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -5148,6 +5582,19 @@
     (are [x mem-size] (= mem-size (Base/memSize x))
       #fhir/UsageContext{} 24
       #fhir/UsageContext{:id "id-151412"} 96))
+
+  (testing "references of fields"
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/UsageContext{} k v))
+      :extension [#fhir/Extension{}]
+      :code #fhir/Coding{}
+      :value #fhir/CodeableConcept{}
+      :value #fhir/Quantity{}
+      :value #fhir/Range{}
+      :value #fhir/Reference{})
+
+    (testing "with direct reference"
+      (are [k] (= [["Patient" "1"]] (type/references (assoc #fhir/UsageContext{} k #fhir/Reference{:reference #fhir/string "Patient/1"})))
+        :value)))
 
   (testing "print"
     (are [v s] (= s (pr-str v))

@@ -344,6 +344,19 @@ public final class DataRequirement extends AbstractElement implements Complex, E
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(type, refs);
+        Base.collectReferences(profile, refs);
+        Base.collectReferences(subject, refs);
+        Base.collectReferences(mustSupport, refs);
+        Base.collectReferences(codeFilter, refs);
+        Base.collectReferences(dateFilter, refs);
+        Base.collectReferences(limit, refs);
+        Base.collectReferences(sort, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(type) + Base.memSize(profile) +
                 Base.memSize(subject) + Base.memSize(mustSupport) + Base.memSize(codeFilter) +
@@ -600,6 +613,15 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         }
 
         @Override
+        public void collectReferences(List<PersistentVector> refs) {
+            super.collectReferences(refs);
+            Base.collectReferences(path, refs);
+            Base.collectReferences(searchParam, refs);
+            Base.collectReferences(valueSet, refs);
+            Base.collectReferences(code, refs);
+        }
+
+        @Override
         public int memSize() {
             return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(path) + Base.memSize(searchParam) +
                     Base.memSize(valueSet) + Base.memSize(code);
@@ -807,6 +829,14 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         }
 
         @Override
+        public void collectReferences(List<PersistentVector> refs) {
+            super.collectReferences(refs);
+            Base.collectReferences(path, refs);
+            Base.collectReferences(searchParam, refs);
+            Base.collectReferences(value, refs);
+        }
+
+        @Override
         public int memSize() {
             return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(path) + Base.memSize(searchParam) +
                     Base.memSize(value);
@@ -984,6 +1014,13 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                 sink.putByte((byte) 3);
                 direction.hashInto(sink);
             }
+        }
+
+        @Override
+        public void collectReferences(List<PersistentVector> refs) {
+            super.collectReferences(refs);
+            Base.collectReferences(path, refs);
+            Base.collectReferences(direction, refs);
         }
 
         @Override

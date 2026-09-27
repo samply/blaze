@@ -211,6 +211,14 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
     }
 
     @Override
+    public void collectReferences(List<PersistentVector> refs) {
+        super.collectReferences(refs);
+        Base.collectReferences(event, refs);
+        Base.collectReferences(repeat, refs);
+        Base.collectReferences(code, refs);
+    }
+
+    @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(modifierExtension) + Base.memSize(event) +
                 Base.memSize(repeat) + Base.memSize(code);
@@ -751,6 +759,26 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
                 sink.putByte((byte) 16);
                 offset.hashInto(sink);
             }
+        }
+
+        @Override
+        public void collectReferences(List<PersistentVector> refs) {
+            super.collectReferences(refs);
+            Base.collectReferences(bounds, refs);
+            Base.collectReferences(count, refs);
+            Base.collectReferences(countMax, refs);
+            Base.collectReferences(duration, refs);
+            Base.collectReferences(durationMax, refs);
+            Base.collectReferences(durationUnit, refs);
+            Base.collectReferences(frequency, refs);
+            Base.collectReferences(frequencyMax, refs);
+            Base.collectReferences(period, refs);
+            Base.collectReferences(periodMax, refs);
+            Base.collectReferences(periodUnit, refs);
+            Base.collectReferences(dayOfWeek, refs);
+            Base.collectReferences(timeOfDay, refs);
+            Base.collectReferences(when, refs);
+            Base.collectReferences(offset, refs);
         }
 
         @Override

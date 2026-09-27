@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.IOException;
 import java.lang.String;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static java.util.Objects.requireNonNull;
 
@@ -33,8 +32,8 @@ abstract class AbstractElement implements Element {
     }
 
     @Override
-    public Stream<PersistentVector> references() {
-        return extensionData.references();
+    public void collectReferences(List<PersistentVector> refs) {
+        extensionData.collectReferences(refs);
     }
 
     @Override
