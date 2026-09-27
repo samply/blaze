@@ -4171,7 +4171,7 @@
       #fhir/Identifier{:system #fhir/uri-interned "system-145514"} 40
       #fhir/Identifier{:value #fhir/string "value-145509"} 104
       #fhir/Identifier{:period #fhir/Period{}} 40
-      #fhir/Identifier{:assigner #fhir/Reference{}} 40))
+      #fhir/Identifier{:assigner #fhir/Reference{}} 72))
 
   (testing "references"
     (is (empty? (type/references #fhir/Identifier{}))))

@@ -278,7 +278,7 @@ public final class Identifier extends AbstractElement implements Complex, Extens
     @Override
     public int memSize() {
         return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(use) + Base.memSize(type) + Base.memSize(system) +
-                Base.memSize(value) + Base.memSize(period);
+                Base.memSize(value) + Base.memSize(period) + Base.memSize(assigner);
     }
 
     @Override
