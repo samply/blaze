@@ -550,24 +550,47 @@
   Nulls in JSON arrays of primitive values are placeholders that have to be
   matched by extended properties. Because the JSON array of values and the
   JSON array of extended properties can come in any order, remaining nulls can
-  only be detected at the end of the object."
+  only be detected at the end of the object. Empty extended properties are
+  handled like nulls. For single primitive values, they leave the marked slot
+  empty."
   [^objects keys ^PropertyMap map locator]
   (if-some [e (.firstNullElement map)]
-    (incorrect-value-anom* "value null" (cons (.index e) (cons (name (aget keys (.slot e))) locator))
+    (incorrect-value-anom* "value null"
+                           (cond->> (cons (name (aget keys (.slot e))) locator)
+                             (<= 0 (.index e)) (cons (.index e)))
                            (.expectedType e))
     map))
+
+(defn- remove-null-elements
+  "Removes all null elements of slots marked as possibly containing null
+  elements in mutable property `map`. Returns `map`.
+
+  Used instead of `check-null-elements` in internal mode, because resources
+  stored by earlier versions can contain such null elements."
+  [_keys ^PropertyMap map _locator]
+  (.removeNullElements map))
 
 (defn- add-null-placeholder!
   "Adds a null placeholder to the `list` of primitive values of `expected-type`
   at `slot` in mutable property `map` if `index` is at the end of `list`.
   Marks the list as possibly containing null elements in that case, which have
-  to be checked with `check-null-elements` at the end of the object. Returns
-  `list`."
+  to be checked with `check-null-elements` or removed with `remove-null-elements`
+  at the end of the object. Returns `list`."
   [^PropertyMap map slot expected-type ^List list index]
   (when (= index (.size list))
     (.markNullElements map (int slot) expected-type)
     (.add list nil))
   list)
+
+(defn- mark-null-element!
+  "Marks the list of primitive values or the single primitive value of
+  `expected-type` at `slot` in mutable property `map` as possibly containing
+  null elements, which have to be checked with `check-null-elements` or removed
+  with `remove-null-elements` at the end of the object. Returns nil as null
+  placeholder."
+  [^PropertyMap map slot expected-type]
+  (.markNullElements map (int slot) expected-type)
+  nil)
 
 (defn- set-value!
   "Sets `value` at `index` in `list`."
@@ -746,7 +769,7 @@
           (cond-next-token parser locator
             JsonToken/START_ARRAY
             (when-ok [list (parse-complex-list extension-handler parser (cons "extension" locator))]
-              (recur (assoc data :extension list)))
+              (recur (cond-> data (seq list) (assoc :extension list))))
             JsonToken/START_OBJECT
             (when-ok [extension (extension-handler parser (cons 0 (cons "extension" locator)))]
               (recur (assoc data :extension (Lists/intern [extension]))))
@@ -775,7 +798,9 @@
             (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
               (put-value! m slot primitive-value))
             (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
-              (put-value! m slot (constructor data))))
+              (if (empty? data)
+                (doto m (mark-null-element! slot expected-type))
+                (put-value! m slot (constructor data)))))
           (incorrect-value-anom parser (cons path locator) "primitive extension map")))
       (fn [parser locator m]
         (cond-next-token parser locator
@@ -792,7 +817,7 @@
                     (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
                       (recur (doto l (.set i primitive-value)) (inc i)))
                     (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
-                      (recur (set-value! l i (constructor data)) (inc i))))
+                      (recur (set-value! l i (if (empty? data) (mark-null-element! m slot expected-type) (constructor data))) (inc i))))
                   JsonToken/END_ARRAY (put-value! m slot (Lists/intern (trim-trailing-nils l num-values)))
                   JsonToken/VALUE_NULL
                   (recur (add-null-placeholder! m slot expected-type l i) (inc i))
@@ -803,7 +828,7 @@
               (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]
                 (put-value! m slot (assoc primitive-list 0 primitive-value)))
               (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
-                (put-value! m slot (assoc primitive-list 0 (constructor data))))))
+                (put-value! m slot (assoc primitive-list 0 (if (empty? data) (mark-null-element! m slot expected-type) (constructor data)))))))
           JsonToken/VALUE_NULL m
           (incorrect-value-anom parser (cons path locator) "primitive extension map"))))))
 
@@ -884,14 +909,13 @@
 
 (defn- primitive-string-handler
   "A handler that reads a string value and creates the internal representation
-  using `constructor` and optional `system-parser` and `check-string`.
+  using `constructor`, `system-parser` and optional `check-string`.
 
   The system parser has to be a function from string to system value or anomaly.
 
-  The check-string function is only used if `check-string?` is true, which is
-  the value of the `:use-regex` option of the parsing context, even for checks
-  that aren't implemented by a regex. It takes a locator, the expected type and
-  the string value and has to return either the string value or an anomaly."
+  The optional check-string function is called before the system parser. It
+  takes a locator, the expected type and the string value and has to return
+  either the string value or an anomaly."
   ([def constructor system-parser expected-type]
    (->> (primitive-value-handler
          def constructor JsonToken/VALUE_STRING
@@ -943,13 +967,12 @@
 (defn- create-property-handlers*
   "Returns a map of JSON property names to handlers."
   {:arglists '([opts property-handler-definition])}
-  [{:keys [use-regex] :as opts} {:keys [field-name key slot type] :as def}]
+  [{:keys [mode] :as opts} {:keys [field-name key slot type] :as def}]
   (let [checking-primitive-string-handler
-        (if use-regex
-          (fn [def constructor system-parser expected-type check-string]
-            (primitive-string-handler def constructor system-parser expected-type check-string))
+        (if (= :internal mode)
           (fn [def constructor system-parser expected-type _]
-            (primitive-string-handler def constructor system-parser expected-type)))]
+            (primitive-string-handler def constructor system-parser expected-type))
+          primitive-string-handler)]
     (condp = type
       :system/string
       (let [slot (long slot)]
@@ -1176,8 +1199,9 @@
   elements are created; any other property encountered while parsing has no
   handler and is skipped via `skip-value!` without being materialized, and the
   returned value carries the SUBSETTED meta tag."
-  [kind type element-definitions {:keys [fail-on-unknown-property summary-only] :as opts}]
-  (let [definitions (into [] (mapcat (partial property-handler-definitions type summary-only)) element-definitions)
+  [kind type element-definitions {:keys [fail-on-unknown-property summary-only mode] :as opts}]
+  (let [handle-null-elements (if (= :internal mode) remove-null-elements check-null-elements)
+        definitions (into [] (mapcat (partial property-handler-definitions type summary-only)) element-definitions)
         [constructor-keys construct] (when (= :complex-type kind) (complex-type-constructor type))
         ^objects keys (or constructor-keys (object-array (distinct (map :key definitions))))
         num-slots (alength keys)]
@@ -1206,7 +1230,7 @@
                          (unknown-property-anom locator field-name)
                          (do (skip-value! parser locator) (recur resource))))))
                  JsonToken/END_OBJECT
-                 (when-ok [resource (check-null-elements keys resource locator)]
+                 (when-ok [resource (handle-null-elements keys resource locator)]
                    (finalize resource)))))))
         :complex-type
         (let [finalize (or construct
@@ -1225,7 +1249,7 @@
                        (unknown-property-anom locator field-name)
                        (do (skip-value! parser locator) (recur value)))))
                  JsonToken/END_OBJECT
-                 (when-ok [value (check-null-elements keys value locator)]
+                 (when-ok [value (handle-null-elements keys value locator)]
                    (finalize value)))))))))))
 
 (defn- create-type-handlers*
@@ -1351,6 +1375,12 @@
   summary-only handler keyed under the `summary` namespace (e.g. both `:Patient`
   and `:summary/Patient`), so callers can parse either the full or the summary
   projection of a resource (see `parse-cbor`).
+
+  With `:mode :internal` in `opts`, the type-handlers are meant for parsing data
+  stored by Blaze itself. Such data isn't checked against the regexes of
+  primitive types and null elements remaining in arrays of primitive values are
+  removed instead of being reported as errors. With `:mode :external`, which is
+  the default, data from clients is parsed with full checks.
 
   Returns an anomaly in case of errors."
   [structure-definitions opts]

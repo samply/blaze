@@ -12,5 +12,5 @@
 (s/def ::parsing-context/include-summary-only
   boolean?)
 
-(s/def ::parsing-context/use-regex
-  boolean?)
+(s/def ::parsing-context/mode
+  #{:internal :external})

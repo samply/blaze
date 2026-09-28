@@ -13,13 +13,13 @@
 (defmethod m/pre-init-spec :blaze.fhir/parsing-context [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]
           :opt-un [::fail-on-unknown-property ::include-summary-only
-                   ::use-regex]))
+                   ::mode]))
 
 (defmethod ig/init-key :blaze.fhir/parsing-context
   [_ {:keys [structure-definition-repo fail-on-unknown-property
-             include-summary-only use-regex]
+             include-summary-only mode]
       :or {fail-on-unknown-property true include-summary-only false
-           use-regex true}}]
+           mode :external}}]
   (log/info "Init parsing context")
   (ba/throw-when
    (res/create-type-handlers
@@ -27,4 +27,4 @@
           (sdr/resources structure-definition-repo))
     {:fail-on-unknown-property fail-on-unknown-property
      :include-summary-only include-summary-only
-     :use-regex use-regex})))
+     :mode mode})))

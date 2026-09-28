@@ -1,9 +1,11 @@
 package blaze.fhir.spec;
 
+import blaze.fhir.spec.type.Lists;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
 import clojure.lang.RT;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,10 @@ import java.util.Objects;
  * In JSON, a null in an array of primitive values is a placeholder for an element that has only extended properties
  * given in the array of the corresponding {@code _} property. Because both arrays can come in any order, remaining
  * nulls can only be detected at the end of the object. The tracking allows checking only the marked slots.
+ * <p>
+ * Empty objects of the {@code _} property don't create primitive values. In arrays they are null placeholders as well.
+ * For single primitive values the slot is marked but stays empty, so an empty marked slot of a single primitive value
+ * is a null element.
  */
 public final class PropertyMap {
 
@@ -117,12 +123,13 @@ public final class PropertyMap {
     }
 
     /**
-     * Marks the list of primitive values at {@code slot} as possibly containing null elements.
+     * Marks the list of primitive values or the single primitive value at {@code slot} as possibly containing null
+     * elements.
      * <p>
      * Keeps the order in which slots are marked first.
      *
-     * @param slot         the index of the slot of the list of primitive values
-     * @param expectedType the expected type of the elements of the list, used in error messages
+     * @param slot         the index of the slot of the list of primitive values or the single primitive value
+     * @param expectedType the expected type of the primitive values, used in error messages
      */
     public void markNullElements(int slot, String expectedType) {
         if (nullElementSlots == null) {
@@ -132,9 +139,8 @@ public final class PropertyMap {
     }
 
     /**
-     * Returns the first null element of the lists of primitive values marked by
-     * {@link #markNullElements(int, String)}, looking at the lists in marking order, or {@code null} if the marked lists
-     * contain no null element.
+     * Returns the first null element of the slots marked by {@link #markNullElements(int, String)}, looking at the
+     * slots in marking order, or {@code null} if the marked slots contain no null element.
      *
      * @return the first null element or {@code null}
      */
@@ -142,9 +148,13 @@ public final class PropertyMap {
         if (nullElementSlots != null) {
             for (Map.Entry<Integer, String> entry : nullElementSlots.entrySet()) {
                 int slot = entry.getKey();
-                int index = ((List<?>) slots[slot]).indexOf(null);
-                if (index >= 0) {
-                    return new NullElement(slot, index, entry.getValue());
+                if (slots[slot] instanceof List<?> list) {
+                    int index = list.indexOf(null);
+                    if (index >= 0) {
+                        return new NullElement(slot, index, entry.getValue());
+                    }
+                } else if (slots[slot] == null) {
+                    return new NullElement(slot, -1, entry.getValue());
                 }
             }
         }
@@ -152,11 +162,40 @@ public final class PropertyMap {
     }
 
     /**
-     * A null element in a list of primitive values.
+     * Removes all null elements of the slots marked by {@link #markNullElements(int, String)}.
+     * <p>
+     * Empties the slots of lists which contain only null elements. That includes empty lists, which remain if all null
+     * elements were trailing nulls of extended properties. Empty slots of single primitive values stay empty.
      *
-     * @param slot         the index of the slot of the list
-     * @param index        the index of the null element in the list
-     * @param expectedType the expected type of the elements of the list
+     * @return this property map
+     */
+    public PropertyMap removeNullElements() {
+        if (nullElementSlots != null) {
+            for (int slot : nullElementSlots.keySet()) {
+                if (slots[slot] instanceof List<?> list && (list.isEmpty() || list.contains(null))) {
+                    List<Object> elements = new ArrayList<>(list.size());
+                    for (Object element : list) {
+                        if (element != null) elements.add(element);
+                    }
+                    if (elements.isEmpty()) {
+                        slots[slot] = null;
+                        count--;
+                    } else {
+                        slots[slot] = Lists.intern(elements);
+                    }
+                }
+            }
+            nullElementSlots = null;
+        }
+        return this;
+    }
+
+    /**
+     * A null element in a list of primitive values or a single primitive value.
+     *
+     * @param slot         the index of the slot
+     * @param index        the index of the null element in the list or -1 for a single primitive value
+     * @param expectedType the expected type of the primitive values
      */
     public record NullElement(int slot, int index, String expectedType) {
     }

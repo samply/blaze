@@ -1599,6 +1599,9 @@ jobs:
     - name: Transaction with Invalid (Null) Resource
       run: .github/scripts/transaction-null-resource.sh
 
+    - name: Create and Transaction with Null Elements in Primitive Arrays
+      run: .github/scripts/null-in-primitive-array.sh
+
     - name: Conditional Create
       run: .github/scripts/conditional-create.sh
 

@@ -24,6 +24,7 @@
           <entry key="blaze.fhir.spec-test/mem-size-test" value="-1" />
           <entry key="blaze.fhir.spec-test/size-test" value="-1" />
           <entry key="blaze.fhir.spec-test/testing-all-fhir-versions" value="-1" />
+          <entry key="blaze.fhir.spec.resource-test/given-parse-cbor" value="-1" />
           <entry key="blaze.fhir.spec.resource-test/given-parse-json" value="-1" />
           <entry key="blaze.fhir.spec.resource/cond-next-token" value="-1" />
           <entry key="blaze.fhir.spec.type/def-extend-protocol-primitive" value="-1" />

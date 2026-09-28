@@ -46,7 +46,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}))
+    :mode :internal}))
 
 (defn- parse-cbor
   ([type source]
@@ -297,7 +297,32 @@
       (given (parse-json "Patient" "{\"birthDate\": 9223372036854775808}")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid JSON representation of a resource. Numeric value (9223372036854775808) out of range of long (-9223372036854775808 - 9223372036854775807)"
-        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate"))
+
+    (testing "empty extended properties without value are invalid"
+      (doseq [extended-value [{} {:extension []}]]
+        (given-parse-json "Patient"
+          {:_birthDate extended-value}
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid JSON representation of a resource. Error on value null. Expected type is `date`."
+          [:fhir/issues 0 :fhir.issues/expression] := "Patient.birthDate")))
+
+    (testing "empty extended properties with value are valid"
+      (doseq [data [{:_birthDate {}
+                     :birthDate "2025"}
+                    {:birthDate "2025"
+                     :_birthDate {}}]]
+        (given-parse-json "Patient"
+          data
+          :fhir/type := :fhir/Patient
+          :birthDate := #fhir/date #system/date "2025")))
+
+    (testing "internal mode drops empty extended properties without value"
+      (doseq [extended-value [{} {:extension []}]]
+        (given-parse-cbor "Patient"
+          {:_birthDate extended-value}
+          :fhir/type := :fhir/Patient
+          :birthDate := nil))))
 
   (testing "deceasedBoolean"
     (doseq [value [true false]]
@@ -550,22 +575,22 @@
     (doseq [resource [{:resourceType "Observation" :valueQuantity {:value 1.10M}}
                       {:valueQuantity {:value 1.10M} :resourceType "Observation"}]]
       (given-parse-cbor "Bundle"
-                        {:type "collection" :entry [{:resource resource}]}
-                        [:entry 0 :resource :fhir/type] := :fhir/Observation
-                        [:entry 0 :resource :value :value :value str] := "1.10"))
+        {:type "collection" :entry [{:resource resource}]}
+        [:entry 0 :resource :fhir/type] := :fhir/Observation
+        [:entry 0 :resource :value :value :value str] := "1.10"))
 
     (testing "float values are independent of property order"
       (doseq [resource [{:resourceType "Observation" :valueQuantity {:value (float 1.1)}}
                         {:valueQuantity {:value (float 1.1)} :resourceType "Observation"}]]
         (given-parse-cbor "Bundle"
-                          {:type "collection" :entry [{:resource resource}]}
-                          [:entry 0 :resource :value :value :value str] := "1.1")))
+          {:type "collection" :entry [{:resource resource}]}
+          [:entry 0 :resource :value :value :value str] := "1.1")))
 
     (testing "summary types aren't supported"
       (given-parse-cbor "Bundle"
-                        {:type "collection" :entry [{:resource {:resourceType "summary/Patient"}}]}
-                        ::anom/category := ::anom/unsupported
-                        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `summary/Patient`."))))
+        {:type "collection" :entry [{:resource {:resourceType "summary/Patient"}}]}
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Invalid JSON representation of a resource. Unsupported type `summary/Patient`."))))
 
 (deftest parse-json-questionnaire-test
   (given-parse-json "Questionnaire"
@@ -581,6 +606,13 @@
       [:item count] := 1
       [:item 0 :item count] := 1
       [:item 0 :item 0 :linkId] := #fhir/string "id-130845")))
+
+(deftest parse-json-care-plan-test
+  (given-parse-json "CarePlan"
+    {:instantiatesUri [" "]}
+    ::anom/category := ::anom/incorrect
+    ::anom/message := "Invalid JSON representation of a resource. Error on value ` `. Expected type is `uri, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
+    [:fhir/issues 0 :fhir.issues/expression] := "CarePlan.instantiatesUri"))
 
 (deftest parse-json-molecular-sequence-test
   (testing "multiple decimal values"
@@ -663,10 +695,10 @@
 
     (testing "CBOR parsing allows invalid values"
       (given-parse-cbor "Extension"
-                        {:url "foo"
-                         :valueBase64Binary "a"}
-                        :fhir/type := :fhir/Extension
-                        :value := (type/base64Binary "a"))))
+        {:url "foo"
+         :valueBase64Binary "a"}
+        :fhir/type := :fhir/Extension
+        :value := (type/base64Binary "a"))))
 
   (testing "boolean"
     (doseq [value [true false]]
@@ -1427,9 +1459,27 @@
         ::anom/message := (null-in-primitive-array-msg "string")
         [:fhir/issues 0 :fhir.issues/expression] := (format "HumanName.given[%d]" index))))
 
+  (testing "empty extended properties without values are invalid"
+    (doseq [[extended-properties index] [[[{} {:id "id-120708"}] 0]
+                                         [[{:extension []} {:id "id-120708"}] 0]
+                                         [[{:id "id-120708"} {} {:id "id-120731"}] 1]]]
+      (given-parse-json "HumanName"
+        {:_given extended-properties}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (null-in-primitive-array-msg "string")
+        [:fhir/issues 0 :fhir.issues/expression] := (format "HumanName.given[%d]" index))))
+
   (testing "trailing null extended properties without values are ignored"
     (doseq [[extended-properties given] [[[nil] []]
                                          [[{:id "id-120708"} nil] [#fhir/string{:id "id-120708"}]]]]
+      (given-parse-json "HumanName"
+        {:_given extended-properties}
+        :fhir/type := :fhir/HumanName
+        :given := given)))
+
+  (testing "trailing empty extended properties without values are ignored"
+    (doseq [[extended-properties given] [[[{}] []]
+                                         [[{:id "id-120708"} {}] [#fhir/string{:id "id-120708"}]]]]
       (given-parse-json "HumanName"
         {:_given extended-properties}
         :fhir/type := :fhir/HumanName
@@ -1452,10 +1502,38 @@
         ::anom/message := (null-in-primitive-array-msg "string")
         [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[1]")))
 
+  (testing "nulls with empty extended properties are invalid"
+    (testing "extended properties before value"
+      (given-parse-json "HumanName"
+        {:_given [{} {}]
+         :given ["given-120511" nil]}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (null-in-primitive-array-msg "string")
+        [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[1]"))
+
+    (testing "extended properties after value"
+      (given-parse-json "HumanName"
+        {:given ["given-120511" nil]
+         :_given [{} {}]}
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (null-in-primitive-array-msg "string")
+        [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[1]")))
+
   (testing "nulls with extended properties are valid"
     (doseq [data [{:given ["given-120511" nil]
                    :_given [nil {:id "id-120708"}]}
                   {:_given [nil {:id "id-120708"}]
+                   :given ["given-120511" nil]}]]
+      (given-parse-json "HumanName"
+        data
+        :fhir/type := :fhir/HumanName
+        :given := [#fhir/string "given-120511"
+                   #fhir/string{:id "id-120708"}])))
+
+  (testing "values with empty extended properties are valid"
+    (doseq [data [{:given ["given-120511" nil]
+                   :_given [{} {:id "id-120708"}]}
+                  {:_given [{} {:id "id-120708"}]
                    :given ["given-120511" nil]}]]
       (given-parse-json "HumanName"
         data
@@ -1479,9 +1557,35 @@
       :fhir/type := :fhir/HumanName
       :given := [#fhir/string{:extension [#fhir/Extension{:url "url-121004"}]}]))
 
+  (testing "null values with a single empty extended property are invalid"
+    (doseq [data [{:given [nil]
+                   :_given {}}
+                  {:_given {}
+                   :given [nil]}]]
+      (given-parse-json "HumanName"
+        data
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (null-in-primitive-array-msg "string")
+        [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[0]")))
+
+  (testing "a single empty extended property without values is invalid"
+    (given-parse-json "HumanName"
+      {:_given {}}
+      ::anom/category := ::anom/incorrect
+      ::anom/message := (null-in-primitive-array-msg "string")
+      [:fhir/issues 0 :fhir.issues/expression] := "HumanName.given[0]"))
+
   (testing "a single value fills the leading null of extended properties"
     (given-parse-json "HumanName"
       {:_given [nil {:id "id-120708"}]
+       :given "given-120511"}
+      :fhir/type := :fhir/HumanName
+      :given := [#fhir/string "given-120511"
+                 #fhir/string{:id "id-120708"}]))
+
+  (testing "a single value fills the leading empty extended properties"
+    (given-parse-json "HumanName"
+      {:_given [{} {:id "id-120708"}]
        :given "given-120511"}
       :fhir/type := :fhir/HumanName
       :given := [#fhir/string "given-120511"
@@ -1529,12 +1633,88 @@
       ::anom/message := (null-in-primitive-array-msg "string")
       [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].given[1]"))
 
-  (testing "CBOR"
-    (given-parse-cbor "Patient"
-                      {:name [{:given ["given-120511" nil]}]}
-                      ::anom/category := ::anom/incorrect
-                      ::anom/message := (null-in-primitive-array-msg "string")
-                      [:fhir/issues 0 :fhir.issues/expression] := "Patient.name[0].given[1]")))
+  (testing "internal mode drops remaining nulls"
+    (testing "nulls without extended properties"
+      (doseq [[given expected-given]
+              [[[nil] []]
+               [[nil "given-120511"] [#fhir/string "given-120511"]]
+               [["given-120511" nil] [#fhir/string "given-120511"]]
+               [["given-120511" nil "given-120527"]
+                [#fhir/string "given-120511"
+                 #fhir/string "given-120527"]]]]
+        (given-parse-cbor "Patient"
+          {:name [{:given given}]}
+          :fhir/type := :fhir/Patient
+          [:name 0 :given] := expected-given)))
+
+    (testing "only null extended properties without values"
+      (given-parse-cbor "Patient"
+        {:name [{:_given [nil]}]}
+        :fhir/type := :fhir/Patient
+        [:name 0] := #fhir/HumanName{}))
+
+    (testing "null extended properties without values"
+      (doseq [[extended-properties expected-given]
+              [[[nil {:id "id-120708"}] [#fhir/string{:id "id-120708"}]]
+               [[{:id "id-120708"} nil] [#fhir/string{:id "id-120708"}]]
+               [[{:id "id-120708"} nil {:id "id-120731"}]
+                [#fhir/string{:id "id-120708"}
+                 #fhir/string{:id "id-120731"}]]]]
+        (given-parse-cbor "Patient"
+          {:name [{:_given extended-properties}]}
+          :fhir/type := :fhir/Patient
+          [:name 0 :given] := expected-given)))
+
+    (testing "empty extended properties without values"
+      (doseq [[extended-properties expected-given]
+              [[[{} {:id "id-120708"}] [#fhir/string{:id "id-120708"}]]
+               [[{:id "id-120708"} {}] [#fhir/string{:id "id-120708"}]]
+               [[{:id "id-120708"} {} {:id "id-120731"}]
+                [#fhir/string{:id "id-120708"}
+                 #fhir/string{:id "id-120731"}]]]]
+        (given-parse-cbor "Patient"
+          {:name [{:_given extended-properties}]}
+          :fhir/type := :fhir/Patient
+          [:name 0 :given] := expected-given)))
+
+    (testing "nulls with null extended properties"
+      (given-parse-cbor "Patient"
+        {:name [{:given ["given-120511" nil]
+                 :_given [nil nil]}]}
+        :fhir/type := :fhir/Patient
+        [:name 0 :given] := [#fhir/string "given-120511"]))
+
+    (testing "nulls with extended properties are kept"
+      (given-parse-cbor "Patient"
+        {:name [{:given ["given-120511" nil]
+                 :_given [nil {:id "id-120708"}]}]}
+        :fhir/type := :fhir/Patient
+        [:name 0 :given] := [#fhir/string "given-120511"
+                             #fhir/string{:id "id-120708"}]))
+
+    (testing "only the property with nulls is changed"
+      (given-parse-cbor "Patient"
+        {:name [{:family "family-121213"
+                 :given [nil]
+                 :prefix ["prefix-121239"]}]}
+        :fhir/type := :fhir/Patient
+        [:name 0] := #fhir/HumanName{:family #fhir/string "family-121213"
+                                     :prefix [#fhir/string "prefix-121239"]}))
+
+    (testing "resource"
+      (doseq [[subject-type expected-subject-type]
+              [[["Patient" nil] [#fhir/code "Patient"]]
+               [[nil] nil]]]
+        (given-parse-cbor "Questionnaire"
+          {:subjectType subject-type}
+          :fhir/type := :fhir/Questionnaire
+          :subjectType := expected-subject-type))
+
+      (testing "only null extended properties without values"
+        (given-parse-cbor "Questionnaire"
+          {:_subjectType [nil]}
+          :fhir/type := :fhir/Questionnaire
+          identity :? #(not (contains? % :subjectType)))))))
 
 (deftest parse-json-reference-test
   (testing "id"
