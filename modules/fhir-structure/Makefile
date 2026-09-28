@@ -6,22 +6,22 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep :current true
+	clojure -Sthreads 1 -X:deps prep :current true
 
 test: prep
-	clojure -M:test:kaocha --profile :ci --skip-meta :mem-size
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --skip-meta :mem-size
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-mem-size-normal-heap: prep
-	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx4g -M:test:kaocha --profile :ci --focus-meta :mem-size
+	clojure -Sthreads 1 -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx4g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
 test-mem-size-large-heap: prep
-	clojure -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx32g -M:test:kaocha --profile :ci --focus-meta :mem-size
+	clojure -Sthreads 1 -J-XX:+UseCompactObjectHeaders -J--sun-misc-unsafe-memory-access=allow -J-Xmx32g -M:test:kaocha --profile :ci --focus-meta :mem-size
 
 test-coverage: prep
-	clojure -M:test:kaocha:coverage --skip-meta :mem-size
+	clojure -Sthreads 1 -M:test:kaocha:coverage --skip-meta :mem-size
 
 deps-tree:
 	clojure -X:deps tree

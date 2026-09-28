@@ -5,13 +5,13 @@ lint:
 	clj-kondo --lint src test deps.edn
 
 test:
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test-focus:
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage:
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-list:
 	clojure -X:deps list

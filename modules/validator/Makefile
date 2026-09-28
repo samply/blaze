@@ -6,13 +6,13 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -X:deps prep :aliases '[:test]'
+	clojure -Sthreads 1 -X:deps prep :aliases '[:test]'
 
 test: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test-coverage: prep
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree

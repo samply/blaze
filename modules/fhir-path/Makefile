@@ -5,16 +5,16 @@ lint:
 	clj-kondo --fail-level error --lint src test deps.edn
 
 prep:
-	clojure -X:deps prep
+	clojure -Sthreads 1 -X:deps prep
 
 test: prep
-	clojure -M:test:kaocha --profile :ci
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci
 
 test-focus: prep
-	clojure -M:test:kaocha --profile :ci --focus "$(FOCUS)"
+	clojure -Sthreads 1 -M:test:kaocha --profile :ci --focus "$(FOCUS)"
 
 test-coverage: prep
-	clojure -M:test:kaocha:coverage
+	clojure -Sthreads 1 -M:test:kaocha:coverage
 
 deps-tree:
 	clojure -X:deps tree
