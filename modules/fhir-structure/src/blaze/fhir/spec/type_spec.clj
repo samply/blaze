@@ -197,6 +197,9 @@
 (s/fdef type/ratio
   :args (s/cat :x map?))
 
+(s/fdef type/ratio-range
+  :args (s/cat :x map?))
+
 (s/fdef type/reference
   :args (s/cat :x map?))
 
