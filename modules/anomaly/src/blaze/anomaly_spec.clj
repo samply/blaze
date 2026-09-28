@@ -78,6 +78,10 @@
   :args (s/cat :x any?)
   :ret (s/nilable ::anom/anomaly))
 
+(s/fdef ba/exception-anomaly
+  :args (s/cat :category ::anom/category :e #(instance? Throwable %))
+  :ret ::anom/anomaly)
+
 (s/fdef ba/try-one
   :args (s/cat :type symbol? :category keyword? :body (s/* any?)))
 
