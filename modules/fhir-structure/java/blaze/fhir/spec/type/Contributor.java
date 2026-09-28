@@ -12,6 +12,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
+import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
 public final class Contributor extends AbstractElement implements Complex, ExtensionValue {
@@ -48,7 +49,8 @@ public final class Contributor extends AbstractElement implements Complex, Exten
 
     private static final byte HASH_MARKER = 60;
 
-    private static final Contributor EMPTY = new Contributor(ExtensionData.EMPTY, null, null, null);
+    @SuppressWarnings("unchecked")
+    private static final Contributor EMPTY = new Contributor(ExtensionData.EMPTY, null, null, PersistentVector.EMPTY);
 
     private final Code type;
     private final String name;
@@ -58,7 +60,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
         super(extensionData);
         this.type = type;
         this.name = name;
-        this.contact = contact;
+        this.contact = requireNonNull(contact);
     }
 
     public static Contributor create(IPersistentMap m) {
@@ -177,7 +179,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
             sink.putByte((byte) 3);
             name.hashInto(sink);
         }
-        if (contact != null) {
+        if (!contact.isEmpty()) {
             sink.putByte((byte) 4);
             Base.hashIntoList(contact, sink);
         }

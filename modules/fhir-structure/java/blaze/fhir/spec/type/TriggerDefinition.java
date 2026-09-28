@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import static blaze.fhir.spec.type.Base.appendElement;
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
+import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
 public final class TriggerDefinition extends AbstractElement implements Complex, ExtensionValue {
@@ -109,7 +110,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
         this.type = type;
         this.name = name;
         this.timing = timing;
-        this.data = data;
+        this.data = requireNonNull(data);
         this.condition = condition;
     }
 
@@ -198,7 +199,6 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public TriggerDefinition assoc(Object key, Object val) {
         if (key == TYPE)
             return new TriggerDefinition(extensionData, (Code) val, name, timing, data, condition);
@@ -207,7 +207,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
         if (key == TIMING)
             return new TriggerDefinition(extensionData, type, name, (Element) val, data, condition);
         if (key == DATA)
-            return new TriggerDefinition(extensionData, type, name, timing, (List<DataRequirement>) val, condition);
+            return new TriggerDefinition(extensionData, type, name, timing, Lists.nullToEmpty(val), condition);
         if (key == CONDITION)
             return new TriggerDefinition(extensionData, type, name, timing, data, (Expression) val);
         if (key == EXTENSION)
