@@ -1,6 +1,5 @@
 {blaze/hash blaze.fhir.hash/from-hex
  blaze/hash-prefix blaze.fhir.hash/prefix-from-hex
- blaze/field-name blaze.fhir.spec.type.json/field-name
  fhir/boolean blaze.fhir.spec.type/boolean
  fhir/integer blaze.fhir.spec.type/integer
  fhir/long blaze.fhir.spec.type/long
