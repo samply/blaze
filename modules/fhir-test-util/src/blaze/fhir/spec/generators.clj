@@ -208,6 +208,9 @@
 (def integer
   (primitive-gen type/integer integer-value))
 
+(def integer64
+  (primitive-gen type/integer64 long-value))
+
 (def string
   (primitive-gen type/string string-value))
 

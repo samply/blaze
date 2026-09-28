@@ -1373,6 +1373,11 @@
     (primitive-mem-size-test
      (type/integer 1) 24 24)))
 
+(deftest ^:mem-size fhir-integer64-mem-size-test
+  (testing "examples"
+    (primitive-mem-size-test
+     (type/integer64 1) 24 32)))
+
 (deftest fhir-string-test
   (testing "parsing"
     (testing "XML"
