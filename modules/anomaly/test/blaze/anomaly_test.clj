@@ -420,6 +420,16 @@
       (let [m {::anom/category ::anom/busy ::anom/message "msg-142523"}]
         (is (identical? m (ba/anomaly m)))))))
 
+(deftest exception-anomaly-test
+  (testing "without message"
+    (is (= {::anom/category ::anom/incorrect}
+           (ba/exception-anomaly ::anom/incorrect (Exception.)))))
+
+  (testing "with message"
+    (given (ba/exception-anomaly ::anom/incorrect (Exception. "msg-101713"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "msg-101713")))
+
 (deftest try-one-test
   (testing "without message"
     (is (= (ba/try-one Exception ::anom/fault (throw (Exception.)))

@@ -215,6 +215,12 @@
   [x]
   (-anomaly x))
 
+(defn exception-anomaly
+  "Creates an anomaly with `category` and the message of the exception `e`, if
+  it has one."
+  [category e]
+  (anomaly* category (ex-message e)))
+
 (defmacro try-one
   "Applies a try-catch form arround `body` catching exceptions of `type`,
   returning an anomaly with `category` and possible message of the exception."
@@ -222,9 +228,7 @@
   `(try
      ~@body
      (catch ~type e#
-       (cond-> {::anom/category ~category}
-         (.getMessage e#)
-         (assoc ::anom/message (.getMessage e#))))))
+       (exception-anomaly ~category e#))))
 
 (defmacro try-all [category & body]
   `(try-one Throwable ~category ~@body))
