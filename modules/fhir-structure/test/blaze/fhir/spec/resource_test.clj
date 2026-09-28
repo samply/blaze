@@ -975,7 +975,8 @@
         [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
 
   (testing "uri"
-    (doseq [value ["foo" "bar"]]
+    (doseq [value ["foo" "bar" "" "!" "~" "http://example.com/fhir|1.0.0"
+                   "http://example.com/\u00FC" "\u00FC" "\uD83D\uDE00"]]
       (given-parse-json "Extension"
         {:url "foo"
          :valueUri value}
@@ -983,12 +984,13 @@
         :value := (type/uri value)))
 
     (testing "invalid"
-      (given-parse-json "Extension"
-        {:url "url-204835"
-         :valueUri "\n"}
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid JSON representation of a resource. Error on value `\n`. Expected type is `uri, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`."
-        [:fhir/issues 0 :fhir.issues/expression] := "Extension.value")))
+      (doseq [value ["\n" " " "a b" "\t" "\u007F" "\u00A0" "\u2028" "\u00FC b"]]
+        (given-parse-json "Extension"
+          {:url "url-204835"
+           :valueUri value}
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid JSON representation of a resource. Error on value `%s`. Expected type is `uri, regex (?U)[\\p{Print}&&[^\\p{Blank}]]*`." value)
+          [:fhir/issues 0 :fhir.issues/expression] := "Extension.value"))))
 
   (testing "url"
     (doseq [value ["foo" "bar"]]

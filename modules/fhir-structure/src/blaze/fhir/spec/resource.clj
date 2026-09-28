@@ -61,10 +61,10 @@
     Coding ContactDetail ContactPoint Contributor Count DataRequirement
     DataRequirement$CodeFilter DataRequirement$DateFilter
     DataRequirement$Sort Distance Dosage Dosage$DoseAndRate Duration
-    Expression Extension HumanName Identifier Meta Money Narrative
-    ParameterDefinition Period Quantity Range Ratio Reference
-    RelatedArtifact SampledData Signature Timing Timing$Repeat
-    TriggerDefinition UsageContext Lists]
+    Expression Extension HumanName Identifier Lists Meta Money
+    Narrative ParameterDefinition Period Quantity Range Ratio
+    Reference RelatedArtifact SampledData Signature Timing
+    Timing$Repeat TriggerDefinition UsageContext]
    [clojure.lang RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
@@ -127,7 +127,7 @@
        "Address.country"
        "Age.unit"
        "Bundle.link.relation"
-       "Bundle.response.status"
+       "Bundle.entry.response.status"
        "CodeableConcept.text"
        "Coding.version"
        "Coding.display"
@@ -139,8 +139,7 @@
        "HumanName.suffix"
        "Quantity.unit")
       :primitive/string-interned
-      ("Resource.implicitRules"
-       "Account.implicitRules"
+      ("Account.implicitRules"
        "ActivityDefinition.implicitRules"
        "ActivityDefinition.url"
        "AdverseEvent.implicitRules"
@@ -213,7 +212,6 @@
        "DocumentManifest.implicitRules"
        "DocumentManifest.source"
        "DocumentReference.implicitRules"
-       "DomainResource.implicitRules"
        "Duration.system"
        "EffectEvidenceSynthesis.implicitRules"
        "EffectEvidenceSynthesis.url"
@@ -364,8 +362,6 @@
        "ValueSet.expansion.contains.system"
        "VerificationResult.implicitRules"
        "VisionPrescription.implicitRules"
-       "MetadataResource.implicitRules"
-       "MetadataResource.url"
        "Coding.system"
        "Identifier.system"
        "Quantity.system"
@@ -836,12 +832,39 @@
                                 "decimal")
        (primitive-handler def type/decimal "decimal")))
 
-(defn- get-text-pattern [pattern]
-  (fn [parser locator expected-type]
-    (when-ok [text (get-text parser locator)]
-      (if (.matches (re-matcher pattern text))
-        text
-        (incorrect-value-anom* (format "value `%s`" text) locator (format "%s, regex %s" expected-type pattern))))))
+(defn- pattern-mismatch-anom [locator expected-type pattern text]
+  (incorrect-value-anom* (format "value `%s`" text) locator (format "%s, regex %s" expected-type pattern)))
+
+(defn- pattern-check-string
+  "Returns a check-string function that returns `text` if it matches `pattern`
+  or an anomaly otherwise."
+  [pattern]
+  (fn [locator expected-type text]
+    (if (.matches (re-matcher pattern text))
+      text
+      (pattern-mismatch-anom locator expected-type pattern text))))
+
+(defn- check-uri
+  "A check-string function for uri, url and canonical values."
+  [locator expected-type text]
+  (if (su/visible? text)
+    text
+    (pattern-mismatch-anom locator expected-type su/visible-pattern text)))
+
+(def ^:private check-base64
+  (pattern-check-string #"([0-9a-zA-Z+/=]{4})+"))
+
+(def ^:private check-instant
+  (pattern-check-string #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))"))
+
+(def ^:private check-oid
+  (pattern-check-string #"urn:oid:[0-2](\.(0|[1-9][0-9]*))+"))
+
+(def ^:private check-id
+  (pattern-check-string #"[A-Za-z0-9\-\.]{1,64}"))
+
+(def ^:private check-uuid
+  (pattern-check-string #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
 
 (defn- parse-text [system-parser locator expected-type text]
   (if-ok [value (system-parser text)]
@@ -853,29 +876,32 @@
    (fn system-value-parser [parser locator]
      (when-ok [text (get-text parser locator)]
        (parse-text system-parser locator expected-type text))))
-  ([system-parser expected-type pattern]
-   (let [get-text (get-text-pattern pattern)]
-     (fn pattern-system-value-parser [parser locator]
-       (when-ok [text (get-text parser locator expected-type)]
-         (parse-text system-parser locator expected-type text))))))
+  ([system-parser expected-type check-string]
+   (fn checked-system-value-parser [parser locator]
+     (when-ok [text (get-text parser locator)
+               text (check-string locator expected-type text)]
+       (parse-text system-parser locator expected-type text)))))
 
 (defn- primitive-string-handler
   "A handler that reads a string value and creates the internal representation
-  using `constructor` and optional `system-parser` and `pattern`.
+  using `constructor` and optional `system-parser` and `check-string`.
 
-  The system parser has to be a function from string to system value or anomaly."
+  The system parser has to be a function from string to system value or anomaly.
+
+  The check-string function is only used if `check-string?` is true, which is
+  the value of the `:use-regex` option of the parsing context, even for checks
+  that aren't implemented by a regex. It takes a locator, the expected type and
+  the string value and has to return either the string value or an anomaly."
   ([def constructor system-parser expected-type]
    (->> (primitive-value-handler
          def constructor JsonToken/VALUE_STRING
          (system-value-parser system-parser expected-type)
          expected-type)
         (primitive-handler def constructor expected-type)))
-  ([def constructor system-parser expected-type pattern use-regex]
+  ([def constructor system-parser expected-type check-string]
    (->> (primitive-value-handler
          def constructor JsonToken/VALUE_STRING
-         (if use-regex
-           (system-value-parser system-parser expected-type pattern)
-           (system-value-parser system-parser expected-type))
+         (system-value-parser system-parser expected-type check-string)
          expected-type)
         (primitive-handler def constructor expected-type))))
 
@@ -918,89 +944,91 @@
   "Returns a map of JSON property names to handlers."
   {:arglists '([opts property-handler-definition])}
   [{:keys [use-regex] :as opts} {:keys [field-name key slot type] :as def}]
-  (condp = type
-    :system/string
-    (let [slot (long slot)]
-      {field-name (create-system-string-handler #(put-value! %1 slot %2) (name key) "string")})
+  (let [checking-primitive-string-handler
+        (if use-regex
+          (fn [def constructor system-parser expected-type check-string]
+            (primitive-string-handler def constructor system-parser expected-type check-string))
+          (fn [def constructor system-parser expected-type _]
+            (primitive-string-handler def constructor system-parser expected-type)))]
+    (condp = type
+      :system/string
+      (let [slot (long slot)]
+        {field-name (create-system-string-handler #(put-value! %1 slot %2) (name key) "string")})
 
-    :primitive/boolean
-    (primitive-handler def type/boolean "boolean" (primitive-boolean-value-handler def))
+      :primitive/boolean
+      (primitive-handler def type/boolean "boolean" (primitive-boolean-value-handler def))
 
-    :primitive/integer
-    (primitive-integer-handler def type/integer)
+      :primitive/integer
+      (primitive-integer-handler def type/integer)
 
-    :primitive/string
-    (primitive-string-handler def type/string identity "string")
+      :primitive/string
+      (primitive-string-handler def type/string identity "string")
 
-    :primitive/string-interned
-    (primitive-string-handler def type/string-interned identity "string")
+      :primitive/string-interned
+      (primitive-string-handler def type/string-interned identity "string")
 
-    :primitive/decimal
-    (primitive-decimal-handler def)
+      :primitive/decimal
+      (primitive-decimal-handler def)
 
-    :primitive/uri
-    (primitive-string-handler def type/uri identity "uri"
-                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
+      :primitive/uri
+      (checking-primitive-string-handler def type/uri identity "uri" check-uri)
 
-    :primitive/uri-interned
-    (primitive-string-handler def type/uri-interned identity "uri"
-                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
+      :primitive/uri-interned
+      (checking-primitive-string-handler def type/uri-interned identity "uri"
+                                         check-uri)
 
-    :primitive/url
-    (primitive-string-handler def type/url identity "url"
-                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
+      :primitive/url
+      (checking-primitive-string-handler def type/url identity "url" check-uri)
 
-    :primitive/canonical
-    (primitive-string-handler def type/canonical identity "canonical"
-                              #"(?U)[\p{Print}&&[^\p{Blank}]]*" use-regex)
+      :primitive/canonical
+      (checking-primitive-string-handler def type/canonical identity "canonical"
+                                         check-uri)
 
-    :primitive/base64Binary
-    (primitive-string-handler def type/base64Binary identity "base64Binary"
-                              #"([0-9a-zA-Z+/=]{4})+" use-regex)
+      :primitive/base64Binary
+      (checking-primitive-string-handler def type/base64Binary identity
+                                         "base64Binary" check-base64)
 
-    :primitive/instant
-    (primitive-string-handler def type/instant system/parse-date-time "instant"
-                              #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))" use-regex)
+      :primitive/instant
+      (checking-primitive-string-handler def type/instant system/parse-date-time
+                                         "instant" check-instant)
 
-    :primitive/date
-    (primitive-string-handler def type/date system/parse-date "date")
+      :primitive/date
+      (primitive-string-handler def type/date system/parse-date "date")
 
-    :primitive/dateTime
-    (primitive-string-handler def type/dateTime system/parse-date-time "date-time")
+      :primitive/dateTime
+      (primitive-string-handler def type/dateTime system/parse-date-time
+                                "date-time")
 
-    :primitive/time
-    (primitive-string-handler def type/time system/parse-time "time")
+      :primitive/time
+      (primitive-string-handler def type/time system/parse-time "time")
 
-    :primitive/code
-    (primitive-string-handler def type/code identity "code")
+      :primitive/code
+      (primitive-string-handler def type/code identity "code")
 
-    :primitive/oid
-    (primitive-string-handler def type/oid identity "oid"
-                              #"urn:oid:[0-2](\.(0|[1-9][0-9]*))+" use-regex)
+      :primitive/oid
+      (checking-primitive-string-handler def type/oid identity "oid" check-oid)
 
-    :primitive/id
-    (primitive-string-handler def type/id identity "id"
-                              #"[A-Za-z0-9\-\.]{1,64}" use-regex)
+      :primitive/id
+      (checking-primitive-string-handler def type/id identity "id" check-id)
 
-    :primitive/markdown
-    (primitive-string-handler def type/markdown identity "markdown")
+      :primitive/markdown
+      (primitive-string-handler def type/markdown identity "markdown")
 
-    :primitive/unsignedInt
-    (primitive-integer-handler def type/unsignedInt)
+      :primitive/unsignedInt
+      (primitive-integer-handler def type/unsignedInt)
 
-    :primitive/positiveInt
-    (primitive-integer-handler def type/positiveInt)
+      :primitive/positiveInt
+      (primitive-integer-handler def type/positiveInt)
 
-    :primitive/uuid
-    (primitive-string-handler def type/uuid identity "uuid"
-                              #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" use-regex)
+      :primitive/uuid
+      (checking-primitive-string-handler def type/uuid identity "uuid" check-uuid)
 
-    :primitive/xhtml
-    (primitive-string-handler def type/xhtml identity "xhtml")
+      :primitive/xhtml
+      (primitive-string-handler def type/xhtml identity "xhtml")
 
-    (if (#{"complex" "element" "backboneElement"} (namespace type))
-      (create-complex-property-handler opts def)
-      (unsupported-type-anom (name type)))))
+      (if (#{"complex" "element" "backboneElement"} (namespace type))
+        (create-complex-property-handler opts def)
+        (unsupported-type-anom (name type))))))
 
 (defn- assoc-slots
   "Associates the index of its key in `keys` as :slot to each of the

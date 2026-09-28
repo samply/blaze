@@ -5,6 +5,7 @@
    [blaze.fhir.spec.impl.xml :as xml]
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.test-util :as tu]
@@ -111,7 +112,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "(?U)[\\p{Print}&&[^\\p{Blank}]]*" ~'e))
+               (fn [~'e] (xml/value-valid? su/visible? ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer (xml/xml-constructor type/uri identity) type/to-xml))}])))
@@ -125,7 +126,7 @@
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "(?U)[\\p{Print}&&[^\\p{Blank}]]*" ~'e))
+               (fn [~'e] (xml/value-valid? su/visible? ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer (xml/xml-constructor type/canonical identity) type/to-xml))}])))
@@ -317,7 +318,7 @@
       [:fhir.xml.Measure/url 0 :spec-form regexes->str]
       := `(s2/and
            xml/element?
-           (fn [~'e] (xml/value-matches? "(?U)[\\p{Print}&&[^\\p{Blank}]]*" ~'e))
+           (fn [~'e] (xml/value-valid? su/visible? ~'e))
            (s2/conformer xml/remove-character-content xml/set-extension-tag)
            (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
            (s2/conformer (xml/xml-constructor type/uri-interned identity) type/to-xml))))
