@@ -2,7 +2,7 @@
  blaze/hash-prefix blaze.fhir.hash/prefix-from-hex
  fhir/boolean blaze.fhir.spec.type/boolean
  fhir/integer blaze.fhir.spec.type/integer
- fhir/long blaze.fhir.spec.type/long
+ fhir/integer64 blaze.fhir.spec.type/integer64
  fhir/string blaze.fhir.spec.type/string
  fhir/string-interned blaze.fhir.spec.type/string-interned
  fhir/decimal blaze.fhir.spec.type/decimal

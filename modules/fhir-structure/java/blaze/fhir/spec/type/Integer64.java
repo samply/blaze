@@ -1,5 +1,7 @@
 package blaze.fhir.spec.type;
 
+import blaze.Interner;
+import blaze.Interners;
 import blaze.fhir.spec.type.system.Longs;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -10,9 +12,18 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.lang.String;
-import java.util.Objects;
 
 public final class Integer64 extends PrimitiveElement {
+
+    /**
+     * Memory size.
+     * <p>
+     * 8 byte - object header
+     * 4 or 8 byte - extension data reference
+     * 8 byte - long value
+     * 1 byte - has value flag
+     */
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + MEM_SIZE_REFERENCE + 8 + 1 + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "integer64");
 
@@ -27,21 +38,47 @@ public final class Integer64 extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 2;
 
-    private static final Integer64 EMPTY = new Integer64(ExtensionData.EMPTY, null);
+    private static final Interner<ExtensionData, Integer64> INTERNER = Interners.weakInterner(k -> new Integer64(k, 0, false));
+    private static final Integer64 EMPTY = new Integer64(ExtensionData.EMPTY, 0, false);
 
-    private final Long value;
+    // the whole long range is valid, so absence can't be encoded as a sentinel value
+    private final long value;
+    private final boolean hasValue;
 
-    private Integer64(ExtensionData extensionData, Long value) {
+    private Integer64(ExtensionData extensionData, long value, boolean hasValue) {
         super(extensionData);
         this.value = value;
+        this.hasValue = hasValue;
+    }
+
+    private static Integer64 maybeIntern(ExtensionData extensionData, long value, boolean hasValue) {
+        return extensionData.isInterned() && !hasValue
+                ? INTERNER.intern(extensionData)
+                : new Integer64(extensionData, value, hasValue);
+    }
+
+    private static long checkLong(Object value) {
+        if (value instanceof Long l) return l;
+        throw new IllegalArgumentException("Invalid integer64 value `%s`.".formatted(value));
+    }
+
+    public static Integer64 create(Long value) {
+        return value == null ? EMPTY : new Integer64(ExtensionData.EMPTY, value, true);
     }
 
     public static Integer64 create(IPersistentMap m) {
-        return new Integer64(ExtensionData.fromMap(m), (Long) m.valAt(VALUE));
+        var value = m.valAt(VALUE);
+        return maybeIntern(ExtensionData.fromMap(m), value == null ? 0 : checkLong(value), value != null);
     }
 
+    @Override
+    public boolean hasValue() {
+        return hasValue;
+    }
+
+    @Override
     public Long value() {
-        return value;
+        return hasValue ? value : null;
     }
 
     @Override
@@ -61,15 +98,15 @@ public final class Integer64 extends PrimitiveElement {
 
     @Override
     public Integer64 assoc(Object key, Object val) {
-        if (key == VALUE) return new Integer64(extensionData, (Long) val);
-        if (key == EXTENSION) return new Integer64(extensionData.withExtension(val), value);
-        if (key == ID) return new Integer64(extensionData.withId(val), value);
+        if (key == VALUE) return maybeIntern(extensionData, val == null ? 0 : checkLong(val), val != null);
+        if (key == EXTENSION) return maybeIntern(extensionData.withExtension(val), value, hasValue);
+        if (key == ID) return maybeIntern(extensionData.withId(val), value, hasValue);
         return this;
     }
 
     @Override
     public Integer64 withMeta(IPersistentMap meta) {
-        return new Integer64(extensionData.withMeta(meta), value);
+        return maybeIntern(extensionData.withMeta(meta), value, hasValue);
     }
 
     @Override
@@ -80,7 +117,7 @@ public final class Integer64 extends PrimitiveElement {
     @Override
     public void serializeJsonPrimitiveValue(JsonGenerator generator) throws IOException {
         if (hasValue()) {
-            generator.writeNumber(value);
+            generator.writeString(Long.toString(value));
         } else {
             generator.writeNull();
         }
@@ -91,10 +128,15 @@ public final class Integer64 extends PrimitiveElement {
     public void hashInto(PrimitiveSink sink) {
         sink.putByte(HASH_MARKER);
         extensionData.hashInto(sink);
-        if (value != null) {
+        if (hasValue()) {
             sink.putByte((byte) 2);
             Longs.hashInto(value, sink);
         }
+    }
+
+    @Override
+    public int memSize() {
+        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize();
     }
 
     @Override
@@ -102,16 +144,17 @@ public final class Integer64 extends PrimitiveElement {
         if (this == o) return true;
         return o instanceof Integer64 that &&
                 extensionData.equals(that.extensionData) &&
-                Objects.equals(value, that.value);
+                hasValue == that.hasValue &&
+                value == that.value;
     }
 
     @Override
     public int hashCode() {
-        return 31 * extensionData.hashCode() + Objects.hashCode(value);
+        return 31 * (31 * extensionData.hashCode() + java.lang.Boolean.hashCode(hasValue)) + Long.hashCode(value);
     }
 
     @Override
     public String toString() {
-        return "Integer64{" + extensionData + ", value=" + value + '}';
+        return "Integer64{" + extensionData + (hasValue ? ", value=" + value : "") + '}';
     }
 }

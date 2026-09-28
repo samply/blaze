@@ -2,7 +2,7 @@
   "Functions for primitive and complex types."
   (:refer-clojure
    :exclude
-   [boolean boolean? count decimal? integer? long meta range str string? time
+   [boolean boolean? count decimal? integer? meta range str string? time
     type uri? uuid?])
   (:require
    [blaze.anomaly :as ba]
@@ -22,8 +22,8 @@
     Canonical Code CodeableConcept Coding ContactDetail ContactPoint Contributor Count
     DataRequirement DataRequirement$CodeFilter DataRequirement$DateFilter DataRequirement$Sort
     Date DateTime Decimal Distance Dosage Dosage$DoseAndRate Duration Expression Extension HumanName Id
-    Identifier Instant Markdown Meta Money Narrative Oid ParameterDefinition Period PositiveInt Primitive Quantity
-    Range Ratio Reference RelatedArtifact SampledData Signature String$Interned
+    Identifier Instant Integer64 Markdown Meta Money Narrative Oid ParameterDefinition Period PositiveInt Primitive
+    Quantity Range Ratio Reference RelatedArtifact SampledData Signature String$Interned
     String$Normal Time Timing Timing$Repeat TriggerDefinition UnsignedInt Uri Uri$Interned
     Uri$Normal Url UsageContext Uuid Xhtml]
    [clojure.lang IPersistentMap]
@@ -111,6 +111,20 @@
     :else (ba/incorrect (format "Invalid integer value `%s`." x))))
 
 (def-print-method-primitive integer)
+
+;; ---- integer64 -------------------------------------------------------------
+
+(defn integer64? [x]
+  (instance? Integer64 x))
+
+(defn integer64 [x]
+  (cond
+    (map? x) (ba/try-one IllegalArgumentException ::anom/incorrect
+               (Integer64/create ^IPersistentMap x))
+    (instance? Long x) (Integer64/create ^Long x)
+    :else (ba/incorrect (format "Invalid integer64 value `%s`." x))))
+
+(def-print-method-primitive integer64)
 
 ;; ---- string ----------------------------------------------------------------
 

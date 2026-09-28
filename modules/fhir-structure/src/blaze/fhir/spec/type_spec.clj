@@ -26,6 +26,10 @@
   :args (s/cat :value (s/alt :value int? :extended map?))
   :ret (s/or :value type/integer? :anomaly ::anom/anomaly))
 
+(s/fdef type/integer64
+  :args (s/cat :value (s/alt :value #(instance? Long %) :extended map?))
+  :ret (s/or :value type/integer64? :anomaly ::anom/anomaly))
+
 (s/fdef type/string
   :args (s/cat :value (s/alt :value string? :extended map?))
   :ret type/string?)

@@ -32,7 +32,8 @@
    [com.fasterxml.jackson.databind ObjectMapper]
    [com.fasterxml.jackson.databind.module SimpleModule]
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
-   [com.google.common.hash Hashing]))
+   [com.google.common.hash Hashing]
+   [java.util.regex Pattern]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -354,6 +355,175 @@
     (testing "exceeded print level"
       (binding [*print-level* 0]
         (is (= "#" (pprint-str #fhir/integer 1)))))))
+
+(deftest integer64-test
+  (testing "integer64?"
+    (are [x] (type/integer64? x)
+      #fhir/integer64 -1
+      #fhir/integer64 0
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo"}))
+
+  (testing "invalid"
+    (given (st/with-instrument-disabled (type/integer64 "a"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid integer64 value `a`.")
+
+    (testing "non-Long values"
+      (doseq [x [(int 1) (short 1) (byte 1) (bigint 1) (biginteger 1)
+                 (inc (bigint Long/MAX_VALUE)) 1.5 1.5M 1/2]]
+        (given (st/with-instrument-disabled (type/integer64 x))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid integer64 value `%s`." x))
+
+        (given (type/integer64 {:value x})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid integer64 value `%s`." x))
+
+        (is (thrown-with-msg? IllegalArgumentException
+                              (re-pattern (Pattern/quote (format "Invalid integer64 value `%s`." x)))
+                              (assoc #fhir/integer64 1 :value x))))))
+
+  (testing "type"
+    (are [x] (= :fhir/integer64 (:fhir/type x))
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo"}))
+
+  (testing "Integer64"
+    (is (= #fhir/integer64{:value 1} #fhir/integer64 1)))
+
+  (testing "extreme values"
+    (are [x] (= x (:value (type/integer64 x)))
+      Long/MIN_VALUE
+      Long/MAX_VALUE))
+
+  (testing "interning"
+    (is (not-interned? #fhir/integer64 165519 #fhir/integer64 165519))
+    (is (identical? #fhir/integer64{} (type/integer64 {})))
+
+    (testing "with extension"
+      (are [x y] (not-interned? x y)
+        (type/integer64 {:extension [internable-extension]
+                         :value 165519})
+        (type/integer64 {:extension [internable-extension]
+                         :value 165519})
+
+        (type/integer64 {:id "id-162329" :extension [internable-extension]})
+        (type/integer64 {:id "id-162329" :extension [internable-extension]}))
+
+      (are [x y] (interned? x y)
+        (type/integer64 {:extension [internable-extension]})
+        (type/integer64 {:extension [internable-extension]})
+
+        (assoc #fhir/integer64{:extension [#fhir/Extension{:url "url-143208" :value #fhir/code "value-143217"}] :value 1} :value nil)
+        (type/integer64 {:extension [#fhir/Extension{:url "url-143208" :value #fhir/code "value-143217"}]}))))
+
+  (testing "assoc id"
+    (testing "non-extended"
+      (is (= (assoc #fhir/integer64 1 :id "id-111030")
+             #fhir/integer64{:id "id-111030" :value 1})))
+
+    (testing "already extended"
+      (is (= (assoc #fhir/integer64{:id "foo"} :id "bar")
+             #fhir/integer64{:id "bar"}))
+      (is (= (assoc #fhir/integer64{:extension [#fhir/Extension{:url "foo"}]} :id "id-111902")
+             #fhir/integer64{:id "id-111902" :extension [#fhir/Extension{:url "foo"}]}))))
+
+  (testing "assoc extension"
+    (testing "non-extended"
+      (is (= (assoc #fhir/integer64 1 :extension [#fhir/Extension{:url "foo"}])
+             #fhir/integer64{:extension [#fhir/Extension{:url "foo"}] :value 1})))
+
+    (testing "already extended"
+      (is (= (assoc #fhir/integer64{:id "id-111953"} :extension [#fhir/Extension{:url "foo"}])
+             #fhir/integer64{:id "id-111953" :extension [#fhir/Extension{:url "foo"}]}))
+      (is (= (assoc #fhir/integer64{:extension [#fhir/Extension{:url "foo"}]} :extension [#fhir/Extension{:url "bar"}])
+             #fhir/integer64{:extension [#fhir/Extension{:url "bar"}]}))))
+
+  (testing "empty"
+    (is (= #fhir/integer64{} (empty #fhir/integer64{:id "foo"})))
+    (is (nil? (seq (empty #fhir/integer64{:id "foo"})))))
+
+  (testing "value"
+    (are [x] (= 1 (:value x))
+      #fhir/integer64 1
+      #fhir/integer64{:id "foo" :value 1})
+    (is (nil? (:value #fhir/integer64{:id "foo"}))))
+
+  (testing "assoc value"
+    (is (= #fhir/integer64 2 (assoc #fhir/integer64 1 :value 2))))
+
+  (testing "metadata"
+    (is (nil? (meta #fhir/integer64 1)))
+    (is (= {:foo "bar"} (meta (with-meta #fhir/integer64 1 {:foo "bar"})))))
+
+  (testing "to-json"
+    (is (= "1" (gen-json-value #fhir/integer64 1)))
+
+    (satisfies-prop 100
+      (prop/for-all [value fg/long-value]
+        (= (str value) (gen-json-value (type/integer64 value))))))
+
+  (testing "to-xml"
+    (is (= (sexp-value "1") (type/to-xml #fhir/integer64 1)))
+
+    (satisfies-prop 100
+      (prop/for-all [value fg/long-value]
+        (= (sexp-value (str value)) (type/to-xml (type/integer64 value))))))
+
+  (testing "equals"
+    (is (= #fhir/integer64 0 #fhir/integer64 0))
+    (is (not= #fhir/integer64 0 #fhir/integer64 1))
+    (is (not= #fhir/integer64{} #fhir/integer64 0))
+    (is (not= #fhir/integer64{:id "foo"} #fhir/integer64{:id "foo" :value 0}))
+    (is (= #fhir/integer64{:id "foo"} (assoc #fhir/integer64{:id "foo" :value 1} :value nil)))
+    (is (= #fhir/integer64{:id "foo"} (dissoc #fhir/integer64{:id "foo" :value 1} :value)))
+    (is (not= #fhir/integer64 0 #fhir/integer 0))
+    (is (not= #fhir/integer64 0 0)))
+
+  (testing "hash-code"
+    (is (= (hash #fhir/integer64 1) (hash #fhir/integer64 1)))
+    (is (not= (hash #fhir/integer64{}) (hash #fhir/integer64 0))))
+
+  (testing "hash-into"
+    (are [i hex] (= hex (murmur3 i))
+      #fhir/integer64 0 "add851d6"
+      #fhir/integer64 1 "8408777c"
+      #fhir/integer64{:id "foo"} "943aa9b2"
+      #fhir/integer64{:id "foo" :value 0} "386e01d"
+      #fhir/integer64{:extension [#fhir/Extension{:url "foo"}]} "589558b6"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/integer64 0 24
+      #fhir/integer64 1000 24
+      #fhir/integer64{:id "foo"} 88))
+
+  (testing "references"
+    (is (empty? (type/references #fhir/integer64 0))))
+
+  (testing "generator"
+    (satisfies-prop 100
+      (prop/for-all [x (fg/integer64)]
+        (type/integer64? x))))
+
+  (testing "toString"
+    (are [x s] (= s (str x))
+      #fhir/integer64 1 "Integer64{id=null, extension=[], value=1}"
+      #fhir/integer64{} "Integer64{id=null, extension=[]}"))
+
+  (testing "print"
+    (are [x s] (= (pr-str x) s)
+      #fhir/integer64 0 "#fhir/integer64 0"
+      #fhir/integer64{:id "foo"} "#fhir/integer64{:id \"foo\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/integer64 1 "#fhir/integer64 {:value 1}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/integer64 1)))))))
 
 (deftest string-test
   (testing "string?"
