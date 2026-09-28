@@ -316,6 +316,16 @@
   (testing "to-xml"
     (is (= (sexp-value "1") (type/to-xml #fhir/integer 1))))
 
+  (testing "equals"
+    (is (= #fhir/integer 0 #fhir/integer 0))
+    (is (not= #fhir/integer 0 #fhir/integer 1))
+    (is (not= #fhir/integer{} #fhir/integer 0))
+    (is (not= #fhir/integer{} (type/integer (int Integer/MIN_VALUE))))
+    (is (not= #fhir/integer{:id "foo"} #fhir/integer{:id "foo" :value 0}))
+    (is (= #fhir/integer{:id "foo"} (assoc #fhir/integer{:id "foo" :value 1} :value nil)))
+    (is (= #fhir/integer{:id "foo"} (dissoc #fhir/integer{:id "foo" :value 1} :value)))
+    (is (not= #fhir/integer 0 0)))
+
   (testing "hash-into"
     (are [i hex] (= hex (murmur3 i))
       #fhir/integer 0 "ab61a435"
