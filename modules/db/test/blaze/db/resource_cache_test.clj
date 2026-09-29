@@ -1,5 +1,6 @@
 (ns blaze.db.resource-cache-test
   (:require
+   [blaze.async.comp :as ac :refer [do-async]]
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -9,11 +10,12 @@
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.test-util :as dtu]
+   [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.util :as fu]
-   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.module.test-util :as mtu :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -137,6 +139,49 @@
                @(st/with-instrument-disabled
                   (rc/multi-get cache [[:fhir/Patient patient-0-hash :complete]
                                        [:fhir/Patient patient-1-hash :complete]]))))))))
+
+(defn- gated-resource-store
+  "Returns a resource store that delivers `loading` when it starts to load and
+  waits for `registered` before it finishes.
+
+  Waits on `executor` for single gets and continues on the common ForkJoinPool,
+  like the key-value resource store. Waits on the calling thread for
+  multi-gets and completes them on that thread, like a store that has all
+  resource contents available immediately."
+  [loading registered executor]
+  (reify rs/ResourceStore
+    (-get [_ _]
+      (deliver loading true)
+      (do-async [_ (ac/supply-async #(deref registered 10000 nil) executor)]
+        patient-0))
+    (-multi-get [_ keys]
+      (deliver loading true)
+      (deref registered 10000 nil)
+      (ac/completed-future (zipmap keys (repeat patient-0))))
+    (-put [_ _]
+      (ac/completed-future nil))))
+
+(deftest get-during-multi-get-test
+  (testing "functions applied after a get of a key a multi-get is loading are executed on the common pool"
+    (let [loading (promise)
+          registered (promise)
+          executor (ex/single-thread-executor)
+          cache (ig/init-key :blaze.db/resource-cache
+                             {:resource-store (gated-resource-store loading registered executor)})
+          key [:fhir/Patient patient-0-hash :complete]
+          ;; call multi-get on a thread that is neither the test nor a common pool thread
+          resources (future @(st/with-instrument-disabled (rc/multi-get cache [key])))]
+
+      (is (deref loading 10000 false))
+
+      ;; get the same key while the multi-get is still loading it
+      (let [get-thread-name (mtu/thread-name (rc/get cache key))]
+        (deliver registered true)
+
+        (is (= {key patient-0} @resources))
+        (is (mtu/common-pool-thread? @get-thread-name)))
+
+      (ex/shutdown! executor))))
 
 (defn- generate-patients [n]
   (into

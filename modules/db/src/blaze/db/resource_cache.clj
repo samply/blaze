@@ -162,11 +162,10 @@
            (.recordStats)
            (.buildAsync
             (reify AsyncCacheLoader
+              ;; don't implement asyncLoadAll, because Caffeine completes the
+              ;; futures of bulk loaded entries on the calling thread if the
+              ;; load is already done, including functions other callers
+              ;; applied to them
               (asyncLoad [_ key _]
-                (rs/get resource-store key))
-
-              (asyncLoadAll [_ keys _]
-               ;; use the protocol method directly because keys will not
-               ;; satisfy the spec of the rs/multi-get function
-                (rs/-multi-get resource-store keys)))))
+                (rs/get resource-store key)))))
        resource-store))))
