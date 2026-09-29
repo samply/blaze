@@ -1145,8 +1145,20 @@ jobs:
     - name: Check that the Patient StructureDefinition is read-only
       run: .github/scripts/check-resource-read-only.sh StructureDefinition "http://hl7.org/fhir/StructureDefinition/Patient"
 
+    - name: Start Resource Sampling of Load Data
+      if: ${{ matrix.variant == 'distributed' }}
+      run: .github/scripts/start-vmstat.sh load-data
+
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Resource Usage during Load Data
+      if: ${{ matrix.variant == 'distributed' }}
+      run: .github/scripts/stop-vmstat.sh load-data
+
+    - name: Start Resource Sampling of Test Phase
+      if: ${{ matrix.variant == 'distributed' }}
+      run: .github/scripts/start-vmstat.sh test-phase
 
     - name: Check Total-Number of Resources are 92299
       run: .github/scripts/check-total-number-of-resources.sh 92299
@@ -1828,6 +1840,10 @@ jobs:
     - name: Check JVM Metrics Log - Blaze 2
       run: .github/scripts/check-jvm-metrics-log.sh .github/${{ matrix.variant }}-test/docker-compose.yml blaze-2
       if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Resource Usage during Test Phase
+      run: .github/scripts/stop-vmstat.sh test-phase
+      if: ${{ always() && matrix.variant == 'distributed' }}
 
     - name: Docker Stats
       run: docker stats --no-stream
