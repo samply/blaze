@@ -53,6 +53,7 @@
  fhir/Quantity blaze.fhir.spec.type/quantity
  fhir/Range blaze.fhir.spec.type/range
  fhir/Ratio blaze.fhir.spec.type/ratio
+ fhir/RatioRange blaze.fhir.spec.type/ratio-range
  fhir/Reference blaze.fhir.spec.type/reference
  fhir/RelatedArtifact blaze.fhir.spec.type/related-artifact
  fhir/SampledData blaze.fhir.spec.type/sampled-data

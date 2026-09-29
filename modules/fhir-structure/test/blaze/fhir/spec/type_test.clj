@@ -25,7 +25,7 @@
     DataRequirement$CodeFilter DataRequirement$DateFilter
     DataRequirement$Sort Distance Dosage Dosage$DoseAndRate Duration
     Expression Extension HumanName Identifier Meta Money Narrative
-    ParameterDefinition Period Primitive Quantity Range Ratio RatioRange
+    ParameterDefinition Period Primitive Quantity Range Ratio
     Reference RelatedArtifact SampledData Signature Timing Timing$Repeat
     TriggerDefinition UsageContext]
    [blaze.fhir.spec.type.system DateTime]
@@ -5382,15 +5382,82 @@
         (is (= "#" (pprint-str #fhir/Ratio{:numerator #fhir/Quantity{:id "160542"}})))))))
 
 (deftest ratio-range-test
+  (testing "type"
+    (is (= :fhir/RatioRange (:fhir/type #fhir/RatioRange{}))))
+
+  (testing "empty"
+    (is (= #fhir/RatioRange{} (empty #fhir/RatioRange{:id "foo"})))
+    (is (nil? (seq (empty #fhir/RatioRange{:id "foo"})))))
+
+  (testing "interning"
+    (are [x y] (not-interned? x y)
+      #fhir/RatioRange{:id "foo"}
+      #fhir/RatioRange{:id "foo"}
+
+      #fhir/RatioRange{:extension [#fhir/Extension{:url "foo" :value #fhir/string "barbar"}]}
+      #fhir/RatioRange{:extension [#fhir/Extension{:url "foo" :value #fhir/string "barbar"}]}
+
+      #fhir/RatioRange{:lowNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      #fhir/RatioRange{:lowNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+
+      #fhir/RatioRange{:highNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      #fhir/RatioRange{:highNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+
+      #fhir/RatioRange{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
+      #fhir/RatioRange{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}))
+
+  (testing "hash-into"
+    (are [x hex] (= hex (murmur3 x))
+      #fhir/RatioRange{}
+      "fc7a1b4"
+
+      #fhir/RatioRange{:id "id-130710"}
+      "5d64cdb5"
+
+      #fhir/RatioRange{:extension [#fhir/Extension{}]}
+      "9599c1da"
+
+      #fhir/RatioRange{:lowNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      "cbd9fbde"
+
+      #fhir/RatioRange{:highNumerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      "380c49a8"
+
+      #fhir/RatioRange{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
+      "887e2036"))
+
+  (testing "mem-size"
+    (are [s mem-size] (= mem-size (Base/memSize s))
+      #fhir/RatioRange{} 24
+      #fhir/RatioRange{:id "id-130710"} 96
+      #fhir/RatioRange{:extension [#fhir/Extension{}]} 24
+      #fhir/RatioRange{:lowNumerator #fhir/Quantity{:value #fhir/decimal 1M}} 104
+      #fhir/RatioRange{:highNumerator #fhir/Quantity{:value #fhir/decimal 1M}} 104
+      #fhir/RatioRange{:denominator #fhir/Quantity{:value #fhir/decimal 1M}} 104))
+
   (testing "references"
-    (is (empty? (type/references (RatioRange/create {})))))
+    (is (empty? (type/references #fhir/RatioRange{}))))
 
   (testing "references of fields"
-    (are [k v] (= [["Patient" "0"]] (field-references (RatioRange/create {}) k v))
+    (are [k v] (= [["Patient" "0"]] (field-references #fhir/RatioRange{} k v))
       :extension [#fhir/Extension{}]
       :lowNumerator #fhir/Quantity{}
       :highNumerator #fhir/Quantity{}
-      :denominator #fhir/Quantity{})))
+      :denominator #fhir/Quantity{}))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/RatioRange{} "#fhir/RatioRange{}"
+      #fhir/RatioRange{:id "212329"} "#fhir/RatioRange{:id \"212329\"}"))
+
+  (testing "pprint"
+    (are [v s] (= s (pprint-str v))
+      #fhir/RatioRange{:denominator #fhir/Quantity{:id "160542"}}
+      "#fhir/RatioRange {:denominator #fhir/Quantity {:id \"160542\"}}")
+
+    (testing "exceeded print level"
+      (binding [*print-level* 0]
+        (is (= "#" (pprint-str #fhir/RatioRange{:denominator #fhir/Quantity{:id "160542"}})))))))
 
 (deftest reference-test
   (testing "type"

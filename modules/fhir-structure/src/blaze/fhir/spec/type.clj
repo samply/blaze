@@ -23,7 +23,7 @@
     DataRequirement DataRequirement$CodeFilter DataRequirement$DateFilter DataRequirement$Sort
     Date DateTime Decimal Distance Dosage Dosage$DoseAndRate Duration Expression Extension HumanName Id
     Identifier Instant Integer64 Markdown Meta Money Narrative Oid ParameterDefinition Period PositiveInt Primitive
-    Quantity Range Ratio Reference RelatedArtifact SampledData Signature String$Interned
+    Quantity Range Ratio RatioRange Reference RelatedArtifact SampledData Signature String$Interned
     String$Normal Time Timing Timing$Repeat TriggerDefinition UnsignedInt Uri Uri$Interned
     Uri$Normal Url UsageContext Uuid Xhtml]
    [clojure.lang IPersistentMap]
@@ -616,6 +616,13 @@
   (Ratio/create x))
 
 (def-print-method-complex "Ratio")
+
+;; ---- RatioRange ------------------------------------------------------------
+
+(defn ratio-range [x]
+  (RatioRange/create x))
+
+(def-print-method-complex "RatioRange")
 
 ;; ---- Reference --------------------------------------------------------
 
