@@ -30,6 +30,7 @@ services:
     healthcheck:
       test: nc -z localhost 9092 || exit -1
       start_period: 15s
+      start_interval: 1s
       interval: 5s
       timeout: 10s
       retries: 10
@@ -69,11 +70,18 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "1G"
+      # Shorten the ring delay and skip waiting for gossip to settle, which
+      # together take about 55 seconds and aren't needed in a freshly created
+      # cluster. The ring delay also determines the timeout after which nodes
+      # without tokens are removed from gossip, so it has to be longer than
+      # the time a node needs to join the ring.
+      JVM_EXTRA_OPTS: "-Dcassandra.ring_delay_ms=5000 -Dcassandra.skip_wait_for_gossip_to_settle=0"
     ulimits:
       memlock: -1
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
       start_period: 45s
+      start_interval: 1s
       interval: 5s
       timeout: 10s
       retries: 10
@@ -85,11 +93,13 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "1G"
+      JVM_EXTRA_OPTS: "-Dcassandra.ring_delay_ms=5000 -Dcassandra.skip_wait_for_gossip_to_settle=0"
     ulimits:
       memlock: -1
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
       start_period: 45s
+      start_interval: 1s
       interval: 5s
       timeout: 10s
       retries: 10
@@ -101,11 +111,13 @@ services:
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "1G"
+      JVM_EXTRA_OPTS: "-Dcassandra.ring_delay_ms=5000 -Dcassandra.skip_wait_for_gossip_to_settle=0"
     ulimits:
       memlock: -1
     healthcheck:
       test: ["CMD-SHELL", "cqlsh -e 'SELECT count(*) FROM system.peers' 2>/dev/null | grep -q -E '^ *2 *$'"]
       start_period: 45s
+      start_interval: 1s
       interval: 5s
       timeout: 10s
       retries: 10
@@ -180,6 +192,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 1s
 
   blaze-2:
     image: "blaze:latest"
@@ -236,6 +249,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 1s
 
   ingress:
     image: "haproxy:3.4@sha256:b77062fc0a7b827f78ec923f9256165e1c3c65e2b505cb7b7c2cc102896062b1"
