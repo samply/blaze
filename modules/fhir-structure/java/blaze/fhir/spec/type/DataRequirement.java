@@ -13,6 +13,7 @@ import java.util.Objects;
 import static blaze.fhir.spec.type.Base.appendElement;
 import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
 import static blaze.fhir.spec.type.Primitive.serializeJsonPrimitiveList;
+import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
 public final class DataRequirement extends AbstractElement implements Complex, ExtensionValue {
@@ -60,7 +61,9 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
     private static final byte HASH_MARKER = 65;
 
-    private static final DataRequirement EMPTY = new DataRequirement(ExtensionData.EMPTY, null, null, null, null, null, null, null, null);
+    @SuppressWarnings("unchecked")
+    private static final DataRequirement EMPTY = new DataRequirement(ExtensionData.EMPTY, null, PersistentVector.EMPTY,
+            null, PersistentVector.EMPTY, PersistentVector.EMPTY, PersistentVector.EMPTY, null, PersistentVector.EMPTY);
 
     private static final ILookupThunk FHIR_TYPE_LOOKUP_THUNK = new ILookupThunk() {
         @Override
@@ -132,13 +135,13 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                             PositiveInt limit, List<Sort> sort) {
         super(extensionData);
         this.type = type;
-        this.profile = profile;
+        this.profile = requireNonNull(profile);
         this.subject = subject;
-        this.mustSupport = mustSupport;
-        this.codeFilter = codeFilter;
-        this.dateFilter = dateFilter;
+        this.mustSupport = requireNonNull(mustSupport);
+        this.codeFilter = requireNonNull(codeFilter);
+        this.dateFilter = requireNonNull(dateFilter);
         this.limit = limit;
-        this.sort = sort;
+        this.sort = requireNonNull(sort);
     }
 
     public static DataRequirement create(IPersistentMap m) {
@@ -247,25 +250,24 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         return new BaseIterator(this, FIELDS);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public DataRequirement assoc(Object key, Object val) {
         if (key == TYPE)
             return new DataRequirement(extensionData, (Code) val, profile, subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == PROFILE)
-            return new DataRequirement(extensionData, type, (List<Canonical>) val, subject, mustSupport, codeFilter, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, Lists.nullToEmpty(val), subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == SUBJECT)
             return new DataRequirement(extensionData, type, profile, (Element) val, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == MUST_SUPPORT)
-            return new DataRequirement(extensionData, type, profile, subject, (List<String>) val, codeFilter, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, Lists.nullToEmpty(val), codeFilter, dateFilter, limit, sort);
         if (key == CODE_FILTER)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, (List<CodeFilter>) val, dateFilter, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, Lists.nullToEmpty(val), dateFilter, limit, sort);
         if (key == DATE_FILTER)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, (List<DateFilter>) val, limit, sort);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, Lists.nullToEmpty(val), limit, sort);
         if (key == LIMIT)
             return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, (PositiveInt) val, sort);
         if (key == SORT)
-            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, limit, (List<Sort>) val);
+            return new DataRequirement(extensionData, type, profile, subject, mustSupport, codeFilter, dateFilter, limit, Lists.nullToEmpty(val));
         if (key == EXTENSION)
             return new DataRequirement(extensionData.withExtension(val), type, profile, subject, mustSupport, codeFilter, dateFilter, limit, sort);
         if (key == ID)
@@ -290,7 +292,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         if (type != null) {
             type.serializeAsJsonProperty(generator, FIELD_NAME_TYPE);
         }
-        if (profile != null && !profile.isEmpty()) {
+        if (!profile.isEmpty()) {
             serializeJsonPrimitiveList(profile, generator, FIELD_NAME_PROFILE);
         }
         if (subject != null) {
@@ -303,19 +305,19 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                 }
             }
         }
-        if (mustSupport != null && !mustSupport.isEmpty()) {
+        if (!mustSupport.isEmpty()) {
             serializeJsonPrimitiveList(mustSupport, generator, FIELD_NAME_MUST_SUPPORT);
         }
-        if (codeFilter != null && !codeFilter.isEmpty()) {
+        if (!codeFilter.isEmpty()) {
             serializeJsonComplexList(codeFilter, generator, FIELD_NAME_CODE_FILTER);
         }
-        if (dateFilter != null && !dateFilter.isEmpty()) {
+        if (!dateFilter.isEmpty()) {
             serializeJsonComplexList(dateFilter, generator, FIELD_NAME_DATE_FILTER);
         }
         if (limit != null) {
             limit.serializeAsJsonProperty(generator, FIELD_NAME_LIMIT);
         }
-        if (sort != null && !sort.isEmpty()) {
+        if (!sort.isEmpty()) {
             serializeJsonComplexList(sort, generator, FIELD_NAME_SORT.normal());
         }
         generator.writeEndObject();
@@ -330,7 +332,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             sink.putByte((byte) 2);
             type.hashInto(sink);
         }
-        if (profile != null) {
+        if (!profile.isEmpty()) {
             sink.putByte((byte) 3);
             Base.hashIntoList(profile, sink);
         }
@@ -338,15 +340,15 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             sink.putByte((byte) 4);
             subject.hashInto(sink);
         }
-        if (mustSupport != null) {
+        if (!mustSupport.isEmpty()) {
             sink.putByte((byte) 5);
             Base.hashIntoList(mustSupport, sink);
         }
-        if (codeFilter != null) {
+        if (!codeFilter.isEmpty()) {
             sink.putByte((byte) 6);
             Base.hashIntoList(codeFilter, sink);
         }
-        if (dateFilter != null) {
+        if (!dateFilter.isEmpty()) {
             sink.putByte((byte) 7);
             Base.hashIntoList(dateFilter, sink);
         }
@@ -354,7 +356,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             sink.putByte((byte) 8);
             limit.hashInto(sink);
         }
-        if (sort != null) {
+        if (!sort.isEmpty()) {
             sink.putByte((byte) 9);
             Base.hashIntoList(sort, sink);
         }
@@ -454,7 +456,9 @@ public final class DataRequirement extends AbstractElement implements Complex, E
 
         private static final byte HASH_MARKER = 62;
 
-        private static final CodeFilter EMPTY = new CodeFilter(ExtensionData.EMPTY, null, null, null, null);
+        @SuppressWarnings("unchecked")
+        private static final CodeFilter EMPTY = new CodeFilter(ExtensionData.EMPTY, null, null, null,
+                PersistentVector.EMPTY);
 
         private static final ILookupThunk FHIR_TYPE_LOOKUP_THUNK = new ILookupThunk() {
             @Override
@@ -501,7 +505,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             this.path = path;
             this.searchParam = searchParam;
             this.valueSet = valueSet;
-            this.code = code;
+            this.code = requireNonNull(code);
         }
 
         public static CodeFilter create(IPersistentMap m) {
@@ -616,7 +620,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             if (valueSet != null) {
                 valueSet.serializeAsJsonProperty(generator, FIELD_NAME_VALUE_SET);
             }
-            if (code != null && !code.isEmpty()) {
+            if (!code.isEmpty()) {
                 serializeJsonComplexList(code, generator, FIELD_NAME_CODE);
             }
             generator.writeEndObject();
@@ -639,7 +643,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
                 sink.putByte((byte) 4);
                 valueSet.hashInto(sink);
             }
-            if (code != null) {
+            if (!code.isEmpty()) {
                 sink.putByte((byte) 5);
                 Base.hashIntoList(code, sink);
             }

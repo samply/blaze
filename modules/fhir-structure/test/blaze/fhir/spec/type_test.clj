@@ -1,4 +1,9 @@
 (ns blaze.fhir.spec.type-test
+  "Every type is tested for `empty`. FHIR itself has no use for empty elements,
+  because every element must have a value or children (invariant ele-1). But
+  all types implement `clojure.lang.IPersistentMap`, which requires `empty`,
+  and generic collection functions like `into` or `clojure.walk/walk` rely on
+  it."
   (:require
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
@@ -124,6 +129,10 @@
     (are [x] (= :fhir/boolean (:fhir/type x))
       #fhir/boolean true
       #fhir/boolean{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/boolean{} (empty #fhir/boolean{:id "foo"})))
+    (is (nil? (seq (empty #fhir/boolean{:id "foo"})))))
 
   (testing "Boolean"
     (is (= #fhir/boolean{:value true} #fhir/boolean true)))
@@ -260,6 +269,10 @@
     (are [x] (= :fhir/integer (:fhir/type x))
       #fhir/integer 1
       #fhir/integer{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/integer{} (empty #fhir/integer{:id "foo"})))
+    (is (nil? (seq (empty #fhir/integer{:id "foo"})))))
 
   (testing "Integer"
     (is (= #fhir/integer{:value 1} #fhir/integer 1)))
@@ -536,6 +549,14 @@
       #fhir/string ""
       #fhir/string{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/string{} (empty #fhir/string{:id "foo"})))
+    (is (nil? (seq (empty #fhir/string{:id "foo"}))))
+
+    (testing "interned"
+      (is (= #fhir/string-interned{} (empty #fhir/string-interned "foo")))
+      (is (nil? (seq (empty #fhir/string-interned "foo"))))))
+
   (testing "string"
     (is (= #fhir/string{:value "181312"} #fhir/string "181312")))
 
@@ -651,6 +672,10 @@
       #fhir/decimal 1M
       #fhir/decimal{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/decimal{} (empty #fhir/decimal{:id "foo"})))
+    (is (nil? (seq (empty #fhir/decimal{:id "foo"})))))
+
   (testing "Decimal"
     (is (= #fhir/decimal{:value 1M} #fhir/decimal 1M)))
 
@@ -739,6 +764,14 @@
     (are [x] (= :fhir/uri (:fhir/type x))
       #fhir/uri ""
       #fhir/uri{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/uri{} (empty #fhir/uri{:id "foo"})))
+    (is (nil? (seq (empty #fhir/uri{:id "foo"}))))
+
+    (testing "interned"
+      (is (= #fhir/uri-interned{} (empty #fhir/uri-interned "foo")))
+      (is (nil? (seq (empty #fhir/uri-interned "foo"))))))
 
   (testing "uri"
     (is (= #fhir/uri{:value "181424"} #fhir/uri "181424")))
@@ -854,6 +887,10 @@
       #fhir/url ""
       #fhir/url{}))
 
+  (testing "empty"
+    (is (= #fhir/url{} (empty #fhir/url{:id "foo"})))
+    (is (nil? (seq (empty #fhir/url{:id "foo"})))))
+
   (testing "interning"
     (is (not-interned? #fhir/url "165852" #fhir/url "165852"))
 
@@ -962,6 +999,10 @@
     (are [x] (= :fhir/canonical (:fhir/type x))
       #fhir/canonical ""
       #fhir/canonical{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/canonical{} (empty #fhir/canonical{:id "foo"})))
+    (is (nil? (seq (empty #fhir/canonical{:id "foo"})))))
 
   (testing "canonical"
     (is (= #fhir/canonical{:value "182040"} #fhir/canonical "182040")))
@@ -1076,6 +1117,10 @@
       #fhir/base64Binary ""
       #fhir/base64Binary{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/base64Binary{} (empty #fhir/base64Binary{:id "foo"})))
+    (is (nil? (seq (empty #fhir/base64Binary{:id "foo"})))))
+
   (testing "base64Binary"
     (is (= #fhir/base64Binary{:value "MTA1NjE0Cg=="} #fhir/base64Binary "MTA1NjE0Cg==")))
 
@@ -1184,6 +1229,10 @@
       #fhir/instant{:id "foo"}
       #fhir/instant{:value #system/date-time "1970-01-02T00:00:00Z"}
       #fhir/instant{:value #system/date-time "1970-01-02T00:00:00+01:00"}))
+
+  (testing "empty"
+    (is (= #fhir/instant{} (empty #fhir/instant{:id "foo"})))
+    (is (nil? (seq (empty #fhir/instant{:id "foo"})))))
 
   (testing "with extension"
     (testing "without value"
@@ -1310,6 +1359,10 @@
         (is (= "#" (pprint-str #fhir/instant #system/date-time "2020-01-01T00:00:00Z")))))))
 
 (deftest date-test
+  (testing "empty"
+    (is (= #fhir/date{} (empty #fhir/date{:id "foo"})))
+    (is (nil? (seq (empty #fhir/date{:id "foo"})))))
+
   (testing "with year precision"
     (testing "date?"
       (are [x] (type/date? x)
@@ -1595,6 +1648,10 @@
         (is (= "#" (pprint-str #fhir/date #system/date "2020")))))))
 
 (deftest dateTime-test
+  (testing "empty"
+    (is (= #fhir/dateTime{} (empty #fhir/dateTime{:id "foo"})))
+    (is (nil? (seq (empty #fhir/dateTime{:id "foo"})))))
+
   (testing "with year precision"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
@@ -2155,6 +2212,10 @@
       #fhir/time #system/time "15:27:45"
       #fhir/time{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/time{} (empty #fhir/time{:id "foo"})))
+    (is (nil? (seq (empty #fhir/time{:id "foo"})))))
+
   (testing "time"
     (is (= #fhir/time{:value #system/time "15:27:45"} #fhir/time #system/time "15:27:45")))
 
@@ -2268,6 +2329,10 @@
     (are [x] (= :fhir/code (:fhir/type x))
       #fhir/code ""
       #fhir/code{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/code{} (empty #fhir/code{:id "foo"})))
+    (is (nil? (seq (empty #fhir/code{:id "foo"})))))
 
   (testing "interning"
     (are [x y] (interned? x y)
@@ -2414,6 +2479,10 @@
       #fhir/oid ""
       #fhir/oid{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/oid{} (empty #fhir/oid{:id "foo"})))
+    (is (nil? (seq (empty #fhir/oid{:id "foo"})))))
+
   (testing "oid"
     (is (= #fhir/oid{:value "182040"} #fhir/oid "182040")))
 
@@ -2513,6 +2582,10 @@
       #fhir/id ""
       #fhir/id{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/id{} (empty #fhir/id{:id "foo"})))
+    (is (nil? (seq (empty #fhir/id{:id "foo"})))))
+
   (testing "id"
     (is (= #fhir/id{:value "182040"} #fhir/id "182040")))
 
@@ -2611,6 +2684,10 @@
     (are [x] (= :fhir/markdown (:fhir/type x))
       #fhir/markdown ""
       #fhir/markdown{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/markdown{} (empty #fhir/markdown{:id "foo"})))
+    (is (nil? (seq (empty #fhir/markdown{:id "foo"})))))
 
   (testing "markdown"
     (is (= #fhir/markdown{:value "182040"} #fhir/markdown "182040")))
@@ -2713,6 +2790,10 @@
       #fhir/unsignedInt 0
       (type/unsignedInt (dec (bit-shift-left 1 31)))
       #fhir/unsignedInt{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/unsignedInt{} (empty #fhir/unsignedInt{:id "foo"})))
+    (is (nil? (seq (empty #fhir/unsignedInt{:id "foo"})))))
 
   (testing "invalid value"
     (doseq [x [-1 {:value -1}]]
@@ -2834,6 +2915,10 @@
       (type/positiveInt (dec (bit-shift-left 1 31)))
       #fhir/positiveInt{:id "foo"}))
 
+  (testing "empty"
+    (is (= #fhir/positiveInt{} (empty #fhir/positiveInt{:id "foo"})))
+    (is (nil? (seq (empty #fhir/positiveInt{:id "foo"})))))
+
   (testing "invalid value"
     (doseq [x [0 {:value 0}]]
       (given (type/positiveInt x)
@@ -2947,6 +3032,10 @@
     (are [x] (= :fhir/uuid (:fhir/type x))
       #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
       #fhir/uuid{:id "foo"}))
+
+  (testing "empty"
+    (is (= #fhir/uuid{} (empty #fhir/uuid{:id "foo"})))
+    (is (nil? (seq (empty #fhir/uuid{:id "foo"})))))
 
   (testing "uuid"
     (is (= #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
@@ -3067,6 +3156,10 @@
   (testing "type"
     (is (= :fhir/xhtml (:fhir/type #fhir/xhtml ""))))
 
+  (testing "empty"
+    (is (= #fhir/xhtml{} (empty #fhir/xhtml{:id "foo"})))
+    (is (nil? (seq (empty #fhir/xhtml{:id "foo"})))))
+
   (testing "interning"
     (is (not-interned? #fhir/xhtml "xhtml-123745"
                        #fhir/xhtml "xhtml-123745")))
@@ -3154,6 +3247,10 @@
 (deftest address-test
   (testing "type"
     (is (= :fhir/Address (:fhir/type #fhir/Address{}))))
+
+  (testing "empty"
+    (is (= #fhir/Address{} (empty #fhir/Address{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Address{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -3270,6 +3367,10 @@
   (testing "type"
     (is (= :fhir/Age (:fhir/type #fhir/Age{}))))
 
+  (testing "empty"
+    (is (= #fhir/Age{} (empty #fhir/Age{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Age{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/age)]
@@ -3321,6 +3422,10 @@
 (deftest annotation-test
   (testing "type"
     (is (= :fhir/Annotation (:fhir/type #fhir/Annotation{}))))
+
+  (testing "empty"
+    (is (= #fhir/Annotation{} (empty #fhir/Annotation{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Annotation{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -3376,6 +3481,10 @@
 (deftest attachment-test
   (testing "type"
     (is (= :fhir/Attachment (:fhir/type #fhir/Attachment{}))))
+
+  (testing "empty"
+    (is (= #fhir/Attachment{} (empty #fhir/Attachment{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Attachment{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -3462,6 +3571,10 @@
   (testing "type"
     (is (= :fhir.Bundle.entry/search (:fhir/type #fhir.Bundle.entry/search{}))))
 
+  (testing "empty"
+    (is (= #fhir.Bundle.entry/search{} (empty #fhir.Bundle.entry/search{:id "foo"})))
+    (is (nil? (seq (empty #fhir.Bundle.entry/search{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/bundle-entry-search)]
@@ -3546,6 +3659,10 @@
   (testing "type"
     (is (= :fhir/CodeableConcept (:fhir/type #fhir/CodeableConcept{}))))
 
+  (testing "empty"
+    (is (= #fhir/CodeableConcept{} (empty #fhir/CodeableConcept{:id "foo"})))
+    (is (nil? (seq (empty #fhir/CodeableConcept{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/codeable-concept)]
@@ -3628,6 +3745,10 @@
   (testing "type"
     (is (= :fhir/Coding (:fhir/type #fhir/Coding{}))))
 
+  (testing "empty"
+    (is (= #fhir/Coding{} (empty #fhir/Coding{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Coding{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/coding)]
@@ -3707,6 +3828,10 @@
   (testing "type"
     (is (= :fhir/ContactDetail (:fhir/type #fhir/ContactDetail{}))))
 
+  (testing "empty"
+    (is (= #fhir/ContactDetail{} (empty #fhir/ContactDetail{:id "foo"})))
+    (is (nil? (seq (empty #fhir/ContactDetail{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/contact-detail)]
@@ -3759,6 +3884,10 @@
 (deftest contact-point-test
   (testing "type"
     (is (= :fhir/ContactPoint (:fhir/type #fhir/ContactPoint{}))))
+
+  (testing "empty"
+    (is (= #fhir/ContactPoint{} (empty #fhir/ContactPoint{:id "foo"})))
+    (is (nil? (seq (empty #fhir/ContactPoint{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -3831,7 +3960,7 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Contributor{}
-      "1e16711e"))
+      "164d8194"))
 
   (testing "mem-size"
     (are [x mem-size] (= mem-size (Base/memSize x))
@@ -3841,6 +3970,10 @@
   (testing "rejects null elements in contact"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/contributor {:contact [nil]}))))
+
+  (testing "empty"
+    (is (= #fhir/Contributor{} (empty #fhir/Contributor{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Contributor{:id "foo"})))))
 
   (testing "references of fields"
     (are [k v] (= [["Patient" "0"]] (field-references #fhir/Contributor{} k v))
@@ -3865,6 +3998,10 @@
 (deftest count-test
   (testing "type"
     (is (= :fhir/Count (:fhir/type #fhir/Count{}))))
+
+  (testing "empty"
+    (is (= #fhir/Count{} (empty #fhir/Count{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Count{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -3937,16 +4074,16 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/DataRequirement{}
-      "91d614e4"
+      "54dcf7ce"
 
       #fhir/DataRequirement{:id "id-151412"}
-      "4a72ddf"
+      "6a8547af"
 
       #fhir/DataRequirement{:extension [#fhir/Extension{}]}
-      "9a85aa6a"
+      "22c9111e"
 
       #fhir/DataRequirement{:type #fhir/code "Patient"}
-      "11e0d7dc"))
+      "86045ff2"))
 
   (testing "mem-size"
     (are [x mem-size] (= mem-size (Base/memSize x))
@@ -3956,6 +4093,18 @@
   (testing "rejects null elements in profile"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/data-requirement {:profile [nil]}))))
+
+  (testing "empty"
+    (is (= #fhir/DataRequirement{} (empty #fhir/DataRequirement{:id "foo"})))
+    (is (nil? (seq (empty #fhir/DataRequirement{:id "foo"})))))
+
+  (testing "dissoc list fields"
+    (are [k] (= #fhir/DataRequirement{} (dissoc #fhir/DataRequirement{} k))
+      :profile
+      :mustSupport
+      :codeFilter
+      :dateFilter
+      :sort))
 
   (testing "references of fields"
     (are [k v] (= [["Patient" "0"]] (field-references #fhir/DataRequirement{} k v))
@@ -4010,13 +4159,13 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir.DataRequirement/codeFilter{}
-      "4cf4edc9"
+      "1c62ca5d"
 
       #fhir.DataRequirement/codeFilter{:id "id-151412"}
-      "ebda321"
+      "a44eb77f"
 
       #fhir.DataRequirement/codeFilter{:extension [#fhir/Extension{}]}
-      "6566ac91"))
+      "e3b9a544"))
 
   (testing "mem-size"
     (are [x mem-size] (= mem-size (Base/memSize x))
@@ -4026,6 +4175,10 @@
   (testing "rejects null elements in code"
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/data-requirement-code-filter {:code [nil]}))))
+
+  (testing "empty"
+    (is (= #fhir.DataRequirement/codeFilter{} (empty #fhir.DataRequirement/codeFilter{:id "foo"})))
+    (is (nil? (seq (empty #fhir.DataRequirement/codeFilter{:id "foo"})))))
 
   (testing "references of fields"
     (are [k v] (= [["Patient" "0"]] (field-references #fhir.DataRequirement/codeFilter{} k v))
@@ -4051,6 +4204,10 @@
 (deftest data-requirement-date-filter-test
   (testing "type"
     (is (= :fhir.DataRequirement/dateFilter (:fhir/type #fhir.DataRequirement/dateFilter{}))))
+
+  (testing "empty"
+    (is (= #fhir.DataRequirement/dateFilter{} (empty #fhir.DataRequirement/dateFilter{:id "foo"})))
+    (is (nil? (seq (empty #fhir.DataRequirement/dateFilter{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4110,6 +4267,10 @@
   (testing "type"
     (is (= :fhir.DataRequirement/sort (:fhir/type #fhir.DataRequirement/sort{}))))
 
+  (testing "empty"
+    (is (= #fhir.DataRequirement/sort{} (empty #fhir.DataRequirement/sort{:id "foo"})))
+    (is (nil? (seq (empty #fhir.DataRequirement/sort{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/data-requirement-sort)]
@@ -4165,6 +4326,10 @@
   (testing "type"
     (is (= :fhir/Distance (:fhir/type #fhir/Distance{}))))
 
+  (testing "empty"
+    (is (= #fhir/Distance{} (empty #fhir/Distance{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Distance{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/distance)]
@@ -4216,6 +4381,10 @@
 (deftest duration-test
   (testing "type"
     (is (= :fhir/Duration (:fhir/type #fhir/Duration{}))))
+
+  (testing "empty"
+    (is (= #fhir/Duration{} (empty #fhir/Duration{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Duration{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4269,6 +4438,10 @@
   (testing "type"
     (is (= :fhir/Expression (:fhir/type #fhir/Expression{}))))
 
+  (testing "empty"
+    (is (= #fhir/Expression{} (empty #fhir/Expression{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Expression{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/expression)]
@@ -4320,6 +4493,10 @@
 (deftest dosage-test
   (testing "type"
     (is (= :fhir/Dosage (:fhir/type #fhir/Dosage{}))))
+
+  (testing "empty"
+    (is (= #fhir/Dosage{} (empty #fhir/Dosage{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Dosage{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4402,6 +4579,10 @@
   (testing "type"
     (is (= :fhir.Dosage/doseAndRate (:fhir/type #fhir.Dosage/doseAndRate{}))))
 
+  (testing "empty"
+    (is (= #fhir.Dosage/doseAndRate{} (empty #fhir.Dosage/doseAndRate{:id "foo"})))
+    (is (nil? (seq (empty #fhir.Dosage/doseAndRate{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/dosage-dose-and-rate)]
@@ -4451,6 +4632,10 @@
 (deftest extension-test
   (testing "type"
     (is (= :fhir/Extension (:fhir/type #fhir/Extension{}))))
+
+  (testing "empty"
+    (is (= #fhir/Extension{} (empty #fhir/Extension{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Extension{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4544,6 +4729,10 @@
 (deftest human-name-test
   (testing "type"
     (is (= :fhir/HumanName (:fhir/type #fhir/HumanName{}))))
+
+  (testing "empty"
+    (is (= #fhir/HumanName{} (empty #fhir/HumanName{:id "foo"})))
+    (is (nil? (seq (empty #fhir/HumanName{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4656,6 +4845,10 @@
   (testing "type"
     (is (= :fhir/Identifier (:fhir/type #fhir/Identifier{}))))
 
+  (testing "empty"
+    (is (= #fhir/Identifier{} (empty #fhir/Identifier{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Identifier{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/identifier)]
@@ -4746,6 +4939,10 @@
 (deftest meta-test
   (testing "type"
     (is (= :fhir/Meta (:fhir/type #fhir/Meta{}))))
+
+  (testing "empty"
+    (is (= #fhir/Meta{} (empty #fhir/Meta{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Meta{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4867,6 +5064,10 @@
   (testing "type"
     (is (= :fhir/Money (:fhir/type #fhir/Money{}))))
 
+  (testing "empty"
+    (is (= #fhir/Money{} (empty #fhir/Money{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Money{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/money)]
@@ -4929,6 +5130,10 @@
 (deftest narrative-test
   (testing "type"
     (is (= :fhir/Narrative (:fhir/type #fhir/Narrative{}))))
+
+  (testing "empty"
+    (is (= #fhir/Narrative{} (empty #fhir/Narrative{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Narrative{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -4997,6 +5202,10 @@
   (testing "type"
     (is (= :fhir/ParameterDefinition (:fhir/type #fhir/ParameterDefinition{}))))
 
+  (testing "empty"
+    (is (= #fhir/ParameterDefinition{} (empty #fhir/ParameterDefinition{:id "foo"})))
+    (is (nil? (seq (empty #fhir/ParameterDefinition{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/parameter-definition)]
@@ -5064,6 +5273,10 @@
 (deftest period-test
   (testing "type"
     (is (= :fhir/Period (:fhir/type #fhir/Period{}))))
+
+  (testing "empty"
+    (is (= #fhir/Period{} (empty #fhir/Period{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Period{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5136,6 +5349,10 @@
 (deftest quantity-test
   (testing "type"
     (is (= :fhir/Quantity (:fhir/type #fhir/Quantity{}))))
+
+  (testing "empty"
+    (is (= #fhir/Quantity{} (empty #fhir/Quantity{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Quantity{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5236,6 +5453,10 @@
   (testing "type"
     (is (= :fhir/Range (:fhir/type #fhir/Range{}))))
 
+  (testing "empty"
+    (is (= #fhir/Range{} (empty #fhir/Range{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Range{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/range)]
@@ -5310,6 +5531,10 @@
 (deftest ratio-test
   (testing "type"
     (is (= :fhir/Ratio (:fhir/type #fhir/Ratio{}))))
+
+  (testing "empty"
+    (is (= #fhir/Ratio{} (empty #fhir/Ratio{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Ratio{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5463,6 +5688,10 @@
   (testing "type"
     (is (= :fhir/Reference (:fhir/type #fhir/Reference{}))))
 
+  (testing "empty"
+    (is (= #fhir/Reference{} (empty #fhir/Reference{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Reference{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/reference)]
@@ -5612,6 +5841,10 @@
   (testing "type"
     (is (= :fhir/RelatedArtifact (:fhir/type #fhir/RelatedArtifact{}))))
 
+  (testing "empty"
+    (is (= #fhir/RelatedArtifact{} (empty #fhir/RelatedArtifact{:id "foo"})))
+    (is (nil? (seq (empty #fhir/RelatedArtifact{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/related-artifact)]
@@ -5665,6 +5898,10 @@
 (deftest sampled-data-test
   (testing "type"
     (is (= :fhir/SampledData (:fhir/type #fhir/SampledData{}))))
+
+  (testing "empty"
+    (is (= #fhir/SampledData{} (empty #fhir/SampledData{:id "foo"})))
+    (is (nil? (seq (empty #fhir/SampledData{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5731,6 +5968,10 @@
 (deftest signature-test
   (testing "type"
     (is (= :fhir/Signature (:fhir/type #fhir/Signature{}))))
+
+  (testing "empty"
+    (is (= #fhir/Signature{} (empty #fhir/Signature{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Signature{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5806,6 +6047,10 @@
   (testing "type"
     (is (= :fhir/Timing (:fhir/type #fhir/Timing{}))))
 
+  (testing "empty"
+    (is (= #fhir/Timing{} (empty #fhir/Timing{:id "foo"})))
+    (is (nil? (seq (empty #fhir/Timing{:id "foo"})))))
+
   (testing "from-slots"
     (satisfies-prop 100
       (prop/for-all [x (fg/timing)]
@@ -5872,6 +6117,10 @@
 (deftest timing-repeat-test
   (testing "type"
     (is (= :fhir.Timing/repeat (:fhir/type #fhir.Timing/repeat{}))))
+
+  (testing "empty"
+    (is (= #fhir.Timing/repeat{} (empty #fhir.Timing/repeat{:id "foo"})))
+    (is (nil? (seq (empty #fhir.Timing/repeat{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
@@ -5968,6 +6217,13 @@
     (is (thrown-with-msg? IllegalArgumentException #"null element"
                           (type/trigger-definition {:data [nil]}))))
 
+  (testing "empty"
+    (is (= #fhir/TriggerDefinition{} (empty #fhir/TriggerDefinition{:id "foo"})))
+    (is (nil? (seq (empty #fhir/TriggerDefinition{:id "foo"})))))
+
+  (testing "dissoc list fields"
+    (is (= #fhir/TriggerDefinition{} (dissoc #fhir/TriggerDefinition{} :data))))
+
   (testing "references of fields"
     (are [k v] (= [["Patient" "0"]] (field-references #fhir/TriggerDefinition{} k v))
       :extension [#fhir/Extension{}]
@@ -5999,6 +6255,10 @@
 (deftest usage-context-test
   (testing "type"
     (is (= :fhir/UsageContext (:fhir/type #fhir/UsageContext{}))))
+
+  (testing "empty"
+    (is (= #fhir/UsageContext{} (empty #fhir/UsageContext{:id "foo"})))
+    (is (nil? (seq (empty #fhir/UsageContext{:id "foo"})))))
 
   (testing "from-slots"
     (satisfies-prop 100
