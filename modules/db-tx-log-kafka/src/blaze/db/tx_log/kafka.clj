@@ -92,8 +92,15 @@
       future))
 
   (-last-t [_]
-    (ac/supply-async #(end-offset node-name last-t-consumer partition)
-                     last-t-executor))
+    (let [future (ac/future)]
+      (ex/execute!
+       last-t-executor
+       #(let [t (ba/try-anomaly (end-offset node-name last-t-consumer partition))]
+          ;; completes asynchronously, because otherwise all the work
+          ;; depending on the last-t, like every request handler syncing on
+          ;; the database, would run on the single last-t thread
+          (ac/complete-async! future (constantly t))))
+      future))
 
   (-poll [_ offset timeout]
     (log/trace "poll transaction data with offset =" offset)

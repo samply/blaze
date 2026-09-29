@@ -308,7 +308,25 @@
           AutoCloseable
           (close [_])))]
       (with-system [{tx-log ::tx-log/kafka} config]
-        (is (= 104614 @(tx-log/last-t tx-log)))))))
+        (is (= 104614 @(tx-log/last-t tx-log))))))
+
+  (testing "last-t fails"
+    (with-redefs
+     [kafka/create-producer no-op-producer
+      kafka/create-consumer no-op-consumer
+      kafka/create-last-t-consumer
+      (fn [_ {servers :bootstrap-servers}]
+        (assert (= bootstrap-servers servers))
+        (reify
+          Consumer
+          (endOffsets [_ _]
+            (throw (AuthorizationException. "msg-152013")))
+          AutoCloseable
+          (close [_])))]
+      (with-system [{tx-log ::tx-log/kafka} config]
+        (given-failed-future (tx-log/last-t tx-log)
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-152013")))))
 
 (defn- submit-durations
   "Returns the number of durations observed under the node label `main` and the
@@ -379,6 +397,49 @@
             (deliver release nil)
 
             (is (mtu/common-pool-thread? (deref thread-name 1000 "timeout")))))))))
+
+(defn- blocking-last-t-consumer
+  "Returns a function creating a consumer that calls `end-offsets` with the
+  partition of the consumer only after `release` is delivered."
+  [release end-offsets]
+  (fn [tx-partition {servers :bootstrap-servers}]
+    (assert (= bootstrap-servers servers))
+    (reify
+      Consumer
+      (endOffsets [_ _]
+        @release
+        (end-offsets tx-partition))
+      AutoCloseable
+      (close [_]))))
+
+(defn- last-t-completion-thread-name
+  "Returns the name of the thread on which a function applied to the future of
+  last-t runs, if the consumer of last-t calls `end-offsets`."
+  [end-offsets]
+  (let [release (promise)]
+    (with-redefs
+     [kafka/create-producer no-op-producer
+      kafka/create-consumer no-op-consumer
+      kafka/create-last-t-consumer (blocking-last-t-consumer release end-offsets)]
+      (with-system [{tx-log ::tx-log/kafka} config]
+        ;; the consumer waits with the end offset, so the continuation is
+        ;; registered before the future of last-t is completed
+        (let [thread-name (mtu/thread-name (tx-log/last-t tx-log))]
+          (deliver release nil)
+          (deref thread-name 1000 "timeout"))))))
+
+(deftest last-t-completion-thread-test
+  (testing "the future of last-t doesn't complete on the last-t thread, so that
+            the continuations of the caller don't block the last-t thread"
+    (testing "on success"
+      (is (mtu/common-pool-thread?
+           (last-t-completion-thread-name
+            (fn [tx-partition] (Map/of tx-partition 104614))))))
+
+    (testing "on failure"
+      (is (mtu/common-pool-thread?
+           (last-t-completion-thread-name
+            (fn [_] (throw (AuthorizationException. "msg-152013")))))))))
 
 (def producer-config {:bootstrap-servers "localhost:9092"})
 
