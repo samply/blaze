@@ -213,10 +213,7 @@
 
   Returns a not-found anomaly if the resource was not found or is deleted. In
   case it is deleted, sets :http/status to 410 and :http/headers Last-Modified
-  and ETag to appropriate values.
-
-  Functions applied after the returned future are executed on the common
-  ForkJoinPool."
+  and ETag to appropriate values."
   ([db type id]
    (pull db type id :complete))
   ([db type id variant]
@@ -248,10 +245,7 @@
 
   Returns a not-found anomaly if the resource was not found or is deleted. In
   case it is deleted, sets :http/status to 410 and :http/headers Last-Modified
-  and ETag to appropriate values.
-
-  Functions applied after the returned future are executed on the common
-  ForkJoinPool."
+  and ETag to appropriate values."
   [db type id t]
   (if-ok [resource-handle (historic-resource-handle db type id t)]
     (pull* db resource-handle :complete)

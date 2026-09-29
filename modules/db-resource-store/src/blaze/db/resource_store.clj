@@ -3,7 +3,14 @@
   (:refer-clojure :exclude [get]))
 
 (defprotocol ResourceStore
-  "Resource content access by content-hash."
+  "Resource content access by content-hash.
+
+  Implementations have to complete the futures returned by `-get` and
+  `-multi-get` on a thread that isn't one of their own I/O threads, like the
+  threads of the common ForkJoinPool. Resource contents are pulled by all kinds
+  of callers, which apply their functions to these futures. Running those
+  functions on the I/O threads would delay the loading of all other resource
+  contents."
 
   (-get [store key])
 
