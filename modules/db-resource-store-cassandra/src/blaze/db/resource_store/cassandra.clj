@@ -59,6 +59,9 @@
 
 (defn- execute-get* [session parsing-context statement [_ hash :as key]]
   (-> (execute session "get" (cass/bind statement (str hash)))
+      ;; reads the content on the common ForkJoinPool, so that neither the
+      ;; parsing nor the functions applied by callers run on the I/O threads of
+      ;; the driver
       (ac/then-apply-async #(read-content parsing-context % key))
       (ac/exceptionally (partial map-execute-get-error hash))))
 

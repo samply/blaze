@@ -38,7 +38,7 @@
    [blaze.fhir.hash-spec]
    [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [given-failed-system with-system]]
+   [blaze.module.test-util :as mtu :refer [given-failed-system with-system]]
    [blaze.scheduler.spec]
    [blaze.scheduler.test-util :as stu]
    [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
@@ -626,7 +626,15 @@
 
         @(node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
-        (is (= 1 (d/basis-t @future)))))))
+        (is (= 1 (d/basis-t @future))))))
+
+  (testing "functions applied by a caller waiting for a t don't run on the
+            thread of the indexing loop"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [thread-name (mtu/thread-name (d/sync node 1))]
+        @(node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+
+        (is (mtu/common-pool-thread? (deref thread-name 1000 "timeout")))))))
 
 (deftest closed-node-test
   ;; a changed resources subscriber can still be busy while the node closes, so

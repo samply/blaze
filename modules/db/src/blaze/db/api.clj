@@ -58,10 +58,7 @@
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
   transaction up anymore. Fails with a busy anomaly if `node` already has the
   maximum number of transactions submitted but not yet indexed, before anything
-  of the transaction is written.
-
-  Functions applied after the returned future are executed on the common
-  ForkJoinPool."
+  of the transaction is written."
   [node tx-ops]
   (-> (np/-submit-tx node tx-ops)
       (ac/then-compose #(np/-tx-result node %))))
@@ -598,10 +595,7 @@
   to pull only a subset of data.
 
   Note: If an deleted resource is pulled, a stub with type, id and meta will be
-  returned.
-
-  Functions applied after the returned future are executed on the common
-  ForkJoinPool."
+  returned."
   ([node-or-db resource-handle]
    (p/-pull node-or-db resource-handle :complete))
   ([node-or-db resource-handle variant]

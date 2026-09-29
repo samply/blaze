@@ -12,7 +12,7 @@
    [blaze.job.async-interaction-spec]
    [blaze.job.async-interaction.util :as u]
    [blaze.job.async-interaction.util-spec]
-   [blaze.module.test-util :as mtu :refer [with-system]]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -92,7 +92,6 @@
           [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
 
           (let [task {:fhir/type :fhir/Task :id "180340" :input [input]}]
-            (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
-              [meta :thread-name] :? mtu/common-pool-thread?
+            (given @(u/pull-request-bundle node task)
               :fhir/type := :fhir/Bundle
               :id := "180302")))))))

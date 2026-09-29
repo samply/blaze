@@ -30,7 +30,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.metrics.core :as metrics]
-   [blaze.module.test-util :as mtu :refer [with-system]]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop with-global-log-capture]]
    [blaze.time :as bt]
@@ -126,12 +126,11 @@
 
     (testing "on currently unavailable database value"
       (with-system [{:blaze.db/keys [node]} config]
-        (let [future (mtu/assoc-thread-name (d/sync node 1))]
+        (let [future (d/sync node 1)]
           @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
           (given @future
-            d/basis-t := 1
-            [meta :thread-name] :? mtu/common-pool-thread?))))
+            d/basis-t := 1))))
 
     (testing "errored transactions are ignored"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -217,8 +216,7 @@
 (deftest transact-create-test
   (testing "one Patient"
     (with-system [{:blaze.db/keys [node]} config]
-      (given @(mtu/assoc-thread-name (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]]))
-        [meta :thread-name] :? mtu/common-pool-thread?)
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (given @(pull-resource (d/db node) "Patient" "0")
         :fhir/type := :fhir/Patient
@@ -10910,8 +10908,7 @@
       (let [db (d/db node)
             resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull target resource-handle))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(d/pull target resource-handle)
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id "1"
@@ -10931,8 +10928,7 @@
           (let [db (d/db node)
                 resource-handle (d/resource-handle db "CodeSystem" "0")]
             (doseq [target [node db]]
-              (given @(mtu/assoc-thread-name (d/pull target resource-handle :summary))
-                [meta :thread-name] :? mtu/common-pool-thread?
+              (given @(d/pull target resource-handle :summary)
                 :fhir/type := :fhir/CodeSystem
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
@@ -10957,8 +10953,7 @@
           (let [db (d/db node)
                 resource-handle (d/resource-handle db "ValueSet" "0")]
             (doseq [target [node db]]
-              (given @(mtu/assoc-thread-name (d/pull target resource-handle :summary))
-                [meta :thread-name] :? mtu/common-pool-thread?
+              (given @(d/pull target resource-handle :summary)
                 :fhir/type := :fhir/ValueSet
                 :id := "0"
                 [:meta :versionId] := #fhir/id "1"
@@ -10988,8 +10983,7 @@
       (let [db (d/db node)
             resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-content target resource-handle))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(d/pull-content target resource-handle)
             :fhir/type := :fhir/Patient
             :id := "0"
             :meta := nil)))))
@@ -11019,13 +11013,11 @@
 
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name
-                   (d/pull-many
-                    target (vec (d/type-list db "Observation"))
-                    (cond-> {}
-                      (some? skip-cache-insertion)
-                      (assoc :skip-cache-insertion? skip-cache-insertion))))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(d/pull-many
+                   target (vec (d/type-list db "Observation"))
+                   (cond-> {}
+                     (some? skip-cache-insertion)
+                     (assoc :skip-cache-insertion? skip-cache-insertion)))
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
@@ -11054,8 +11046,7 @@
             code-system-handle (d/resource-handle db "CodeSystem" "0")
             value-set-handle (d/resource-handle db "ValueSet" "0")]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-many target [code-system-handle value-set-handle] {:variant :summary}))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(d/pull-many target [code-system-handle value-set-handle] {:variant :summary})
             count := 2
             [0 :fhir/type] := :fhir/CodeSystem
             [0 :id] := "0"
@@ -11090,8 +11081,7 @@
 
       (with-open-db [db node]
         (doseq [target [node db]]
-          (given @(mtu/assoc-thread-name (d/pull-many target (vec (d/type-list db "Observation")) {:elements [:subject]}))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(d/pull-many target (vec (d/type-list db "Observation")) {:elements [:subject]})
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
@@ -11139,8 +11129,7 @@
                           (cond-> {}
                             (some? skip-cache-insertion)
                             (assoc :skip-cache-insertion? skip-cache-insertion)))]
-                (given @(mtu/assoc-thread-name (pull resource-handle))
-                  [meta :thread-name] :? mtu/common-pool-thread?
+                (given @(pull resource-handle)
                   :fhir/type := :fhir/Patient
                   :id := "0"
                   [:meta :versionId] := #fhir/id "1"

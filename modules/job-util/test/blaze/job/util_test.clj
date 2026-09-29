@@ -9,7 +9,6 @@
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
-   [blaze.module.test-util :as mtu]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -184,8 +183,7 @@
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Task :id "0"}]]]
 
-    (given @(mtu/assoc-thread-name (job-util/pull-job node "0"))
-      [meta :thread-name] :? mtu/common-pool-thread?
+    (given @(job-util/pull-job node "0")
       :fhir/type := :fhir/Task
       :id := "0")))
 
@@ -196,9 +194,8 @@
     (let [job @(job-util/pull-job node "0")]
 
       (testing "start job"
-        (let [job @(mtu/assoc-thread-name (job-util/update-job node job start-job))]
+        (let [job @(job-util/update-job node job start-job)]
           (given job
-            [meta :thread-name] :? mtu/common-pool-thread?
             :status := #fhir/code "in-progress")
 
           (testing "fail job"
@@ -236,8 +233,7 @@
 
         (let [job @(job-util/pull-job node "0")]
 
-          (given @(mtu/assoc-thread-name (job-util/update-job+ node job nil start-job))
-            [meta :thread-name] :? mtu/common-pool-thread?
+          (given @(job-util/update-job+ node job nil start-job)
             :status := #fhir/code "in-progress"))))
 
     (testing "with one argument"

@@ -57,7 +57,14 @@
 (defn- get-content-async [kv-store executor hash]
   (ac/supply-async #(get-content kv-store hash) executor))
 
-(defn- get-and-parse-async [kv-store parsing-context executor [_ hash :as key]]
+(defn- get-and-parse-async
+  "Returns a CompletableFuture that will complete with the resource content of
+  `key` or nil if it was not found.
+
+  Only gets the content on `executor`. Parses it on the common ForkJoinPool, so
+  that neither the parsing nor the functions applied by callers run on the
+  threads of `executor`, which are reserved for I/O."
+  [kv-store parsing-context executor [_ hash :as key]]
   (do-async [bytes (get-content-async kv-store executor hash)]
     (when bytes
       (parse-cbor parsing-context bytes key))))

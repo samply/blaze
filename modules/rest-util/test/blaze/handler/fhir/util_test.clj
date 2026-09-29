@@ -10,7 +10,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
-   [blaze.module.test-util :as mtu :refer [with-system]]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop]]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
@@ -300,8 +300,7 @@
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "Patient" "0"))
-        [meta :thread-name] :? mtu/common-pool-thread?
+      (given @(fhir-util/pull (d/db node) "Patient" "0")
         :fhir/type := :fhir/Patient
         :id := "0"))
 
@@ -315,8 +314,7 @@
                  [{:fhir/type :fhir.CodeSystem/concept
                    :code #fhir/code "code-115927"}]}]]]
 
-        (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "CodeSystem" "0" :summary))
-          [meta :thread-name] :? mtu/common-pool-thread?
+        (given @(fhir-util/pull (d/db node) "CodeSystem" "0" :summary)
           :fhir/type := :fhir/CodeSystem
           :id := "0"
           :concept := nil))))
@@ -353,15 +351,13 @@
        [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (testing "version 1"
-        (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 1))
-          [meta :thread-name] :? mtu/common-pool-thread?
+        (given @(fhir-util/pull-historic (d/db node) "Patient" "0" 1)
           :fhir/type := :fhir/Patient
           :id := "0"
           :active := #fhir/boolean false))
 
       (testing "version 2"
-        (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 2))
-          [meta :thread-name] :? mtu/common-pool-thread?
+        (given @(fhir-util/pull-historic (d/db node) "Patient" "0" 2)
           :fhir/type := :fhir/Patient
           :id := "0"
           :active := #fhir/boolean true)))

@@ -1263,6 +1263,8 @@
                 _ (acquire-in-flight!)]
           (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
             (-> (rs/put! resource-store entries)
+                ;; submits on the common ForkJoinPool, because the resource
+                ;; store may complete the put on one of its I/O threads
                 (ac/then-compose-async
                  (fn [_] (tx-log/submit tx-log tx-cmds entries)))
                 (ac/when-complete (fn [t _] (swap! state settle-in-flight t)))))
