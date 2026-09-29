@@ -69,7 +69,7 @@ services:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
-      MAX_HEAP_SIZE: "1G"
+      MAX_HEAP_SIZE: "2G"
       # Shorten the ring delay and skip waiting for gossip to settle, which
       # together take about 55 seconds and aren't needed in a freshly created
       # cluster. The ring delay also determines the timeout after which nodes
@@ -92,7 +92,7 @@ services:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
-      MAX_HEAP_SIZE: "1G"
+      MAX_HEAP_SIZE: "2G"
       JVM_EXTRA_OPTS: "-Dcassandra.ring_delay_ms=5000 -Dcassandra.skip_wait_for_gossip_to_settle=0"
     ulimits:
       memlock: -1
@@ -110,7 +110,7 @@ services:
     - "cassandra-3-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
-      MAX_HEAP_SIZE: "1G"
+      MAX_HEAP_SIZE: "2G"
       JVM_EXTRA_OPTS: "-Dcassandra.ring_delay_ms=5000 -Dcassandra.skip_wait_for_gossip_to_settle=0"
     ulimits:
       memlock: -1
@@ -155,9 +155,9 @@ services:
       DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
       DB_KAFKA_SSL_KEY_PASSWORD: "password"
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
-      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "4"
+      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_BLOCK_CACHE_SIZE: "1024"
-      DB_RESOURCE_INDEXER_THREADS: "2"
+      DB_RESOURCE_INDEXER_THREADS: "4"
       DB_SYNC_TIMEOUT: "100000"
       ALLOW_MULTIPLE_DELETE: "true"
       ENABLE_INTERACTION_DELETE_HISTORY: "${ENABLE_INTERACTION_DELETE_HISTORY:-false}"
@@ -212,9 +212,9 @@ services:
       DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
       DB_KAFKA_SSL_KEY_PASSWORD: "password"
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
-      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "4"
+      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_BLOCK_CACHE_SIZE: "1024"
-      DB_RESOURCE_INDEXER_THREADS: "2"
+      DB_RESOURCE_INDEXER_THREADS: "4"
       DB_SYNC_TIMEOUT: "100000"
       ALLOW_MULTIPLE_DELETE: "true"
       ENABLE_INTERACTION_DELETE_HISTORY: "${ENABLE_INTERACTION_DELETE_HISTORY:-false}"
