@@ -1,0 +1,3 @@
+{:hooks
+ {:macroexpand
+  {blaze.util/condp-identical blaze.util.clj-kondo/condp-identical}}}

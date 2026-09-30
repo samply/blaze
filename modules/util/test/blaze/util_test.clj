@@ -1,8 +1,8 @@
 (ns blaze.util-test
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.test-util :as tu :refer [satisfies-prop]]
-   [blaze.util :as u :refer [str]]
+   [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
+   [blaze.util :as u :refer [condp-identical str]]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -87,3 +87,52 @@
     (satisfies-prop 100
       (prop/for-all [xs (gen/vector gen/any)]
         (= (apply str xs) (apply clojure.core/str xs))))))
+
+(defn- symbol-uses
+  "Returns all occurrences of `sym` in `form` as either `:call` or `:value`."
+  [sym form]
+  (let [value-uses (fn value-uses [x]
+                     (cond
+                       (= sym x) [:value]
+                       (and (seq? x) (= sym (first x))) (into [:call] (mapcat value-uses) (rest x))
+                       (coll? x) (into [] (mapcat value-uses) x)
+                       :else []))]
+    (value-uses form)))
+
+(deftest condp-identical-test
+  (testing "first clause matches"
+    (is (= 1 (condp-identical :a :a 1 :b 2 3))))
+
+  (testing "second clause matches"
+    (is (= 2 (condp-identical :b :a 1 :b 2 3))))
+
+  (testing "default"
+    (is (= 3 (condp-identical :c :a 1 :b 2 3))))
+
+  (testing "no match without default"
+    (is (thrown-with-msg? IllegalArgumentException #"No matching clause: :c"
+                          (condp-identical :c :a 1 :b 2))))
+
+  (testing "tests identity not equality"
+    (is (= 2 (condp-identical (String. "a") "a" 1 2))))
+
+  (testing "evaluates the expression only once"
+    (let [count (volatile! 0)]
+      (is (= 3 (condp-identical (do (vswap! count inc) :c) :a 1 :b 2 3)))
+      (is (= 1 @count))))
+
+  (testing "results are in tail position"
+    (is (= 3 (loop [i 0] (condp-identical (< i 3) true (recur (inc i)) i)))))
+
+  (testing "rejects the :>> clause form of condp"
+    (testing "in the first clause"
+      (given-thrown (macroexpand-1 `(condp-identical ~'x :a :>> ~'f 2))
+        [:cause-data :message] := "condp-identical doesn't support the :>> clause form of condp."))
+
+    (testing "in the second clause"
+      (given-thrown (macroexpand-1 `(condp-identical ~'x :a 1 :b :>> ~'f 2))
+        [:cause-data :message] := "condp-identical doesn't support the :>> clause form of condp.")))
+
+  (testing "calls identical? directly so that it can be inlined"
+    (is (= [:call :call]
+           (symbol-uses `identical? (macroexpand-1 `(condp-identical ~'x :a 1 :b 2 3)))))))

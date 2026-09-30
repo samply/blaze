@@ -1,7 +1,8 @@
 {:config-paths
  ["../../../.clj-kondo/root"
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
-  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"
+  "../../util/resources/clj-kondo.exports/blaze/util"]
 
  :lint-as
  {blaze.fhir.spec.generators/def-resource-gen clojure.core/def

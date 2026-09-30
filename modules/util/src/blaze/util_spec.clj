@@ -11,6 +11,9 @@
   :args (s/cat :x any?)
   :ret (s/nilable sequential?))
 
+(s/fdef u/condp-identical
+  :args (s/cat :expr any? :clauses (s/* any?)))
+
 (s/fdef u/str
   :args (s/cat :args (s/* any?))
   :ret string?)

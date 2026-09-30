@@ -5,7 +5,8 @@
   "../../coll/resources/clj-kondo.exports/blaze/coll"
   "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"
-  "../../test-util/resources/clj-kondo.exports/blaze/test-util"]
+  "../../test-util/resources/clj-kondo.exports/blaze/test-util"
+  "../../util/resources/clj-kondo.exports/blaze/util"]
 
  :lint-as
  {blaze.db.api-test/with-open-db clojure.core/with-open

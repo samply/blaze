@@ -51,7 +51,7 @@
    [blaze.fhir.spec.type.string-util :as su]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
-   [blaze.util :as u :refer [str]]
+   [blaze.util :as u :refer [condp-identical str]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom])
   (:import
@@ -440,7 +440,7 @@
     (assoc :fhir.issues/expression (expression locator))))
 
 (defn- unexpected-end-of-input-msg [^JsonEOFException e]
-  (condp identical? (.getTokenBeingDecoded e)
+  (condp-identical (.getTokenBeingDecoded e)
     JsonToken/FIELD_NAME "Unexpected end of input while parsing a field name."
     "Unexpected end of input."))
 
@@ -477,7 +477,7 @@
   (.getDecimalValue ^JsonParser parser))
 
 (defn- get-current-value [parser locator]
-  (condp identical? (current-token parser)
+  (condp-identical (current-token parser)
     JsonToken/VALUE_NULL "value null"
     JsonToken/VALUE_TRUE "boolean value true"
     JsonToken/VALUE_FALSE "boolean value false"
@@ -511,7 +511,7 @@
 
 (defmacro cond-next-token [parser locator & body]
   `(when-ok [token# (next-token! ~parser ~locator)]
-     (condp identical? token#
+     (condp-identical token#
        ~@body)))
 
 (defn- create-system-string-handler
@@ -663,7 +663,7 @@
            JsonToken/START_ARRAY
            (loop [l (ArrayList. ^List (get-value m slot [])) i 0]
              (when-ok [t (next-token! parser locator)]
-               (condp identical? t
+               (condp-identical t
                  token
                  (when-ok [value (extract-value parser (cons path locator))]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
@@ -700,7 +700,7 @@
            JsonToken/START_ARRAY
            (loop [l (ArrayList. ^List (get-value m slot [])) i 0]
              (when-ok [t (next-token! parser locator)]
-               (condp identical? t
+               (condp-identical t
                  token-1
                  (when-ok [value (extract-value-1 parser (cons path locator))]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
@@ -811,7 +811,7 @@
                 num-values (.size values)]
             (loop [l (ArrayList. values) i 0]
               (when-ok [t (next-token! parser (cons path locator))]
-                (condp identical? t
+                (condp-identical t
                   JsonToken/START_OBJECT
                   (if-some [primitive-value (when (< i (.size l)) (.get l i))]
                     (when-ok [primitive-value (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) primitive-value)]

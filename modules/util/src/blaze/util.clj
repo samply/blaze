@@ -28,6 +28,23 @@
   [s]
   (if (str/starts-with? s "/") (recur (subs s 1)) s))
 
+(defmacro condp-identical
+  "Like `(condp identical? expr & clauses)` but calls `identical?` directly, so
+  that it's inlined instead of being called through its var on every test.
+
+  Doesn't support the `test :>> result-fn` clause form of condp."
+  [expr & clauses]
+  (when (some #{:>>} (take-nth 2 (rest clauses)))
+    (throw (ex-info "condp-identical doesn't support the :>> clause form of condp." {})))
+  (let [e (gensym "expr")
+        emit (fn emit [[test result & more :as clauses]]
+               (case (count clauses)
+                 0 `(throw (IllegalArgumentException. (str "No matching clause: " ~e)))
+                 1 test
+                 `(if (identical? ~e ~test) ~result ~(emit more))))]
+    `(let [~e ~expr]
+       ~(emit clauses))))
+
 (defn available-processors []
   (.availableProcessors (Runtime/getRuntime)))
 

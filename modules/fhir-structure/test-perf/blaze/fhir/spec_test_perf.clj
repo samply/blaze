@@ -6,7 +6,11 @@
    [blaze.fhir.writing-context]
    [blaze.test-util]
    [criterium.core :as criterium]
-   [integrant.core :as ig]))
+   [integrant.core :as ig])
+  (:import
+   [java.nio.charset StandardCharsets]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private parsing-context
   (ig/init-key
@@ -29,6 +33,9 @@
 
 (defn- bench-read-json [type x]
   (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
+
+(defn- slurp-bytes [filename]
+  (.getBytes (slurp filename) StandardCharsets/UTF_8))
 
 (comment
   ;; 0,154 µs <> 0,155 µs
@@ -75,7 +82,7 @@
   ;; 2,233 µs <> 2,240 µs
   (bench-write-json
    {:fhir/type :fhir.Bundle/entry
-    :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
+    :fullUrl #fhir/uri "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
     :resource
     {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
      :meta #fhir/Meta
@@ -111,8 +118,9 @@
 
   ;; Read Performance
 
-  ;; 2424,726 µs <> 2480,535 µs
-  (bench-read-json "Bundle" (slurp kds-bundle-filename))
+  ;; 1036,312 µs <> 1046,569 µs
+  (bench-read-json "Bundle" (slurp-bytes kds-bundle-filename))
 
-  (dotimes [_ 10000]
-    (read-json "Bundle" (slurp kds-bundle-filename))))
+  (let [data (slurp-bytes kds-bundle-filename)]
+    (dotimes [_ 100000]
+      (read-json "Bundle" data))))
