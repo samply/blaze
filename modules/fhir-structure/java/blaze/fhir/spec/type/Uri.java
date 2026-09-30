@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -14,8 +12,6 @@ import com.google.common.hash.PrimitiveSink;
 import java.io.IOException;
 import java.lang.String;
 import java.util.Objects;
-
-import static java.util.Objects.requireNonNull;
 
 public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Uri.Interned {
 
@@ -38,12 +34,12 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
 
     private static Uri maybeIntern(ExtensionData extensionData, String value) {
         return extensionData.isInterned() && (value == null || value.length() <= 4)
-                ? Interned.intern(extensionData, value)
+                ? Interned.INTERNER.intern(extensionData, value)
                 : new Normal(extensionData, value);
     }
 
     public static Uri create(String value) {
-        return value.length() <= 4 ? Interned.intern(ExtensionData.EMPTY, value) : new Normal(ExtensionData.EMPTY, value);
+        return value.length() <= 4 ? Interned.INTERNER.intern(value) : new Normal(ExtensionData.EMPTY, value);
     }
 
     public static Uri create(IPersistentMap m) {
@@ -51,13 +47,13 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
     }
 
     public static Uri createForceIntern(String value) {
-        return Interned.intern(ExtensionData.EMPTY, requireNonNull(value));
+        return Interned.INTERNER.intern(value);
     }
 
     public static Uri createForceIntern(IPersistentMap m) {
         var extensionData = ExtensionData.fromMap(m);
         var value = (String) m.valAt(VALUE);
-        return extensionData.isInterned() ? Interned.intern(extensionData, value) : new Normal(extensionData, value);
+        return extensionData.isInterned() ? Interned.INTERNER.intern(extensionData, value) : new Normal(extensionData, value);
     }
 
     /**
@@ -128,8 +124,6 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
 
     public static final class Normal extends Uri {
 
-        private static final Normal EMPTY = new Normal(ExtensionData.EMPTY, null);
-
         private final String value;
 
         private Normal(ExtensionData extensionData, String value) {
@@ -152,8 +146,8 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
         }
 
         @Override
-        public Normal empty() {
-            return EMPTY;
+        public Interned empty() {
+            return Interned.EMPTY;
         }
 
         @Override
@@ -187,7 +181,7 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
     public static final class Interned extends Uri {
 
         private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null);
-        private static final Interner<InternerKey, Interned> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
+        private static final PrimitiveInterner<Interned> INTERNER = new PrimitiveInterner<>(EMPTY, Interned::create);
 
         private final SerializedString value;
 
@@ -201,17 +195,13 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
         }
 
         private static Uri maybeIntern(ExtensionData extensionData, String value) {
-            return extensionData.isInterned() ? intern(extensionData, value) : new Normal(extensionData, value);
-        }
-
-        private static Interned intern(ExtensionData extensionData, String value) {
-            return INTERNER.intern(new InternerKey(extensionData, value));
+            return extensionData.isInterned() ? INTERNER.intern(extensionData, value) : new Normal(extensionData, value);
         }
 
         public static Interned create(IPersistentMap m) {
             var extensionData = ExtensionData.fromMap(m);
             var value = (String) m.valAt(VALUE);
-            if (extensionData.isInterned()) return intern(extensionData, value);
+            if (extensionData.isInterned()) return INTERNER.intern(extensionData, value);
             throw new IllegalArgumentException("Can't create an interned FHIR.Uri using non-interned extension data.");
         }
 
@@ -260,12 +250,6 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
         @Override
         public int memSize() {
             return 0;
-        }
-    }
-
-    private record InternerKey(ExtensionData extensionData, String value) {
-        private InternerKey {
-            requireNonNull(extensionData);
         }
     }
 }

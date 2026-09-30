@@ -154,7 +154,17 @@
 
       (are [x y] (interned? x y)
         (type/boolean {:extension [internable-extension] :value true})
-        (type/boolean {:extension [internable-extension] :value true}))))
+        (type/boolean {:extension [internable-extension] :value true})))
+
+    (testing "without extension, the constants are used"
+      (are [x y] (identical? x y)
+        (type/boolean {:value true}) #fhir/boolean true
+        (type/boolean {:value false}) #fhir/boolean false
+        (type/boolean {}) (empty #fhir/boolean true)
+        (assoc #fhir/boolean true :value false) #fhir/boolean false
+        (assoc #fhir/boolean true :value nil) (empty #fhir/boolean true)
+        (assoc (type/boolean {:extension [internable-extension] :value true}) :extension [])
+        #fhir/boolean true)))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -278,6 +288,12 @@
     (is (= #fhir/integer{:value 1} #fhir/integer 1)))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/integer 1) x)
+        (type/integer {})
+        (assoc #fhir/integer 1 :value nil)
+        (assoc (type/integer {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/integer 165519 #fhir/integer 165519))
 
     (testing "with extension"
@@ -411,6 +427,12 @@
       Long/MAX_VALUE))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/integer64 1) x)
+        (type/integer64 {})
+        (assoc #fhir/integer64 1 :value nil)
+        (assoc (type/integer64 {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/integer64 165519 #fhir/integer64 165519))
     (is (identical? #fhir/integer64{} (type/integer64 {})))
 
@@ -573,7 +595,21 @@
       #fhir/string "165645" #fhir/string "165645"
 
       (type/string {:extension [internable-extension] :value "174230"})
-      (type/string {:extension [internable-extension] :value "174230"})))
+      (type/string {:extension [internable-extension] :value "174230"}))
+
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/string-interned "foo") x)
+        (type/string {})
+        (type/string-interned {})
+        (assoc #fhir/string "1234" :value nil)
+        (assoc #fhir/string-interned "174230" :value nil)
+        (assoc (type/string-interned {:extension [internable-extension]}) :extension [])
+        (empty #fhir/string "165645")
+        (empty #fhir/string{:id "foo"})))
+
+    (testing "removing the extension results in the instance without extension"
+      (is (interned? #fhir/string-interned "174230"
+                     (assoc (type/string-interned {:extension [internable-extension] :value "174230"}) :extension [])))))
 
   (testing "assoc id"
     (are [s id r] (= r (assoc s :id id))
@@ -613,6 +649,10 @@
 
   (testing "equals"
     (is (= #fhir/string "foo" #fhir/string{:value "foo"})))
+
+  (testing "identity"
+    (is (identical? #fhir/string "foo" #fhir/string{:value "foo"}))
+    (is (identical? #fhir/string "foo" #fhir/string{:extension [] :value "foo"})))
 
   (testing "hash-into"
     (are [s hex] (= hex (murmur3 s))
@@ -680,6 +720,12 @@
     (is (= #fhir/decimal{:value 1M} #fhir/decimal 1M)))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/decimal 1M) x)
+        (type/decimal {})
+        (assoc #fhir/decimal 1M :value nil)
+        (assoc (type/decimal {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/decimal 165746M #fhir/decimal 165746M)))
 
   (testing "assoc id"
@@ -794,7 +840,21 @@
         (type/uri-interned {:extension [not-internable-extension]})
 
         (type/uri-interned {:extension [not-internable-extension] :value "185838"})
-        (type/uri-interned {:extension [not-internable-extension] :value "185838"}))))
+        (type/uri-interned {:extension [not-internable-extension] :value "185838"})))
+
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/uri-interned "foo") x)
+        (type/uri {})
+        (type/uri-interned {})
+        (assoc #fhir/uri "1234" :value nil)
+        (assoc #fhir/uri-interned "185838" :value nil)
+        (assoc (type/uri-interned {:extension [internable-extension]}) :extension [])
+        (empty #fhir/uri "185838")
+        (empty #fhir/uri{:id "foo"})))
+
+    (testing "removing the extension results in the instance without extension"
+      (is (interned? #fhir/uri-interned "185838"
+                     (assoc (type/uri-interned {:extension [internable-extension] :value "185838"}) :extension [])))))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -840,6 +900,10 @@
     (is (= #fhir/uri "142334" #fhir/uri "142334"))
     (is (not= #fhir/uri "142334" #fhir/uri "215930"))
     (is (not= #fhir/uri "142334" "142334")))
+
+  (testing "identity"
+    (is (identical? #fhir/uri-interned "142334" #fhir/uri-interned{:value "142334"}))
+    (is (identical? #fhir/uri-interned "142334" #fhir/uri-interned{:extension [] :value "142334"})))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -892,6 +956,12 @@
     (is (nil? (seq (empty #fhir/url{:id "foo"})))))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/url "url-165453") x)
+        (type/url {})
+        (assoc #fhir/url "url-165453" :value nil)
+        (assoc (type/url {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/url "165852" #fhir/url "165852"))
 
     (testing "with extension"
@@ -1023,7 +1093,17 @@
         (type/canonical {:extension [not-internable-extension]})
 
         (type/canonical {:extension [not-internable-extension] :value "185838"})
-        (type/canonical {:extension [not-internable-extension] :value "185838"}))))
+        (type/canonical {:extension [not-internable-extension] :value "185838"})))
+
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/canonical "foo") x)
+        (type/canonical {})
+        (assoc #fhir/canonical "185838" :value nil)
+        (assoc (type/canonical {:extension [internable-extension]}) :extension [])))
+
+    (testing "removing the extension results in the instance without extension"
+      (is (interned? #fhir/canonical "185838"
+                     (assoc (type/canonical {:extension [internable-extension] :value "185838"}) :extension [])))))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -1069,6 +1149,10 @@
     (is (= #fhir/canonical "142334" #fhir/canonical "142334"))
     (is (not= #fhir/canonical "142334" #fhir/canonical "220056"))
     (is (not= #fhir/canonical "142334" "142334")))
+
+  (testing "identity"
+    (is (identical? #fhir/canonical "142334" #fhir/canonical{:value "142334"}))
+    (is (identical? #fhir/canonical "142334" #fhir/canonical{:extension [] :value "142334"})))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -1125,6 +1209,12 @@
     (is (= #fhir/base64Binary{:value "MTA1NjE0Cg=="} #fhir/base64Binary "MTA1NjE0Cg==")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/base64Binary "MTA1NjE0Cg==") x)
+        (type/base64Binary {})
+        (assoc #fhir/base64Binary "MTA1NjE0Cg==" :value nil)
+        (assoc (type/base64Binary {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/base64Binary "MTA1NjE0Cg==" #fhir/base64Binary "MTA1NjE0Cg=="))
 
     (testing "with extension"
@@ -1243,6 +1333,12 @@
            #fhir/instant #system/date-time "1970-01-02T00:00:00Z")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/instant #system/date-time "1970-01-02T00:00:00Z") x)
+        (type/instant {})
+        (assoc #fhir/instant #system/date-time "1970-01-02T00:00:00Z" :value nil)
+        (assoc (type/instant {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/instant #system/date-time "2020-01-01T00:00:00+02:00"
                        #fhir/instant #system/date-time "2020-01-01T00:00:00+02:00"))
 
@@ -1381,6 +1477,12 @@
       (is (= #fhir/date{:value #system/date "2022"} #fhir/date #system/date "2022")))
 
     (testing "interning"
+      (testing "without extension and value, the empty constant is used"
+        (are [x] (interned? (empty #fhir/date #system/date "2022") x)
+          (type/date {})
+          (assoc #fhir/date #system/date "2022" :value nil)
+          (assoc (type/date {:extension [internable-extension]}) :extension [])))
+
       (is (not-interned? #fhir/date #system/date "2020" #fhir/date #system/date "2020"))
 
       (testing "with extension"
@@ -1674,6 +1776,12 @@
       (is (= #fhir/dateTime{:value #system/date-time "2022"} #fhir/dateTime #system/date-time "2022")))
 
     (testing "interning"
+      (testing "without extension and value, the empty constant is used"
+        (are [x] (interned? (empty #fhir/dateTime #system/date-time "2022") x)
+          (type/dateTime {})
+          (assoc #fhir/dateTime #system/date-time "2022" :value nil)
+          (assoc (type/dateTime {:extension [internable-extension]}) :extension [])))
+
       (is (not-interned? #fhir/dateTime #system/date-time "2020" #fhir/dateTime #system/date-time "2020"))
 
       (testing "with extension"
@@ -2220,6 +2328,12 @@
     (is (= #fhir/time{:value #system/time "15:27:45"} #fhir/time #system/time "15:27:45")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/time #system/time "15:27:45") x)
+        (type/time {})
+        (assoc #fhir/time #system/time "15:27:45" :value nil)
+        (assoc (type/time {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/time #system/time "13:53:21" #fhir/time #system/time "13:53:21")))
 
   (testing "assoc id"
@@ -2359,7 +2473,17 @@
                      #fhir/code{:extension
                                 [#fhir/Extension{:url "url-171902"
                                                  :value #fhir/boolean true}]
-                                :value "code-123745"}))))
+                                :value "code-123745"})))
+
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/code "foo") x)
+        (type/code {})
+        (assoc #fhir/code "code-123745" :value nil)
+        (assoc (type/code {:extension [internable-extension]}) :extension [])))
+
+    (testing "removing the extension results in the instance without extension"
+      (is (interned? #fhir/code "code-123745"
+                     (assoc (type/code {:extension [internable-extension] :value "code-123745"}) :extension [])))))
 
   (testing "assoc id"
     (testing "non-extended"
@@ -2422,9 +2546,12 @@
 
   (testing "equals"
     (is (= #fhir/code "175726" #fhir/code "175726"))
-    (is (identical? #fhir/code "175726" #fhir/code "175726"))
     (is (not= #fhir/code "175726" #fhir/code "165817"))
     (is (not= #fhir/code "175726" "175726")))
+
+  (testing "identity"
+    (is (identical? #fhir/code "175726" #fhir/code{:value "175726"}))
+    (is (identical? #fhir/code "175726" #fhir/code{:extension [] :value "175726"})))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2487,6 +2614,12 @@
     (is (= #fhir/oid{:value "182040"} #fhir/oid "182040")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/oid "urn:oid:1.2") x)
+        (type/oid {})
+        (assoc #fhir/oid "urn:oid:1.2" :value nil)
+        (assoc (type/oid {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/oid "oid-123745" #fhir/oid "oid-123745")))
 
   (testing "assoc id"
@@ -2590,6 +2723,12 @@
     (is (= #fhir/id{:value "182040"} #fhir/id "182040")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/id "id-165453") x)
+        (type/id {})
+        (assoc #fhir/id "id-165453" :value nil)
+        (assoc (type/id {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/id "id-123745" #fhir/id "id-123745")))
 
   (testing "assoc id"
@@ -2693,6 +2832,12 @@
     (is (= #fhir/markdown{:value "182040"} #fhir/markdown "182040")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/markdown "markdown-165453") x)
+        (type/markdown {})
+        (assoc #fhir/markdown "markdown-165453" :value nil)
+        (assoc (type/markdown {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/markdown "markdown-123745"
                        #fhir/markdown "markdown-123745")))
 
@@ -2810,6 +2955,12 @@
     (is (= #fhir/unsignedInt{:value 160845} #fhir/unsignedInt 160845)))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/unsignedInt 1) x)
+        (type/unsignedInt {})
+        (assoc #fhir/unsignedInt 1 :value nil)
+        (assoc (type/unsignedInt {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/unsignedInt 160845
                        #fhir/unsignedInt 160845)))
 
@@ -2939,6 +3090,12 @@
     (is (= #fhir/positiveInt{:value 160845} #fhir/positiveInt 160845)))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/positiveInt 1) x)
+        (type/positiveInt {})
+        (assoc #fhir/positiveInt 1 :value nil)
+        (assoc (type/positiveInt {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/positiveInt 160845
                        #fhir/positiveInt 160845)))
 
@@ -3041,6 +3198,12 @@
     (is (= #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3") x)
+        (type/uuid {})
+        (assoc #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" :value nil)
+        (assoc (type/uuid {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
                        #fhir/uuid "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))
 
@@ -3161,6 +3324,12 @@
     (is (nil? (seq (empty #fhir/xhtml{:id "foo"})))))
 
   (testing "interning"
+    (testing "without extension and value, the empty constant is used"
+      (are [x] (interned? (empty #fhir/xhtml "xhtml-165453") x)
+        (type/xhtml {})
+        (assoc #fhir/xhtml "xhtml-165453" :value nil)
+        (assoc (type/xhtml {:extension [internable-extension]}) :extension [])))
+
     (is (not-interned? #fhir/xhtml "xhtml-123745"
                        #fhir/xhtml "xhtml-123745")))
 

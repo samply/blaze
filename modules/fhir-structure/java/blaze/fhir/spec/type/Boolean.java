@@ -34,7 +34,7 @@ public final class Boolean extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 0;
 
-    private static final Interner<InternerKey, Boolean> INTERNER = Interners.weakInterner(k -> new Boolean(k.extensionData, k.value));
+    private static final Interner<InternerKey, Boolean> EXTENDED_INTERNER = Interners.weakInterner(k -> new Boolean(k.extensionData, k.value));
     private static final Boolean EMPTY = new Boolean(ExtensionData.EMPTY, null);
 
     private final java.lang.Boolean value;
@@ -45,7 +45,10 @@ public final class Boolean extends PrimitiveElement {
     }
 
     private static Boolean intern(ExtensionData extensionData, java.lang.Boolean value) {
-        return INTERNER.intern(new InternerKey(extensionData, value));
+        if (extensionData == ExtensionData.EMPTY) {
+            return value == null ? EMPTY : value ? TRUE : FALSE;
+        }
+        return EXTENDED_INTERNER.intern(new InternerKey(extensionData, value));
     }
 
     private static Boolean maybeIntern(ExtensionData extensionData, java.lang.Boolean value) {

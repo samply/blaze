@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -15,8 +13,6 @@ import java.io.IOException;
 import java.lang.String;
 import java.util.Objects;
 
-import static java.util.Objects.requireNonNull;
-
 public final class Code extends PrimitiveElement {
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "code");
@@ -25,8 +21,8 @@ public final class Code extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 13;
 
-    private static final Interner<InternerKey, Code> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
     private static final Code EMPTY = new Code(ExtensionData.EMPTY, null);
+    private static final PrimitiveInterner<Code> INTERNER = new PrimitiveInterner<>(EMPTY, Code::create);
 
     private static final ILookupThunk FHIR_TYPE_LOOKUP_THUNK = new ILookupThunk() {
         @Override
@@ -46,16 +42,12 @@ public final class Code extends PrimitiveElement {
         return new Code(extensionData, value == null ? null : new SerializedString(value));
     }
 
-    private static Code intern(ExtensionData extensionData, String value) {
-        return INTERNER.intern(new InternerKey(extensionData, value));
-    }
-
     private static Code maybeIntern(ExtensionData extensionData, String value) {
-        return extensionData.isInterned() ? intern(extensionData, value) : create(extensionData, value);
+        return extensionData.isInterned() ? INTERNER.intern(extensionData, value) : create(extensionData, value);
     }
 
     public static Code create(String value) {
-        return intern(ExtensionData.EMPTY, requireNonNull(value));
+        return INTERNER.intern(value);
     }
 
     public static Code create(IPersistentMap m) {
@@ -149,11 +141,5 @@ public final class Code extends PrimitiveElement {
                 extensionData +
                 ", value=" + (value == null ? null : '\'' + value() + '\'') +
                 '}';
-    }
-
-    private record InternerKey(ExtensionData extensionData, String value) {
-        private InternerKey {
-            requireNonNull(extensionData);
-        }
     }
 }

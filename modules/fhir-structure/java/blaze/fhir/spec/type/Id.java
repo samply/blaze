@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -29,8 +27,8 @@ public final class Id extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 15;
 
-    private static final Interner<ExtensionData, Id> INTERNER = Interners.weakInterner(k -> new Id(k, null));
     private static final Id EMPTY = new Id(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Id> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Id(k, null));
 
     private final String value;
 

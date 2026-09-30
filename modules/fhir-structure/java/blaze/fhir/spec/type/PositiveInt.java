@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Integers;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -39,8 +37,8 @@ public final class PositiveInt extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 18;
 
-    private static final Interner<ExtensionData, PositiveInt> INTERNER = Interners.weakInterner(k -> new PositiveInt(k, 0));
     private static final PositiveInt EMPTY = new PositiveInt(ExtensionData.EMPTY, 0);
+    private static final ValuelessInterner<PositiveInt> INTERNER = new ValuelessInterner<>(EMPTY, k -> new PositiveInt(k, 0));
 
     private final int value;
 

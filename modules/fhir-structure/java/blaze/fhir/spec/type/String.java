@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -13,8 +11,6 @@ import com.google.common.hash.PrimitiveSink;
 
 import java.io.IOException;
 import java.util.Objects;
-
-import static java.util.Objects.requireNonNull;
 
 public sealed abstract class String extends PrimitiveElement permits String.Normal, String.Interned {
 
@@ -37,12 +33,12 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
 
     private static String maybeIntern(ExtensionData extensionData, java.lang.String value) {
         return extensionData.isInterned() && (value == null || value.length() <= 4)
-                ? Interned.intern(extensionData, value)
+                ? Interned.INTERNER.intern(extensionData, value)
                 : new Normal(extensionData, value);
     }
 
     public static String create(java.lang.String value) {
-        return value.length() <= 4 ? Interned.intern(ExtensionData.EMPTY, value) : new Normal(ExtensionData.EMPTY, value);
+        return value.length() <= 4 ? Interned.INTERNER.intern(value) : new Normal(ExtensionData.EMPTY, value);
     }
 
     public static String create(IPersistentMap m) {
@@ -50,13 +46,13 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
     }
 
     public static String createForceIntern(java.lang.String value) {
-        return Interned.intern(ExtensionData.EMPTY, requireNonNull(value));
+        return Interned.INTERNER.intern(value);
     }
 
     public static String createForceIntern(IPersistentMap m) {
         var extensionData = ExtensionData.fromMap(m);
         var value = (java.lang.String) m.valAt(VALUE);
-        return extensionData.isInterned() ? Interned.intern(extensionData, value) : new Normal(extensionData, value);
+        return extensionData.isInterned() ? Interned.INTERNER.intern(extensionData, value) : new Normal(extensionData, value);
     }
 
     /**
@@ -127,8 +123,6 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
 
     public static final class Normal extends String {
 
-        private static final Normal EMPTY = new Normal(ExtensionData.EMPTY, null);
-
         private final java.lang.String value;
 
         private Normal(ExtensionData extensionData, java.lang.String value) {
@@ -151,8 +145,8 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         @Override
-        public Normal empty() {
-            return EMPTY;
+        public Interned empty() {
+            return Interned.EMPTY;
         }
 
         @Override
@@ -186,7 +180,7 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
     public static final class Interned extends String {
 
         private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null);
-        private static final Interner<InternerKey, Interned> INTERNER = Interners.weakInterner(k -> create(k.extensionData, k.value));
+        private static final PrimitiveInterner<Interned> INTERNER = new PrimitiveInterner<>(EMPTY, Interned::create);
 
         private final SerializedString value;
 
@@ -200,17 +194,13 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         }
 
         private static String maybeIntern(ExtensionData extensionData, java.lang.String value) {
-            return extensionData.isInterned() ? intern(extensionData, value) : new Normal(extensionData, value);
-        }
-
-        private static Interned intern(ExtensionData extensionData, java.lang.String value) {
-            return INTERNER.intern(new InternerKey(extensionData, value));
+            return extensionData.isInterned() ? INTERNER.intern(extensionData, value) : new Normal(extensionData, value);
         }
 
         public static Interned create(IPersistentMap m) {
             var extensionData = ExtensionData.fromMap(m);
             var value = (java.lang.String) m.valAt(VALUE);
-            if (extensionData.isInterned()) return intern(extensionData, value);
+            if (extensionData.isInterned()) return INTERNER.intern(extensionData, value);
             throw new IllegalArgumentException("Can't create an interned FHIR.String using non-interned extension data.");
         }
 
@@ -259,12 +249,6 @@ public sealed abstract class String extends PrimitiveElement permits String.Norm
         @Override
         public int memSize() {
             return 0;
-        }
-    }
-
-    private record InternerKey(ExtensionData extensionData, java.lang.String value) {
-        private InternerKey {
-            requireNonNull(extensionData);
         }
     }
 }

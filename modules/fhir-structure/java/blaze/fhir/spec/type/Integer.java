@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Integers;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -41,8 +39,8 @@ public final class Integer extends PrimitiveElement {
     // one past the int range; (int) ABSENT == java.lang.Integer.MIN_VALUE
     private static final long ABSENT = java.lang.Integer.MAX_VALUE + 1L;
 
-    private static final Interner<ExtensionData, Integer> INTERNER = Interners.weakInterner(k -> new Integer(k, ABSENT));
     private static final Integer EMPTY = new Integer(ExtensionData.EMPTY, ABSENT);
+    private static final ValuelessInterner<Integer> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Integer(k, ABSENT));
 
     private final long value;
 

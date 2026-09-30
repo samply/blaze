@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Longs;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -38,8 +36,8 @@ public final class Integer64 extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 2;
 
-    private static final Interner<ExtensionData, Integer64> INTERNER = Interners.weakInterner(k -> new Integer64(k, 0, false));
     private static final Integer64 EMPTY = new Integer64(ExtensionData.EMPTY, 0, false);
+    private static final ValuelessInterner<Integer64> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Integer64(k, 0, false));
 
     // the whole long range is valid, so absence can't be encoded as a sentinel value
     private final long value;
