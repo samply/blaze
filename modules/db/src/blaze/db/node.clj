@@ -115,7 +115,7 @@
    [blaze.module :as m :refer [reg-collector]]
    [blaze.scheduler :as sched]
    [blaze.spec]
-   [blaze.util :refer [conj-vec str]]
+   [blaze.util :refer [condp-identical conj-vec str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -1451,7 +1451,7 @@
                                                  expected-kv-store-version))))))
 
 (defn- sync-fn [storage]
-  (condp identical? storage
+  (condp-identical storage
     :distributed
     (fn sync-distributed [^Node node]
       (-> (tx-log/last-t (.-tx_log node))

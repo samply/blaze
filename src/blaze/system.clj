@@ -15,7 +15,7 @@
    [blaze.spec]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local :as local]
-   [blaze.util :as u :refer [conj-vec str]]
+   [blaze.util :as u :refer [condp-identical conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -59,7 +59,7 @@
 (defrecord Cfg [env-var spec default])
 
 (defn- resolve-special-default-values [default]
-  (condp identical? default
+  (condp-identical default
     :available-processors (u/available-processors)
     default))
 

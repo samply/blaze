@@ -28,4 +28,5 @@
   given-parse-json [[:block 1]]
   given-parse-cbor [[:block 1]]
   cond-next-token [[:block 2]]
+  condp-identical [[:block 1]]
   forv [[:block 1]]}}

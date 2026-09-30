@@ -1,4 +1,4 @@
-{:paths ["src" "java" "target/classes"]
+{:paths ["src" "resources" "java" "target/classes"]
 
  :deps
  {com.google.guava/guava

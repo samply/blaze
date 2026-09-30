@@ -9,6 +9,7 @@
    [blaze.elm.compiler.macros :refer [defunop reify-expr]]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
+   [blaze.util :refer [condp-identical]]
    [prometheus.alpha :as prom]))
 
 ;; 13.1. And
@@ -24,7 +25,7 @@
       (core/resolve-params-helper and-nil-op parameters x))
     (-optimize [_ db]
       (let [x (core/-optimize x db)]
-        (condp identical? x
+        (condp-identical x
           true nil
           false false
           nil nil
@@ -38,7 +39,7 @@
 (defn- nil-and
   "Creates an and-expression where one operand is known to be nil."
   [x]
-  (condp identical? x
+  (condp-identical x
     true nil
     false false
     nil nil
@@ -113,7 +114,7 @@
       (core/resolve-params-helper and-op parameters a b))
     (-optimize [_ db]
       (let [a (core/-optimize a db)]
-        (condp identical? a
+        (condp-identical a
           true (core/-optimize b db)
           false false
           nil (nil-and (core/-optimize b db))
@@ -133,7 +134,7 @@
   "Creates an and-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (condp identical? b
+  (condp-identical b
     true a
     false false
     nil (and-nil-op a)
@@ -142,7 +143,7 @@
 (defmethod core/compile* :elm.compiler.type/and
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (condp identical? a
+    (condp-identical a
       true (core/compile* context b)
       false false
       nil (nil-and (core/compile* context b))
@@ -173,7 +174,7 @@
       (core/resolve-params-helper or-nil-op parameters x))
     (-optimize [_ db]
       (let [x (core/-optimize x db)]
-        (condp identical? x
+        (condp-identical x
           true true
           false nil
           nil nil
@@ -187,7 +188,7 @@
 (defn- nil-or
   "Creates an or-expression where one operand is known to be nil."
   [x]
-  (condp identical? x
+  (condp-identical x
     true true
     false nil
     nil nil
@@ -269,7 +270,7 @@
       (core/resolve-params-helper or-op parameters a b))
     (-optimize [_ db]
       (let [a (core/-optimize a db)]
-        (condp identical? a
+        (condp-identical a
           true true
           false (core/-optimize b db)
           nil (nil-or (core/-optimize b db))
@@ -289,7 +290,7 @@
   "Creates an or-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (condp identical? b
+  (condp-identical b
     true true
     false a
     nil (or-nil-op a)
@@ -298,7 +299,7 @@
 (defmethod core/compile* :elm.compiler.type/or
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (condp identical? a
+    (condp-identical a
       true true
       false (core/compile* context b)
       nil (nil-or (core/compile* context b))
@@ -317,9 +318,9 @@
       (core/resolve-params-helper xor-op parameters a b))
     (-optimize [_ db]
       (let [a (core/-optimize a db)]
-        (condp identical? a
+        (condp-identical a
           true (let [b (core/-optimize b db)]
-                 (condp identical? b
+                 (condp-identical b
                    true false
                    false true
                    nil nil
@@ -338,7 +339,7 @@
   "Creates an xor-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (condp identical? b
+  (condp-identical b
     true
     (not-op a)
     false a
@@ -348,7 +349,7 @@
 (defmethod core/compile* :elm.compiler.type/xor
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (condp identical? a
+    (condp-identical a
       true (core/compile* context {:type "Not" :operand b})
       false (core/compile* context b)
       nil nil

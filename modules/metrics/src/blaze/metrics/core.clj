@@ -1,5 +1,6 @@
 (ns blaze.metrics.core
   (:require
+   [blaze.util :refer [condp-identical]]
    [clojure.core.protocols :as p]
    [clojure.datafy :as datafy])
   (:import
@@ -52,7 +53,7 @@
 (extend-protocol p/Datafiable
   Collector$Type
   (datafy [type]
-    (condp identical? type
+    (condp-identical type
       Collector$Type/COUNTER :counter
       Collector$Type/GAUGE :gauge
       type))

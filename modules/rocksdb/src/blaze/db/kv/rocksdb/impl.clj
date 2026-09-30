@@ -3,7 +3,7 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.kv.rocksdb.column-family-meta-data :as-alias column-family-meta-data]
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
-   [blaze.util :as u]
+   [blaze.util :as u :refer [condp-identical]]
    [clojure.core.protocols :as p]
    [clojure.string :as str])
   (:import
@@ -156,13 +156,13 @@
    entries))
 
 (defn property-error [^RocksDBException e name]
-  (condp identical? (some-> (.getStatus e) (.getCode))
+  (condp-identical (some-> (.getStatus e) (.getCode))
     Status$Code/NotFound
     (ba/not-found (format "Property with name `%s` was not found." name))
     (ba/fault (ex-message e))))
 
 (defn column-family-property-error [^RocksDBException e column-family name]
-  (condp identical? (some-> (.getStatus e) (.getCode))
+  (condp-identical (some-> (.getStatus e) (.getCode))
     Status$Code/NotFound
     (ba/not-found (format "Property with name `%s` was not found on column-family with name `%s`." name (clojure.core/name column-family)))
     (ba/fault (ex-message e))))

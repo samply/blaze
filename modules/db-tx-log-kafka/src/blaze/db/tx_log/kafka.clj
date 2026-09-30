@@ -10,6 +10,7 @@
    [blaze.db.tx-log.kafka.util :as u]
    [blaze.executors :as ex]
    [blaze.module :as m :refer [reg-collector]]
+   [blaze.util :refer [condp-identical]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -58,7 +59,7 @@
 
 (defn- producer-anomaly
   [e {:keys [max-request-size]} num-of-tx-cmds]
-  (condp identical? (class e)
+  (condp-identical (class e)
     RecordTooLargeException
     (ba/unsupported
      (record-too-large-msg max-request-size num-of-tx-cmds

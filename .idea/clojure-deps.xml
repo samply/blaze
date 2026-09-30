@@ -34,16 +34,8 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/resources" />
-          <option name="type" value="RESOURCE" />
-        </FolderState>
-        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/anomaly/test" />
           <option name="type" value="TEST_SOURCE" />
-        </FolderState>
-        <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/resources" />
-          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/async/resources" />
@@ -78,10 +70,6 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/resources" />
-          <option name="type" value="RESOURCE" />
-        </FolderState>
-        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/coll/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
@@ -96,10 +84,6 @@
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-resource-store/test" />
           <option name="type" value="TEST_SOURCE" />
-        </FolderState>
-        <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-stub/resources" />
-          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/db-stub/resources" />
@@ -214,16 +198,8 @@
           <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/resources" />
-          <option name="type" value="RESOURCE" />
-        </FolderState>
-        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-base/test" />
           <option name="type" value="TEST_SOURCE" />
-        </FolderState>
-        <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-test-util/resources" />
-          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/module-test-util/resources" />
@@ -358,20 +334,16 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/test-util/test" />
-          <option name="type" value="TEST_SOURCE" />
-        </FolderState>
-        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/thread-pool-executor-collector/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/test" />
-          <option name="type" value="TEST_SOURCE" />
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/resources" />
+          <option name="type" value="RESOURCE" />
         </FolderState>
         <FolderState>
-          <option name="dirUrl" value="file://$PROJECT_DIR$/resources" />
-          <option name="type" value="RESOURCE" />
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/util/test" />
+          <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/validator/test" />
