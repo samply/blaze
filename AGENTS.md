@@ -95,6 +95,7 @@ Before finishing a task, ensure the following commands pass:
 2.  **Lint:** `make lint` (Uses `clj-kondo`)
 3.  **Test:** Run tests only for the modules you changed: `make -C modules/<module> test` (e.g. `make -C modules/db test`). Use `make test` only when changes span multiple modules or the root.
     * To run a single test or a single namespace, use the `test-focus` target with a `FOCUS` variable holding a kaocha test id — either a whole namespace or a `namespace/var`: `make -C modules/<module> test-focus FOCUS=blaze.db.api-test` or `make -C modules/db test-focus FOCUS=blaze.db.api-test/pull-fn-test`.
+    * **Changed Java classes:** Call `make -C modules/<module> clean test` (or `clean test-focus`) whenever Java classes of a module changed. The `prep` step compiles Java classes only once (guarded by `target/prep-done`), so without `clean` the tests silently run against the stale classes.
 4.  **Coverage:** `make test-coverage` (Checks for adequate test coverage — must be **≥ 95% forms**)
     * Reflection warnings printed during `make test-coverage` are **normal**: cloverage instruments the code in a way that disables type hints, so reflection warnings appear there even for correctly hinted code. Do not try to fix them based on the coverage run — only reflection warnings from `make lint`/normal compilation matter.
 
