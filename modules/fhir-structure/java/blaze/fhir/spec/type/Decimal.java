@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Decimals;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -30,8 +28,8 @@ public final class Decimal extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 4;
 
-    private static final Interner<ExtensionData, Decimal> INTERNER = Interners.weakInterner(k -> new Decimal(k, null));
     private static final Decimal EMPTY = new Decimal(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Decimal> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Decimal(k, null));
 
     private final BigDecimal value;
 

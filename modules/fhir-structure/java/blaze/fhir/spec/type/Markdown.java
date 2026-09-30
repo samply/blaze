@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -29,8 +27,8 @@ public final class Markdown extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 16;
 
-    private static final Interner<ExtensionData, Markdown> INTERNER = Interners.weakInterner(k -> new Markdown(k, null));
     private static final Markdown EMPTY = new Markdown(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Markdown> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Markdown(k, null));
 
     private final String value;
 

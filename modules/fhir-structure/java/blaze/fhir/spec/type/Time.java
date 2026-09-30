@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Times;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -30,8 +28,8 @@ public final class Time extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 12;
 
-    private static final Interner<ExtensionData, Time> INTERNER = Interners.weakInterner(k -> new Time(k, null));
     private static final Time EMPTY = new Time(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Time> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Time(k, null));
 
     private final LocalTime value;
 

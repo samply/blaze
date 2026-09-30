@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
@@ -28,8 +26,8 @@ public final class Date extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 10;
 
-    private static final Interner<ExtensionData, Date> INTERNER = Interners.weakInterner(k -> new Date(k, null));
     private static final Date EMPTY = new Date(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Date> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Date(k, null));
 
     private final blaze.fhir.spec.type.system.Date value;
 

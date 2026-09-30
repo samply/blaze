@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Integers;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -39,8 +37,8 @@ public final class UnsignedInt extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 17;
 
-    private static final Interner<ExtensionData, UnsignedInt> INTERNER = Interners.weakInterner(k -> new UnsignedInt(k, -1));
     private static final UnsignedInt EMPTY = new UnsignedInt(ExtensionData.EMPTY, -1);
+    private static final ValuelessInterner<UnsignedInt> INTERNER = new ValuelessInterner<>(EMPTY, k -> new UnsignedInt(k, -1));
 
     private final int value;
 

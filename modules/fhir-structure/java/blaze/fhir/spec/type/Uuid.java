@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
@@ -29,8 +27,8 @@ public final class Uuid extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 19;
 
-    private static final Interner<ExtensionData, Uuid> INTERNER = Interners.weakInterner(k -> new Uuid(k, null));
     private static final Uuid EMPTY = new Uuid(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Uuid> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Uuid(k, null));
     private static final int MEM_SIZE_UUID = 24;
 
     private final UUID value;

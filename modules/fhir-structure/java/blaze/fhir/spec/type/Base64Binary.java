@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.Strings;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IObj;
@@ -30,8 +28,8 @@ public final class Base64Binary extends PrimitiveElement implements IObj {
 
     private static final byte HASH_MARKER = 8;
 
-    private static final Interner<ExtensionData, Base64Binary> INTERNER = Interners.weakInterner(k -> new Base64Binary(k, null));
     private static final Base64Binary EMPTY = new Base64Binary(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Base64Binary> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Base64Binary(k, null));
 
     private final String value;
 

@@ -1,7 +1,5 @@
 package blaze.fhir.spec.type;
 
-import blaze.Interner;
-import blaze.Interners;
 import blaze.fhir.spec.type.system.DateTime;
 import clojure.lang.ILookupThunk;
 import clojure.lang.IPersistentMap;
@@ -30,8 +28,8 @@ public final class Instant extends PrimitiveElement {
 
     private static final byte HASH_MARKER = 9;
 
-    private static final Interner<ExtensionData, Instant> INTERNER = Interners.weakInterner(k -> new Instant(k, null));
     private static final Instant EMPTY = new Instant(ExtensionData.EMPTY, null);
+    private static final ValuelessInterner<Instant> INTERNER = new ValuelessInterner<>(EMPTY, k -> new Instant(k, null));
 
     private final OffsetDateTime value;
 
