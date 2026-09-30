@@ -516,7 +516,7 @@
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
    :fail-on-unknown-property false
    :include-summary-only true
-   :use-regex false}
+   :mode :internal}
 
   :blaze.fhir/writing-context
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}

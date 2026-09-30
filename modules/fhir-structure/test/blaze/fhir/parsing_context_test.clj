@@ -54,9 +54,9 @@
       [:cause-data ::s/problems 0 :via] := [::parsing-context/include-summary-only]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "invalid use-regex"
-    (given-failed-system (assoc-in config [:blaze.fhir/parsing-context :use-regex] ::invalid)
+  (testing "invalid mode"
+    (given-failed-system (assoc-in config [:blaze.fhir/parsing-context :mode] ::invalid)
       :key := :blaze.fhir/parsing-context
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [::parsing-context/use-regex]
+      [:cause-data ::s/problems 0 :via] := [::parsing-context/mode]
       [:cause-data ::s/problems 0 :val] := ::invalid)))

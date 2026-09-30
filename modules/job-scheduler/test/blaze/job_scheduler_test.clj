@@ -239,7 +239,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}
+    :mode :internal}
 
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}

@@ -71,7 +71,7 @@
    {:structure-definition-repo structure-definition-repo
     :fail-on-unknown-property false
     :include-summary-only true
-    :use-regex false}))
+    :mode :internal}))
 
 (defn- parse-json
   ([source]
