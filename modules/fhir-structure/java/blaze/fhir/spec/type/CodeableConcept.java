@@ -67,21 +67,20 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
     private static final Interner<InternerKey, CodeableConcept> INTERNER = Interners.weakInterner(
             k -> new CodeableConcept(k.extensionData, k.coding, k.text, true)
     );
-    @SuppressWarnings("unchecked")
     private static final CodeableConcept EMPTY = new CodeableConcept(ExtensionData.EMPTY, PersistentVector.EMPTY, null, true);
 
-    private final List<Coding> coding;
+    private final PersistentVector coding;
     private final String text;
     private final boolean interned;
 
-    private CodeableConcept(ExtensionData extensionData, List<Coding> coding, String text, boolean interned) {
+    private CodeableConcept(ExtensionData extensionData, PersistentVector coding, String text, boolean interned) {
         super(extensionData);
         this.coding = requireNonNull(coding);
         this.text = text;
         this.interned = interned;
     }
 
-    private static CodeableConcept maybeIntern(ExtensionData extensionData, List<Coding> coding, String text) {
+    private static CodeableConcept maybeIntern(ExtensionData extensionData, PersistentVector coding, String text) {
         return extensionData.isInterned() && Base.areAllInterned(coding) && Base.isInterned(text)
                 ? INTERNER.intern(new InternerKey(extensionData, coding, text))
                 : new CodeableConcept(extensionData, coding, text, false);
@@ -111,6 +110,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
         return interned;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Coding> coding() {
         return coding;
     }
@@ -242,7 +242,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, List<Coding> coding, String text) {
+    private record InternerKey(ExtensionData extensionData, PersistentVector coding, String text) {
         private InternerKey {
             requireNonNull(extensionData);
             requireNonNull(coding);

@@ -34,21 +34,19 @@ public final class ExtensionData {
     private static final FieldName FIELD_NAME_EXTENSION = FieldName.of("extension");
 
     final String id;
-    final List<Extension> extension;
+    final PersistentVector extension;
     final IPersistentMap meta;
 
-    private static final Interner<List<Extension>, ExtensionData> INTERNER = Interners.weakInterner(k -> new ExtensionData(null, k, null));
-
-    @SuppressWarnings("unchecked")
+    private static final Interner<PersistentVector, ExtensionData> INTERNER = Interners.weakInterner(k -> new ExtensionData(null, k, null));
     public static final ExtensionData EMPTY = new ExtensionData(null, PersistentVector.EMPTY, null);
 
-    private ExtensionData(String id, List<Extension> extension, IPersistentMap meta) {
+    private ExtensionData(String id, PersistentVector extension, IPersistentMap meta) {
         this.id = id;
         this.extension = requireNonNull(extension);
         this.meta = meta;
     }
 
-    private static ExtensionData maybeIntern(String id, List<Extension> extension, IPersistentMap meta) {
+    private static ExtensionData maybeIntern(String id, PersistentVector extension, IPersistentMap meta) {
         if (id == null && (meta == null || meta.count() == 0)) {
             if (extension.isEmpty()) return EMPTY;
             if (Base.areAllInterned(extension)) return INTERNER.intern(extension);
@@ -84,7 +82,7 @@ public final class ExtensionData {
 
     void collectReferences(List<PersistentVector> refs) {
         if (extension.isEmpty()) return;
-        for (Extension e : extension) e.collectReferences(refs);
+        for (Object e : extension) ((Extension) e).collectReferences(refs);
     }
 
     int memSize() {

@@ -109,20 +109,19 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     private static final Interner<InternerKey, Meta> INTERNER = Interners.weakInterner(
             k -> new Meta(k.extensionData, null, null, k.source, k.profile, k.security, k.tag, true)
     );
-    @SuppressWarnings("unchecked")
     private static final Meta EMPTY = new Meta(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
             PersistentVector.EMPTY, PersistentVector.EMPTY, true);
 
     private final Id versionId;
     private final Instant lastUpdated;
     private final Uri source;
-    private final List<Canonical> profile;
-    private final List<Coding> security;
-    private final List<Coding> tag;
+    private final PersistentVector profile;
+    private final PersistentVector security;
+    private final PersistentVector tag;
     private final boolean interned;
 
-    private Meta(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source, List<Canonical> profile,
-                 List<Coding> security, List<Coding> tag, boolean interned) {
+    private Meta(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source, PersistentVector profile,
+                 PersistentVector security, PersistentVector tag, boolean interned) {
         super(extensionData);
         this.versionId = versionId;
         this.lastUpdated = lastUpdated;
@@ -134,7 +133,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     }
 
     private static Meta maybeIntern(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source,
-                                    List<Canonical> profile, List<Coding> security, List<Coding> tag) {
+                                    PersistentVector profile, PersistentVector security, PersistentVector tag) {
         return extensionData.isInterned() && versionId == null && lastUpdated == null && Base.isInterned(source) &&
                 Base.areAllInterned(profile) && Base.areAllInterned(security) && Base.areAllInterned(tag)
                 ? INTERNER.intern(new InternerKey(extensionData, source, profile, security, tag))
@@ -179,14 +178,17 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
         return source;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Canonical> profile() {
         return profile;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Coding> security() {
         return security;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Coding> tag() {
         return tag;
     }
@@ -387,8 +389,8 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, Uri source, List<Canonical> profile, List<Coding> security,
-                               List<Coding> tag) {
+    private record InternerKey(ExtensionData extensionData, Uri source, PersistentVector profile, PersistentVector security,
+                               PersistentVector tag) {
         private InternerKey {
             requireNonNull(extensionData);
             requireNonNull(profile);

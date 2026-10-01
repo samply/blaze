@@ -25,13 +25,14 @@ abstract class AbstractBackboneElement extends AbstractElement {
         }
     };
 
-    protected final List<Extension> modifierExtension;
+    protected final PersistentVector modifierExtension;
 
-    protected AbstractBackboneElement(ExtensionData extensionData, List<Extension> modifierExtension) {
+    protected AbstractBackboneElement(ExtensionData extensionData, PersistentVector modifierExtension) {
         super(extensionData);
         this.modifierExtension = requireNonNull(modifierExtension);
     }
 
+    @SuppressWarnings("unchecked")
     public final List<Extension> modifierExtension() {
         return modifierExtension;
     }
@@ -52,7 +53,7 @@ abstract class AbstractBackboneElement extends AbstractElement {
     public void collectReferences(List<PersistentVector> refs) {
         super.collectReferences(refs);
         if (modifierExtension.isEmpty()) return;
-        for (Extension e : modifierExtension) e.collectReferences(refs);
+        for (Object e : modifierExtension) ((Extension) e).collectReferences(refs);
     }
 
     protected void serializeJsonBase(JsonGenerator generator) throws IOException {

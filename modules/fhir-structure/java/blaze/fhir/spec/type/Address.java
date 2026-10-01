@@ -139,15 +139,13 @@ public final class Address extends AbstractElement implements Complex, Extension
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueAddress");
 
     private static final byte HASH_MARKER = 47;
-
-    @SuppressWarnings("unchecked")
     private static final Address EMPTY = new Address(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
             null, null, null, null, null, null);
 
     private final Code use;
     private final Code type;
     private final String text;
-    private final List<String> line;
+    private final PersistentVector line;
     private final String city;
     private final String district;
     private final String state;
@@ -155,7 +153,7 @@ public final class Address extends AbstractElement implements Complex, Extension
     private final String country;
     private final Period period;
 
-    private Address(ExtensionData extensionData, Code use, Code type, String text, List<String> line,
+    private Address(ExtensionData extensionData, Code use, Code type, String text, PersistentVector line,
                     String city, String district, String state, String postalCode, String country, Period period) {
         super(extensionData);
         this.use = use;
@@ -205,6 +203,7 @@ public final class Address extends AbstractElement implements Complex, Extension
         return text;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> line() {
         return line;
     }

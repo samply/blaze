@@ -93,19 +93,17 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueTriggerDefinition");
 
     private static final byte HASH_MARKER = 68;
-
-    @SuppressWarnings("unchecked")
     private static final TriggerDefinition EMPTY = new TriggerDefinition(ExtensionData.EMPTY, null, null, null,
             PersistentVector.EMPTY, null);
 
     private final Code type;
     private final String name;
     private final Element timing;
-    private final List<DataRequirement> data;
+    private final PersistentVector data;
     private final Expression condition;
 
     private TriggerDefinition(ExtensionData extensionData, Code type, String name, Element timing,
-                              List<DataRequirement> data, Expression condition) {
+                              PersistentVector data, Expression condition) {
         super(extensionData);
         this.type = type;
         this.name = name;
@@ -147,6 +145,7 @@ public final class TriggerDefinition extends AbstractElement implements Complex,
         return timing;
     }
 
+    @SuppressWarnings("unchecked")
     public List<DataRequirement> data() {
         return data;
     }

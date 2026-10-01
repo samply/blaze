@@ -27,27 +27,28 @@ public final class Lists {
     }
 
     /**
-     * Returns an empty {@link PersistentVector} if {@code list} is {@code null}, otherwise the
-     * given {@code list} unchanged.
+     * Returns {@code list} as {@link PersistentVector}.
+     * <p>
+     * Returns an empty {@link PersistentVector} if {@code list} is {@code null} and {@code list} itself if it's
+     * already a {@link PersistentVector}. Copies all other lists into a new {@link PersistentVector}, so that the
+     * result is always immutable, even if {@code list} is mutable and gets mutated afterwards.
      * <p>
      * Rejects lists containing {@code null} elements: FHIR has no representation for a {@code null}
      * inside a repeating element, so any such list is invalid and would fail later (e.g. during
      * hashing or serialization) with a less informative error.
      *
-     * @param list the list to check, may be {@code null}
-     * @return an empty {@link PersistentVector} if {@code list} is {@code null}, otherwise
-     * {@code list}
+     * @param list the list to convert, may be {@code null}
+     * @return an immutable {@link PersistentVector} with the elements of {@code list}
      * @throws IllegalArgumentException if {@code list} contains a {@code null} element
      */
-    @SuppressWarnings("unchecked")
-    public static <T> List<T> nullToEmpty(Object list) {
+    public static PersistentVector nullToEmpty(Object list) {
         if (list == null) return PersistentVector.EMPTY;
-        List<T> typed = (List<T>) list;
-        for (T e : typed) {
-            if (e == null) {
+        PersistentVector vector = list instanceof PersistentVector v ? v : PersistentVector.create((List<?>) list);
+        for (int i = 0, n = vector.count(); i < n; i++) {
+            if (vector.nth(i) == null) {
                 throw new IllegalArgumentException("null element in list");
             }
         }
-        return typed;
+        return vector;
     }
 }
