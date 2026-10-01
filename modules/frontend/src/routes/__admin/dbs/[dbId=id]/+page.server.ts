@@ -1,7 +1,8 @@
 import type { Actions, PageServerLoad, RouteParams } from './$types';
 import { resolve } from '$app/paths';
-import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { backendUrl } from '$lib/backend.js';
+import { fetchFhir, fetchJson, loadError } from '$lib/fetch.js';
 import { url } from '$lib/canonical';
 import { toTitleCase } from '$lib/util.js';
 import {
@@ -42,59 +43,38 @@ export interface ColumnFamilyData {
 }
 
 async function loadStats(fetch: Fetch, params: RouteParams): Promise<Stats> {
-  const res = await fetch(backendUrl(`/__admin/dbs/${params.dbId}/stats`), {
-    headers: { Accept: 'application/json' }
+  const database = toTitleCase(params.dbId);
+
+  return fetchJson<Stats>(fetch, backendUrl(`/__admin/dbs/${params.dbId}/stats`), {
+    error: loadError({
+      404: `The ${database} database stats were not found.`,
+      default: `An error happened while loading the ${database} database stats. Please try again later.`
+    })
   });
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : undefined,
-      message:
-        res.status == 404
-          ? `The ${toTitleCase(params.dbId)} database stats were not found.`
-          : `An error happened while loading the ${toTitleCase(
-              params.dbId
-            )} database stats. Please try again later.`
-    });
-  }
-
-  return await res.json();
 }
 
 async function loadColumnFamilies(fetch: Fetch, params: RouteParams): Promise<ColumnFamilyData[]> {
-  const res = await fetch(backendUrl(`/__admin/dbs/${params.dbId}/column-families`), {
-    headers: { Accept: 'application/json' }
-  });
+  const database = toTitleCase(params.dbId);
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : undefined,
-      message:
-        res.status == 404
-          ? `The ${toTitleCase(params.dbId)} database column families were not found.`
-          : `An error happened while loading the ${toTitleCase(
-              params.dbId
-            )} database column families. Please try again later.`
-    });
-  }
-
-  return await res.json();
+  return fetchJson<ColumnFamilyData[]>(
+    fetch,
+    backendUrl(`/__admin/dbs/${params.dbId}/column-families`),
+    {
+      error: loadError({
+        404: `The ${database} database column families were not found.`,
+        default: `An error happened while loading the ${database} database column families. Please try again later.`
+      })
+    }
+  );
 }
 
 async function loadDiskPerfJobs(fetch: typeof window.fetch): Promise<DiskPerfJob[]> {
   const query = `code=${encodeURIComponent(url('CodeSystem/JobType') + '|disk-perf')}&_sort=-_lastUpdated&_count=100`;
-  const res = await fetch(backendUrl('/__admin/Task', query), {
-    headers: { Accept: 'application/fhir+json' }
+  const bundle = await fetchFhir<Bundle>(fetch, backendUrl('/__admin/Task', query), {
+    error:
+      'An error happened while loading the disk performance measurement jobs. Please try again later.'
   });
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the disk performance measurement jobs. Please try again later.`
-    });
-  }
-
-  const bundle = (await res.json()) as Bundle;
   return (
     bundle.entry
       ?.map((e) => toJob(e.resource as Task))

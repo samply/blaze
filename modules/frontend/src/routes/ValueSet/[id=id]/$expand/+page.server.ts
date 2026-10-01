@@ -1,31 +1,15 @@
 import type { Actions, PageServerLoad } from './$types';
 import type { Bundle, OperationOutcome, ParametersParameter, ValueSet } from 'fhir/r4';
 import { backendUrl } from '$lib/backend.js';
-import { error, fail, type NumericRange } from '@sveltejs/kit';
+import { fetchFhir, resourceError } from '$lib/fetch.js';
+import { fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
-  const res = await fetch(
+  const bundle = await fetchFhir<Bundle>(
+    fetch,
     backendUrl('/ValueSet', `_id=${params.id}&_elements=version,title,description`),
-    {
-      headers: {
-        Accept: 'application/fhir+json'
-      }
-    }
+    { error: resourceError('ValueSet', params.id) }
   );
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : res.status == 410 ? 'Gone' : undefined,
-      message:
-        res.status == 404
-          ? `The ValueSet with ID ${params.id} was not found.`
-          : res.status == 410
-            ? `The ValueSet with ID ${params.id} was deleted. Please look into the history.`
-            : `An error happened while loading the ValueSet with ID ${params.id}. Please try again later.`
-    });
-  }
-
-  const bundle: Bundle = await res.json();
 
   return {
     valueSet: bundle.entry?.[0].resource as ValueSet
