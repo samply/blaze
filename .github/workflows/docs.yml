@@ -85,6 +85,17 @@ jobs:
         VITE_LATEST_FRONTEND_DIGEST: ${{ steps.release.outputs.frontend_digest }}
       run: make build
 
+    # The Implementation Guide is not rendered here. Every published version is
+    # rendered once, by the release that publishes it, and restored from the
+    # asset that release carries.
+    - name: Download Published Implementation Guides
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: .github/scripts/download-ig-archives.sh ig-archive
+
+    - name: Assemble IG Site
+      run: modules/ig/scripts/assemble-site.sh ig-archive docs/.vitepress/dist/fhir
+
     - name: Setup Pages
       uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
