@@ -174,29 +174,27 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueDosage");
 
     private static final byte HASH_MARKER = 72;
-
-    @SuppressWarnings("unchecked")
     private static final Dosage EMPTY = new Dosage(ExtensionData.EMPTY, PersistentVector.EMPTY, null, null,
             PersistentVector.EMPTY, null, null, null, null, null, null, PersistentVector.EMPTY, null, null, null);
 
     private final Integer sequence;
     private final String text;
-    private final List<CodeableConcept> additionalInstruction;
+    private final PersistentVector additionalInstruction;
     private final String patientInstruction;
     private final Timing timing;
     private final Element asNeeded;
     private final CodeableConcept site;
     private final CodeableConcept route;
     private final CodeableConcept method;
-    private final List<DoseAndRate> doseAndRate;
+    private final PersistentVector doseAndRate;
     private final Ratio maxDosePerPeriod;
     private final Quantity maxDosePerAdministration;
     private final Quantity maxDosePerLifetime;
 
-    private Dosage(ExtensionData extensionData, List<Extension> modifierExtension, Integer sequence, String text,
-                   List<CodeableConcept> additionalInstruction, String patientInstruction, Timing timing,
+    private Dosage(ExtensionData extensionData, PersistentVector modifierExtension, Integer sequence, String text,
+                   PersistentVector additionalInstruction, String patientInstruction, Timing timing,
                    Element asNeeded, CodeableConcept site, CodeableConcept route, CodeableConcept method,
-                   List<DoseAndRate> doseAndRate, Ratio maxDosePerPeriod, Quantity maxDosePerAdministration,
+                   PersistentVector doseAndRate, Ratio maxDosePerPeriod, Quantity maxDosePerAdministration,
                    Quantity maxDosePerLifetime) {
         super(extensionData, modifierExtension);
         this.sequence = sequence;
@@ -251,6 +249,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         return text;
     }
 
+    @SuppressWarnings("unchecked")
     public List<CodeableConcept> additionalInstruction() {
         return additionalInstruction;
     }
@@ -279,6 +278,7 @@ public final class Dosage extends AbstractBackboneElement implements Complex, Ex
         return method;
     }
 
+    @SuppressWarnings("unchecked")
     public List<DoseAndRate> doseAndRate() {
         return doseAndRate;
     }

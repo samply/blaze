@@ -110,21 +110,19 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueHumanName");
 
     private static final byte HASH_MARKER = 46;
-
-    @SuppressWarnings("unchecked")
     private static final HumanName EMPTY = new HumanName(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
             PersistentVector.EMPTY, PersistentVector.EMPTY, null);
 
     private final Code use;
     private final String text;
     private final String family;
-    private final List<String> given;
-    private final List<String> prefix;
-    private final List<String> suffix;
+    private final PersistentVector given;
+    private final PersistentVector prefix;
+    private final PersistentVector suffix;
     private final Period period;
 
-    private HumanName(ExtensionData extensionData, Code use, String text, String family, List<String> given,
-                      List<String> prefix, List<String> suffix, Period period) {
+    private HumanName(ExtensionData extensionData, Code use, String text, String family, PersistentVector given,
+                      PersistentVector prefix, PersistentVector suffix, Period period) {
         super(extensionData);
         this.use = use;
         this.text = text;
@@ -170,14 +168,17 @@ public final class HumanName extends AbstractElement implements Complex, Extensi
         return family;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> given() {
         return given;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> prefix() {
         return prefix;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> suffix() {
         return suffix;
     }

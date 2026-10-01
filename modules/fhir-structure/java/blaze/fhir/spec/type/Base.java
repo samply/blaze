@@ -109,7 +109,7 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         return value.isEmpty() ? base : base.cons(MapEntry.create(name, value));
     }
 
-    static <T> List<T> listFrom(IPersistentMap m, Keyword key) {
+    static PersistentVector listFrom(IPersistentMap m, Keyword key) {
         return Lists.nullToEmpty(m.valAt(key));
     }
 
@@ -117,10 +117,10 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         return x == null || x.isInterned();
     }
 
-    static boolean areAllInterned(List<? extends Base> x) {
+    static boolean areAllInterned(List<?> x) {
         if (x == null) return true;
-        for (Base e : x) {
-            if (!Base.isInterned(e)) return false;
+        for (Object e : x) {
+            if (!Base.isInterned((Base) e)) return false;
         }
         return true;
     }
@@ -159,10 +159,10 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    static void hashIntoList(List<? extends Base> l, PrimitiveSink sink) {
+    static void hashIntoList(List<?> l, PrimitiveSink sink) {
         sink.putByte(HASH_MARKER_LIST);
-        for (Base b : l) {
-            b.hashInto(sink);
+        for (Object b : l) {
+            ((Base) b).hashInto(sink);
         }
     }
 

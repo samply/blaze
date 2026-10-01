@@ -46,14 +46,12 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueContactDetail");
 
     private static final byte HASH_MARKER = 52;
-
-    @SuppressWarnings("unchecked")
     private static final ContactDetail EMPTY = new ContactDetail(ExtensionData.EMPTY, null, PersistentVector.EMPTY);
 
     private final String name;
-    private final List<ContactPoint> telecom;
+    private final PersistentVector telecom;
 
-    private ContactDetail(ExtensionData extensionData, String name, List<ContactPoint> telecom) {
+    private ContactDetail(ExtensionData extensionData, String name, PersistentVector telecom) {
         super(extensionData);
         this.name = name;
         this.telecom = requireNonNull(telecom);
@@ -82,6 +80,7 @@ public final class ContactDetail extends AbstractElement implements Complex, Ext
         return name;
     }
 
+    @SuppressWarnings("unchecked")
     public List<ContactPoint> telecom() {
         return telecom;
     }

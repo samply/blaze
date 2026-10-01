@@ -22,6 +22,7 @@ abstract class AbstractElement implements Element {
         return extensionData.id;
     }
 
+    @SuppressWarnings("unchecked")
     public final List<Extension> extension() {
         return extensionData.extension;
     }

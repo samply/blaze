@@ -8,11 +8,11 @@ import java.util.List;
 
 public interface Complex extends Base {
 
-    static void serializeJsonComplexList(List<? extends Complex> values, JsonGenerator generator, SerializableString fieldName) throws IOException {
+    static void serializeJsonComplexList(List<?> values, JsonGenerator generator, SerializableString fieldName) throws IOException {
         generator.writeFieldName(fieldName);
         generator.writeStartArray();
-        for (Complex element : values) {
-            element.serializeAsJsonValue(generator);
+        for (Object element : values) {
+            ((Complex) element).serializeAsJsonValue(generator);
         }
         generator.writeEndArray();
     }

@@ -71,16 +71,14 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueTiming");
 
     private static final byte HASH_MARKER = 57;
-
-    @SuppressWarnings("unchecked")
     private static final Timing EMPTY = new Timing(ExtensionData.EMPTY, PersistentVector.EMPTY, PersistentVector.EMPTY,
             null, null);
 
-    private final List<DateTime> event;
+    private final PersistentVector event;
     private final Repeat repeat;
     private final CodeableConcept code;
 
-    private Timing(ExtensionData extensionData, List<Extension> modifierExtension, List<DateTime> event, Repeat repeat,
+    private Timing(ExtensionData extensionData, PersistentVector modifierExtension, PersistentVector event, Repeat repeat,
                    CodeableConcept code) {
         super(extensionData, modifierExtension);
         this.event = requireNonNull(event);
@@ -114,6 +112,7 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
         return false;
     }
 
+    @SuppressWarnings("unchecked")
     public List<DateTime> event() {
         return event;
     }
@@ -450,8 +449,6 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
         private static final FieldName FIELD_NAME_OFFSET = FieldName.of("offset");
 
         private static final byte HASH_MARKER = 58;
-
-        @SuppressWarnings("unchecked")
         private static final Repeat EMPTY = new Repeat(ExtensionData.EMPTY, null, null, null, null, null, null, null,
                 null, null, null, null, PersistentVector.EMPTY, PersistentVector.EMPTY, PersistentVector.EMPTY, null);
 
@@ -466,15 +463,15 @@ public final class Timing extends AbstractBackboneElement implements Complex, Ex
         private final Decimal period;
         private final Decimal periodMax;
         private final Code periodUnit;
-        private final List<Code> dayOfWeek;
-        private final List<Time> timeOfDay;
-        private final List<Code> when;
+        private final PersistentVector dayOfWeek;
+        private final PersistentVector timeOfDay;
+        private final PersistentVector when;
         private final UnsignedInt offset;
 
         private Repeat(ExtensionData extensionData, Element bounds, PositiveInt count, PositiveInt countMax,
                        Decimal duration, Decimal durationMax, Code durationUnit, PositiveInt frequency,
                        PositiveInt frequencyMax, Decimal period, Decimal periodMax, Code periodUnit,
-                       List<Code> dayOfWeek, List<Time> timeOfDay, List<Code> when, UnsignedInt offset) {
+                       PersistentVector dayOfWeek, PersistentVector timeOfDay, PersistentVector when, UnsignedInt offset) {
             super(extensionData);
             this.bounds = bounds;
             this.count = count;

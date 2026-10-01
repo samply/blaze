@@ -115,12 +115,10 @@ public final class Signature extends AbstractElement implements Complex, Extensi
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueSignature");
 
     private static final byte HASH_MARKER = 59;
-
-    @SuppressWarnings("unchecked")
     private static final Signature EMPTY = new Signature(ExtensionData.EMPTY, PersistentVector.EMPTY, null, null, null,
             null, null, null);
 
-    private final List<Coding> type;
+    private final PersistentVector type;
     private final Instant when;
     private final Reference who;
     private final Reference onBehalfOf;
@@ -128,7 +126,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
     private final Code sigFormat;
     private final Base64Binary data;
 
-    private Signature(ExtensionData extensionData, List<Coding> type, Instant when, Reference who,
+    private Signature(ExtensionData extensionData, PersistentVector type, Instant when, Reference who,
                       Reference onBehalfOf, Code targetFormat, Code sigFormat, Base64Binary data) {
         super(extensionData);
         this.type = requireNonNull(type);
@@ -163,6 +161,7 @@ public final class Signature extends AbstractElement implements Complex, Extensi
         return FIELDS.clone();
     }
 
+    @SuppressWarnings("unchecked")
     public List<Coding> type() {
         return type;
     }

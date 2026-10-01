@@ -48,15 +48,13 @@ public final class Contributor extends AbstractElement implements Complex, Exten
     private static final SerializedString FIELD_NAME_CONTACT = new SerializedString("contact");
 
     private static final byte HASH_MARKER = 60;
-
-    @SuppressWarnings("unchecked")
     private static final Contributor EMPTY = new Contributor(ExtensionData.EMPTY, null, null, PersistentVector.EMPTY);
 
     private final Code type;
     private final String name;
-    private final List<ContactDetail> contact;
+    private final PersistentVector contact;
 
-    private Contributor(ExtensionData extensionData, Code type, String name, List<ContactDetail> contact) {
+    private Contributor(ExtensionData extensionData, Code type, String name, PersistentVector contact) {
         super(extensionData);
         this.type = type;
         this.name = name;
@@ -92,6 +90,7 @@ public final class Contributor extends AbstractElement implements Complex, Exten
         return name;
     }
 
+    @SuppressWarnings("unchecked")
     public List<ContactDetail> contact() {
         return contact;
     }

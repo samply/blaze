@@ -60,8 +60,6 @@ public final class DataRequirement extends AbstractElement implements Complex, E
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueDataRequirement");
 
     private static final byte HASH_MARKER = 65;
-
-    @SuppressWarnings("unchecked")
     private static final DataRequirement EMPTY = new DataRequirement(ExtensionData.EMPTY, null, PersistentVector.EMPTY,
             null, PersistentVector.EMPTY, PersistentVector.EMPTY, PersistentVector.EMPTY, null, PersistentVector.EMPTY);
 
@@ -122,17 +120,17 @@ public final class DataRequirement extends AbstractElement implements Complex, E
     };
 
     private final Code type;
-    private final List<Canonical> profile;
+    private final PersistentVector profile;
     private final Element subject;
-    private final List<String> mustSupport;
-    private final List<CodeFilter> codeFilter;
-    private final List<DateFilter> dateFilter;
+    private final PersistentVector mustSupport;
+    private final PersistentVector codeFilter;
+    private final PersistentVector dateFilter;
     private final PositiveInt limit;
-    private final List<Sort> sort;
+    private final PersistentVector sort;
 
-    private DataRequirement(ExtensionData extensionData, Code type, List<Canonical> profile, Element subject,
-                            List<String> mustSupport, List<CodeFilter> codeFilter, List<DateFilter> dateFilter,
-                            PositiveInt limit, List<Sort> sort) {
+    private DataRequirement(ExtensionData extensionData, Code type, PersistentVector profile, Element subject,
+                            PersistentVector mustSupport, PersistentVector codeFilter, PersistentVector dateFilter,
+                            PositiveInt limit, PersistentVector sort) {
         super(extensionData);
         this.type = type;
         this.profile = requireNonNull(profile);
@@ -171,6 +169,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         return type;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Canonical> profile() {
         return profile;
     }
@@ -179,14 +178,17 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         return subject;
     }
 
+    @SuppressWarnings("unchecked")
     public List<String> mustSupport() {
         return mustSupport;
     }
 
+    @SuppressWarnings("unchecked")
     public List<CodeFilter> codeFilter() {
         return codeFilter;
     }
 
+    @SuppressWarnings("unchecked")
     public List<DateFilter> dateFilter() {
         return dateFilter;
     }
@@ -195,6 +197,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         return limit;
     }
 
+    @SuppressWarnings("unchecked")
     public List<Sort> sort() {
         return sort;
     }
@@ -455,8 +458,6 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         private static final SerializedString FIELD_NAME_CODE = new SerializedString("code");
 
         private static final byte HASH_MARKER = 62;
-
-        @SuppressWarnings("unchecked")
         private static final CodeFilter EMPTY = new CodeFilter(ExtensionData.EMPTY, null, null, null,
                 PersistentVector.EMPTY);
 
@@ -498,9 +499,9 @@ public final class DataRequirement extends AbstractElement implements Complex, E
         private final String path;
         private final String searchParam;
         private final Canonical valueSet;
-        private final List<Coding> code;
+        private final PersistentVector code;
 
-        private CodeFilter(ExtensionData extensionData, String path, String searchParam, Canonical valueSet, List<Coding> code) {
+        private CodeFilter(ExtensionData extensionData, String path, String searchParam, Canonical valueSet, PersistentVector code) {
             super(extensionData);
             this.path = path;
             this.searchParam = searchParam;
@@ -541,6 +542,7 @@ public final class DataRequirement extends AbstractElement implements Complex, E
             return valueSet;
         }
 
+        @SuppressWarnings("unchecked")
         public List<Coding> code() {
             return code;
         }

@@ -23,20 +23,20 @@ public interface Primitive extends ExtensionValue {
 
     Keyword[] FIELDS = {ID, EXTENSION, VALUE};
 
-    static void serializeJsonPrimitiveList(List<? extends Primitive> values, JsonGenerator generator, FieldName fieldName) throws IOException {
-        if (values.stream().anyMatch(Primitive::hasValue)) {
+    static void serializeJsonPrimitiveList(List<?> values, JsonGenerator generator, FieldName fieldName) throws IOException {
+        if (values.stream().anyMatch(value -> ((Primitive) value).hasValue())) {
             generator.writeFieldName(fieldName.normal());
             generator.writeStartArray();
-            for (Primitive value : values) {
-                value.serializeJsonPrimitiveValue(generator);
+            for (Object value : values) {
+                ((Primitive) value).serializeJsonPrimitiveValue(generator);
             }
             generator.writeEndArray();
         }
-        if (values.stream().anyMatch(Primitive::isExtended)) {
+        if (values.stream().anyMatch(value -> ((Primitive) value).isExtended())) {
             generator.writeFieldName(fieldName.extended());
             generator.writeStartArray();
-            for (Primitive value : values) {
-                value.serializeJsonPrimitiveExtension(generator);
+            for (Object value : values) {
+                ((Primitive) value).serializeJsonPrimitiveExtension(generator);
             }
             generator.writeEndArray();
         }

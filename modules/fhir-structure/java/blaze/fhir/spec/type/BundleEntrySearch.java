@@ -43,15 +43,13 @@ public final class BundleEntrySearch extends AbstractBackboneElement implements 
     private static final FieldName FIELD_NAME_SCORE = FieldName.of("score");
 
     private static final byte HASH_MARKER = 45;
-
-    @SuppressWarnings("unchecked")
     private static final BundleEntrySearch EMPTY = new BundleEntrySearch(ExtensionData.EMPTY, PersistentVector.EMPTY, null,
             null);
 
     private final Code mode;
     private final Decimal score;
 
-    private BundleEntrySearch(ExtensionData extensionData, List<Extension> modifierExtension, Code mode,
+    private BundleEntrySearch(ExtensionData extensionData, PersistentVector modifierExtension, Code mode,
                               Decimal score) {
         super(extensionData, modifierExtension);
         this.mode = mode;
