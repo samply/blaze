@@ -5,7 +5,8 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.fhir.spec PropertyMap PropertyMap$NullElement]))
+   [blaze.fhir.spec PropertyMap PropertyMap$NullElement]
+   [clojure.lang PersistentArrayMap PersistentHashMap]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -57,7 +58,19 @@
       [0] {:k0 0 :fhir/type :fhir/Foo}
       [0 nil] {:k0 0 :fhir/type :fhir/Foo}
       [nil 1] {:k1 1 :fhir/type :fhir/Foo}
-      [0 nil 2] {:k0 0 :k2 2 :fhir/type :fhir/Foo})))
+      [0 nil 2] {:k0 0 :k2 2 :fhir/type :fhir/Foo}))
+
+  (testing "maps with up to 8 entries are array maps, larger maps hash maps"
+    (are [n class] (let [values (range n)
+                         m (.toPersistentMap ^PropertyMap (apply property-map values)
+                                             (keys-of n) :fhir/Foo)]
+                     (and (instance? class m)
+                          (= (assoc (zipmap (keys-of n) values) :fhir/type :fhir/Foo) m)))
+      0 PersistentArrayMap
+      1 PersistentArrayMap
+      7 PersistentArrayMap
+      8 PersistentHashMap
+      20 PersistentHashMap)))
 
 (deftest first-null-element-test
   (testing "without marked slots there is no null element"

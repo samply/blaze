@@ -18,10 +18,11 @@ import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
 import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
-public final class Meta extends AbstractElement implements Complex, ExtensionValue {
+public sealed abstract class Meta extends AbstractElement implements Complex, ExtensionValue
+        permits Meta.Normal, Meta.Interned {
 
     /**
-     * Memory size.
+     * Memory size of a not interned Meta.
      * <p>
      * 8 byte - object header
      * 4 or 8 byte - extension data reference
@@ -31,9 +32,8 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
      * 4 or 8 byte - profile reference
      * 4 or 8 byte - security reference
      * 4 or 8 byte - tag reference
-     * 1 byte - interned boolean
      */
-    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 7 * MEM_SIZE_REFERENCE + 1 + 7) & ~7;
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 7 * MEM_SIZE_REFERENCE + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "Meta");
 
@@ -107,10 +107,8 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     private static final byte HASH_MARKER = 44;
 
     private static final Interner<InternerKey, Meta> INTERNER = Interners.weakInterner(
-            k -> new Meta(k.extensionData, null, null, k.source, k.profile, k.security, k.tag, true)
+            k -> new Interned(k.extensionData, k.profile, k.security, k.tag)
     );
-    private static final Meta EMPTY = new Meta(ExtensionData.EMPTY, null, null, null, PersistentVector.EMPTY,
-            PersistentVector.EMPTY, PersistentVector.EMPTY, true);
 
     private final Id versionId;
     private final Instant lastUpdated;
@@ -118,10 +116,9 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     private final PersistentVector profile;
     private final PersistentVector security;
     private final PersistentVector tag;
-    private final boolean interned;
 
     private Meta(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source, PersistentVector profile,
-                 PersistentVector security, PersistentVector tag, boolean interned) {
+                 PersistentVector security, PersistentVector tag) {
         super(extensionData);
         this.versionId = versionId;
         this.lastUpdated = lastUpdated;
@@ -129,15 +126,17 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
         this.profile = requireNonNull(profile);
         this.security = requireNonNull(security);
         this.tag = requireNonNull(tag);
-        this.interned = interned;
     }
 
     private static Meta maybeIntern(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source,
                                     PersistentVector profile, PersistentVector security, PersistentVector tag) {
-        return extensionData.isInterned() && versionId == null && lastUpdated == null && Base.isInterned(source) &&
-                Base.areAllInterned(profile) && Base.areAllInterned(security) && Base.areAllInterned(tag)
-                ? INTERNER.intern(new InternerKey(extensionData, source, profile, security, tag))
-                : new Meta(extensionData, versionId, lastUpdated, source, profile, security, tag, false);
+        if (extensionData.isInterned() && versionId == null && lastUpdated == null && source == null &&
+                Base.areAllInterned(profile) && Base.areAllInterned(security) && Base.areAllInterned(tag)) {
+            return extensionData == ExtensionData.EMPTY && profile.isEmpty() && security.isEmpty() && tag.isEmpty()
+                    ? Interned.EMPTY
+                    : INTERNER.intern(new InternerKey(extensionData, profile, security, tag));
+        }
+        return new Normal(extensionData, versionId, lastUpdated, source, profile, security, tag);
     }
 
     public static Meta create(IPersistentMap m) {
@@ -163,7 +162,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
 
     @Override
     public boolean isInterned() {
-        return interned;
+        return false;
     }
 
     public Id versionId() {
@@ -236,8 +235,8 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     }
 
     @Override
-    public Meta empty() {
-        return EMPTY;
+    public Interned empty() {
+        return Interned.EMPTY;
     }
 
     @Override
@@ -344,18 +343,8 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
         Base.collectReferences(tag, refs);
     }
 
-    @Override
-    public int memSize() {
-        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(versionId) +
-                Base.memSize(lastUpdated) + Base.memSize(source) + Base.memSize(profile) + Base.memSize(security) +
-                Base.memSize(tag);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o instanceof Meta that &&
-                extensionData.equals(that.extensionData) &&
+    final boolean equalComponents(Meta that) {
+        return extensionData.equals(that.extensionData) &&
                 Objects.equals(versionId, that.versionId) &&
                 Objects.equals(lastUpdated, that.lastUpdated) &&
                 Objects.equals(source, that.source) &&
@@ -364,8 +353,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
                 tag.equals(that.tag);
     }
 
-    @Override
-    public int hashCode() {
+    final int hashComponents() {
         int result = extensionData.hashCode();
         result = 31 * result + Objects.hashCode(versionId);
         result = 31 * result + Objects.hashCode(lastUpdated);
@@ -377,7 +365,7 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Meta{" +
                 extensionData +
                 ", versionId=" + versionId +
@@ -389,13 +377,125 @@ public final class Meta extends AbstractElement implements Complex, ExtensionVal
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, Uri source, PersistentVector profile, PersistentVector security,
-                               PersistentVector tag) {
-        private InternerKey {
-            requireNonNull(extensionData);
-            requireNonNull(profile);
-            requireNonNull(security);
-            requireNonNull(tag);
+    public static final class Normal extends Meta {
+
+        private Normal(ExtensionData extensionData, Id versionId, Instant lastUpdated, Uri source,
+                       PersistentVector profile, PersistentVector security, PersistentVector tag) {
+            super(extensionData, versionId, lastUpdated, source, profile, security, tag);
+        }
+
+        public static Normal create(IPersistentMap m) {
+            return new Normal(ExtensionData.fromMap(m), (Id) m.valAt(VERSION_ID), (Instant) m.valAt(LAST_UPDATED),
+                    (Uri) m.valAt(SOURCE), Base.listFrom(m, PROFILE), Base.listFrom(m, SECURITY),
+                    Base.listFrom(m, TAG));
+        }
+
+        @Override
+        public int memSize() {
+            return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(versionId()) +
+                    Base.memSize(lastUpdated()) + Base.memSize(source()) + Base.memSize(profile()) +
+                    Base.memSize(security()) + Base.memSize(tag());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Meta that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashComponents();
+        }
+    }
+
+    /**
+     * An interned Meta.
+     * <p>
+     * Interned Metas never have a versionId, lastUpdated or source, because their values are mostly unique per
+     * resource. Interned Metas with equal components are identical, so they are compared by identity. Interned Metas
+     * can still be equal to not interned Metas, because components like {@link Coding.Normal} and
+     * {@link Coding.Interned} with equal values are equal.
+     */
+    public static final class Interned extends Meta {
+
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, PersistentVector.EMPTY,
+                PersistentVector.EMPTY, PersistentVector.EMPTY);
+
+        private final int hash;
+
+        private Interned(ExtensionData extensionData, PersistentVector profile, PersistentVector security,
+                         PersistentVector tag) {
+            super(extensionData, null, null, null, profile, security, tag);
+            this.hash = hashComponents();
+        }
+
+        public static Interned create(IPersistentMap m) {
+            if (Meta.create(m) instanceof Interned interned) return interned;
+            throw new IllegalArgumentException("Can't create an interned FHIR.Meta using non-interned components.");
+        }
+
+        @Override
+        public boolean isInterned() {
+            return true;
+        }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Normal that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
+    /**
+     * Key of the interner.
+     * <p>
+     * The extension data is interned, so equal ones are identical and it is compared by identity. Because the key
+     * references it strongly, it can't be collected and recreated as a different instance while the key exists. The
+     * lists are compared structurally, because lists aren't interned.
+     */
+    private static final class InternerKey {
+
+        private final ExtensionData extensionData;
+        private final PersistentVector profile;
+        private final PersistentVector security;
+        private final PersistentVector tag;
+        private final int hash;
+
+        private InternerKey(ExtensionData extensionData, PersistentVector profile, PersistentVector security,
+                            PersistentVector tag) {
+            this.extensionData = requireNonNull(extensionData);
+            this.profile = requireNonNull(profile);
+            this.security = requireNonNull(security);
+            this.tag = requireNonNull(tag);
+            int result = System.identityHashCode(extensionData);
+            result = 31 * result + profile.hashCode();
+            result = 31 * result + security.hashCode();
+            result = 31 * result + tag.hashCode();
+            this.hash = result;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof InternerKey that &&
+                    hash == that.hash &&
+                    extensionData == that.extensionData &&
+                    profile.equals(that.profile) &&
+                    security.equals(that.security) &&
+                    tag.equals(that.tag);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
     }
 }

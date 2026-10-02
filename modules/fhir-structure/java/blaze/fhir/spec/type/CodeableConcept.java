@@ -17,18 +17,18 @@ import static blaze.fhir.spec.type.Complex.serializeJsonComplexList;
 import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
-public final class CodeableConcept extends AbstractElement implements Complex, ExtensionValue {
+public sealed abstract class CodeableConcept extends AbstractElement implements Complex, ExtensionValue
+        permits CodeableConcept.Normal, CodeableConcept.Interned {
 
     /**
-     * Memory size.
+     * Memory size of a not interned CodeableConcept.
      * <p>
      * 8 byte - object header
      * 4 or 8 byte - extension data reference
      * 4 or 8 byte - coding reference
      * 4 or 8 byte - text reference
-     * 1 byte - interned boolean
      */
-    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 3 * MEM_SIZE_REFERENCE + 1 + 7) & ~7;
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 3 * MEM_SIZE_REFERENCE + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "CodeableConcept");
 
@@ -60,30 +60,31 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
 
     private static final SerializedString FIELD_NAME_CODING = new SerializedString("coding");
     private static final FieldName FIELD_NAME_TEXT = FieldName.of("text");
+
     private static final FieldName FIELD_NAME_EXTENSION_VALUE = FieldName.of("valueCodeableConcept");
 
     private static final byte HASH_MARKER = 71;
 
     private static final Interner<InternerKey, CodeableConcept> INTERNER = Interners.weakInterner(
-            k -> new CodeableConcept(k.extensionData, k.coding, k.text, true)
+            k -> new Interned(k.extensionData, k.coding, k.text)
     );
-    private static final CodeableConcept EMPTY = new CodeableConcept(ExtensionData.EMPTY, PersistentVector.EMPTY, null, true);
 
     private final PersistentVector coding;
     private final String text;
-    private final boolean interned;
 
-    private CodeableConcept(ExtensionData extensionData, PersistentVector coding, String text, boolean interned) {
+    private CodeableConcept(ExtensionData extensionData, PersistentVector coding, String text) {
         super(extensionData);
         this.coding = requireNonNull(coding);
         this.text = text;
-        this.interned = interned;
     }
 
     private static CodeableConcept maybeIntern(ExtensionData extensionData, PersistentVector coding, String text) {
-        return extensionData.isInterned() && Base.areAllInterned(coding) && Base.isInterned(text)
-                ? INTERNER.intern(new InternerKey(extensionData, coding, text))
-                : new CodeableConcept(extensionData, coding, text, false);
+        if (extensionData.isInterned() && Base.areAllInterned(coding) && Base.isInterned(text)) {
+            return extensionData == ExtensionData.EMPTY && coding.isEmpty() && text == null
+                    ? Interned.EMPTY
+                    : INTERNER.intern(new InternerKey(extensionData, coding, text));
+        }
+        return new Normal(extensionData, coding, text);
     }
 
     public static CodeableConcept create(IPersistentMap m) {
@@ -107,7 +108,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
 
     @Override
     public boolean isInterned() {
-        return interned;
+        return false;
     }
 
     @SuppressWarnings("unchecked")
@@ -146,8 +147,8 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
     }
 
     @Override
-    public CodeableConcept empty() {
-        return EMPTY;
+    public Interned empty() {
+        return Interned.EMPTY;
     }
 
     @Override
@@ -210,23 +211,13 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
         Base.collectReferences(text, refs);
     }
 
-    @Override
-    public int memSize() {
-        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(coding) +
-                Base.memSize(text);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o instanceof CodeableConcept that &&
-                extensionData.equals(that.extensionData) &&
+    final boolean equalComponents(CodeableConcept that) {
+        return extensionData.equals(that.extensionData) &&
                 Objects.equals(coding, that.coding) &&
                 Objects.equals(text, that.text);
     }
 
-    @Override
-    public int hashCode() {
+    final int hashComponents() {
         int result = extensionData.hashCode();
         result = 31 * result + Objects.hashCode(coding);
         result = 31 * result + Objects.hashCode(text);
@@ -234,7 +225,7 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
     }
 
     @Override
-    public java.lang.String toString() {
+    public final java.lang.String toString() {
         return "CodeableConcept{" +
                 extensionData +
                 ", coding=" + coding +
@@ -242,10 +233,112 @@ public final class CodeableConcept extends AbstractElement implements Complex, E
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, PersistentVector coding, String text) {
-        private InternerKey {
-            requireNonNull(extensionData);
-            requireNonNull(coding);
+    public static final class Normal extends CodeableConcept {
+
+        private Normal(ExtensionData extensionData, PersistentVector coding, String text) {
+            super(extensionData, coding, text);
+        }
+
+        public static Normal create(IPersistentMap m) {
+            return new Normal(ExtensionData.fromMap(m), Base.listFrom(m, CODING), (String) m.valAt(TEXT));
+        }
+
+        @Override
+        public int memSize() {
+            return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(coding()) + Base.memSize(text());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof CodeableConcept that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashComponents();
+        }
+    }
+
+    /**
+     * An interned CodeableConcept.
+     * <p>
+     * Interned CodeableConcepts with equal components are identical, so they are compared by identity. Interned
+     * CodeableConcepts can still be equal to not interned CodeableConcepts, because components like
+     * {@link String.Normal} and {@link String.Interned} with equal values are equal.
+     */
+    public static final class Interned extends CodeableConcept {
+
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, PersistentVector.EMPTY, null);
+
+        private final int hash;
+
+        private Interned(ExtensionData extensionData, PersistentVector coding, String text) {
+            super(extensionData, coding, text);
+            this.hash = hashComponents();
+        }
+
+        public static Interned create(IPersistentMap m) {
+            if (CodeableConcept.create(m) instanceof Interned interned) return interned;
+            throw new IllegalArgumentException("Can't create an interned FHIR.CodeableConcept using non-interned components.");
+        }
+
+        @Override
+        public boolean isInterned() {
+            return true;
+        }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Normal that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
+    /**
+     * Key of the interner.
+     * <p>
+     * The extension data and the text are interned, so equal ones are identical and they are compared by identity.
+     * Because the key references them strongly, they can't be collected and recreated as different instances while
+     * the key exists. The coding list is compared structurally, because lists aren't interned.
+     */
+    private static final class InternerKey {
+
+        private final ExtensionData extensionData;
+        private final PersistentVector coding;
+        private final String text;
+        private final int hash;
+
+        private InternerKey(ExtensionData extensionData, PersistentVector coding, String text) {
+            this.extensionData = requireNonNull(extensionData);
+            this.coding = requireNonNull(coding);
+            this.text = text;
+            int result = System.identityHashCode(extensionData);
+            result = 31 * result + coding.hashCode();
+            result = 31 * result + System.identityHashCode(text);
+            this.hash = result;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof InternerKey that &&
+                    hash == that.hash &&
+                    extensionData == that.extensionData &&
+                    text == that.text &&
+                    coding.equals(that.coding);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
     }
 }

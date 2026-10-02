@@ -1,9 +1,11 @@
 package blaze.fhir.spec;
 
-import blaze.fhir.spec.type.Lists;
 import clojure.lang.IPersistentMap;
+import clojure.lang.ITransientMap;
 import clojure.lang.Keyword;
-import clojure.lang.RT;
+import clojure.lang.PersistentArrayMap;
+import clojure.lang.PersistentHashMap;
+import clojure.lang.PersistentVector;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,6 +32,11 @@ import java.util.Objects;
 public final class PropertyMap {
 
     private static final Keyword FHIR_TYPE = Keyword.intern("fhir", "type");
+
+    /**
+     * The maximum number of entries of maps created as array map, like Clojure itself does.
+     */
+    private static final int MAX_ARRAY_MAP_ENTRIES = 8;
 
     private final Object[] slots;
     private int count;
@@ -101,13 +108,21 @@ public final class PropertyMap {
 
     /**
      * Returns a persistent map of all non-empty slots using {@code keys}, which are indexed by slot. Additionally
-     * associates {@code fhirType} under {@code :fhir/type} as the first entry.
+     * associates {@code fhirType} under {@code :fhir/type}.
+     * <p>
+     * Maps with up to {@link #MAX_ARRAY_MAP_ENTRIES} entries are array maps, which need far less memory than hash
+     * maps. Larger maps are hash maps, built through a transient without collecting the entries into an intermediate
+     * array first.
      *
      * @param keys     the keys of the slots
      * @param fhirType the value to associate under {@code :fhir/type}
      * @return a persistent map of all non-empty slots
      */
     public IPersistentMap toPersistentMap(Object[] keys, Object fhirType) {
+        return count < MAX_ARRAY_MAP_ENTRIES ? toArrayMap(keys, fhirType) : toHashMap(keys, fhirType);
+    }
+
+    private IPersistentMap toArrayMap(Object[] keys, Object fhirType) {
         Object[] kvs = new Object[2 * count + 2];
         kvs[0] = FHIR_TYPE;
         kvs[1] = fhirType;
@@ -119,7 +134,20 @@ public final class PropertyMap {
                 kvs[n++] = value;
             }
         }
-        return RT.mapUniqueKeys(kvs);
+        return new PersistentArrayMap(kvs);
+    }
+
+    private IPersistentMap toHashMap(Object[] keys, Object fhirType) {
+        ITransientMap map = PersistentHashMap.EMPTY.asTransient();
+        map = map.assoc(FHIR_TYPE, fhirType);
+        for (int i = 0, n = count; n > 0; i++) {
+            Object value = slots[i];
+            if (value != null) {
+                map = map.assoc(keys[i], value);
+                n--;
+            }
+        }
+        return map.persistent();
     }
 
     /**
@@ -181,7 +209,7 @@ public final class PropertyMap {
                         slots[slot] = null;
                         count--;
                     } else {
-                        slots[slot] = Lists.intern(elements);
+                        slots[slot] = PersistentVector.create(elements);
                     }
                 }
             }

@@ -61,11 +61,11 @@
     Coding ContactDetail ContactPoint Contributor Count DataRequirement
     DataRequirement$CodeFilter DataRequirement$DateFilter
     DataRequirement$Sort Distance Dosage Dosage$DoseAndRate Duration
-    Expression Extension HumanName Identifier Lists Meta Money
+    Expression Extension HumanName Identifier Meta Money
     Narrative ParameterDefinition Period Quantity Range Ratio
     Reference RelatedArtifact SampledData Signature Timing
     Timing$Repeat TriggerDefinition UsageContext]
-   [clojure.lang RT]
+   [clojure.lang PersistentVector RT]
    [com.fasterxml.jackson.core JsonFactory JsonParseException JsonParser JsonToken StreamReadConstraints]
    [com.fasterxml.jackson.core.exc InputCoercionException]
    [com.fasterxml.jackson.core.io JsonEOFException]
@@ -459,21 +459,47 @@
 (defmacro current-name [parser]
   `(.currentName ~(with-meta parser {:tag `JsonParser})))
 
-(defn- get-text [parser locator]
-  (try
-    (.getText ^JsonParser parser)
-    (catch JsonEOFException _
-      (let [msg "Unexpected end of input while reading a string value."]
-        (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))
+(defn- unexpected-end-of-string-anom [locator]
+  (let [msg "Unexpected end of input while reading a string value."]
+    (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
 
-(defn- get-long [parser locator]
-  (try
-    (.getLongValue ^JsonParser parser)
-    (catch InputCoercionException e
-      (let [msg (first (str/split-lines (ex-message e)))]
-        (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))))
+(defn- get-text
+  "Returns the text of the current token of `parser`.
 
-(defn- get-decimal [parser _locator]
+  The three-arity version takes the locator of the parent and the `path` of the
+  property separately and creates the locator of the property only on error."
+  ([parser locator]
+   (try
+     (.getText ^JsonParser parser)
+     (catch JsonEOFException _
+       (unexpected-end-of-string-anom locator))))
+  ([parser locator path]
+   (try
+     (.getText ^JsonParser parser)
+     (catch JsonEOFException _
+       (unexpected-end-of-string-anom (cons path locator))))))
+
+(defn- input-coercion-anom [e locator]
+  (let [msg (first (str/split-lines (ex-message e)))]
+    (ba/incorrect msg :fhir/issues [(fhir-issue msg locator)])))
+
+(defn- get-long
+  "Returns the long value of the current token of `parser`.
+
+  The three-arity version takes the locator of the parent and the `path` of the
+  property separately and creates the locator of the property only on error."
+  ([parser locator]
+   (try
+     (.getLongValue ^JsonParser parser)
+     (catch InputCoercionException e
+       (input-coercion-anom e locator))))
+  ([parser locator path]
+   (try
+     (.getLongValue ^JsonParser parser)
+     (catch InputCoercionException e
+       (input-coercion-anom e (cons path locator))))))
+
+(defn- get-decimal [parser]
   (.getDecimalValue ^JsonParser parser))
 
 (defn- get-current-value [parser locator]
@@ -520,7 +546,7 @@
   (fn system-string-handler [parser locator m]
     (cond-next-token parser locator
       JsonToken/VALUE_STRING
-      (when-ok [value (get-text parser (cons path locator))]
+      (when-ok [value (get-text parser locator path)]
         (assoc-fn m value))
       (incorrect-value-anom parser (cons path locator) expected-type))))
 
@@ -594,7 +620,7 @@
 
 (defn- set-value!
   "Sets `value` at `index` in `list`."
-  [^List list index value]
+  [^List list ^long index value]
   (cond
     (< index (.size list)) (doto list (.set index value))
     (= index (.size list)) (doto list (.add value))))
@@ -644,9 +670,18 @@
         (incorrect-value-anom parser (cons (name key) locator) "boolean")))))
 
 (defn- primitive-value-handler
-  "Returns a property-handler for the value part of primitive properties."
-  {:arglists '([property-handler-definition constructor token extract-value expected-type])}
-  ([{:keys [field-name key slot cardinality] :as def} constructor token extract-value expected-type]
+  "Returns a property-handler for the value part of primitive properties.
+
+  In the one-token version, `extract-value` takes a parser, the locator of the
+  parent and the `path` of the property and returns either the value or an
+  anomaly. In the two-token version, `extract-value` takes only a parser and
+  can't fail."
+  {:arglists
+   '([property-handler-definition constructor token extract-value expected-type]
+     [property-handler-definition constructor token-1 token-2 extract-value
+      expected-type])}
+  ([{:keys [field-name key slot cardinality] :as def} constructor token
+    extract-value expected-type]
    (let [path (name key)
          slot (long slot)
          assoc-value (primitive-value-assoc def constructor)
@@ -655,7 +690,7 @@
        (fn primitive-property-handler-one-token-cardinality-single [parser locator m]
          (cond-next-token parser locator
            token
-           (when-ok [value (extract-value parser (cons path locator))]
+           (when-ok [value (extract-value parser locator path)]
              (assoc-value m value locator))
            (incorrect-value-anom parser (cons path locator) expected-type)))
        (fn primitive-property-handler-one-token-cardinality-many [parser locator m]
@@ -665,22 +700,22 @@
              (when-ok [t (next-token! parser locator)]
                (condp-identical t
                  token
-                 (when-ok [value (extract-value parser (cons path locator))]
+                 (when-ok [value (extract-value parser locator path)]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
                      (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
                        (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m slot (Lists/intern l))
+                 JsonToken/END_ARRAY (put-value! m slot (PersistentVector/create ^List l))
                  JsonToken/VALUE_NULL
                  (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))
            token
-           (when-ok [value (extract-value parser (cons path locator))]
+           (when-ok [value (extract-value parser locator path)]
              (assoc-many-value m value locator))
            (incorrect-value-anom parser (cons path locator) (str expected-type "[]")))))))
   ([{:keys [field-name key slot cardinality] :as def} constructor token-1
-    extract-value-1 token-2 extract-value-2 expected-type]
+    token-2 extract-value expected-type]
    (let [path (name key)
          slot (long slot)
          assoc-value (primitive-value-assoc def constructor)
@@ -689,11 +724,9 @@
        (fn primitive-property-handler-two-tokens-cardinality-single [parser locator m]
          (cond-next-token parser locator
            token-1
-           (when-ok [value (extract-value-1 parser (cons path locator))]
-             (assoc-value m value locator))
+           (assoc-value m (extract-value parser) locator)
            token-2
-           (when-ok [value (extract-value-2 parser (cons path locator))]
-             (assoc-value m value locator))
+           (assoc-value m (extract-value parser) locator)
            (incorrect-value-anom parser (cons path locator) expected-type)))
        (fn primitive-property-handler-two-tokens-cardinality-many [parser locator m]
          (cond-next-token parser locator
@@ -702,29 +735,27 @@
              (when-ok [t (next-token! parser locator)]
                (condp-identical t
                  token-1
-                 (when-ok [value (extract-value-1 parser (cons path locator))]
+                 (let [value (extract-value parser)]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
                      (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
                        (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
                  token-2
-                 (when-ok [value (extract-value-2 parser (cons path locator))]
+                 (let [value (extract-value parser)]
                    (if-some [primitive-value (when (< i (.size l)) (.get l i))]
                      (if (some? (:value primitive-value))
                        (duplicate-property-anom field-name locator)
                        (recur (doto l (.set i (assoc primitive-value :value value))) (inc i)))
                      (recur (set-value! l i (constructor value)) (inc i))))
-                 JsonToken/END_ARRAY (put-value! m slot (Lists/intern l))
+                 JsonToken/END_ARRAY (put-value! m slot (PersistentVector/create ^List l))
                  JsonToken/VALUE_NULL
                  (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                  (incorrect-value-anom parser (cons path locator) expected-type))))
            token-1
-           (when-ok [value (extract-value-1 parser (cons path locator))]
-             (assoc-many-value m value locator))
+           (assoc-many-value m (extract-value parser) locator)
            token-2
-           (when-ok [value (extract-value-2 parser (cons path locator))]
-             (assoc-many-value m value locator))
+           (assoc-many-value m (extract-value parser) locator)
            (incorrect-value-anom parser (cons path locator) expected-type)))))))
 
 (defmacro recur-ok [expr-form]
@@ -751,7 +782,7 @@
       JsonToken/START_OBJECT
       (when-ok [value (handler parser (cons (.size list) locator))]
         (recur (doto list (.add value))))
-      JsonToken/END_ARRAY (Lists/intern list)
+      JsonToken/END_ARRAY (PersistentVector/create ^List list)
       (incorrect-value-anom parser (cons (.size list) locator) (handler)))))
 
 (defn- unsupported-type-anom [type]
@@ -772,7 +803,7 @@
               (recur (cond-> data (seq list) (assoc :extension list))))
             JsonToken/START_OBJECT
             (when-ok [extension (extension-handler parser (cons 0 (cons "extension" locator)))]
-              (recur (assoc data :extension (Lists/intern [extension]))))
+              (recur (assoc data :extension [extension])))
             (incorrect-value-anom parser (cons "extension" locator) "Extension[]")))
         (unknown-property-anom locator (current-name parser)))
       JsonToken/END_OBJECT data)))
@@ -818,7 +849,7 @@
                       (recur (doto l (.set i primitive-value)) (inc i)))
                     (when-ok [data (parse-extended-primitive-properties extension-handler-ref parser (cons path locator) {})]
                       (recur (set-value! l i (if (empty? data) (mark-null-element! m slot expected-type) (constructor data))) (inc i))))
-                  JsonToken/END_ARRAY (put-value! m slot (Lists/intern (trim-trailing-nils l num-values)))
+                  JsonToken/END_ARRAY (put-value! m slot (PersistentVector/create ^List (trim-trailing-nils l num-values)))
                   JsonToken/VALUE_NULL
                   (recur (add-null-placeholder! m slot expected-type l i) (inc i))
                   (incorrect-value-anom parser (cons path locator) "primitive extension map")))))
@@ -853,8 +884,7 @@
   representation using `constructor`."
   [def]
   (->> (primitive-value-handler def type/decimal JsonToken/VALUE_NUMBER_INT
-                                get-decimal JsonToken/VALUE_NUMBER_FLOAT get-decimal
-                                "decimal")
+                                JsonToken/VALUE_NUMBER_FLOAT get-decimal "decimal")
        (primitive-handler def type/decimal "decimal")))
 
 (defn- pattern-mismatch-anom [locator expected-type pattern text]
@@ -864,17 +894,17 @@
   "Returns a check-string function that returns `text` if it matches `pattern`
   or an anomaly otherwise."
   [pattern]
-  (fn [locator expected-type text]
+  (fn [locator path expected-type text]
     (if (.matches (re-matcher pattern text))
       text
-      (pattern-mismatch-anom locator expected-type pattern text))))
+      (pattern-mismatch-anom (cons path locator) expected-type pattern text))))
 
 (defn- check-uri
   "A check-string function for uri, url and canonical values."
-  [locator expected-type text]
+  [locator path expected-type text]
   (if (su/visible? text)
     text
-    (pattern-mismatch-anom locator expected-type su/visible-pattern text)))
+    (pattern-mismatch-anom (cons path locator) expected-type su/visible-pattern text)))
 
 (def ^:private check-base64
   (pattern-check-string #"([0-9a-zA-Z+/=]{4})+"))
@@ -891,21 +921,26 @@
 (def ^:private check-uuid
   (pattern-check-string #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
 
-(defn- parse-text [system-parser locator expected-type text]
+(defn- parse-text [system-parser locator path expected-type text]
   (if-ok [value (system-parser text)]
     value
-    #(incorrect-value-anom* (format "value `%s`" text) locator expected-type (::anom/message %))))
+    #(incorrect-value-anom* (format "value `%s`" text) (cons path locator) expected-type (::anom/message %))))
 
 (defn- system-value-parser
+  "Returns a function taking a parser, the locator of the parent and the `path`
+  of the property, which reads the text of the current token and parses it
+  using `system-parser`.
+
+  The locator of the property is only created on error."
   ([system-parser expected-type]
-   (fn system-value-parser [parser locator]
-     (when-ok [text (get-text parser locator)]
-       (parse-text system-parser locator expected-type text))))
+   (fn system-value-parser [parser locator path]
+     (when-ok [text (get-text parser locator path)]
+       (parse-text system-parser locator path expected-type text))))
   ([system-parser expected-type check-string]
-   (fn checked-system-value-parser [parser locator]
-     (when-ok [text (get-text parser locator)
-               text (check-string locator expected-type text)]
-       (parse-text system-parser locator expected-type text)))))
+   (fn checked-system-value-parser [parser locator path]
+     (when-ok [text (get-text parser locator path)
+               text (check-string locator path expected-type text)]
+       (parse-text system-parser locator path expected-type text)))))
 
 (defn- primitive-string-handler
   "A handler that reads a string value and creates the internal representation
@@ -914,8 +949,9 @@
   The system parser has to be a function from string to system value or anomaly.
 
   The optional check-string function is called before the system parser. It
-  takes a locator, the expected type and the string value and has to return
-  either the string value or an anomaly."
+  takes the locator of the parent, the path of the property, the expected type
+  and the string value and has to return either the string value or an
+  anomaly."
   ([def constructor system-parser expected-type]
    (->> (primitive-value-handler
          def constructor JsonToken/VALUE_STRING
