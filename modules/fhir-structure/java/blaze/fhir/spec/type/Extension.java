@@ -16,18 +16,18 @@ import java.util.Objects;
 import static blaze.fhir.spec.type.Base.appendElement;
 import static java.util.Objects.requireNonNull;
 
-public final class Extension extends AbstractElement implements Complex {
+public sealed abstract class Extension extends AbstractElement implements Complex
+        permits Extension.Normal, Extension.Interned {
 
     /**
-     * Memory size.
+     * Memory size of a not interned Extension.
      * <p>
      * 8 byte - object header
      * 4 or 8 byte - extension data reference
      * 4 or 8 byte - url reference
      * 4 or 8 byte - value reference
-     * 1 byte - interned boolean
      */
-    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 3 * MEM_SIZE_REFERENCE + 1 + 7) & ~7;
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 3 * MEM_SIZE_REFERENCE + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "Extension");
 
@@ -63,31 +63,33 @@ public final class Extension extends AbstractElement implements Complex {
 
     private static final Interner<String, SerializedString> URL_INTERNER = Interners.weakInterner(SerializedString::new);
     private static final Interner<InternerKey, Extension> INTERNER = Interners.weakInterner(
-            k -> new Extension(k.extensionData, k.url, k.value, true)
+            k -> new Interned(k.extensionData, k.url, k.value)
     );
-    private static final Extension EMPTY = new Extension(ExtensionData.EMPTY, null, null, true);
 
     private final SerializedString url;
     private final ExtensionValue value;
-    private final boolean interned;
 
-    private Extension(ExtensionData extensionData, SerializedString url, ExtensionValue value, boolean interned) {
+    private Extension(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
         super(extensionData);
         this.url = url;
         this.value = value;
-        this.interned = interned;
     }
 
     private static Extension maybeIntern(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
-        return extensionData.isInterned() && Base.isInterned(value)
-                ? INTERNER.intern(new InternerKey(extensionData, url, value))
-                : new Extension(extensionData, url, value, false);
+        if (extensionData.isInterned() && Base.isInterned(value)) {
+            return extensionData == ExtensionData.EMPTY && url == null && value == null
+                    ? Interned.EMPTY
+                    : INTERNER.intern(new InternerKey(extensionData, url, value));
+        }
+        return new Normal(extensionData, url, value);
+    }
+
+    private static SerializedString internUrl(String url) {
+        return url == null ? null : URL_INTERNER.intern(url);
     }
 
     public static Extension create(IPersistentMap m) {
-        var url = (String) m.valAt(URL);
-        return maybeIntern(ExtensionData.fromMap(m), url == null ? null : URL_INTERNER.intern(url),
-                (ExtensionValue) m.valAt(VALUE));
+        return maybeIntern(ExtensionData.fromMap(m), internUrl((String) m.valAt(URL)), (ExtensionValue) m.valAt(VALUE));
     }
 
     /**
@@ -95,9 +97,7 @@ public final class Extension extends AbstractElement implements Complex {
      * {@link #fields()} at the same index.
      */
     public static Extension fromSlots(Object[] slots) {
-        var url = (String) slots[2];
-        return maybeIntern(ExtensionData.fromSlots(slots), url == null ? null : URL_INTERNER.intern(url),
-                (ExtensionValue) slots[3]);
+        return maybeIntern(ExtensionData.fromSlots(slots), internUrl((String) slots[2]), (ExtensionValue) slots[3]);
     }
 
     /**
@@ -109,7 +109,7 @@ public final class Extension extends AbstractElement implements Complex {
 
     @Override
     public boolean isInterned() {
-        return interned;
+        return false;
     }
 
     public String url() {
@@ -145,8 +145,8 @@ public final class Extension extends AbstractElement implements Complex {
     }
 
     @Override
-    public Extension empty() {
-        return EMPTY;
+    public Interned empty() {
+        return Interned.EMPTY;
     }
 
     @Override
@@ -157,8 +157,7 @@ public final class Extension extends AbstractElement implements Complex {
     @Override
     public Extension assoc(Object key, Object val) {
         if (key == VALUE) return maybeIntern(extensionData, url, (ExtensionValue) val);
-        if (key == URL)
-            return maybeIntern(extensionData, val == null ? null : URL_INTERNER.intern((String) val), value);
+        if (key == URL) return maybeIntern(extensionData, internUrl((String) val), value);
         if (key == EXTENSION) return maybeIntern(extensionData.withExtension(val), url, value);
         if (key == ID) return maybeIntern(extensionData.withId(val), url, value);
         return this;
@@ -205,22 +204,13 @@ public final class Extension extends AbstractElement implements Complex {
         Base.collectReferences(value, refs);
     }
 
-    @Override
-    public int memSize() {
-        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(value);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o instanceof Extension that &&
-                extensionData.equals(that.extensionData) &&
+    final boolean equalComponents(Extension that) {
+        return extensionData.equals(that.extensionData) &&
                 Objects.equals(url, that.url) &&
                 Objects.equals(value, that.value);
     }
 
-    @Override
-    public int hashCode() {
+    final int hashComponents() {
         int result = extensionData.hashCode();
         result = 31 * result + Objects.hashCode(url);
         result = 31 * result + Objects.hashCode(value);
@@ -228,7 +218,7 @@ public final class Extension extends AbstractElement implements Complex {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Extension{" +
                 extensionData +
                 ", url=" + (url == null ? null : '\'' + url() + '\'') +
@@ -236,9 +226,113 @@ public final class Extension extends AbstractElement implements Complex {
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
-        private InternerKey {
-            requireNonNull(extensionData);
+    public static final class Normal extends Extension {
+
+        private Normal(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
+            super(extensionData, url, value);
+        }
+
+        public static Normal create(IPersistentMap m) {
+            return new Normal(ExtensionData.fromMap(m), internUrl((String) m.valAt(URL)),
+                    (ExtensionValue) m.valAt(VALUE));
+        }
+
+        @Override
+        public int memSize() {
+            return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(value());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Extension that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashComponents();
+        }
+    }
+
+    /**
+     * An interned Extension.
+     * <p>
+     * Interned Extensions with equal components are identical, so they are compared by identity. Interned Extensions
+     * can still be equal to not interned Extensions, because values like {@link Coding.Normal} and
+     * {@link Coding.Interned} with equal components are equal.
+     */
+    public static final class Interned extends Extension {
+
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null, null);
+
+        private final int hash;
+
+        private Interned(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
+            super(extensionData, url, value);
+            this.hash = hashComponents();
+        }
+
+        public static Interned create(IPersistentMap m) {
+            if (Extension.create(m) instanceof Interned interned) return interned;
+            throw new IllegalArgumentException("Can't create an interned FHIR.Extension using non-interned components.");
+        }
+
+        @Override
+        public boolean isInterned() {
+            return true;
+        }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Normal that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
+    /**
+     * Key of the interner, comparing its components by identity.
+     * <p>
+     * The extension data and the value are interned and the url is always interned by {@link #URL_INTERNER}, so equal
+     * components are identical. Because the key references its components strongly, they can't be collected and
+     * recreated as different instances while the key exists.
+     */
+    private static final class InternerKey {
+
+        private final ExtensionData extensionData;
+        private final SerializedString url;
+        private final ExtensionValue value;
+        private final int hash;
+
+        private InternerKey(ExtensionData extensionData, SerializedString url, ExtensionValue value) {
+            this.extensionData = requireNonNull(extensionData);
+            this.url = url;
+            this.value = value;
+            int result = System.identityHashCode(extensionData);
+            result = 31 * result + System.identityHashCode(url);
+            result = 31 * result + System.identityHashCode(value);
+            this.hash = result;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof InternerKey that &&
+                    hash == that.hash &&
+                    extensionData == that.extensionData &&
+                    url == that.url &&
+                    value == that.value;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
     }
 }

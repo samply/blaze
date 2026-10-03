@@ -380,7 +380,15 @@
         ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input while reading a string value."
         [:fhir/issues 0 :fhir.issues/code] := "invariant"
         [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input while reading a string value."
-        [:fhir/issues 0 :fhir.issues/expression] := "Patient.gender"))
+        [:fhir/issues 0 :fhir.issues/expression] := "Patient.gender")
+
+      (testing "of a checked type"
+        (given (parse-json "Patient" "{\"implicitRules\":\"")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid JSON representation of a resource. Unexpected end of input while reading a string value."
+          [:fhir/issues 0 :fhir.issues/code] := "invariant"
+          [:fhir/issues 0 :fhir.issues/diagnostics] := "Unexpected end of input while reading a string value."
+          [:fhir/issues 0 :fhir.issues/expression] := "Patient.implicitRules")))
 
     (testing "within boolean value"
       (given (parse-json "Patient" "{\"active\":t")
@@ -3345,7 +3353,7 @@
 
   (testing "examples"
     (mem-size-test "CodeableConcept"
-      {:id "id-173830"} 96 120)))
+      {:id "id-173830"} 96 112)))
 
 (deftest coding-test
   (testing "FHIR spec"
@@ -3503,8 +3511,8 @@
 
   (testing "examples"
     (mem-size-test "Coding"
-      {:id "id-173830"} 112 144
-      {:_code {:id "id-185245"} :code "value-185250"} 208 264)))
+      {:id "id-173830"} 104 136
+      {:_code {:id "id-185245"} :code "value-185250"} 200 256)))
 
 (deftest contact-detail-test
   (testing "FHIR spec"
@@ -4704,7 +4712,7 @@
 
   (testing "examples"
     (mem-size-test "Extension"
-      {:url "url-191107" :valueString "string-153429"} 96 120)))
+      {:url "url-191107" :valueString "string-153429"} 96 112)))
 
 (deftest human-name-test
   (testing "FHIR spec"
@@ -5148,7 +5156,7 @@
 
   (testing "examples"
     (mem-size-test "Meta"
-      {:versionId "id-172408"} 104 144)))
+      {:versionId "id-172408"} 104 136)))
 
 (deftest money-test
   (testing "FHIR spec"

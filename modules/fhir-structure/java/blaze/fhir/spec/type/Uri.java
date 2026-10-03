@@ -181,17 +181,13 @@ public sealed abstract class Uri extends PrimitiveElement permits Uri.Normal, Ur
     public static final class Interned extends Uri {
 
         private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null);
-        private static final PrimitiveInterner<Interned> INTERNER = new PrimitiveInterner<>(EMPTY, Interned::create);
+        private static final PrimitiveInterner<Interned> INTERNER = new PrimitiveInterner<>(EMPTY, Interned::new);
 
         private final SerializedString value;
 
-        private Interned(ExtensionData extensionData, SerializedString value) {
+        private Interned(ExtensionData extensionData, String value) {
             super(extensionData);
-            this.value = value;
-        }
-
-        private static Interned create(ExtensionData extensionData, String value) {
-            return new Interned(extensionData, value == null ? null : new SerializedString(value));
+            this.value = value == null ? null : new SerializedString(value);
         }
 
         private static Uri maybeIntern(ExtensionData extensionData, String value) {
