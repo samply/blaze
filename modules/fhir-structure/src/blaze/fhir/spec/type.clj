@@ -19,10 +19,12 @@
   (:import
    [blaze.fhir.spec.type
     Address Age Annotation Attachment Base Base64Binary BundleEntrySearch
-    Canonical Code CodeableConcept Coding ContactDetail ContactPoint Contributor Count
+    Canonical Code CodeableConcept CodeableConcept$Interned CodeableConcept$Normal Coding Coding$Interned
+    Coding$Normal ContactDetail ContactPoint
+    Contributor Count
     DataRequirement DataRequirement$CodeFilter DataRequirement$DateFilter DataRequirement$Sort
-    Date DateTime Decimal Distance Dosage Dosage$DoseAndRate Duration Expression Extension HumanName Id
-    Identifier Instant Integer64 Markdown Meta Money Narrative Oid ParameterDefinition Period PositiveInt Primitive
+    Date DateTime Decimal Distance Dosage Dosage$DoseAndRate Duration Expression Extension Extension$Interned Extension$Normal HumanName Id
+    Identifier Instant Integer64 Markdown Meta Meta$Interned Meta$Normal Money Narrative Oid ParameterDefinition Period PositiveInt Primitive
     Quantity Range Ratio RatioRange Reference RelatedArtifact SampledData Signature String$Interned
     String$Normal Time Timing Timing$Repeat TriggerDefinition UnsignedInt Uri Uri$Interned
     Uri$Normal Url UsageContext Uuid Xhtml]
@@ -448,14 +450,16 @@
 (defn codeable-concept [x]
   (CodeableConcept/create x))
 
-(def-print-method-complex "CodeableConcept")
+(def-print-method-complex "CodeableConcept$Normal" "fhir/CodeableConcept")
+(def-print-method-complex "CodeableConcept$Interned" "fhir/CodeableConcept")
 
 ;; ---- Coding ----------------------------------------------------------------
 
 (defn coding [x]
   (Coding/create x))
 
-(def-print-method-complex "Coding")
+(def-print-method-complex "Coding$Normal" "fhir/Coding")
+(def-print-method-complex "Coding$Interned" "fhir/Coding")
 
 ;; ---- ContactDetail ------------------------------------------------------------
 
@@ -545,7 +549,8 @@
 (defn extension [x]
   (Extension/create x))
 
-(def-print-method-complex "Extension")
+(def-print-method-complex "Extension$Normal" "fhir/Extension")
+(def-print-method-complex "Extension$Interned" "fhir/Extension")
 
 ;; ---- HumanName -------------------------------------------------------------
 
@@ -566,7 +571,8 @@
 (defn meta [x]
   (Meta/create x))
 
-(def-print-method-complex "Meta")
+(def-print-method-complex "Meta$Normal" "fhir/Meta")
+(def-print-method-complex "Meta$Interned" "fhir/Meta")
 
 ;; ---- Money ------------------------------------------------------------------
 

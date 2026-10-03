@@ -15,10 +15,11 @@ import static blaze.fhir.spec.type.Base.appendElement;
 import static java.util.Objects.requireNonNull;
 
 @SuppressWarnings("DuplicatedCode")
-public final class Coding extends AbstractElement implements Complex, ExtensionValue {
+public sealed abstract class Coding extends AbstractElement implements Complex, ExtensionValue
+        permits Coding.Normal, Coding.Interned {
 
     /**
-     * Memory size.
+     * Memory size of a not interned Coding.
      * <p>
      * 8 byte - object header
      * 4 or 8 byte - extension data reference
@@ -27,9 +28,8 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
      * 4 or 8 byte - code reference
      * 4 or 8 byte - display reference
      * 4 or 8 byte - userSelected reference
-     * 1 byte - interned boolean
      */
-    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 6 * MEM_SIZE_REFERENCE + 1 + 7) & ~7;
+    private static final int MEM_SIZE_OBJECT = (MEM_SIZE_OBJECT_HEADER + 6 * MEM_SIZE_REFERENCE + 7) & ~7;
 
     private static final Keyword FHIR_TYPE = RT.keyword("fhir", "Coding");
 
@@ -93,34 +93,35 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
     private static final byte HASH_MARKER = 38;
 
     private static final Interner<InternerKey, Coding> INTERNER = Interners.weakInterner(
-            k -> new Coding(k.extensionData, k.system, k.version, k.code, k.display, k.userSelected, true)
+            k -> new Interned(k.extensionData, k.system, k.version, k.code, k.display, k.userSelected)
     );
-    public static final Coding EMPTY = new Coding(ExtensionData.EMPTY, null, null, null, null, null, true);
 
     private final Uri system;
     private final String version;
     private final Code code;
     private final String display;
     private final Boolean userSelected;
-    private final boolean interned;
 
     private Coding(ExtensionData extensionData, Uri system, String version, Code code, String display,
-                   Boolean userSelected, boolean interned) {
+                   Boolean userSelected) {
         super(extensionData);
         this.system = system;
         this.version = version;
         this.code = code;
         this.display = display;
         this.userSelected = userSelected;
-        this.interned = interned;
     }
 
     private static Coding maybeIntern(ExtensionData extensionData, Uri system, String version, Code code, String display,
                                       Boolean userSelected) {
-        return extensionData.isInterned() && Base.isInterned(system) && Base.isInterned(version) &&
-                Base.isInterned(code) && Base.isInterned(display) && Base.isInterned(userSelected)
-                ? INTERNER.intern(new InternerKey(extensionData, system, version, code, display, userSelected))
-                : new Coding(extensionData, system, version, code, display, userSelected, false);
+        if (extensionData.isInterned() && Base.isInterned(system) && Base.isInterned(version) &&
+                Base.isInterned(code) && Base.isInterned(display) && Base.isInterned(userSelected)) {
+            return extensionData == ExtensionData.EMPTY && system == null && version == null && code == null &&
+                    display == null && userSelected == null
+                    ? Interned.EMPTY
+                    : INTERNER.intern(new InternerKey(extensionData, system, version, code, display, userSelected));
+        }
+        return new Normal(extensionData, system, version, code, display, userSelected);
     }
 
     public static Coding create(IPersistentMap m) {
@@ -146,7 +147,7 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
 
     @Override
     public boolean isInterned() {
-        return interned;
+        return false;
     }
 
     public Uri system() {
@@ -203,8 +204,8 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
     }
 
     @Override
-    public Coding empty() {
-        return EMPTY;
+    public Interned empty() {
+        return Interned.EMPTY;
     }
 
     @Override
@@ -295,17 +296,8 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
         Base.collectReferences(userSelected, refs);
     }
 
-    @Override
-    public int memSize() {
-        return isInterned() ? 0 : MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(system) +
-                Base.memSize(version) + Base.memSize(code) + Base.memSize(display) + Base.memSize(userSelected);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o instanceof Coding that &&
-                extensionData.equals(that.extensionData) &&
+    final boolean equalComponents(Coding that) {
+        return extensionData.equals(that.extensionData) &&
                 Objects.equals(system, that.system) &&
                 Objects.equals(version, that.version) &&
                 Objects.equals(code, that.code) &&
@@ -313,8 +305,7 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
                 Objects.equals(userSelected, that.userSelected);
     }
 
-    @Override
-    public int hashCode() {
+    final int hashComponents() {
         int result = extensionData.hashCode();
         result = 31 * result + Objects.hashCode(system);
         result = 31 * result + Objects.hashCode(version);
@@ -325,7 +316,7 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
     }
 
     @Override
-    public java.lang.String toString() {
+    public final java.lang.String toString() {
         return "Coding{" +
                 extensionData +
                 ", system=" + system +
@@ -336,10 +327,128 @@ public final class Coding extends AbstractElement implements Complex, ExtensionV
                 '}';
     }
 
-    private record InternerKey(ExtensionData extensionData, Uri system, String version, Code code, String display,
-                               Boolean userSelected) {
-        private InternerKey {
-            requireNonNull(extensionData);
+    public static final class Normal extends Coding {
+
+        private Normal(ExtensionData extensionData, Uri system, String version, Code code, String display,
+                       Boolean userSelected) {
+            super(extensionData, system, version, code, display, userSelected);
+        }
+
+        public static Normal create(IPersistentMap m) {
+            return new Normal(ExtensionData.fromMap(m), (Uri) m.valAt(SYSTEM), (String) m.valAt(VERSION),
+                    (Code) m.valAt(CODE), (String) m.valAt(DISPLAY), (Boolean) m.valAt(USER_SELECTED));
+        }
+
+        @Override
+        public int memSize() {
+            return MEM_SIZE_OBJECT + extensionData.memSize() + Base.memSize(system()) + Base.memSize(version()) +
+                    Base.memSize(code()) + Base.memSize(display()) + Base.memSize(userSelected());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Coding that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hashComponents();
+        }
+    }
+
+    /**
+     * An interned Coding.
+     * <p>
+     * Interned Codings with equal components are identical, so they are compared by identity. Interned Codings can
+     * still be equal to not interned Codings, because components like {@link String.Normal} and
+     * {@link String.Interned} with equal values are equal.
+     */
+    public static final class Interned extends Coding {
+
+        private static final Interned EMPTY = new Interned(ExtensionData.EMPTY, null, null, null, null, null);
+
+        private final int hash;
+
+        private Interned(ExtensionData extensionData, Uri system, String version, Code code, String display,
+                         Boolean userSelected) {
+            super(extensionData, system, version, code, display, userSelected);
+            this.hash = hashComponents();
+        }
+
+        public static Interned create(IPersistentMap m) {
+            if (Coding.create(m) instanceof Interned interned) return interned;
+            throw new IllegalArgumentException("Can't create an interned FHIR.Coding using non-interned components.");
+        }
+
+        @Override
+        public boolean isInterned() {
+            return true;
+        }
+
+        @Override
+        public int memSize() {
+            return 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return this == o || o instanceof Normal that && equalComponents(that);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
+    }
+
+    /**
+     * Key of the interner, comparing its components by identity.
+     * <p>
+     * All components are interned, so equal components are identical. Because the key references its components
+     * strongly, they can't be collected and recreated as different instances while the key exists.
+     */
+    private static final class InternerKey {
+
+        private final ExtensionData extensionData;
+        private final Uri system;
+        private final String version;
+        private final Code code;
+        private final String display;
+        private final Boolean userSelected;
+        private final int hash;
+
+        private InternerKey(ExtensionData extensionData, Uri system, String version, Code code, String display,
+                            Boolean userSelected) {
+            this.extensionData = requireNonNull(extensionData);
+            this.system = system;
+            this.version = version;
+            this.code = code;
+            this.display = display;
+            this.userSelected = userSelected;
+            int result = System.identityHashCode(extensionData);
+            result = 31 * result + System.identityHashCode(system);
+            result = 31 * result + System.identityHashCode(version);
+            result = 31 * result + System.identityHashCode(code);
+            result = 31 * result + System.identityHashCode(display);
+            result = 31 * result + System.identityHashCode(userSelected);
+            this.hash = result;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof InternerKey that &&
+                    hash == that.hash &&
+                    extensionData == that.extensionData &&
+                    system == that.system &&
+                    version == that.version &&
+                    code == that.code &&
+                    display == that.display &&
+                    userSelected == that.userSelected;
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
     }
 }
