@@ -167,6 +167,46 @@
     (ba/not-found (format "Property with name `%s` was not found on column-family with name `%s`." name (clojure.core/name column-family)))
     (ba/fault (ex-message e))))
 
+(def ^:private compression-type-names
+  {1 "Snappy" 2 "Zlib" 3 "BZip2" 4 "LZ4" 5 "LZ4HC" 6 "Xpress" 7 "ZSTD"})
+
+(defn- compression-type-display-name [type]
+  (or (compression-type-names type)
+      (format (if (<= 0x80 type 0xFE) "Custom%02X" "Reserved%02X") type)))
+
+(defn- compression-types-display-name [hex-codes]
+  (let [types (into
+               []
+               (comp (map #(Integer/parseInt % 16))
+                     ;; neither no compression nor the disable option
+                     (remove #{0x00 0xFF})
+                     (map compression-type-display-name))
+               (re-seq #"[0-9a-fA-F]{2}" hex-codes))]
+    (if (empty? types)
+      "NoCompression"
+      (str/join "," types))))
+
+(defn compression-display-name
+  "Converts the `compression-name` of table properties into a human-readable
+  compression name.
+
+  SST files with a format version before 7 use the human-readable compression
+  name already, while SST files with a format version of 7 or later use the
+  format `<compatibility-name>;<hex-coded compression types>;<future use>`.
+
+  Mirrors the function `ParseCompressionNameForDisplay` of RocksDB that isn't
+  available in RocksJava."
+  [compression-name]
+  (cond
+    (str/blank? compression-name) "NoCompression"
+    (not (str/includes? compression-name ";")) compression-name
+    :else
+    (let [[_ hex-codes :as fields] (str/split compression-name #";" 3)]
+      (if (and (= 3 (count fields))
+               (re-matches #"(?:[0-9a-fA-F]{2})*" hex-codes))
+        (compression-types-display-name hex-codes)
+        "Unknown"))))
+
 (extend-protocol p/Datafiable
   TableProperties
   (datafy [table]
@@ -185,7 +225,7 @@
       :column-family-id (.getColumnFamilyId table)
       :creation-time (Instant/ofEpochSecond (.getCreationTime table))
       :comparator-name (.getComparatorName table)
-      :compression-name (.getCompressionName table)
+      :compression-name (compression-display-name (.getCompressionName table))
       :user-collected-properties (.getUserCollectedProperties table)
       :readable-properties (.getReadableProperties table)}
       (pos? (.getOldestKeyTime table))

@@ -420,3 +420,51 @@
 
   (testing "converts dot-delimited property names into hierarchical maps"
     (is (= {:foo {:bar 23 :baz 42}} (impl/map-property {"foo.bar" 23 "foo.baz" 42})))))
+
+(deftest compression-display-name-test
+  (testing "legacy names are returned as-is"
+    (are [name] (= name (impl/compression-display-name name))
+      "LZ4"
+      "ZSTD"
+      "Snappy"
+      "NoCompression"))
+
+  (testing "format version 7 names"
+    (testing "with one compression type"
+      (are [name display-name] (= display-name (impl/compression-display-name name))
+        "BuiltinV2;01;" "Snappy"
+        "BuiltinV2;02;" "Zlib"
+        "BuiltinV2;03;" "BZip2"
+        "BuiltinV2;04;" "LZ4"
+        "BuiltinV2;05;" "LZ4HC"
+        "BuiltinV2;06;" "Xpress"
+        "BuiltinV2;07;" "ZSTD"))
+
+    (testing "with multiple compression types"
+      (is (= "LZ4,ZSTD" (impl/compression-display-name "BuiltinV2;0407;"))))
+
+    (testing "with reserved and custom compression types"
+      (are [name display-name] (= display-name (impl/compression-display-name name))
+        "BuiltinV2;7F;" "Reserved7F"
+        "Foo;8A;" "Custom8A"
+        "Foo;8a;" "Custom8A"))
+
+    (testing "ignores trailing fields"
+      (is (= "LZ4" (impl/compression-display-name "BuiltinV2;04;foo"))))
+
+    (testing "without compression"
+      (are [name] (= "NoCompression" (impl/compression-display-name name))
+        ""
+        ";;"
+        "BuiltinV2;;"
+        "BuiltinV2;00;"
+        "BuiltinV2;FF;"
+        "BuiltinV2;00FF;"))
+
+    (testing "malformed"
+      (are [name] (= "Unknown" (impl/compression-display-name name))
+        "BuiltinV2;04"
+        "BuiltinV2;4;"
+        "BuiltinV2;040;"
+        "BuiltinV2;0G;"
+        "BuiltinV2;+4;"))))
