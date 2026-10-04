@@ -125,18 +125,6 @@ public interface Base extends IPersistentMap, IKeywordLookup, Map<Object, Object
         return true;
     }
 
-    static boolean isInternedExt(Object x) {
-        return x instanceof Base b && b.isInterned();
-    }
-
-    static boolean areAllInternedExt(List<?> x) {
-        if (x == null) return true;
-        for (Object e : x) {
-            if (!Base.isInternedExt(e)) return false;
-        }
-        return true;
-    }
-
     @SuppressWarnings({"UnstableApiUsage"})
     static void hashInto(Object x, PrimitiveSink sink) {
         if (x == null) return;

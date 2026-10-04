@@ -3846,7 +3846,48 @@
     (testing "instances with not interned extensions are not interned"
       (satisfies-prop 100
         (prop/for-all [x (fg/codeable-concept :extension (gen/vector markdown-extension-gen 1))]
-          (not-interned? x (recreate type/codeable-concept x))))))
+          (not-interned? x (recreate type/codeable-concept x)))))
+
+    (testing "instances with interned components are interned"
+      (are [x y] (interned? x y)
+        (type/codeable-concept {}) (type/codeable-concept {})
+
+        (type/codeable-concept
+         {:extension [internable-extension]
+          :coding [(type/coding {:code #fhir/code "code-141523"})]
+          :text #fhir/string-interned "text-141530"})
+        (type/codeable-concept
+         {:extension [internable-extension]
+          :coding [(type/coding {:code #fhir/code "code-141523"})]
+          :text #fhir/string-interned "text-141530"})))
+
+    (testing "the empty instance is interned"
+      (are [x] (interned? (empty #fhir/CodeableConcept{:id "foo"}) x)
+        (type/codeable-concept {})
+        (assoc (type/codeable-concept {:extension [internable-extension]}) :extension [])))
+
+    (testing "interned instances equal not interned instances with equal components"
+      (doseq [[^Object x ^Object y]
+              [[(type/codeable-concept {:text #fhir/string-interned "text-141530"})
+                (type/codeable-concept {:text #fhir/string "text-141530"})]
+               [(type/codeable-concept {:coding [(type/coding {:display #fhir/string-interned "display-141612"})]})
+                (type/codeable-concept {:coding [(type/coding {:display #fhir/string "display-141612"})]})]]]
+        (is (Base/isInterned x))
+        (is (not (Base/isInterned y)))
+        (is (= x y))
+        (is (= y x))
+        (is (= (.hashCode x) (.hashCode y)))))
+
+    (testing "interned instances differing in one component are distinct"
+      (let [m {:extension [internable-extension]
+               :coding [(type/coding {:code #fhir/code "code-141523"})]
+               :text #fhir/string-interned "text-141530"}]
+        (are [k v] (let [x (type/codeable-concept m) y (type/codeable-concept (assoc m k v))]
+                     (and (Base/isInterned x) (Base/isInterned y) (not= x y)))
+          :extension []
+          :coding []
+          :coding [(type/coding {:code #fhir/code "code-142012"})]
+          :text #fhir/string-interned "text-142021"))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3871,7 +3912,7 @@
       #fhir/CodeableConcept{:id "id-141755"} 96
       #fhir/CodeableConcept{:extension [#fhir/Extension{}]} 0
       #fhir/CodeableConcept{:coding [#fhir/Coding{}]} 0
-      #fhir/CodeableConcept{:coding [#fhir/Coding{:id "foo"}]} 184
+      #fhir/CodeableConcept{:coding [#fhir/Coding{:id "foo"}]} 176
       #fhir/CodeableConcept{:text #fhir/string-interned "text-153829"} 0
       #fhir/CodeableConcept{:text #fhir/string "text-153829"} 88))
 
@@ -3893,11 +3934,13 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/CodeableConcept{} "#fhir/CodeableConcept{}"
-      #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}"))
+      #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}"
+      #fhir/CodeableConcept{:text #fhir/string-interned "text-142600"} "#fhir/CodeableConcept{:text #fhir/string-interned \"text-142600\"}"))
 
   (testing "pprint"
     (are [v s] (= s (pprint-str v))
-      #fhir/CodeableConcept{:text #fhir/string "text-142600"} "#fhir/CodeableConcept {:text #fhir/string {:value \"text-142600\"}}")
+      #fhir/CodeableConcept{:text #fhir/string "text-142600"} "#fhir/CodeableConcept {:text #fhir/string {:value \"text-142600\"}}"
+      #fhir/CodeableConcept{:text #fhir/string-interned "text"} "#fhir/CodeableConcept {:text #fhir/string-interned {:value \"text\"}}")
 
     (testing "line wrapping"
       (is (= (str "#fhir/CodeableConcept {:coding\n"
@@ -3908,7 +3951,8 @@
 
     (testing "exceeded print level"
       (binding [*print-level* 0]
-        (is (= "#" (pprint-str #fhir/CodeableConcept{:text #fhir/string "text-142600"})))))))
+        (is (= "#" (pprint-str #fhir/CodeableConcept{:text #fhir/string "text-142600"})))
+        (is (= "#" (pprint-str #fhir/CodeableConcept{:text #fhir/string-interned "text-142600"})))))))
 
 (deftest coding-test
   (testing "type"
@@ -3932,7 +3976,58 @@
     (testing "instances with not interned extensions are not interned"
       (satisfies-prop 100
         (prop/for-all [x (fg/coding :extension (gen/vector markdown-extension-gen 1))]
-          (not-interned? x (recreate type/coding x))))))
+          (not-interned? x (recreate type/coding x)))))
+
+    (testing "instances with interned components are interned"
+      (are [x y] (interned? x y)
+        (type/coding {}) (type/coding {})
+
+        (type/coding
+         {:extension [internable-extension]
+          :system #fhir/uri-interned "system-182405"
+          :version #fhir/string-interned "1"
+          :code #fhir/code "code-182412"
+          :display #fhir/string-interned "foo"
+          :userSelected #fhir/boolean true})
+        (type/coding
+         {:extension [internable-extension]
+          :system #fhir/uri-interned "system-182405"
+          :version #fhir/string-interned "1"
+          :code #fhir/code "code-182412"
+          :display #fhir/string-interned "foo"
+          :userSelected #fhir/boolean true})))
+
+    (testing "the empty instance is interned"
+      (are [x] (interned? (empty #fhir/Coding{:id "foo"}) x)
+        (type/coding {})
+        (assoc (type/coding {:extension [internable-extension]}) :extension [])))
+
+    (testing "interned instances equal not interned instances with equal components"
+      (let [x (type/coding {:display #fhir/string-interned "display-185012"})
+            y (type/coding {:display #fhir/string "display-185012"})]
+        (is (Base/isInterned x))
+        (is (not (Base/isInterned y)))
+        (is (= x y))
+        (is (= y x))
+        (is (= (.hashCode ^Object x) (.hashCode ^Object y)))))
+
+    (testing "interned instances differing in one component are distinct"
+      (let [m {:extension [internable-extension]
+               :system #fhir/uri-interned "system-182405"
+               :version #fhir/string-interned "1"
+               :code #fhir/code "code-182412"
+               :display #fhir/string-interned "foo"
+               :userSelected #fhir/boolean true}]
+        (are [k v] (let [x (type/coding m) y (type/coding (assoc m k v))]
+                     (and (Base/isInterned x) (Base/isInterned y) (not= x y)))
+          :extension []
+          :system #fhir/uri-interned "system-183053"
+          :system (type/uri-interned {:extension [internable-extension] :value "system-182405"})
+          :version #fhir/string-interned "2"
+          :code #fhir/code "code-183104"
+          :code (type/code {:extension [internable-extension] :value "code-182412"})
+          :display #fhir/string-interned "bar"
+          :userSelected #fhir/boolean false))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -3960,13 +4055,13 @@
   (testing "mem-size"
     (are [s mem-size] (= mem-size (Base/memSize s))
       #fhir/Coding{} 0
-      #fhir/Coding{:id "id-204201"} 112
+      #fhir/Coding{:id "id-204201"} 104
       #fhir/Coding{:extension [#fhir/Extension{}]} 0
       #fhir/Coding{:system #fhir/uri-interned "system-202808"} 0
       #fhir/Coding{:version #fhir/string-interned "version-154317"} 0
       #fhir/Coding{:code #fhir/code "code-202828"} 0
       #fhir/Coding{:display #fhir/string-interned "display-154256"} 0
-      #fhir/Coding{:display #fhir/string "display-154256"} 112))
+      #fhir/Coding{:display #fhir/string "display-154256"} 104))
 
   (testing "references"
     (is (empty? (type/references #fhir/Coding{}))))
@@ -3987,11 +4082,13 @@
 
   (testing "pprint"
     (are [v s] (= s (pprint-str v))
-      #fhir/Coding{:code #fhir/code "code-142600"} "#fhir/Coding {:code #fhir/code {:value \"code-142600\"}}")
+      #fhir/Coding{:code #fhir/code "code-142600"} "#fhir/Coding {:code #fhir/code {:value \"code-142600\"}}"
+      #fhir/Coding{:id "id-142600"} "#fhir/Coding {:id \"id-142600\"}")
 
     (testing "exceeded print level"
       (binding [*print-level* 0]
-        (is (= "#" (pprint-str #fhir/Coding{:code #fhir/code "code-142600"})))))))
+        (is (= "#" (pprint-str #fhir/Coding{:code #fhir/code "code-142600"})))
+        (is (= "#" (pprint-str #fhir/Coding{:id "id-142600"})))))))
 
 (deftest contact-detail-test
   (testing "type"
@@ -4844,7 +4941,33 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{}}
 
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "Patient/0"}}
-        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "Patient/0"}})))
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference #fhir/string "Patient/0"}}))
+
+    (testing "the empty instance is interned"
+      (are [x] (interned? (empty #fhir/Extension{:id "foo"}) x)
+        (type/extension {})
+        (assoc (type/extension {:extension [internable-extension]}) :extension [])))
+
+    (testing "interned instances equal not interned instances with equal components"
+      (let [x (type/extension {:url "url-160612"
+                               :value (type/coding {:display #fhir/string-interned "display-160623"})})
+            y (type/extension {:url "url-160612"
+                               :value (type/coding {:display #fhir/string "display-160623"})})]
+        (is (Base/isInterned x))
+        (is (not (Base/isInterned y)))
+        (is (= x y))
+        (is (= y x))
+        (is (= (.hashCode ^Object x) (.hashCode ^Object y)))))
+
+    (testing "interned instances differing in one component are distinct"
+      (let [m {:extension [internable-extension]
+               :url "url-160612"
+               :value #fhir/code "code-160745"}]
+        (are [k v] (let [x (type/extension m) y (type/extension (assoc m k v))]
+                     (and (Base/isInterned x) (Base/isInterned y) (not= x y)))
+          :extension []
+          :url "url-160803"
+          :value #fhir/code "code-160811"))))
 
   (testing "equals"
     (is (= #fhir/Extension{:url ""} #fhir/Extension{:url ""})))
@@ -4889,11 +5012,13 @@
 
   (testing "pprint"
     (are [v s] (= s (pprint-str v))
-      #fhir/Extension{:url "url-142600"} "#fhir/Extension {:url \"url-142600\"}")
+      #fhir/Extension{:url "url-142600"} "#fhir/Extension {:url \"url-142600\"}"
+      #fhir/Extension{:id "id-142600"} "#fhir/Extension {:id \"id-142600\"}")
 
     (testing "exceeded print level"
       (binding [*print-level* 0]
-        (is (= "#" (pprint-str #fhir/Extension{:url "url-142600"})))))))
+        (is (= "#" (pprint-str #fhir/Extension{:url "url-142600"})))
+        (is (= "#" (pprint-str #fhir/Extension{:id "id-142600"})))))))
 
 (deftest human-name-test
   (testing "type"
@@ -5130,14 +5255,17 @@
       #fhir/Meta{:versionId #fhir/id "foo"}
 
       #fhir/Meta{:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"}
-      #fhir/Meta{:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"})
+      #fhir/Meta{:lastUpdated #fhir/instant #system/date-time "2020-01-01T00:00:00Z"}
+
+      #fhir/Meta{:source #fhir/uri "foo"}
+      #fhir/Meta{:source #fhir/uri "foo"}
+
+      #fhir/Meta{:source #fhir/uri-interned "source-111214"}
+      #fhir/Meta{:source #fhir/uri-interned "source-111214"})
 
     (are [x y] (interned? x y)
       #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
       #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code "bar"}]}
-
-      #fhir/Meta{:source #fhir/uri "foo"}
-      #fhir/Meta{:source #fhir/uri "foo"}
 
       #fhir/Meta{:profile [#fhir/canonical "foo"]}
       #fhir/Meta{:profile [#fhir/canonical "foo"]}
@@ -5146,7 +5274,37 @@
       #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
 
       #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}
-      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}))
+      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]})
+
+    (testing "the empty instance is interned"
+      (are [x] (interned? (empty #fhir/Meta{:id "foo"}) x)
+        (type/meta {})
+        (assoc (type/meta {:extension [internable-extension]}) :extension [])
+        (dissoc (type/meta {:versionId #fhir/id "1"}) :versionId)))
+
+    (testing "interned instances equal not interned instances with equal components"
+      (doseq [[^Object x ^Object y]
+              [[(type/meta {:security [(type/coding {:display #fhir/string-interned "display-111228"})]})
+                (type/meta {:security [(type/coding {:display #fhir/string "display-111228"})]})]
+               [(type/meta {:tag [(type/coding {:display #fhir/string-interned "display-111228"})]})
+                (type/meta {:tag [(type/coding {:display #fhir/string "display-111228"})]})]]]
+        (is (Base/isInterned x))
+        (is (not (Base/isInterned y)))
+        (is (= x y))
+        (is (= y x))
+        (is (= (.hashCode x) (.hashCode y)))))
+
+    (testing "interned instances differing in one component are distinct"
+      (let [m {:extension [internable-extension]
+               :profile [#fhir/canonical "profile-111351"]
+               :security [(type/coding {:code #fhir/code "security-111402"})]
+               :tag [(type/coding {:code #fhir/code "tag-111410"})]}]
+        (are [k v] (let [x (type/meta m) y (type/meta (assoc m k v))]
+                     (and (Base/isInterned x) (Base/isInterned y) (not= x y)))
+          :extension []
+          :profile [#fhir/canonical "profile-111512"]
+          :security [(type/coding {:code #fhir/code "security-111520"})]
+          :tag [(type/coding {:code #fhir/code "tag-111528"})]))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -5219,15 +5377,18 @@
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Meta{} "#fhir/Meta{}"
-      #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}"))
+      #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}"
+      #fhir/Meta{:profile [#fhir/canonical "foo"]} "#fhir/Meta{:profile [#fhir/canonical \"foo\"]}"))
 
   (testing "pprint"
     (are [v s] (= s (pprint-str v))
-      #fhir/Meta{:versionId #fhir/id "versionId-142600"} "#fhir/Meta {:versionId #fhir/id {:value \"versionId-142600\"}}")
+      #fhir/Meta{:versionId #fhir/id "versionId-142600"} "#fhir/Meta {:versionId #fhir/id {:value \"versionId-142600\"}}"
+      #fhir/Meta{:profile [#fhir/canonical "foo"]} "#fhir/Meta {:profile [#fhir/canonical {:value \"foo\"}]}")
 
     (testing "exceeded print level"
       (binding [*print-level* 0]
-        (is (= "#" (pprint-str #fhir/Meta{:versionId #fhir/id "versionId-142600"})))))))
+        (is (= "#" (pprint-str #fhir/Meta{:versionId #fhir/id "versionId-142600"})))
+        (is (= "#" (pprint-str #fhir/Meta{:profile [#fhir/canonical "foo"]})))))))
 
 (deftest money-test
   (testing "type"

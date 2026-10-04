@@ -17,6 +17,15 @@
    :blaze.fhir/parsing-context
    {:structure-definition-repo structure-definition-repo}))
 
+(def ^:private rs-context
+  "Parsing context of the resource store."
+  (ig/init-key
+   :blaze.fhir/parsing-context
+   {:structure-definition-repo structure-definition-repo
+    :fail-on-unknown-property false
+    :include-summary-only true
+    :mode :internal}))
+
 (def ^:private writing-context
   (ig/init-key
    :blaze.fhir/writing-context
@@ -25,14 +34,26 @@
 (def kds-bundle-filename
   "../../.github/test-data/kds-testdata-2024.0.1/resources/Bundle-mii-exa-test-data-bundle.json")
 
+(defn- format-mean [result]
+  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean result)))))
+
 (defn- bench-write-json [x]
-  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (fhir-spec/write-json-as-bytes writing-context x) {}))))))
+  (format-mean (criterium/benchmark (fhir-spec/write-json-as-bytes writing-context x) {})))
 
 (defn- read-json [type x]
   (fhir-spec/parse-json parsing-context type x))
 
 (defn- bench-read-json [type x]
-  (apply format "%.3f µs <> %.3f µs" (map #(* % 1e6) (second (:mean (criterium/benchmark (read-json type x) {}))))))
+  (format-mean (criterium/benchmark (read-json type x) {})))
+
+(defn- write-cbor [x]
+  (fhir-spec/write-cbor writing-context x))
+
+(defn- read-cbor [type x]
+  (fhir-spec/parse-cbor rs-context type x))
+
+(defn- bench-read-cbor [type x]
+  (format-mean (criterium/benchmark (read-cbor type x) {})))
 
 (defn- slurp-bytes [filename]
   (.getBytes (slurp filename) StandardCharsets/UTF_8))
@@ -118,9 +139,16 @@
 
   ;; Read Performance
 
-  ;; 1036,312 µs <> 1046,569 µs
+  ;; 930,671 µs <> 935,850 µs
   (bench-read-json "Bundle" (slurp-bytes kds-bundle-filename))
 
   (let [data (slurp-bytes kds-bundle-filename)]
     (dotimes [_ 100000]
-      (read-json "Bundle" data))))
+      (read-json "Bundle" data)))
+
+  ;; 828,608 µs <> 833,403 µs
+  (bench-read-cbor "Bundle" (write-cbor (read-json "Bundle" (slurp-bytes kds-bundle-filename))))
+
+  (let [data (write-cbor (read-json "Bundle" (slurp-bytes kds-bundle-filename)))]
+    (dotimes [_ 100000]
+      (read-cbor "Bundle" data))))
