@@ -102,7 +102,10 @@
       cass/first-row (fn [_] (ba/not-found))
       cass/close close]
       (with-system [{store ::page-store/cassandra} config]
-        (is (nil? @(page-store/get store token))))))
+        (given-failed-future (page-store/get store token)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Clauses of token `%s` not found." token)
+          ::page-store/token := token))))
 
   (testing "success after not-found escalation to QUORUM"
     (with-redefs

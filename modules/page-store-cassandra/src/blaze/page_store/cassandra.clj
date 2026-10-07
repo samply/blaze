@@ -13,6 +13,7 @@
    [blaze.page-store.spec]
    [blaze.page-store.token :as token]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log])
@@ -59,11 +60,17 @@
            (execute-get* session get-quorum-statement token)
            (ac/completed-future e))))))
 
+(defn- not-found-msg [token]
+  (format "Clauses of token `%s` not found." token))
+
+(defn- add-not-found-msg [token e]
+  (cond-> e (ba/not-found? e) (assoc ::anom/message (not-found-msg token))))
+
 (defn- execute-get [session get-statement get-quorum-statement token]
   (-> (ac/retry #(execute-get-with-escalation session get-statement
                                               get-quorum-statement token)
                 "page-store-cassandra-get" 5)
-      (ac/exceptionally #(when-not (ba/not-found? %) %))))
+      (ac/exceptionally (partial add-not-found-msg token))))
 
 (defn- bind-put [statement token clauses]
   (let [^bytes content (codec/encode clauses)]
