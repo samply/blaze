@@ -1,0 +1,30 @@
+# Blaze as it runs on LEA79 (128 cores, 768 GiB RAM) for the transaction load test.
+#
+# The settings follow the production configuration guide: about quarter of the RAM
+# each for the JVM heap and the block cache. Deviating from it, the thread pools
+# of the resource store and the resource indexer match the highest concurrency
+# level of the sweep and the JVM heap is fixed at its maximum size.
+services:
+  blaze:
+    image: "samply/blaze:main"
+    # the user that owns the data directory, so that reset.sh can empty it
+    user: "1000:1000"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms128g -Xmx128g"
+      DB_BLOCK_CACHE_SIZE: "131072"
+      DB_SCALE_FACTOR: "4"
+      DB_RESOURCE_STORE_KV_THREADS: "128"
+      DB_RESOURCE_INDEXER_THREADS: "128"
+    ports:
+    - "8080:8080"
+    - "8081:8081"
+    volumes:
+    # reset.sh deletes the contents of this host directory in front of every run
+    - "/srv/blaze/data-load-test:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      start_interval: 1s

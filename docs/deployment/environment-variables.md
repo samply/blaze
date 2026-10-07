@@ -132,7 +132,7 @@ The maximum number of threads a single DB compaction is partitioned into by key 
 
 #### `DB_RESOURCE_INDEXER_THREADS` <Badge type="warning" text="Since 0.8"/>
 
-The number threads used for indexing resources. Try 8 or 16 depending on your hardware.
+The number threads used for indexing resources. Try 8 or 16 depending on your hardware. See also: [Production Configuration](../production-configuration.md#resource-indexer-concurrency).
 
 **Default:** 4
 
@@ -152,7 +152,7 @@ The number of threads used for reading and writing resources. It should be set t
 
 #### `DB_RESOURCE_INDEXER_THREADS` <Badge type="warning" text="Since 0.8"/>
 
-The number threads used for indexing resources. Try 8 or 16 depending on your hardware.
+The number threads used for indexing resources. Try 8 or 16 depending on your hardware. See also: [Production Configuration](../production-configuration.md#resource-indexer-concurrency).
 
 **Default:** 4
 
@@ -210,7 +210,7 @@ The maximum number of threads a single DB compaction is partitioned into by key 
 
 #### `DB_RESOURCE_INDEXER_THREADS` <Badge type="warning" text="Since 0.8"/>
 
-The number threads used for indexing resources. Try 8 or 16 depending on your hardware.
+The number threads used for indexing resources. Try 8 or 16 depending on your hardware. See also: [Production Configuration](../production-configuration.md#resource-indexer-concurrency).
 
 **Default:** 4
 

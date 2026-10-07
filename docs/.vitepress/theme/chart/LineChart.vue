@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import ChartFrame from "./ChartFrame.vue";
 import LineSeries from "./LineSeries.vue";
-import { num, rows } from "./data";
+import { isNum, num, rows } from "./data";
 import {
   axis,
   type Curve,
@@ -63,7 +63,10 @@ const props = withDefaults(
 );
 
 const data = computed(() => {
-  const all = rows(props.src);
+  // Some k6 results start with a header row, which carries no x value.
+  const parsed = rows(props.src);
+  const all =
+    parsed.length > 0 && !isNum(parsed[0], props.xCol) ? parsed.slice(1) : parsed;
   const values = (col: number) =>
     all.map((row) => ({ x: num(row, props.xCol), y: num(row, col) }));
   return {

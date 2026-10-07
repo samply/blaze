@@ -3,9 +3,10 @@ import exec from 'k6/execution';
 import { Counter, Trend } from 'k6/metrics';
 import { fail } from 'k6';
 
-const base = __ENV.BASE;
+const base = __ENV.BASE || "http://localhost:8080/fhir";
 const duration = __ENV.DURATION || 60;
 const system = __ENV.SYSTEM;
+const run = __ENV.RUN;
 const warmup = __ENV.WARMUP || 1000;
 
 // The concurrency levels of the sweep, one scenario each, run one after the
@@ -24,10 +25,14 @@ if (singleLevel !== null && !(singleLevel > 0)) {
 }
 
 // Only a sweep writes the CSV, because a single level can't fill it. So the
-// system is only needed for a sweep and a single level run can't overwrite the
-// committed data of a sweep.
+// system and the run are only needed for a sweep and a single level run can't
+// overwrite the committed data of a sweep.
 if (singleLevel === null && !system) {
 	fail('SYSTEM env var is required, e.g. SYSTEM=LEA47');
+}
+
+if (singleLevel === null && !run) {
+	fail('RUN env var is required, e.g. RUN=1');
 }
 
 const levels = singleLevel === null ? sweep : [singleLevel];
@@ -77,6 +82,16 @@ const countParams = {
 	responseType: 'text',
 	tags: {
 		name: 'count'
+	}
+};
+
+const metadataParams = {
+	headers: {
+		'Accept': 'application/fhir+json'
+	},
+	responseType: 'text',
+	tags: {
+		name: 'metadata'
 	}
 };
 
@@ -173,11 +188,29 @@ function patientCount() {
 	return resp.json().total;
 }
 
+// Reads the version of the server under test from its CapabilityStatement, so
+// that every result line carries the version it was measured against.
+function softwareVersion() {
+	const resp = http.get(`${base}/metadata?_elements=software`, metadataParams);
+
+	if (resp.status !== 200) fail(`non 200 response code ${resp.status} while reading the CapabilityStatement`);
+
+	const software = resp.json().software;
+
+	if (!software || !software.version) fail('the CapabilityStatement has no software version');
+
+	return software.version;
+}
+
 // Executes a number of transactions before the measured scenarios start so that
 // the JIT compiler, the resource caches and the index column families are warm.
 // Otherwise the c1 scenario, which runs first, would measure a cold system and
 // so wouldn't be comparable to the later, higher-concurrency scenarios.
 export function setup() {
+	const version = softwareVersion();
+
+	console.log(`testing Blaze ${version}`);
+
 	// The transaction test creates resources itself, so its throughput depends on
 	// how much data the server already holds. Require an essentially empty server
 	// so runs stay comparable across systems and repetitions.
@@ -194,6 +227,8 @@ export function setup() {
 	}
 
 	console.log('warmup finished');
+
+	return { version };
 }
 
 export default function() {
@@ -208,21 +243,23 @@ export default function() {
 	m.responseTime.add(resp.timings.waiting);
 }
 
+const header = 'vus,requests_per_s,med_ms,p95_ms,p99_ms,version\n';
+
 function resultLine(vus, data) {
   const requests = data.metrics[`requests_c${vus}`];
   const responseTime = data.metrics[`response_time_c${vus}`];
   const med = responseTime.values.med;
   const p95 = responseTime.values['p(95)'];
   const p99 = responseTime.values['p(99)'];
-  return `${vus},${requests.values.count / duration},${med},${p95},${p99}\n`;
+  return `${vus},${requests.values.count / duration},${med},${p95},${p99},${data.setup_data.version}\n`;
 }
 
 export function handleSummary(data) {
-  const lines = levels.map((vus) => resultLine(vus, data)).join('');
+  const lines = header + levels.map((vus) => resultLine(vus, data)).join('');
 
   // A single level run reports on stdout instead, so that it leaves the
   // committed CSV of the sweep alone.
   return singleLevel === null
-    ? { [`data/transaction-${system}.csv`]: lines }
+    ? { [`data/raw/transaction-${system}-${run}.csv`]: lines }
     : { stdout: lines };
 }
