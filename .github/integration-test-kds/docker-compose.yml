@@ -49,6 +49,14 @@ services:
 
   fhir-validator:
     image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.8@sha256:4a60074f0f780c9d497b68f67b7c62da886554fc156e19bb035f77962c363f26"
+    # Load the cqfmeasures IG, which defines the cqfm-populationBasis extension
+    # used in Measure resources created by blazectl, at startup in addition to
+    # the default IGs. Otherwise the validator would download and load it on
+    # first use, which takes too long for a single validation request.
+    entrypoint:
+    - "/bin/sh"
+    - "-c"
+    - 'IG_PARAMS="$$DEFAULT_IG_PARAMS -ig hl7.fhir.us.cqfmeasures#5.0.0" exec /bin/sh /app/docker-entrypoint.sh'
     environment:
       JAVA_OPTS: "-Xmx4g"
       TX_SERVER: "http://terminology-server:8080/fhir"
