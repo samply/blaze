@@ -143,7 +143,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xms2g -Xmx2g"
       LOG_LEVEL: "debug"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
@@ -200,7 +200,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xms2g -Xmx2g"
       LOG_LEVEL: "debug"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
