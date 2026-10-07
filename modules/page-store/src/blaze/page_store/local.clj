@@ -27,13 +27,13 @@
 (defn- decode-token [token]
   (HashCode/fromBytes (.decode (BaseEncoding/base16) ^String token)))
 
-(defn- load [^Cache cache token]
+(defn- load [^Cache clause-cache ^Cache token-cache token]
   (some->>
-   (.getIfPresent cache (decode-token token))
+   (.getIfPresent token-cache (decode-token token))
    (reduce
     (fn [ret hashes]
       (if-some [clauses (reduce
-                         #(if-some [clause (.getIfPresent cache %2)]
+                         #(if-some [clause (.getIfPresent clause-cache %2)]
                             (conj %1 clause)
                             (reduced nil))
                          []
@@ -55,33 +55,38 @@
     (mapv (partial store-clause cache) disjunction)
     [(store-clause cache disjunction)]))
 
-(defn- store [^Cache cache clauses]
-  (let [hashes (mapv (partial store-disjunction cache) clauses)
+(defn- store [clause-cache ^Cache token-cache clauses]
+  (let [hashes (mapv (partial store-disjunction clause-cache) clauses)
         hash (hash/hash-hashes hashes)]
-    (.get cache hash (fn [_] hashes))
+    (.get token-cache hash (fn [_] hashes))
     (hash/encode hash)))
 
-(defrecord LocalPageStore [cache backing-store]
+(defrecord LocalPageStore [clause-cache token-cache backing-store]
   p/PageStore
   (-get [_ token]
-    (if-some [clauses (load cache token)]
+    (if-some [clauses (load clause-cache token-cache token)]
       (ac/completed-future clauses)
       (if backing-store
         (-> (page-store/get backing-store token)
             (ac/then-apply
              (fn [clauses]
-               (store cache clauses)
+               (store clause-cache token-cache clauses)
                clauses)))
         (ac/completed-future (ba/not-found (not-found-msg token))))))
 
   (-put [_ clauses]
     (if (empty? clauses)
       (ac/completed-future (ba/incorrect "Clauses should not be empty."))
-      (let [token (store cache clauses)]
+      (let [token (store clause-cache token-cache clauses)]
         (if backing-store
           (-> (page-store/put! backing-store clauses)
               (ac/then-apply (fn [_] token)))
           (ac/completed-future token))))))
+
+(defn- cache [expire-duration]
+  (-> (Caffeine/newBuilder)
+      (.expireAfterAccess expire-duration)
+      (.build)))
 
 (defmethod m/pre-init-spec ::page-store/local [_]
   (s/keys :opt-un [::expire-duration ::backing-store]))
@@ -90,23 +95,23 @@
   [_ {:keys [expire-duration backing-store] :or {expire-duration (time/hours 5)}}]
   (log/info "Open local page store with an expire duration of"
             (str expire-duration))
-  (->LocalPageStore
-   (-> (Caffeine/newBuilder)
-       (.expireAfterAccess expire-duration)
-       (.build))
-   backing-store))
+  (->LocalPageStore (cache expire-duration) (cache expire-duration)
+                    backing-store))
 
 (defmethod m/pre-init-spec :blaze.page-store.local/collector [_]
   (s/keys :req-un [:blaze/page-store]))
 
+(defn- estimated-size [type ^Cache cache]
+  {:label-values [type] :value (.estimatedSize cache)})
+
 (defmethod ig/init-key :blaze.page-store.local/collector
-  [_ {:keys [page-store]}]
+  [_ {{:keys [token-cache clause-cache]} :page-store}]
   (metrics/collector
     [(metrics/gauge-metric
       "blaze_page_store_estimated_size"
-      "Returns the approximate number of tokens in the page store."
-      []
-      [{:label-values []
-        :value (.estimatedSize ^Cache (:cache page-store))}])]))
+      "Returns the approximate number of entries in the page store."
+      ["type"]
+      [(estimated-size "token" token-cache)
+       (estimated-size "clause" clause-cache)])]))
 
 (derive :blaze.page-store.local/collector :blaze.metrics/collector)
