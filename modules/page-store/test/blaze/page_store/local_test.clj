@@ -18,10 +18,11 @@
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Cache]))
+   [com.github.benmanes.caffeine.cache Cache Policy$FixedExpiration]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -43,6 +44,11 @@
 
 (def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
 
+(defn- expire-duration [store]
+  (let [^Policy$FixedExpiration expiration
+        (.get (.expireAfterAccess (.policy ^Cache (:cache store))))]
+    (.getExpiresAfter expiration)))
+
 (deftest init-test
   (testing "nil config"
     (given-failed-system {:blaze.page-store/local nil}
@@ -59,7 +65,17 @@
 
   (testing "is a page store"
     (with-system [{store :blaze.page-store/local} config]
-      (is (s/valid? :blaze/page-store store)))))
+      (is (s/valid? :blaze/page-store store))))
+
+  (testing "the default expire duration is five hours"
+    (with-system [{store :blaze.page-store/local} config]
+      (is (= (time/hours 5) (expire-duration store)))))
+
+  (testing "custom expire duration"
+    (with-system [{store :blaze.page-store/local}
+                  (assoc-in config [:blaze.page-store/local :expire-duration]
+                            (time/minutes 30))]
+      (is (= (time/minutes 30) (expire-duration store))))))
 
 (defn- patient-ref [s]
   (apply str "Patient/" (repeat 64 s)))
