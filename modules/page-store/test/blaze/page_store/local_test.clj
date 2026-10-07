@@ -44,9 +44,9 @@
 
 (def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
 
-(defn- expire-duration [store]
+(defn- expire-duration [cache]
   (let [^Policy$FixedExpiration expiration
-        (.get (.expireAfterAccess (.policy ^Cache (:cache store))))]
+        (.get (.expireAfterAccess (.policy ^Cache cache)))]
     (.getExpiresAfter expiration)))
 
 (deftest init-test
@@ -69,26 +69,30 @@
 
   (testing "the default expire duration is five hours"
     (with-system [{store :blaze.page-store/local} config]
-      (is (= (time/hours 5) (expire-duration store)))))
+      (is (= (time/hours 5) (expire-duration (:clause-cache store))))
+      (is (= (time/hours 5) (expire-duration (:token-cache store))))))
 
   (testing "custom expire duration"
     (with-system [{store :blaze.page-store/local}
                   (assoc-in config [:blaze.page-store/local :expire-duration]
                             (time/minutes 30))]
-      (is (= (time/minutes 30) (expire-duration store))))))
+      (is (= (time/minutes 30) (expire-duration (:clause-cache store))))
+      (is (= (time/minutes 30) (expire-duration (:token-cache store)))))))
 
 (defn- patient-ref [s]
   (apply str "Patient/" (repeat 64 s)))
 
 (defn- invalidate-clause! [store clause]
-  (.invalidate ^Cache (:cache store) (hash/hash-clause clause)))
+  (.invalidate ^Cache (:clause-cache store) (hash/hash-clause clause)))
 
 (defn- clear-cache! [store]
-  (.invalidateAll ^Cache (:cache store)))
+  (.invalidateAll ^Cache (:clause-cache store))
+  (.invalidateAll ^Cache (:token-cache store)))
 
 (deftest get-test
   (with-system [{store :blaze.page-store/local} config]
     @(page-store/put! store [["active" "true"]])
+    @(page-store/put! store [["active" "true"] [:sort "_id" :asc]])
 
     (testing "returns the clauses stored"
       (is (= [["active" "true"]] @(page-store/get store token))))
@@ -96,7 +100,13 @@
     (testing "not-found"
       (given-failed-future (page-store/get store (str/join (repeat 64 "A")))
         ::anom/category := ::anom/not-found
-        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 64 "A"))))))
+        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 64 "A")))))
+
+    (testing "not-found on the hash of a stored clause"
+      (let [token (hash/encode (hash/hash-clause [:sort "_id" :asc]))]
+        (given-failed-future (page-store/get store token)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "Clauses of token `%s` not found." token)))))
 
   (with-system [{store :blaze.page-store/local} config]
     (let [token @(page-store/put! store [["patient" (patient-ref "a")]
@@ -226,10 +236,15 @@
         count := 1
         [0 :type] := :gauge
         [0 :name] := "blaze_page_store_estimated_size"
-        [0 :samples count] := 1
-        [0 :samples 0 :value] := 0.0)))
+        [0 :samples count] := 2
+        [0 :samples 0 :label-names] := ["type"]
+        [0 :samples 0 :label-values] := ["token"]
+        [0 :samples 0 :value] := 0.0
+        [0 :samples 1 :label-names] := ["type"]
+        [0 :samples 1 :label-values] := ["clause"]
+        [0 :samples 1 :value] := 0.0)))
 
-  (testing "two clauses result in 3 entries"
+  (testing "two clauses result in one token"
     (with-system [{store :blaze.page-store/local
                    collector :blaze.page-store.local/collector} config]
       @(page-store/put! store [["patient" (patient-ref "a")]
@@ -239,9 +254,10 @@
 
         (given metrics
           count := 1
-          [0 :samples 0 :value] := 3.0))))
+          [0 :samples 0 :value] := 1.0
+          [0 :samples 1 :value] := 2.0))))
 
-  (testing "a second patient adds only 2 entries sharing the active clause"
+  (testing "a second patient adds a second token and shares one clause"
     (with-system [{store :blaze.page-store/local
                    collector :blaze.page-store.local/collector} config]
       @(page-store/put! store [["patient" (patient-ref "a")]
@@ -253,4 +269,5 @@
 
         (given metrics
           count := 1
-          [0 :samples 0 :value] := 5.0)))))
+          [0 :samples 0 :value] := 2.0
+          [0 :samples 1 :value] := 3.0)))))

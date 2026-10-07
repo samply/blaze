@@ -538,7 +538,7 @@ Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).
 
 #### `PAGE_STORE_EXPIRE` <Badge type="warning" text="Since 1.0.2"/>
 
-The duration after page store entries expire without being accessed. The metric `blaze_page_store_estimated_size` shows the number of entries in the page store.
+The duration after page store entries expire without being accessed. The metric `blaze_page_store_estimated_size` shows the number of entries in the page store, separately for the label `type` values `token` and `clause`. Each paging link references one token, which in turn references the clauses of its query. Clauses hold the actual query params, like long lists of patient references, and are shared between tokens.
 
 In the `standalone` and `in-memory` storage variants, the page store is kept in memory only. The default matches the maximum lifetime of a [paging link](../api.md#expire), so the query params of every paging link that is still usable are found in the page store. With a lower value, paging links of searches issued via POST can stop working before they expire. Lower that value only if the page store gets too large. Before version 1.12.0, the default was PT1H.
 

@@ -636,10 +636,9 @@
    [{:title "Estimated Size"
      :unit "short"
      :width 6
-     :legend false
      :queries
      [{:expr "blaze_page_store_estimated_size{job=~\"$job\",instance=~\"$instance\"}"
-       :legend ""}]}]}
+       :legend "{{type}}"}]}]}
 
   {:title "Resource Indexer"
    :panels
