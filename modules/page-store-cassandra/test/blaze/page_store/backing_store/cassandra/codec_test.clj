@@ -1,6 +1,6 @@
-(ns blaze.page-store.cassandra.codec-test
+(ns blaze.page-store.backing-store.cassandra.codec-test
   (:require
-   [blaze.page-store.cassandra.codec :as codec]
+   [blaze.page-store.backing-store.cassandra.codec :as codec]
    [blaze.spec]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]

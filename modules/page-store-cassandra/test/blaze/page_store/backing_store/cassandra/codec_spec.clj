@@ -1,8 +1,8 @@
-(ns blaze.page-store.cassandra.codec-spec
+(ns blaze.page-store.backing-store.cassandra.codec-spec
   (:require
    [blaze.anomaly-spec]
    [blaze.page-store :as page-store]
-   [blaze.page-store.cassandra.codec :as codec]
+   [blaze.page-store.backing-store.cassandra.codec :as codec]
    [blaze.page-store.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]

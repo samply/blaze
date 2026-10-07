@@ -7,10 +7,10 @@
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-store :as page-store]
    [blaze.page-store-spec]
+   [blaze.page-store.cache-spec]
+   [blaze.page-store.hash :as hash]
    [blaze.page-store.local :as local]
-   [blaze.page-store.local.hash :as hash]
    [blaze.page-store.spec]
-   [blaze.page-store.token-spec]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -34,15 +34,7 @@
   {:blaze.page-store/local {}
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
-(defmethod ig/init-key ::backing-store [_ config]
-  (ig/init-key :blaze.page-store/local config))
-
-(def config-with-backing-store
-  {:blaze.page-store/local {:backing-store (ig/ref ::backing-store)}
-   ::backing-store {}
-   :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
-
-(def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
+(def token "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710")
 
 (defn- expire-duration [cache]
   (let [^Policy$FixedExpiration expiration
@@ -67,6 +59,9 @@
     (with-system [{store :blaze.page-store/local} config]
       (is (s/valid? :blaze/page-store store))))
 
+  (testing "can be referred by the super key"
+    (is (isa? :blaze.page-store/local :blaze/page-store)))
+
   (testing "the default expire duration is five hours"
     (with-system [{store :blaze.page-store/local} config]
       (is (= (time/hours 5) (expire-duration (:clause-cache store))))
@@ -84,10 +79,6 @@
 
 (defn- invalidate-clause! [store clause]
   (.invalidate ^Cache (:clause-cache store) (hash/hash-clause clause)))
-
-(defn- clear-cache! [store]
-  (.invalidateAll ^Cache (:clause-cache store))
-  (.invalidateAll ^Cache (:token-cache store)))
 
 (deftest get-test
   (with-system [{store :blaze.page-store/local} config]
@@ -159,50 +150,42 @@
 
 (deftest put-test
   (with-system [{store :blaze.page-store/local} config]
-    (testing "shall not be called with an empty list of clauses"
-      (given-failed-future (page-store/put! store [])
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Clauses should not be empty."))
-
     (testing "returns a token"
       (is (= token @(page-store/put! store [["active" "true"]]))))))
 
-(deftest backing-store-get-test
-  (testing "on local cache miss falls through to backing store"
-    (with-system [{store :blaze.page-store/local} config-with-backing-store]
-      (let [token @(page-store/put! store [["active" "true"]])]
-        (clear-cache! store)
+(defn- put-and-get-both [clauses-1 clauses-2]
+  (with-system [{store :blaze.page-store/local} config]
+    (let [token-1 @(page-store/put! store clauses-1)
+          token-2 @(page-store/put! store clauses-2)]
+      [token-1 @(page-store/get store token-1)
+       token-2 @(page-store/get store token-2)])))
 
-        (is (= [["active" "true"]] @(page-store/get store token))))))
+(deftest distinct-clauses-test
+  (testing "values split differently"
+    (let [[token-1 clauses-1 token-2 clauses-2]
+          (put-and-get-both [["code" "a" "b"]] [["code" "ab"]])]
+      (is (not= token-1 token-2))
+      (is (= [["code" "a" "b"]] clauses-1))
+      (is (= [["code" "ab"]] clauses-2))))
 
-  (testing "after cache miss populates local cache for subsequent get"
-    (with-system [{store :blaze.page-store/local
-                   backing-store ::backing-store}
-                  config-with-backing-store]
-      (let [token @(page-store/put! store [["active" "true"]])]
-        (clear-cache! store)
-        @(page-store/get store token)
-        (clear-cache! backing-store)
+  (testing "disjunction versus conjunction"
+    (let [[token-1 clauses-1 token-2 clauses-2]
+          (put-and-get-both [[["code" "a"] ["code" "b"]]]
+                            [["code" "a"] ["code" "b"]])]
+      (is (not= token-1 token-2))
+      (is (= [[["code" "a"] ["code" "b"]]] clauses-1))
+      (is (= [["code" "a"] ["code" "b"]] clauses-2)))))
 
-        (is (= [["active" "true"]] @(page-store/get store token))))))
-
-  (testing "not-found when missing from both stores"
-    (with-system [{store :blaze.page-store/local} config-with-backing-store]
-      (given-failed-future (page-store/get store (str/join (repeat 64 "A")))
-        ::anom/category := ::anom/not-found
-        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 64 "A")))))))
-
-(deftest backing-store-put-test
-  (testing "writes through to backing store"
-    (with-system [{store :blaze.page-store/local
-                   backing-store ::backing-store}
-                  config-with-backing-store]
-      (let [token @(page-store/put! store [["active" "true"]])]
-        (is (= [["active" "true"]] @(page-store/get backing-store token))))))
-
-  (testing "returns the same token as without backing store"
-    (with-system [{store :blaze.page-store/local} config-with-backing-store]
-      (is (= token @(page-store/put! store [["active" "true"]]))))))
+(deftest single-clause-disjunction-test
+  (testing "a disjunction of one clause is stored as that clause"
+    (doseq [[first-clauses second-clauses]
+            [[[[["code" "a"]]] [["code" "a"]]]
+             [[["code" "a"]] [[["code" "a"]]]]]]
+      (let [[token-1 clauses-1 token-2 clauses-2]
+            (put-and-get-both first-clauses second-clauses)]
+        (is (= token-1 token-2))
+        (is (= [["code" "a"]] clauses-1))
+        (is (= [["code" "a"]] clauses-2))))))
 
 (deftest collector-init-test
   (testing "nil config"

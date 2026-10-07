@@ -96,7 +96,8 @@
                     blaze.operation.patient.everything
                     blaze.operation.patient.purge
                     blaze.page-id-cipher
-                    blaze.page-store.cassandra
+                    blaze.page-store.backing-store.cassandra
+                    blaze.page-store.caching
                     blaze.page-store.local
                     blaze.rest-api
                     blaze.rest-api.async-status-cancel-handler

@@ -168,7 +168,7 @@
   {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :page-store #blaze/ref :blaze.page-store/local
+   :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
   :blaze.interaction.search-system/search-duration-seconds {}
@@ -177,7 +177,7 @@
   {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :page-store #blaze/ref :blaze.page-store/local
+   :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
@@ -187,7 +187,7 @@
   {:blaze.interaction.search.util/link #blaze/ref :blaze.interaction.search.util/link
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :page-store #blaze/ref :blaze.page-store/local
+   :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
 
   :blaze.interaction/transaction
@@ -659,6 +659,8 @@
    ;;
    ;; Local Page Store
    ;;
+   ;; Can be referred by the super key :blaze/page-store.
+   ;;
    :blaze.page-store/local
    {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT5H"]}
 
@@ -1034,6 +1036,8 @@
    ;;
    ;; Local Page Store
    ;;
+   ;; Can be referred by the super key :blaze/page-store.
+   ;;
    :blaze.page-store/local
    {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT5H"]}
 
@@ -1349,9 +1353,9 @@
    ;;
    ;; Cassandra Page Store
    ;;
-   ;; Used as the distributed backing store for the local page store cache.
+   ;; Used as the backing store of the caching page store.
    ;;
-   :blaze.page-store/cassandra
+   :blaze.page-store.backing-store/cassandra
    {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
     :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
     :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
@@ -1361,25 +1365,27 @@
     :max-request-queue-size #blaze/cfg ["DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE" nat-int? 100000]
     :request-timeout #blaze/cfg ["DB_CASSANDRA_REQUEST_TIMEOUT" pos-int? 2000]}
 
-   :blaze.page-store.cassandra/duration-seconds {}
+   :blaze.page-store.backing-store.cassandra/duration-seconds {}
 
-   :blaze.page-store.cassandra/resource-bytes {}
+   :blaze.page-store.backing-store.cassandra/resource-bytes {}
 
    ;;
-   ;; Local Page Store with Cassandra Backing Store
+   ;; Caching Page Store with Cassandra Backing Store
+   ;;
+   ;; Can be referred by the super key :blaze/page-store.
    ;;
    ;; Acts as a write-through cache in front of Cassandra, reducing load on
    ;; Cassandra for repeated token lookups within the same node. Entries that
-   ;; expired locally are reloaded from Cassandra, so the expire duration only
-   ;; has to bound the cache size and is shorter than in the other storage
+   ;; expired from the cache are reloaded from Cassandra, so the expire duration
+   ;; only has to bound the cache size and is shorter than in the other storage
    ;; variants.
    ;;
-   :blaze.page-store/local
+   :blaze.page-store/caching
    {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]
-    :backing-store #blaze/ref :blaze.page-store/cassandra}
+    :backing-store #blaze/ref :blaze.page-store.backing-store/cassandra}
 
-   :blaze.page-store.local/collector
-   {:page-store #blaze/ref :blaze.page-store/local}}}
+   :blaze.page-store.caching/collector
+   {:page-store #blaze/ref :blaze.page-store/caching}}}
 
  :features
  [;;
