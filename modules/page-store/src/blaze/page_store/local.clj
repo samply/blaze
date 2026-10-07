@@ -87,7 +87,7 @@
   (s/keys :opt-un [::expire-duration ::backing-store]))
 
 (defmethod ig/init-key ::page-store/local
-  [_ {:keys [expire-duration backing-store] :or {expire-duration (time/hours 1)}}]
+  [_ {:keys [expire-duration backing-store] :or {expire-duration (time/hours 5)}}]
   (log/info "Open local page store with an expire duration of"
             (str expire-duration))
   (->LocalPageStore

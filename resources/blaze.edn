@@ -660,7 +660,7 @@
    ;; Local Page Store
    ;;
    :blaze.page-store/local
-   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]}
+   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT5H"]}
 
    :blaze.page-store.local/collector
    {:page-store #blaze/ref :blaze.page-store/local}}
@@ -1035,7 +1035,7 @@
    ;; Local Page Store
    ;;
    :blaze.page-store/local
-   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]}
+   {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT5H"]}
 
    :blaze.page-store.local/collector
    {:page-store #blaze/ref :blaze.page-store/local}}
@@ -1369,7 +1369,10 @@
    ;; Local Page Store with Cassandra Backing Store
    ;;
    ;; Acts as a write-through cache in front of Cassandra, reducing load on
-   ;; Cassandra for repeated token lookups within the same node.
+   ;; Cassandra for repeated token lookups within the same node. Entries that
+   ;; expired locally are reloaded from Cassandra, so the expire duration only
+   ;; has to bound the cache size and is shorter than in the other storage
+   ;; variants.
    ;;
    :blaze.page-store/local
    {:expire-duration #blaze/cfg ["PAGE_STORE_EXPIRE" java-time.api/duration? "PT1H"]

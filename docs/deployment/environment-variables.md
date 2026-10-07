@@ -538,9 +538,13 @@ Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).
 
 #### `PAGE_STORE_EXPIRE` <Badge type="warning" text="Since 1.0.2"/>
 
-The duration after page store entries expire. Lower that value if the size of the page store, available via the metric `blaze_page_store_estimated_size`, gets to large.
+The duration after page store entries expire without being accessed. The metric `blaze_page_store_estimated_size` shows the number of entries in the page store.
 
-**Default:** PT1H
+In the `standalone` and `in-memory` storage variants, the page store is kept in memory only. The default matches the maximum lifetime of a [paging link](../api.md#expire), so the query params of every paging link that is still usable are found in the page store. With a lower value, paging links of searches issued via POST can stop working before they expire. Lower that value only if the page store gets too large. Before version 1.12.0, the default was PT1H.
+
+In the `distributed` storage variant, the page store is a cache in front of Cassandra, where entries don't expire. Entries that expired from the cache are reloaded from Cassandra, so the value doesn't affect how long paging links work. It only trades memory for fewer Cassandra reads.
+
+**Default:** PT5H (`standalone` and `in-memory`), PT1H (`distributed`)
 
 #### `ENABLE_TERMINOLOGY_SERVICE` <Badge type="warning" text="Since 0.31"/>
 

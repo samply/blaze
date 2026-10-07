@@ -142,7 +142,7 @@ Paging links expire because the encryption key their page ID was encrypted with 
 
 Every page response carries freshly encrypted links, so a session that is paged continuously renews itself. Only links that are left unused expire.
 
-For searches issued via POST, the query params are additionally kept in the page store. Its entries expire after the duration given by [`PAGE_STORE_EXPIRE`](deployment/environment-variables.md#page-store-expire) (one hour by default) without being accessed, and every page request of the session refreshes them.
+For searches issued via POST, the query params are additionally kept in the page store. Its entries expire after the duration given by [`PAGE_STORE_EXPIRE`](deployment/environment-variables.md#page-store-expire) (five hours by default) without being accessed, and every page request of the session refreshes them. That default matches the maximum lifetime of a paging link, so the query params of every link that is still usable are found in the page store. In the distributed storage variant, the page store is backed by Cassandra, where entries don't expire at all.
 
 ### Fast
 
