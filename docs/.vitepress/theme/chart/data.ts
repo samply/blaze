@@ -66,6 +66,11 @@ export function num(row: Row, col: number): number {
   return parseFloat(match[0]);
 }
 
+/** Returns whether the 1-based column `col` of `row` starts with a number. */
+export function isNum(row: Row, col: number): boolean {
+  return NUMBER.test(cell(row, col));
+}
+
 /** Returns the content of the data file `src`, given relative to `docs/performance`. */
 export function content(src: string): string {
   const content = FILES[src];

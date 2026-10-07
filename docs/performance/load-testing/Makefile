@@ -8,8 +8,18 @@ data/patient-graph.csv: patient-graph.js
 # data/transaction-<system>.csv.
 TRANSACTION_SYSTEMS := LEA47 LEA79 A5N46
 
-data/transaction-%.csv: transaction.js
-	SYSTEM=$* k6 run transaction.js
+# The transaction test is run several times, because single runs vary. Each run
+# is kept in data/raw and data/transaction-<system>.csv holds their median.
+TRANSACTION_RUNS ?= 1 2 3
+
+# Every run needs an empty server, so the Blaze of the system, which runs on the
+# same host via its docker-compose-<system>.yml, is restarted with an empty
+# database first.
+data/transaction-%.csv: transaction.js median.sh reset.sh docker-compose-%.yml
+	for run in $(TRANSACTION_RUNS); do \
+		./reset.sh $* && SYSTEM=$* RUN=$$run k6 run transaction.js || exit 1; \
+	done
+	./median.sh $(TRANSACTION_RUNS:%=data/raw/transaction-$*-%.csv) > $@
 
 all: data/patient-everything.csv data/patient-graph.csv \
 	$(TRANSACTION_SYSTEMS:%=data/transaction-%.csv)

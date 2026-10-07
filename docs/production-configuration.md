@@ -70,7 +70,8 @@ The list of all environment variables can be found in the [Environment Variables
 | `DB_BLOCK_CACHE_SIZE`          | Block Cache             | 128     | 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
 | `DB_SCALE_FACTOR`              | DB Buffers/File Sizes   | 1       | 1, 2, 4, 8 or 16                                      |
 | `CQL_EXPR_CACHE_SIZE`          | CQL Expression Cache    | —       | 128, 512, 1024 (in megabyte)                          |
-| `DB_RESOURCE_STORE_KV_THREADS` | Read-/Writing Resources | 4       | 16, 32, 64, 128 (max. transaction concurrency)        |
+| `DB_RESOURCE_STORE_KV_THREADS` | Read-/Writing Resources | 4       | 16, 32, 64, 128                                       |
+| `DB_RESOURCE_INDEXER_THREADS`  | Indexing Resources      | 4       | 16, 32, 64, 128                                       |
 
 ## Performance Benchmarks
 
@@ -134,6 +135,15 @@ A pool smaller than that concurrency costs throughput twice over. RocksDB merges
 This matters most on SSDs with slow syncs, where the fsync dominates the processing time of a write. In the [transaction load test](performance/load-testing.md#transaction), A5N46 — a consumer NVMe SSD that acknowledges only 178 syncs per second — reaches over 4000 transactions/s at 128 concurrent clients with the pool sized to match, nearly twenty-three transactions per fsync, at a median processing time that stays flat at 29 ms over the whole sweep. Disks that sync from a write cache are far less sensitive, because their fsync is nearly free to begin with.
 
 Sizing the pool generously is cheap. Its threads are created on demand and are blocked on disk I/O rather than on the CPU while they work, so a pool that is only occasionally filled costs next to nothing.
+
+### Resource Indexer Concurrency
+
+> [!important]
+> Set `DB_RESOURCE_INDEXER_THREADS` to the number of cores of your system.
+
+`DB_RESOURCE_INDEXER_THREADS` sizes the thread pool that indexes resources. Every resource of a transaction is indexed as one task on that pool, across transaction boundaries, so the pool size caps how many resources are indexed at the same time, no matter how many transactions they belong to.
+
+Indexing a resource is mostly CPU work, so the default of 4 threads uses at most four cores for it, no matter how many cores the system has. That is fine for small deployments, but leaves most of a larger system idle while transactions queue in front of the pool. In the [transaction load test](performance/load-testing.md#transaction), a system with 128 cores stays at about 8,000 transactions/s from 8 concurrent clients on with the default of 4 threads, and reaches about 19,600 transactions/s at 128 clients with 128 threads. Raising the pool further to 512 threads makes no measurable difference.
 
 [1]: <https://github.com/synthetichealth/synthea>
 [2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
