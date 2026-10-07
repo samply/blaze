@@ -2,12 +2,12 @@
   "Validation of job Task resources against the job profiles, based on the
   org.hl7.fhir core validator (the engine behind validator_cli.jar).
 
-  The validator works on an R5 worker context. The base R4 type definitions
-  are taken from the classpath resources provided by the fhir-structure
-  module, the base R4 Task StructureDefinition is extracted from them at prep
-  time, and both are converted to R5 on load, exactly like the core
-  ValidationEngine does. The job profiles are loaded from the classpath
-  resources provided by the job modules."
+  The validator works on a worker context using the version-independent core
+  model. The base R4 type definitions are taken from the classpath resources
+  provided by the fhir-structure module, the base R4 Task StructureDefinition
+  is extracted from them at prep time, and both are converted to the core
+  model on load, exactly like the core ValidationEngine does. The job profiles
+  are loaded from the classpath resources provided by the job modules."
   (:require
    [blaze.fhir.spec.type :as type]
    [clojure.java.io :as io]
@@ -18,14 +18,15 @@
    [java.nio.charset StandardCharsets]
    [java.util ArrayList Date HashMap List Locale]
    [org.fhir.ucum UcumEssenceService]
-   [org.hl7.fhir.convertors.loaders.loaderR5
-    NullLoaderKnowledgeProviderR5 R4ToR5Loader]
-   [org.hl7.fhir.r5.context
-    SimpleWorkerContext SimpleWorkerContext$SimpleWorkerContextBuilder]
-   [org.hl7.fhir.r5.elementmodel Manager$FhirFormat]
-   [org.hl7.fhir.r5.model
+   [org.hl7.fhir.convertors.loaders.loaderRN
+    NullLoaderKnowledgeProviderRN R4ToRNLoader]
+   [org.hl7.fhir.model ModelContext]
+   [org.hl7.fhir.model.core
     Bundle$BundleEntryComponent PackageInformation Parameters]
-   [org.hl7.fhir.r5.utils.xver XVerExtensionManagerFactory]
+   [org.hl7.fhir.model.utilities.formats FhirFormat]
+   [org.hl7.fhir.services.xver XVerExtensionManagerFactory]
+   [org.hl7.fhir.standalone.context
+    SimpleWorkerContext SimpleWorkerContext$SimpleWorkerContextBuilder]
    [org.hl7.fhir.utilities ByteProvider]
    [org.hl7.fhir.utilities.validation ValidationMessage]
    [org.hl7.fhir.validation ValidatorSettings]
@@ -36,8 +37,8 @@
 (def ^:private loader-types
   #{"StructureDefinition" "ValueSet" "CodeSystem" "NamingSystem"})
 
-(defn- r4-loader ^R4ToR5Loader []
-  (R4ToR5Loader. loader-types (NullLoaderKnowledgeProviderR5.) "4.0.1"))
+(defn- r4-loader ^R4ToRNLoader [model-context]
+  (R4ToRNLoader. model-context loader-types (NullLoaderKnowledgeProviderRN.) "4.0.1"))
 
 (def ^:private type-definitions
   "The base R4 primitive and complex type definitions."
@@ -125,8 +126,9 @@
     (.put "version.info" (ByteProvider/forBytes (resource-bytes "blaze/fhir/4.0.1/version.info")))))
 
 (defn- create-context ^SimpleWorkerContext []
-  (let [loader (r4-loader)
-        context (-> (SimpleWorkerContext$SimpleWorkerContextBuilder.)
+  (let [model-context (ModelContext/fullCoreContext)
+        loader (r4-loader model-context)
+        context (-> (SimpleWorkerContext$SimpleWorkerContextBuilder. model-context)
                     (.withLocale Locale/ENGLISH)
                     (.fromDefinitions (version-info) loader (PackageInformation. "blaze" "4.0.1" (Date.))))]
     (with-open [in (io/input-stream (io/resource "ucum-essence.xml"))]
@@ -138,7 +140,7 @@
     (with-open [in (io/input-stream (io/resource type-definitions))]
       (run!
        #(.cacheResource context (.getResource ^Bundle$BundleEntryComponent %))
-       (.getEntry (.loadBundle loader in true))))
+       (.getEntryList (.loadBundle loader in true))))
     (run!
      (fn [name]
        (log/debug "Load profile" name)
@@ -169,7 +171,7 @@
   (let [messages (ArrayList.)]
     (.validate validator nil ^List messages
                (ByteArrayInputStream. (.getBytes source StandardCharsets/UTF_8))
-               Manager$FhirFormat/JSON)
+               FhirFormat/JSON)
     {:fhir/type :fhir/OperationOutcome
      :issue (mapv issue messages)}))
 

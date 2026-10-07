@@ -10,10 +10,10 @@
    [cognitect.anomalies :as anom]
    [ring.util.codec :as ring-codec])
   (:import
-   [org.hl7.fhir.r5.model
+   [org.hl7.fhir.model.core
     ValueSet ValueSet$ConceptReferenceComponent ValueSet$ConceptSetComponent
     ValueSet$ConceptSetFilterComponent ValueSet$ValueSetComposeComponent]
-   [org.hl7.fhir.r5.terminologies.utilities VCLParser VCLParser$VCLParseException]))
+   [org.hl7.fhir.model.utilities VCLParser VCLParser$VCLParseException]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,18 +29,18 @@
   ValueSet$ValueSetComposeComponent
   (datafy [compose]
     (cond-> {:fhir/type :fhir.ValueSet/compose
-             :include (mapv datafy/datafy (.getInclude compose))}
+             :include (mapv datafy/datafy (.getIncludeList compose))}
       (.hasExclude compose)
-      (assoc :exclude (mapv datafy/datafy (.getExclude compose)))))
+      (assoc :exclude (mapv datafy/datafy (.getExcludeList compose)))))
   ValueSet$ConceptSetComponent
   (datafy [component]
     (cond-> {:fhir/type :fhir.ValueSet.compose/include}
       (.hasSystem component)
       (assoc :system (type/uri (.getSystem component)))
       (.hasConcept component)
-      (assoc :concept (mapv datafy/datafy (.getConcept component)))
+      (assoc :concept (mapv datafy/datafy (.getConceptList component)))
       (.hasFilter component)
-      (assoc :filter (mapv datafy/datafy (.getFilter component)))))
+      (assoc :filter (mapv datafy/datafy (.getFilterList component)))))
   ValueSet$ConceptReferenceComponent
   (datafy [component]
     {:fhir/type :fhir.ValueSet.compose.include/concept
