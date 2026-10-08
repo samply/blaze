@@ -55,12 +55,12 @@
 
 (defmethod ig/init-key :blaze.interaction.history/instance [_ context]
   (log/info "Init FHIR history instance interaction handler")
-  (fn [{:blaze/keys [base-url db]
+  (fn [{:blaze/keys [base-url db paging-params]
         ::reitit/keys [router] :keys [params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (if (d/resource-handle db type id)
-      (let [page-t (history-util/page-t params)
+      (let [page-t (history-util/page-t paging-params)
             since (fhir-util/since params)
             db (cond-> db since (d/since since))
             total (d/total-num-of-instance-changes db type id)

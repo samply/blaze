@@ -12,5 +12,6 @@
 (s/fdef params/decode
   :args (s/cat :page-store :blaze/page-store
                :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
-               :query-params (s/nilable :ring.request/query-params))
+               :query-params (s/nilable :ring.request/query-params)
+               :paging-params (s/nilable :ring.request/query-params))
   :ret ac/completable-future?)

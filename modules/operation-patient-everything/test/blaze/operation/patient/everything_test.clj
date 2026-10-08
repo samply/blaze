@@ -991,7 +991,18 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/3")
-                   (-> entry :fullUrl :value)))))))
+                   (-> entry :fullUrl :value))))))
+
+      (testing "unencrypted paging params are ignored"
+        (let [{{[first-entry] :entry} :body}
+              @(handler
+                {::reitit/match match
+                 :path-params {:id "0"}
+                 :query-params {"_count" "2" "__t" "1" "__page-offset" "2"}})]
+
+          (testing "the first page is returned"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value)))))))
 
     (testing "with start date"
       (with-handler [handler _ page-id-cipher]

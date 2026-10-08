@@ -16,8 +16,10 @@
 
 (defn page-t
   "Returns the t (optional) to constrain the database in paging. Pages will
-  start with a database as-of `page-t`."
-  {:arglists '([query-params])}
+  start with a database as-of `page-t`.
+
+  Reads the paging param `__page-t`."
+  {:arglists '([paging-params])}
   [{v "__page-t"}]
   (some fhir-util/parse-nat-long (u/to-seq v)))
 

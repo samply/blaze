@@ -508,7 +508,17 @@
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
-              :gender := #fhir/code "male"))))))
+              :gender := #fhir/code "male"))))
+
+      (testing "unencrypted paging params are ignored"
+        (let [{{[first-entry] :entry} :body}
+              @(handler
+                {:path-params {:id "0"}
+                 :params {"_count" "1" "__t" "2" "__page-t" "1"}})]
+
+          (testing "the newest version is returned"
+            (given (:resource first-entry)
+              :active := #fhir/boolean true))))))
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]

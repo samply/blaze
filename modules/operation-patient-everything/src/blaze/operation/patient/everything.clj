@@ -143,10 +143,10 @@
     (cond->> params body-params (merge body-params))))
 
 (defn- handler [context]
-  (fn [{:blaze/keys [db]
+  (fn [{:blaze/keys [db paging-params]
         {:keys [id]} :path-params
-        :keys [query-params] :as request}]
-    (let [page-offset (fhir-util/page-offset query-params)]
+        :as request}]
+    (let [page-offset (fhir-util/page-offset paging-params)]
       (when-ok [{:keys [start end since page-size]} (params request)
                 {:keys [handles next-offset]}
                 (handles db id start end page-offset page-size since)]

@@ -12,7 +12,7 @@
    [reitit.core :as reitit]))
 
 (s/fdef util/page-t
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
 
 (s/fdef util/page-nav-url

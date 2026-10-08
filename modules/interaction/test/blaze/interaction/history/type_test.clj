@@ -445,6 +445,15 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/1")
+                   (-> first-entry :fullUrl :value))))))
+
+      (testing "unencrypted paging params are ignored"
+        (let [{{[first-entry] :entry} :body}
+              @(handler {:params {"_count" "1" "__t" "1" "__page-t" "1"
+                                  "__page-id" "1"}})]
+
+          (testing "the first page is returned"
+            (is (= (str base-url context-path "/Patient/0")
                    (-> first-entry :fullUrl :value))))))))
 
   (testing "with two versions, using since"

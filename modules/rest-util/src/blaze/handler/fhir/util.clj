@@ -33,9 +33,9 @@
 (defn t
   "Returns the t (optional) of the database which should be stay stable.
 
-  Tries to read the t from the query param `__t` and returns the first valid one
-  if there is any."
-  {:arglists '([query-params])}
+  Tries to read the t from the paging param `__t` and returns the first valid
+  one if there is any."
+  {:arglists '([paging-params])}
   [{v "__t"}]
   (some parse-nat-long (u/to-seq v)))
 
@@ -56,29 +56,29 @@
    (or (some #(some-> (parse-nat-long %) (min max)) (u/to-seq v)) default)))
 
 (defn page-offset
-  "Returns the page offset taken from a possible `__page-offset` query param.
+  "Returns the page offset taken from a possible `__page-offset` paging param.
 
-  Returns the value from the first valid `__page-offset` query param or the
+  Returns the value from the first valid `__page-offset` paging param or the
   default value of 0."
-  {:arglists '([query-params])}
+  {:arglists '([paging-params])}
   [{v "__page-offset"}]
   (or (some parse-nat-long (u/to-seq v)) 0))
 
 (defn page-type
-  "Returns the value of the first valid `__page-type` query param or nil
+  "Returns the value of the first valid `__page-type` paging param or nil
   otherwise.
 
   Values have to be valid FHIR resource type names."
-  {:arglists '([query-params])}
+  {:arglists '([paging-params])}
   [{v "__page-type"}]
   (some #(when (s/valid? :fhir.resource/type %) %) (u/to-seq v)))
 
 (defn page-id
-  "Returns the value of the first valid `__page-id` query param or nil
+  "Returns the value of the first valid `__page-id` paging param or nil
   otherwise.
 
   Values have to be valid FHIR ids."
-  {:arglists '([query-params])}
+  {:arglists '([paging-params])}
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
 
@@ -92,14 +92,14 @@
       (fsr/split-literal-ref entry)))
 
 (defn page-id-stack
-  "Returns the value of the `__page-id-stack` query param as a vector of the
+  "Returns the value of the `__page-id-stack` paging param as a vector of the
   start-ids of the ancestor pages, oldest first.
 
   An empty string represents the first page (which has no start-id). In the
   system-level search, the start-ids are qualified with the resource type in
   the form `Type/id`. The param is only set internally inside encrypted page
   ids. Returns an empty vector if absent or if any entry is invalid."
-  {:arglists '([query-params])}
+  {:arglists '([paging-params])}
   [{v "__page-id-stack"}]
   (let [stack (vec (u/to-seq v))]
     (if (every? page-id-stack-entry? stack)

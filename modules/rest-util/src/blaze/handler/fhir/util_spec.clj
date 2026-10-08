@@ -18,7 +18,7 @@
   :ret (s/nilable nat-int?))
 
 (s/fdef fhir-util/t
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
 
 (s/fdef fhir-util/page-size
@@ -27,19 +27,19 @@
   :ret nat-int?)
 
 (s/fdef fhir-util/page-offset
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret nat-int?)
 
 (s/fdef fhir-util/page-type
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :fhir.resource/type))
 
 (s/fdef fhir-util/page-id
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.resource/id))
 
 (s/fdef fhir-util/page-id-stack
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/coll-of string? :kind vector?))
 
 (s/fdef fhir-util/summary

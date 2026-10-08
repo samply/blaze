@@ -199,11 +199,11 @@
 (defn- search-context
   [{:keys [page-store page-id-cipher] :as context}
    {:keys [headers params]
-    :blaze/keys [base-url db]
+    :blaze/keys [base-url db paging-params]
     ::reitit/keys [router match]
     :as request}]
   (let [handling (handler-util/preference headers "handling")]
-    (do-sync [params (params/decode page-store handling params)]
+    (do-sync [params (params/decode page-store handling params paging-params)]
       (cond->
        (assoc context
               :blaze/base-url base-url
