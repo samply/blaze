@@ -80,3 +80,10 @@
   (satisfies-prop 100
     (prop/for-all [clauses (s/gen :blaze.db.query/clauses)]
       (s/valid? :blaze.page-store/hash-code (:hash (hash/hash-clauses clauses))))))
+
+(deftest decode-test
+  (testing "decoding is the inverse of encoding"
+    (satisfies-prop 100
+      (prop/for-all [clauses (s/gen :blaze.db.query/clauses)]
+        (let [hash (:hash (hash/hash-clauses clauses))]
+          (= hash (hash/decode (hash/encode hash))))))))

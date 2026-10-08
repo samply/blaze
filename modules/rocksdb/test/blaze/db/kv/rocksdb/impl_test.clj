@@ -1,6 +1,7 @@
 (ns blaze.db.kv.rocksdb.impl-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.byte-string :as bs]
    [blaze.db.kv.rocksdb.impl :as impl]
    [blaze.db.kv.rocksdb.impl-spec]
    [blaze.metrics.core-spec]
@@ -12,7 +13,6 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
-   [com.google.common.io BaseEncoding]
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [org.rocksdb
@@ -27,10 +27,7 @@
 (test/use-fixtures :each tu/fixture)
 
 (defn- from-hex [s]
-  (.decode (BaseEncoding/base16) s))
-
-(defn- to-hex [bytes]
-  (.encode (BaseEncoding/base16) bytes))
+  (bs/to-byte-array (bs/from-hex s)))
 
 (extend-protocol p/Datafiable
   ColumnFamilyDescriptor
@@ -196,7 +193,7 @@
 (defn- put-wb [state]
   (reify WriteBatchInterface
     (^void put [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
-      (swap! state conj [cfh (to-hex key) (to-hex val)]))))
+      (swap! state conj [cfh (bs/from-byte-array key) (bs/from-byte-array val)]))))
 
 (defn- cfh [db name]
   (.createColumnFamily ^RocksDB db (ColumnFamilyDescriptor. (from-hex name))))
@@ -214,17 +211,17 @@
                                  (= state-val @state))
 
         [[:cf-1 (from-hex "01") (from-hex "02")]]
-        [[cfh-1 "01" "02"]]
+        [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]]
 
         [[:cf-1 (from-hex "01") (from-hex "02")]
          [:cf-1 (from-hex "03") (from-hex "04")]]
-        [[cfh-1 "01" "02"]
-         [cfh-1 "03" "04"]]
+        [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+         [cfh-1 #blaze/byte-string"03" #blaze/byte-string"04"]]
 
         [[:cf-1 (from-hex "01") (from-hex "02")]
          [:cf-2 (from-hex "03") (from-hex "04")]]
-        [[cfh-1 "01" "02"]
-         [cfh-2 "03" "04"]])))
+        [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+         [cfh-2 #blaze/byte-string"03" #blaze/byte-string"04"]])))
 
   (testing "with missing column family"
     (let [entries [[:cf-1 (byte-array 0) (byte-array 0)]]]
@@ -235,7 +232,7 @@
 (defn- delete-wb [state]
   (reify WriteBatchInterface
     (^void delete [_ ^ColumnFamilyHandle cfh ^bytes key]
-      (swap! state conj [cfh (to-hex key)]))))
+      (swap! state conj [cfh (bs/from-byte-array key)]))))
 
 (deftest delete-wb-test
   (with-open [db (RocksDB/open (new-temp-dir!))]
@@ -250,22 +247,22 @@
                                  (= state-val @state))
 
         [[:cf-1 (from-hex "01")]]
-        [[cfh-1 "01"]]
+        [[cfh-1 #blaze/byte-string"01"]]
 
         [[:cf-1 (from-hex "01")]
          [:cf-1 (from-hex "03")]]
-        [[cfh-1 "01"]
-         [cfh-1 "03"]]
+        [[cfh-1 #blaze/byte-string"01"]
+         [cfh-1 #blaze/byte-string"03"]]
 
         [[:cf-1 (from-hex "01")]
          [:cf-2 (from-hex "03")]]
-        [[cfh-1 "01"]
-         [cfh-2 "03"]]))))
+        [[cfh-1 #blaze/byte-string"01"]
+         [cfh-2 #blaze/byte-string"03"]]))))
 
 (defn- merge-wb [state]
   (reify WriteBatchInterface
     (^void merge [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
-      (swap! state conj [cfh (to-hex key) (to-hex val)]))))
+      (swap! state conj [cfh (bs/from-byte-array key) (bs/from-byte-array val)]))))
 
 (deftest write-wb-test
   (with-open [db (RocksDB/open (new-temp-dir!))]
@@ -281,17 +278,17 @@
                                    (= state-val @state))
 
           [[:put :cf-1 (from-hex "01") (from-hex "02")]]
-          [[cfh-1 "01" "02"]]
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]]
 
           [[:put :cf-1 (from-hex "01") (from-hex "02")]
            [:put :cf-1 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-1 "03" "04"]]
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+           [cfh-1 #blaze/byte-string"03" #blaze/byte-string"04"]]
 
           [[:put :cf-1 (from-hex "01") (from-hex "02")]
            [:put :cf-2 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-2 "03" "04"]]))
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+           [cfh-2 #blaze/byte-string"03" #blaze/byte-string"04"]]))
 
       (testing "merge"
         (are [entries state-val] (let [state (atom [])]
@@ -303,17 +300,17 @@
                                    (= state-val @state))
 
           [[:merge :cf-1 (from-hex "01") (from-hex "02")]]
-          [[cfh-1 "01" "02"]]
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]]
 
           [[:merge :cf-1 (from-hex "01") (from-hex "02")]
            [:merge :cf-1 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-1 "03" "04"]]
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+           [cfh-1 #blaze/byte-string"03" #blaze/byte-string"04"]]
 
           [[:merge :cf-1 (from-hex "01") (from-hex "02")]
            [:merge :cf-2 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-2 "03" "04"]]))
+          [[cfh-1 #blaze/byte-string"01" #blaze/byte-string"02"]
+           [cfh-2 #blaze/byte-string"03" #blaze/byte-string"04"]]))
 
       (testing "delete"
         (are [entries state-val] (let [state (atom [])]
@@ -325,17 +322,17 @@
                                    (= state-val @state))
 
           [[:delete :cf-1 (from-hex "01")]]
-          [[cfh-1 "01"]]
+          [[cfh-1 #blaze/byte-string"01"]]
 
           [[:delete :cf-1 (from-hex "01")]
            [:delete :cf-1 (from-hex "02")]]
-          [[cfh-1 "01"]
-           [cfh-1 "02"]]
+          [[cfh-1 #blaze/byte-string"01"]
+           [cfh-1 #blaze/byte-string"02"]]
 
           [[:delete :cf-1 (from-hex "01")]
            [:delete :cf-2 (from-hex "02")]]
-          [[cfh-1 "01"]
-           [cfh-2 "02"]]))))
+          [[cfh-1 #blaze/byte-string"01"]
+           [cfh-2 #blaze/byte-string"02"]]))))
 
   (testing "with missing column family"
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]

@@ -1,15 +1,17 @@
 package blaze.fhir;
 
 import blaze.ByteString;
-import com.google.common.io.BaseEncoding;
 
 import java.nio.ByteBuffer;
+import java.util.HexFormat;
 
 public final class Hash {
 
     public static final int SIZE = 32;
     public static final int PREFIX_SIZE = Integer.BYTES;
     public static final Hash DELETED = new Hash(0, 0, 0, 0);
+
+    private static final HexFormat HEX_FORMAT = HexFormat.of().withUpperCase();
 
     private final long l0;
     private final long l1;
@@ -24,7 +26,11 @@ public final class Hash {
     }
 
     public static Hash fromHex(String s) {
-        return fromByteBuffer(ByteBuffer.wrap(BaseEncoding.base16().decode(s)));
+        return new Hash(
+                HexFormat.fromHexDigitsToLong(s, 0, 16),
+                HexFormat.fromHexDigitsToLong(s, 16, 32),
+                HexFormat.fromHexDigitsToLong(s, 32, 48),
+                HexFormat.fromHexDigitsToLong(s, 48, 64));
     }
 
     public static Hash fromByteBuffer(ByteBuffer buffer) {
@@ -62,8 +68,7 @@ public final class Hash {
 
     @Override
     public String toString() {
-        var buffer = ByteBuffer.allocate(SIZE);
-        copyTo(buffer);
-        return BaseEncoding.base16().encode(buffer.array());
+        return HEX_FORMAT.toHexDigits(l0) + HEX_FORMAT.toHexDigits(l1) +
+                HEX_FORMAT.toHexDigits(l2) + HEX_FORMAT.toHexDigits(l3);
     }
 }

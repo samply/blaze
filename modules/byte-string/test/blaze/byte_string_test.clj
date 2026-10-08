@@ -51,7 +51,9 @@
   (are [s bs] (= bs (bs/from-hex s))
     "" #blaze/byte-string""
     "01" #blaze/byte-string"01"
-    "0102" #blaze/byte-string"0102"))
+    "0102" #blaze/byte-string"0102"
+    "ABCDEF" #blaze/byte-string"ABCDEF"
+    "abcdef" #blaze/byte-string"ABCDEF"))
 
 (deftest nth-test
   (are [bs index b] (= b (apply bs/nth bs index []))
@@ -151,11 +153,11 @@
     [#blaze/byte-string"02" #blaze/byte-string"00" #blaze/byte-string"01"]
     [#blaze/byte-string"00" #blaze/byte-string"01" #blaze/byte-string"02"]))
 
-(deftest hex-test
-  (are [bs res] (= res (bs/hex bs))
-    #blaze/byte-string"" ""
-    #blaze/byte-string"00" "00"
-    #blaze/byte-string"01" "01"))
+(deftest to-string-test
+  (are [bs res] (= res (str bs))
+    #blaze/byte-string"" "0x"
+    #blaze/byte-string"01" "0x01"
+    #blaze/byte-string"ABCDEF" "0xABCDEF"))
 
 (deftest to-byte-array-test
   (are [bs res] (bytes= res (apply bs/to-byte-array bs []))

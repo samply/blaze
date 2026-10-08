@@ -57,10 +57,6 @@
   :args (s/cat :a bs/byte-string? :b bs/byte-string?)
   :ret boolean?)
 
-(s/fdef bs/hex
-  :args (s/cat :bs bs/byte-string?)
-  :ret string?)
-
 (s/fdef bs/to-byte-array
   :args (s/cat :bs bs/byte-string?)
   :ret bytes?)

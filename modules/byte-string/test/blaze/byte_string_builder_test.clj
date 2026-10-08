@@ -1,6 +1,7 @@
 (ns blaze.byte-string-builder-test
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
    [blaze.byte-string-builder :as bsb]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
@@ -8,16 +9,12 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop])
   (:import
-   [blaze ByteString]
-   [com.google.common.io BaseEncoding]))
+   [blaze ByteString]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
-
-(defn- from-hex [s]
-  (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
 
 (deftest put-byte-test
   (testing "inlined"
@@ -112,34 +109,34 @@
 (deftest put-byte-string-test
   (testing "zero length"
     (let [b (bsb/allocate 0)]
-      (bsb/put-byte-string! b (from-hex ""))))
+      (bsb/put-byte-string! b (bs/from-hex ""))))
 
   (testing "length one"
     (let [b (bsb/allocate 1)]
-      (bsb/put-byte-string! b (from-hex "01"))
+      (bsb/put-byte-string! b (bs/from-hex "01"))
       (is (= 1 (aget (bsb/to-bytes b) 0)))))
 
   (testing "function"
     (let [b (bsb/allocate 1)]
-      (apply bsb/put-byte-string! b (from-hex "01") [])
+      (apply bsb/put-byte-string! b (bs/from-hex "01") [])
       (is (= 1 (aget (bsb/to-bytes b) 0))))))
 
 (deftest put-null-terminated-byte-string-test
   (testing "zero length adds only the null byte"
     (let [b (bsb/allocate 1)]
-      (bsb/put-null-terminated-byte-string! b (from-hex ""))
+      (bsb/put-null-terminated-byte-string! b (bs/from-hex ""))
       (is (= 0 (aget (bsb/to-bytes b) 0)))))
 
   (testing "length one followed by null"
     (let [b (bsb/allocate 2)]
-      (bsb/put-null-terminated-byte-string! b (from-hex "01"))
+      (bsb/put-null-terminated-byte-string! b (bs/from-hex "01"))
       (let [a (bsb/to-bytes b)]
         (is (= 1 (aget a 0)))
         (is (= 0 (aget a 1))))))
 
   (testing "function"
     (let [b (bsb/allocate 2)]
-      (apply bsb/put-null-terminated-byte-string! b (from-hex "01") [])
+      (apply bsb/put-null-terminated-byte-string! b (bs/from-hex "01") [])
       (is (= 1 (aget (bsb/to-bytes b) 0)))
       (is (= 0 (aget (bsb/to-bytes b) 1))))))
 
@@ -212,7 +209,7 @@
 
 (deftest combined-encoding-test
   (testing "encode-key style: int + null-terminated string + byte"
-    (let [value ^ByteString (from-hex "DEADBEEF")
+    (let [value ^ByteString (bs/from-hex "DEADBEEF")
           via-builder (-> (bsb/allocate (+ 4 (.size value) 1 1))
                           (bsb/put-int! 0x12345678)
                           (bsb/put-null-terminated-byte-string! value)

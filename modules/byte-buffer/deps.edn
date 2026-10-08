@@ -20,7 +20,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
+   {blaze/byte-string
+    {:local/root "../byte-string"}
+
+    blaze/test-util
     {:local/root "../test-util"}}}
 
   :kaocha

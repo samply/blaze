@@ -9,9 +9,7 @@
    [blaze.metrics.core :as metrics]
    [blaze.page-store.hash :as hash])
   (:import
-   [com.github.benmanes.caffeine.cache Cache Caffeine]
-   [com.google.common.hash HashCode]
-   [com.google.common.io BaseEncoding]))
+   [com.github.benmanes.caffeine.cache Cache Caffeine]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,15 +20,12 @@
       (.expireAfterAccess expire-duration)
       (.build)))
 
-(defn- decode-token [token]
-  (HashCode/fromBytes (.decode (BaseEncoding/base16) ^String token)))
-
 (defn get
   "Returns the clauses cached under `token` or nil if at least one of them is
   missing."
   [^Cache clause-cache ^Cache token-cache token]
   (some->>
-   (.getIfPresent token-cache (decode-token token))
+   (.getIfPresent token-cache (hash/decode token))
    (reduce
     (fn [ret hashes]
       (if-some [clauses (reduce
@@ -58,7 +53,7 @@
   "Caches `clauses` under `token`, which doesn't have to be the token `put!`
   would generate from them."
   [clause-cache token-cache token clauses]
-  (store! clause-cache token-cache (decode-token token)
+  (store! clause-cache token-cache (hash/decode token)
           (hash/hash-clauses clauses))
   nil)
 

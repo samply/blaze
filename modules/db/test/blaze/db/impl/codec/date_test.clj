@@ -1,6 +1,6 @@
 (ns blaze.db.impl.codec.date-test
   (:require
-   [blaze.byte-string :as bs]
+   [blaze.byte-string]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.codec.date :as codec-date]
    [blaze.db.impl.index.search-param-value-resource-spec]
@@ -19,31 +19,31 @@
 
 (deftest encode-lower-bound-test
   (testing "year"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-lower-bound date)))
-      #system/date"1970" "80"
-      #system/date-time"1970" "80"))
+    (are [date bs] (= bs (codec-date/encode-lower-bound date))
+      #system/date"1970" #blaze/byte-string"80"
+      #system/date-time"1970" #blaze/byte-string"80"))
 
   (testing "year-month"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-lower-bound date)))
-      #system/date"1970-01" "80"
-      #system/date-time"1970-01" "80"))
+    (are [date bs] (= bs (codec-date/encode-lower-bound date))
+      #system/date"1970-01" #blaze/byte-string"80"
+      #system/date-time"1970-01" #blaze/byte-string"80"))
 
   (testing "local-date"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-lower-bound date)))
-      #system/date"1970-01-01" "80"
-      #system/date-time"1970-01-01" "80"))
+    (are [date bs] (= bs (codec-date/encode-lower-bound date))
+      #system/date"1970-01-01" #blaze/byte-string"80"
+      #system/date-time"1970-01-01" #blaze/byte-string"80"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-lower-bound date)))
-      #system/date-time"1970-01-01T00:00" "80"))
+    (are [date bs] (= bs (codec-date/encode-lower-bound date))
+      #system/date-time"1970-01-01T00:00" #blaze/byte-string"80"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-lower-bound date)))
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) "80"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -1)) "900E10"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20"))
+    (are [date bs] (= bs (codec-date/encode-lower-bound date))
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) #blaze/byte-string"80"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) #blaze/byte-string"6FE3E0"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) #blaze/byte-string"6FF1F0"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -1)) #blaze/byte-string"900E10"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) #blaze/byte-string"901C20"))
 
   (testing "nil"
     (is (= (codec-date/encode-lower-bound #system/date"0001")
@@ -51,31 +51,31 @@
 
 (deftest encode-upper-bound-test
   (testing "year"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
-      #system/date"1969" "7F"
-      #system/date-time"1969" "7F"))
+    (are [date bs] (= bs (codec-date/encode-upper-bound date))
+      #system/date"1969" #blaze/byte-string"7F"
+      #system/date-time"1969" #blaze/byte-string"7F"))
 
   (testing "year-month"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
-      #system/date"1969-12" "7F"
-      #system/date-time"1969-12" "7F"))
+    (are [date bs] (= bs (codec-date/encode-upper-bound date))
+      #system/date"1969-12" #blaze/byte-string"7F"
+      #system/date-time"1969-12" #blaze/byte-string"7F"))
 
   (testing "local-date"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
-      #system/date"1969-12-31" "7F"
-      #system/date-time"1969-12-31" "7F"))
+    (are [date bs] (= bs (codec-date/encode-upper-bound date))
+      #system/date"1969-12-31" #blaze/byte-string"7F"
+      #system/date-time"1969-12-31" #blaze/byte-string"7F"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
-      #system/date-time"1969-12-31T23:59:59" "7F"))
+    (are [date bs] (= bs (codec-date/encode-upper-bound date))
+      #system/date-time"1969-12-31T23:59:59" #blaze/byte-string"7F"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "7F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "6FE3DF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "6FF1EF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "900E0F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F"))
+    (are [date bs] (= bs (codec-date/encode-upper-bound date))
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) #blaze/byte-string"7F"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) #blaze/byte-string"6FE3DF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) #blaze/byte-string"6FF1EF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) #blaze/byte-string"900E0F"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) #blaze/byte-string"901C1F"))
 
   (testing "nil"
     (is (= (codec-date/encode-upper-bound #system/date"9999")
