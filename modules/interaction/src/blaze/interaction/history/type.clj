@@ -6,7 +6,6 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.spec]
-   [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
@@ -22,18 +21,17 @@
    [taoensso.timbre :as log]))
 
 (defn- next-link
-  [{::search-util/keys [link] :as context} query-params resource-handle]
-  (->> (history-util/page-nav-url context query-params
+  [{::search-util/keys [link] :as context} params resource-handle]
+  (->> (history-util/page-nav-url context params
                                   (:t resource-handle)
                                   (:id resource-handle))
        (link "next")))
 
 (defn- build-response
-  [{:blaze/keys [db] :as context} query-params page-t total handles]
-  (let [page-size (fhir-util/page-size query-params)
-        {:keys [handles next-handle]} (history-util/build-page page-size handles)
-        next-link (partial next-link context query-params)]
-    (-> (d/pull-many db handles (history-util/pull-opts query-params page-t))
+  [{:blaze/keys [db] :as context} {:keys [page-size] :as params} total handles]
+  (let [{:keys [handles next-handle]} (history-util/build-page page-size handles)
+        next-link (partial next-link context params)]
+    (-> (d/pull-many db handles (history-util/pull-opts params))
         (ac/exceptionally
          #(assoc %
                  ::anom/category ::anom/fault
@@ -43,7 +41,7 @@
            (ring/response
             (cond->
              (assoc
-              (history-util/build-bundle context total query-params)
+              (history-util/build-bundle context total params)
               :entry
               (mapv (partial history-util/build-entry context) paged-versions))
 
@@ -56,13 +54,13 @@
 
 (defmethod ig/init-key :blaze.interaction.history/type [_ context]
   (log/info "Init FHIR history type interaction handler")
-  (fn [{:blaze/keys [base-url db]
+  (fn [{:blaze/keys [base-url db paging-params]
         ::reitit/keys [router]
         :keys [params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match}]
-    (let [page-t (history-util/page-t params)
-          page-id (when page-t (fhir-util/page-id params))
-          since (fhir-util/since params)
+    (let [{:keys [page-t page-id since] :as params}
+          (history-util/decode-params params paging-params)
+          page-id (when page-t page-id)
           db (cond-> db since (d/since since))
           total (d/total-num-of-type-changes db type)
           version-handles (d/type-history db type page-t page-id)
@@ -72,4 +70,4 @@
                          ::reitit/router router
                          ::reitit/match (reitit/match-by-name router (keyword type "history"))
                          :page-match #(reitit/match-by-name router (keyword type "history-page") {:page-id %}))]
-      (build-response context params page-t total version-handles))))
+      (build-response context params total version-handles))))

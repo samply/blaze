@@ -8,8 +8,8 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.search.util-spec]
    [blaze.middleware.fhir.db :as db]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.graph :as graph]
    [blaze.operation.graph.compiler-spec]
@@ -136,7 +136,7 @@
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)

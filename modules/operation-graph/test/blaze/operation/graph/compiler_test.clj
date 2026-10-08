@@ -4,7 +4,7 @@
    [blaze.fhir.util-spec]
    [blaze.handler.fhir.util-spec]
    [blaze.interaction.search.util-spec]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.operation.graph.compiler :as c]
    [blaze.operation.graph.compiler-spec]
    [blaze.operation.graph.test-util :as g-tu]

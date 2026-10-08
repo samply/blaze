@@ -1,10 +1,19 @@
-(ns blaze.middleware.fhir.decrypt-page-id
+(ns blaze.middleware.fhir.page-id
   "Contains functionality around encrypting/decrypting query parameters into
   page ids that are used in paging URLs.
 
   The middleware `wrap-decrypt-page-id` will decrypt the page ids into query
   parameters, while the `encrypt` function will encrypt query params into page
-  ids."
+  ids.
+
+  The paging params, which carry the state of a paging session, are put under
+  :blaze/paging-params of the request, separate from the other params. Handlers
+  have to read paging params only from there, so that clients can't supply them
+  directly via query or form params.
+
+  Links pointing to further pages have to be built from decoded params only and
+  never from the :params of the request, so that client supplied paging params
+  can't end up in encrypted page ids."
   (:require
    [blaze.anomaly :as ba :refer [if-ok try-one]]
    [blaze.async.comp :as ac]
@@ -31,15 +40,34 @@
     (json/parse-cbor clear-text)
     (fn [_] (ba/not-found (format "Page with id `%s` not found." page-id)))))
 
+(def ^:private paging-param-names
+  #{"__token" "__t" "__page-t" "__page-id" "__page-offset" "__page-type"
+    "__page-id-stack"})
+
+(defn- split-paging-params [params]
+  (reduce
+   (fn [[other paging :as acc] name]
+     (if-some [value (get other name)]
+       [(dissoc other name) (assoc paging name value)]
+       acc))
+   [params {}]
+   paging-param-names))
+
+(defn- assoc-params [request params]
+  (let [[other paging] (split-paging-params params)]
+    (assoc request :params other :query-params other :blaze/paging-params paging)))
+
 (defn wrap-decrypt-page-id
   "Wraps a middleware round `handler` that decrypts the :page-id path param from
-  the request using `page-id-cipher` and overrides :params and :query-params of
-  the request with the result."
+  the request using `page-id-cipher`.
+
+  Puts the paging params of the result under :blaze/paging-params and overrides
+  :params and :query-params of the request with the remaining params."
   {:arglists '([handler page-id-cipher])}
   [handler page-id-cipher]
   (fn [{{:keys [page-id]} :path-params :as request}]
     (if-ok [params (decrypt page-id-cipher page-id)]
-      (handler (assoc request :params params :query-params params))
+      (handler (assoc-params request params))
       ac/completed-future)))
 
 (def ^:private ^Base64$Encoder b64-encoder

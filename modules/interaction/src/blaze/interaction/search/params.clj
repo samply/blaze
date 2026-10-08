@@ -12,7 +12,7 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
-(defn- clauses [page-store {token "__token" :as query-params}]
+(defn- clauses [page-store query-params {token "__token"}]
   (cond
     (s/valid? ::page-store/token token)
     (do-sync [clauses (page-store/get page-store token)]
@@ -77,11 +77,15 @@
   "Returns a CompletableFuture that will complete with decoded params or
   complete exceptionally in case of errors.
 
+  The paging state like the token and the start of the page is only taken from
+  `paging-params` which originate from a decrypted page id and never from
+  `query-params`.
+
   Decoded params consist of:
    :clauses - query clauses
    :token - possibly a token encoding the query clauses"
-  [page-store handling query-params]
-  (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
+  [page-store handling query-params paging-params]
+  (do-sync [{:keys [clauses token]} (clauses page-store query-params paging-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
               summary (summary-mode handling query-params)]
       (let [total (total query-params)]
@@ -93,9 +97,9 @@
           :elements (fhir-util/elements query-params)
           :explain? (explain? query-params)
           :page-size (fhir-util/page-size query-params)
-          :page-type (fhir-util/page-type query-params)
-          :page-id (fhir-util/page-id query-params)
-          :page-id-stack (fhir-util/page-id-stack query-params)
-          :page-offset (fhir-util/page-offset query-params)}
+          :page-type (fhir-util/page-type paging-params)
+          :page-id (fhir-util/page-id paging-params)
+          :page-id-stack (fhir-util/page-id-stack paging-params)
+          :page-offset (fhir-util/page-offset paging-params)}
           token (assoc :token token)
           total (assoc :total total))))))

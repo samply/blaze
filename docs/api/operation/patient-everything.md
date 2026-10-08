@@ -89,7 +89,7 @@ With the `_count` parameter, paging is used. In that case:
 * the Bundle doesn't contain a `total`, because determining it would require traversing the whole compartment, and
 * there is no limit on the total number of resources returned by following the next links.
 
-Next links point to `[base]/Patient/[id]/__everything-page/[page-id]` and form a [paging session](../../api.md#paging-sessions) that operates on a stable database snapshot. The other in parameters are encoded into the page id, so they don't have to be repeated when following a next link.
+Next links are opaque and form a [paging session](../../api.md#paging-sessions) that operates on a stable database snapshot. The other in parameters are carried by the next link, so they don't have to be repeated when following it.
 
 ## Response
 

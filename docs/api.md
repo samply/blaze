@@ -138,7 +138,7 @@ Paging sessions operate on a stable database snapshot. Next and previous links p
 
 ### Expire
 
-Paging links expire because the encryption key their page ID was encrypted with is rotated out of the key set (see Encrypted). A paging link stays usable for at least three hours and is guaranteed to be unusable five hours after it was handed out.
+Paging links expire because the encryption key they were encrypted with is rotated out of the key set (see Encrypted). A paging link stays usable for at least three hours and is guaranteed to be unusable five hours after it was handed out.
 
 Every page response carries freshly encrypted links, so a session that is paged continuously renews itself. Only links that are left unused expire.
 
@@ -152,11 +152,13 @@ Paging sessions don't require initial setup time and show constant costs per pag
 
 The variable part of paging URLs is encrypted to ensure confidentiality and integrity of the paging parameters. Confidentiality is important in case some of the original query parameters contain sensitive information. To mitigate the risk of exposing this data, FHIR searches are often executed via POST requests, which helps prevent sensitive information from being logged in URLs. Consequently, it is essential that paging URLs do not reveal any confidential data. Integrity is important, because it should not be possible to manipulate the paging URL in order to access a different paging session.
 
+Paging links are completely opaque and have to be followed as is. Clients must not construct or modify them. The state of a paging session is only accepted from a paging link handed out by Blaze. It can't be supplied via query or form params, so a request that tries to do so returns the first page instead of continuing a paging session.
+
 #### Encryption Key Management
 
 <dl>
   <dt>Key Rotation</dt>
-  <dd>Encryption keys are rotated every hour. At most three keys are stored at any time. A new key is first added as a non-primary key, becomes the primary key used for encryption on the next rotation and is only removed three rotations after it stopped being primary. That way a page ID stays decryptable for at least three and at most five hours after it was created.</dd>
+  <dd>Encryption keys are rotated every hour. At most three keys are stored at any time. A new key is first added as a non-primary key, becomes the primary key used for encryption on the next rotation and is only removed three rotations after it stopped being primary. That way a paging link stays decryptable for at least three and at most five hours after it was created.</dd>
   <dt>Storage</dt>
   <dd>Currently, encryption keys are stored in plain text within the admin database. While these keys are not accessible via an API, they are also not encrypted with an external key encryption method.</dd>
   <dt>Future Improvements</dt>

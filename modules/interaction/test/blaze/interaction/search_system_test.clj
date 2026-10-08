@@ -19,7 +19,7 @@
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.page-id :as page-id]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher.spec]
@@ -172,7 +172,7 @@
 (defn wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)
@@ -192,10 +192,10 @@
          ~@body))))
 
 (defn- page-url [page-id-cipher query-params]
-  (str base-url "/__page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+  (str base-url "/__page/" (page-id/encrypt page-id-cipher query-params)))
 
 (defn- page-path-params [page-id-cipher params]
-  {:page-id (decrypt-page-id/encrypt page-id-cipher params)})
+  {:page-id (page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "on empty database"

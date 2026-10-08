@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.page-id :as page-id]
    [blaze.page-store :as page-store]
    [blaze.util :as u :refer [str]]
    [clojure.string :as str]
@@ -111,7 +111,7 @@
     (->> (-> query-params
              (assoc "__t" (str t))
              (merge offset))
-         (decrypt-page-id/encrypt page-id-cipher)
+         (page-id/encrypt page-id-cipher)
          (match)
          (reitit/match->path)
          (str base-url))))
@@ -128,7 +128,7 @@
     (->> (-> query-params
              (assoc "__t" (str t))
              (merge offset))
-         (decrypt-page-id/encrypt page-id-cipher)
+         (page-id/encrypt page-id-cipher)
          (match)
          (reitit/match->path)
          (str base-url))))
