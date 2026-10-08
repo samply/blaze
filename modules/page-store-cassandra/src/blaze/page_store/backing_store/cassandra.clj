@@ -1,4 +1,7 @@
-(ns blaze.page-store.cassandra
+(ns blaze.page-store.backing-store.cassandra
+  "A Cassandra implementation of the backing store of a page store.
+
+  Stores clauses under the token given by the page store it backs."
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -7,11 +10,11 @@
    [blaze.cassandra.spec]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.page-store :as-alias page-store]
-   [blaze.page-store.cassandra.codec :as codec]
-   [blaze.page-store.cassandra.statement :as statement]
-   [blaze.page-store.protocols :as p]
+   [blaze.page-store.backing-store :as-alias backing-store]
+   [blaze.page-store.backing-store.cassandra.codec :as codec]
+   [blaze.page-store.backing-store.cassandra.statement :as statement]
+   [blaze.page-store.backing-store.protocols :as p]
    [blaze.page-store.spec]
-   [blaze.page-store.token :as token]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -91,23 +94,22 @@
   (ac/retry #(execute-put* session statement token clauses)
             "page-store-cassandra-put" 5))
 
-(defrecord CassandraPageStore [session get-statement get-quorum-statement put-statement]
-  p/PageStore
+(defrecord CassandraBackingPageStore [session get-statement get-quorum-statement put-statement]
+  p/BackingStore
   (-get [_ token]
     (log/trace "get" token)
     (execute-get session get-statement get-quorum-statement token))
 
-  (-put [_ clauses]
-    (let [token (token/generate clauses)]
-      (log/trace "put" token)
-      (do-sync [_ (execute-put session put-statement token clauses)]
-        token)))
+  (-put [_ token clauses]
+    (log/trace "put" token)
+    (do-sync [_ (execute-put session put-statement token clauses)]
+      nil))
 
   AutoCloseable
   (close [_]
     (cass/close session)))
 
-(defmethod m/pre-init-spec ::page-store/cassandra [_]
+(defmethod m/pre-init-spec ::backing-store/cassandra [_]
   (s/keys :opt-un [::cass/contact-points ::cass/key-space
                    ::cass/username ::cass/password
                    ::cass/put-consistency-level
@@ -116,21 +118,21 @@
                    ::cass/request-timeout]))
 
 (defn- init-msg [config]
-  (str "Open Cassandra page store with the following settings: "
+  (str "Open Cassandra backing page store with the following settings: "
        (cass/format-config config)))
 
-(defmethod ig/init-key ::page-store/cassandra
+(defmethod ig/init-key ::backing-store/cassandra
   [_ {:keys [put-consistency-level]
       :or {put-consistency-level "TWO"} :as config}]
   (log/info (init-msg config))
   (let [session (cass/session config)]
-    (->CassandraPageStore
+    (->CassandraBackingPageStore
      session
      (cass/prepare session statement/get-statement)
      (cass/prepare session statement/get-quorum-statement)
      (cass/prepare session (statement/put-statement put-consistency-level)))))
 
-(defmethod ig/halt-key! ::page-store/cassandra
+(defmethod ig/halt-key! ::backing-store/cassandra
   [_ store]
   (log/info "Close Cassandra page store")
   (.close ^AutoCloseable store))

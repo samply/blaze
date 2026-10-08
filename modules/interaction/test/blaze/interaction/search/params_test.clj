@@ -62,6 +62,18 @@
       ::anom/category := ::anom/not-found
       :http/status := nil))
 
+  (testing "invalid token"
+    (doseq [token ["invalid-token-175424"
+                   (str/join (repeat 63 "A"))
+                   (str/join (repeat 65 "A"))
+                   (str/join (repeat 64 "a"))
+                   (str/join (repeat 64 "G"))]]
+      (given-failed-future
+       (params/decode page-store ::handling/strict {"__token" token})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Invalid token `%s`." token)
+        :http/status := 422)))
+
   (testing "decoding _elements"
     (testing "one element"
       (doseq [handling [::handling/strict ::handling/lenient nil]]

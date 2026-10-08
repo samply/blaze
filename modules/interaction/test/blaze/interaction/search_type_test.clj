@@ -1166,14 +1166,14 @@
                    (link-url body "self"))))
 
           (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
 
           (testing "has a next link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -1193,14 +1193,14 @@
                      (link-url body "self"))))
 
             (testing "has a first link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1"})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_total" "accurate" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has no previous link"
               (is (nil? (link-url body "previous"))))
 
             (testing "has a next link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -1235,7 +1235,7 @@
       (let [{:keys [body]}
             @(handler
               {::reitit/match patient-page-match
-               :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
+               :path-params (page-path-params page-id-cipher {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
         (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
@@ -1245,11 +1245,11 @@
           (is (nil? (link-url body "self"))))
 
         (testing "has a first link with token"
-          (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+          (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
                  (link-url body "first"))))
 
         (testing "has a previous link with token"
-          (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+          (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
                  (link-url body "previous"))))
 
         (testing "has no next link"
@@ -1328,44 +1328,44 @@
                  :params {"active" "true" "_count" "1"}})]
 
           (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
 
           (testing "has a next link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                    (link-url body "next"))))))
 
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
+                 :path-params (page-path-params page-id-cipher {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
           (testing "has no self link"
             (is (nil? (link-url body "self"))))
 
           (testing "has a previous link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1"})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
                    (link-url body "previous"))))
 
           (testing "has a next link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})
+            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})
                    (link-url body "next")))))
 
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
                   {::reitit/match patient-page-match
-                   :path-params (page-path-params page-id-cipher {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
+                   :path-params (page-path-params page-id-cipher {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
 
             (testing "has no self link"
               (is (nil? (link-url body "self"))))
 
             (testing "has a previous link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
+              (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
                      (link-url body "previous"))))
 
             (testing "has no next link"

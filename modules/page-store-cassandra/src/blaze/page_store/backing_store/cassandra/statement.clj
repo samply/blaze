@@ -1,4 +1,4 @@
-(ns blaze.page-store.cassandra.statement
+(ns blaze.page-store.backing-store.cassandra.statement
   (:import
    [com.datastax.oss.driver.api.core ConsistencyLevel DefaultConsistencyLevel]
    [com.datastax.oss.driver.api.core.cql SimpleStatement]))

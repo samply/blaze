@@ -74,6 +74,9 @@
 (s/def :blaze.db.query/clauses
   (s/coll-of :blaze.db.query/disjunction :kind vector?))
 
+(s/def :blaze.db.query/non-empty-clauses
+  (s/coll-of :blaze.db.query/disjunction :kind vector? :min-count 1))
+
 (s/def :blaze/java-tool-options
   string?)
 

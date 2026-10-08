@@ -1,4 +1,4 @@
-(ns blaze.page-store.cassandra-test
+(ns blaze.page-store.backing-store.cassandra-test
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
@@ -8,15 +8,17 @@
    [blaze.fhir.test-util]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.page-store :as page-store]
-   [blaze.page-store.cassandra :as ps-c]
-   [blaze.page-store.cassandra.codec :as codec]
-   [blaze.page-store.cassandra.codec-spec]
-   [blaze.page-store.cassandra.statement :as statement]
-   [blaze.page-store.token-spec]
+   [blaze.page-store :as-alias page-store]
+   [blaze.page-store.backing-store :as backing-store]
+   [blaze.page-store.backing-store-spec]
+   [blaze.page-store.backing-store.cassandra :as ps-c]
+   [blaze.page-store.backing-store.cassandra.codec :as codec]
+   [blaze.page-store.backing-store.cassandra.codec-spec]
+   [blaze.page-store.backing-store.cassandra.statement :as statement]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -27,20 +29,30 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(declare prepare close config)
+
 (deftest init-test
   (testing "nil config"
-    (given-failed-system {::page-store/cassandra nil}
-      :key := ::page-store/cassandra
+    (given-failed-system {::backing-store/cassandra nil}
+      :key := ::backing-store/cassandra
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid contact-points"
-    (given-failed-system {::page-store/cassandra {:contact-points ::invalid}}
-      :key := ::page-store/cassandra
+    (given-failed-system {::backing-store/cassandra {:contact-points ::invalid}}
+      :key := ::backing-store/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid
       [:cause-data ::s/problems 0 :path] := [:contact-points]
-      [:cause-data ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "is a backing store"
+    (with-redefs
+     [cass/session (fn [_] ::session)
+      cass/prepare prepare
+      cass/close close]
+      (with-system [{store ::backing-store/cassandra} config]
+        (is (s/valid? ::page-store/backing-store store))))))
 
 (deftest duration-seconds-collector-init-test
   (with-system [{collector ::ps-c/duration-seconds} {::ps-c/duration-seconds {}}]
@@ -61,7 +73,7 @@
     ::prepared-put-statement))
 
 (def clauses [["active" "true"]])
-(def token "A6E4E6D1E2ADB75120717FE913FA5EBADDF0859588A657AFF71F270775B5FEC7")
+(def token (str/join (repeat 64 "A")))
 
 (defn- bind [prepared-statement & params]
   (condp = prepared-statement
@@ -89,7 +101,7 @@
   (assert (= ::session session)))
 
 (def config
-  {::page-store/cassandra {}
+  {::backing-store/cassandra {}
    :blaze.test/fixed-rng {}})
 
 (deftest get-test
@@ -101,8 +113,8 @@
       cass/execute execute
       cass/first-row (fn [_] (ba/not-found))
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        (given-failed-future (page-store/get store token)
+      (with-system [{store ::backing-store/cassandra} config]
+        (given-failed-future (backing-store/get store token)
           ::anom/category := ::anom/not-found
           ::anom/message := (format "Clauses of token `%s` not found." token)
           ::page-store/token := token))))
@@ -118,8 +130,8 @@
                          (ba/not-found)
                          (codec/encode clauses)))
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        (is (= clauses @(page-store/get store token))))))
+      (with-system [{store ::backing-store/cassandra} config]
+        (is (= clauses @(backing-store/get store token))))))
 
   (testing "execute error"
     (with-redefs
@@ -128,8 +140,8 @@
       cass/bind bind
       cass/execute (fn [_ _] (ac/completed-future (ba/fault "msg-141754")))
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        (given-failed-future (page-store/get store token)
+      (with-system [{store ::backing-store/cassandra} config]
+        (given-failed-future (backing-store/get store token)
           ::anom/category := ::anom/fault
           ::anom/message := "msg-141754"))))
 
@@ -143,10 +155,10 @@
                        (assert (= ::result-set result-set))
                        (codec/encode clauses))
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        @(page-store/put! store clauses)
+      (with-system [{store ::backing-store/cassandra} config]
+        @(backing-store/put! store token clauses)
 
-        (is (= clauses @(page-store/get store token)))))))
+        (is (= clauses @(backing-store/get store token)))))))
 
 (deftest put-test
   (testing "execute error"
@@ -156,8 +168,8 @@
       cass/bind bind
       cass/execute (fn [_ _] (ac/completed-future (ba/fault "msg-150216")))
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        (given-failed-future (page-store/put! store clauses)
+      (with-system [{store ::backing-store/cassandra} config]
+        (given-failed-future (backing-store/put! store token clauses)
           ::anom/category := ::anom/fault
           ::anom/message := "msg-150216"))))
 
@@ -168,5 +180,5 @@
       cass/bind bind
       cass/execute execute
       cass/close close]
-      (with-system [{store ::page-store/cassandra} config]
-        (is (= token @(page-store/put! store clauses)))))))
+      (with-system [{store ::backing-store/cassandra} config]
+        (is (nil? @(backing-store/put! store token clauses)))))))

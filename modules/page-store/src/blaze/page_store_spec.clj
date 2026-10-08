@@ -12,5 +12,5 @@
   :ret ac/completable-future?)
 
 (s/fdef page-store/put!
-  :args (s/cat :store :blaze/page-store :clauses :blaze.db.query/clauses)
+  :args (s/cat :store :blaze/page-store :clauses :blaze.db.query/non-empty-clauses)
   :ret ac/completable-future?)

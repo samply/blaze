@@ -1,4 +1,4 @@
-(ns blaze.page-store.cassandra.codec
+(ns blaze.page-store.backing-store.cassandra.codec
   (:require
    [blaze.anomaly :as ba]
    [cognitect.anomalies :as anom]
