@@ -1,19 +1,20 @@
 package blaze;
 
-import com.google.common.io.BaseEncoding;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.HexFormat;
 
 import static java.util.Objects.checkFromIndexSize;
 
 public final class ByteString implements Comparable<ByteString> {
 
     public static final ByteString EMPTY = new ByteString(new byte[0]);
+
+    private static final HexFormat HEX_FORMAT = HexFormat.of().withUpperCase();
 
     private final byte[] bytes;
 
@@ -95,9 +96,13 @@ public final class ByteString implements Comparable<ByteString> {
         return new String(bytes, charset);
     }
 
+    public String hex() {
+        return HEX_FORMAT.formatHex(bytes);
+    }
+
     @Override
     public String toString() {
-        return "0x" + BaseEncoding.base16().encode(bytes);
+        return "0x" + hex();
     }
 
     /**

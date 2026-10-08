@@ -262,5 +262,5 @@
   Returns an anomaly if estimating the scan size isn't supported by `kv-store`."
   [kv-store c-hash tid value]
   (let [seek-key (encode-seek-key c-hash tid value)
-        key-range [seek-key (bs/concat seek-key (bs/from-hex "FF"))]]
+        key-range [seek-key (bs/concat seek-key #blaze/byte-string"FF")]]
     (kv/estimate-scan-size kv-store :search-param-value-index key-range)))

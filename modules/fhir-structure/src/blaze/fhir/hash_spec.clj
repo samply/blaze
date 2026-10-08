@@ -18,7 +18,7 @@
   :ret :blaze.resource/hash)
 
 (s/fdef hash/from-hex
-  :args (s/cat :s string?)
+  :args (s/cat :s :blaze.resource.hash/hex)
   :ret :blaze.resource/hash)
 
 (s/fdef hash/into-byte-string-builder!

@@ -5,6 +5,9 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as sg]))
 
+(s/def :blaze.resource.hash/hex
+  (s/and string? #(re-matches #"[0-9A-F]{64}" %)))
+
 (s/def :blaze.resource/hash
   (s/with-gen
     hash/hash?

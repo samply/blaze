@@ -11,9 +11,12 @@
   calculates the same token for the same clauses."
   (:import
    [com.google.common.hash HashCode Hasher Hashing]
-   [com.google.common.io BaseEncoding]))
+   [java.util HexFormat]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private ^HexFormat hex-format
+  (.withUpperCase (HexFormat/of)))
 
 (def ^:private ^:const string-type (byte 0))
 (def ^:private ^:const keyword-type (byte 1))
@@ -73,4 +76,9 @@
 (defn encode
   "Encodes `hash` via Base16, returning a token, a string of length 64."
   [hash]
-  (.encode (BaseEncoding/base16) (.asBytes ^HashCode hash)))
+  (.formatHex hex-format (.asBytes ^HashCode hash)))
+
+(defn decode
+  "Decodes `token` into the hash it was encoded from."
+  [token]
+  (HashCode/fromBytes (.parseHex hex-format ^String token)))

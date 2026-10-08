@@ -5,13 +5,16 @@
   (:import
    [blaze ByteString]
    [clojure.lang IObj]
-   [com.google.common.io BaseEncoding]
    [java.io Writer]
    [java.nio ByteBuffer]
-   [java.nio.charset StandardCharsets]))
+   [java.nio.charset StandardCharsets]
+   [java.util HexFormat]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
+
+(def ^:private ^HexFormat hex-format
+  (.withUpperCase (HexFormat/of)))
 
 (defn byte-string? [x]
   (instance? ByteString x))
@@ -61,7 +64,7 @@
    (ByteString/copyFrom ^ByteBuffer byte-buffer (int size))))
 
 (defn from-hex [s]
-  (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
+  (ByteString/copyFrom (.parseHex hex-format ^String s)))
 
 (defn nth
   "Returns the byte at `index` from `bs`."
@@ -108,11 +111,6 @@
 (defn > [a b]
   (pos? (.compareTo ^ByteString a b)))
 
-(defn hex
-  "Returns an upper-case hexadecimal string representation of `bs`."
-  [bs]
-  (.encode (BaseEncoding/base16) (.toByteArray ^ByteString bs)))
-
 (defn to-byte-array
   {:inline (fn [bs] `(.toByteArray ~(tag bs `ByteString)))}
   [bs]
@@ -134,7 +132,7 @@
 
 (defmethod print-method ByteString [^ByteString bs ^Writer w]
   (.write w "#blaze/byte-string\"")
-  (.write w ^String (hex bs))
+  (.write w ^String (.hex bs))
   (.write w "\""))
 
 (defmethod print-dup byte/1 [^bytes bytes ^Writer w]

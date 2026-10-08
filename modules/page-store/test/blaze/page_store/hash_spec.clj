@@ -18,6 +18,10 @@
   :args (s/cat :hash :blaze.page-store/hash-code)
   :ret :blaze.page-store/token)
 
+(s/fdef hash/decode
+  :args (s/cat :token :blaze.page-store/token)
+  :ret :blaze.page-store/hash-code)
+
 (s/fdef hash/hash-clauses
   :args (s/cat :clauses :blaze.db.query/clauses)
   :ret (s/keys :req-un [::hash/hash ::hash/hashes ::hash/clauses]))
