@@ -3044,9 +3044,6 @@ jobs:
     - name: Copy FHIR 4.0.1 Definition ZIP
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
-    - name: APT Update
-      run: sudo apt-get -o Acquire::Retries=5 update
-
     - name: Install xq
       run: .github/scripts/install-xq.sh
 
@@ -3494,9 +3491,6 @@ jobs:
 
     - name: Copy FHIR 4.0.1 Definition ZIP
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
-
-    - name: APT Update
-      run: sudo apt-get -o Acquire::Retries=5 update
 
     - name: Install xq
       run: .github/scripts/install-xq.sh
