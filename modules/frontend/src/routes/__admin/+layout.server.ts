@@ -1,7 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 
 import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson } from '$lib/fetch.js';
 
 export interface Setting {
   name: string;
@@ -23,16 +23,7 @@ export interface Data {
 }
 
 export const load: LayoutServerLoad = async ({ fetch }) => {
-  const res = await fetch(backendUrl('/__admin'), {
-    headers: { Accept: 'application/json' }
+  return fetchJson<Data>(fetch, backendUrl('/__admin'), {
+    error: 'An error happened while loading the admin root. Please try again later.'
   });
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the admin root. Please try again later.`
-    });
-  }
-
-  return (await res.json()) as Data;
 };

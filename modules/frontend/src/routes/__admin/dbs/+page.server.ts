@@ -1,20 +1,13 @@
 import type { PageServerLoad } from './$types';
 
 import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson } from '$lib/fetch.js';
 import type { Stats } from './[dbId=id]/+page.server.js';
 
 export const load: PageServerLoad = async ({ fetch }) => {
-  const res = await fetch(backendUrl('/__admin/dbs'), {
-    headers: { Accept: 'application/json' }
-  });
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the list of database stats. Please try again later.`
-    });
-  }
-
-  return { databases: (await res.json()) as Stats[] };
+  return {
+    databases: await fetchJson<Stats[]>(fetch, backendUrl('/__admin/dbs'), {
+      error: 'An error happened while loading the list of database stats. Please try again later.'
+    })
+  };
 };

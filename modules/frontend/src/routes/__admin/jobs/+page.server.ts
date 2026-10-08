@@ -1,8 +1,9 @@
 import type { Actions, PageServerLoad } from './$types';
 import { resolve } from '$app/paths';
-import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { pascalCase } from 'change-case';
 import { backendUrl } from '$lib/backend.js';
+import { fetchFhir } from '$lib/fetch.js';
 import { type Job, toJob } from '$lib/jobs';
 import {
   extractRequest,
@@ -80,18 +81,10 @@ function toSummaryJob(job: Task, includes: BundleEntry[]): SummaryJob | undefine
 
 async function loadJobs(fetch: typeof window.fetch, status?: string): Promise<SummaryJob[]> {
   const query = (status ? `status=${status}&` : '') + '_sort=-_lastUpdated&_include=Task:input';
-  const res = await fetch(backendUrl('/__admin/Task', query), {
-    headers: { Accept: 'application/fhir+json' }
+  const bundle = await fetchFhir<Bundle>(fetch, backendUrl('/__admin/Task', query), {
+    error: 'An error happened while loading the list of running jobs. Please try again later.'
   });
 
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the list of running jobs. Please try again later.`
-    });
-  }
-
-  const bundle = (await res.json()) as Bundle;
   const includes = bundle.entry?.filter((e) => e.search?.mode === 'include') || [];
   return (
     bundle.entry
