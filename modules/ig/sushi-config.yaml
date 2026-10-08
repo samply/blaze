@@ -6,18 +6,23 @@
 id: blaze
 canonical: https://blaze-server.org/fhir
 name: blaze
-# title: Example Title
-# description: Example Implementation Guide for getting started with SUSHI
-status: draft # draft | active | retired | unknown
+# Reverse of the domain the guide is published under. FHIR package names consist
+# of two or more dot-separated namespaces and identify the publisher first.
+packageId: org.blaze-server
+title: Blaze FHIR Server
+description: Implementation Guide defining the FHIR conformance artifacts of the Blaze FHIR Server
+status: active
+# Version and date follow the Blaze release the guide is published with. CI
+# stamps them; the values here are the fallback for local builds.
 version: 1.10.0
-fhirVersion: 4.0.1 # https://www.hl7.org/fhir/valueset-FHIR-version.html
+date: 2026-07-01
+fhirVersion: 4.0.1
 copyrightYear: 2024+
-releaseLabel: ci-build # ci-build | draft | qa-preview | ballot | trial-use | release | update | normative+trial-use
-# license: CC0-1.0 # https://www.hl7.org/fhir/valueset-spdx-license.html
-# jurisdiction: urn:iso:std:iso:3166#US "United States of America" # https://www.hl7.org/fhir/valueset-jurisdiction.html
+releaseLabel: production
+license: Apache-2.0
 publisher:
   name: The Samply Community
-  url: http://example.org/example-publisher
+  url: https://samply.de
   # email: test@example.org
 
 # The dependencies property corresponds to IG.dependsOn. The key is the
@@ -66,6 +71,22 @@ publisher:
 #   excludettl: true
 #   validation: [allow-any-extensions, no-broken-links]
 #
+parameters:
+  # Every rendering is archived per published version, so the site grows with
+  # each one. Turtle is of no use to Blaze users and the IG database is a build
+  # artefact, so both are left out.
+  #
+  # Dropping a format takes both settings: the wantGen ones stop the publisher
+  # from generating the files, while excludettl is what the template reads to
+  # drop the tab that would otherwise link to them.
+  wantGen-ttl: false
+  wantGen-ttl-html: false
+  excludettl: true
+  no-ig-database: true
+  # Do not report extension, value set and invariant usage to fhir.org on every
+  # build.
+  usage-stats-opt-out: true
+
 # ╭────────────────────────────────────────────menu.xml────────────────────────────────────────────╮
 # │ The menu property will be used to generate the input/menu.xml file. The menu is represented    │
 # │ as a simple structure where the YAML key is the menu item name and the value is the URL.       │
