@@ -23,7 +23,7 @@ Rigorous adherence to these patterns is required:
   * Implement `ig/init-key` and `ig/halt-key!` multimethods.
   * Define `m/pre-init-spec` for dependency validation.
 * **Specs:**
-  * Every public function must have a spec.
+  * Every public function must have a spec. Exception: functions in namespaces whose last segment is `impl` (e.g. `blaze.luid.impl`, but not `blaze.db.impl.index`) don't need specs.
   * **Return Values:** Every `s/fdef` must have a `:ret` spec. `st/instrument` checks only `:args`, so a wrong or missing `:ret` never fails a test run — that's the reason to be deliberate about it, not a reason to leave it out. For a function returning either a value or an anomaly, use `(s/or :value <pred> :anomaly ::anom/anomaly)`.
   * **Location:** Specs must never be defined inline in the implementation namespace. There are two distinct spec namespace conventions:
     * `s/def` (data/attribute specs) → dot-separated `*.spec` namespace (e.g., `blaze.db.node.spec` for `blaze.db.node`), in a `spec.clj` file nested under the namespace directory.
