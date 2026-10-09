@@ -27,33 +27,15 @@
    [com.google.code.findbugs/jsr305
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
-  ca.uhn.hapi.fhir/org.hl7.fhir.r5
-  {:mvn/version "6.10.4"
+  ca.uhn.hapi.fhir/org.hl7.fhir.model
+  {:mvn/version "7.0.0"
    :exclusions
-   [com.google.errorprone/error_prone_annotations
-    com.nimbusds/nimbus-jose-jwt
-    commons-beanutils/commons-beanutils
+   [com.nimbusds/nimbus-jose-jwt
     commons-net/commons-net
-    info.cqframework/cql
-    info.cqframework/cql-to-elm
-    info.cqframework/elm
-    info.cqframework/model
-    info.cqframework/qdm
-    info.cqframework/quick
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations
     net.sf.saxon/Saxon-HE
     net.sourceforge.plantuml/plantuml-mit
-    ognl/ognl
-    org.apache.commons/commons-collections4
-    org.apache.httpcomponents/httpclient
-    org.apache.santuario/xmlsec
-    org.attoparser/attoparser
-    org.commonmark/commonmark
-    org.commonmark/commonmark-ext-gfm-tables
-    org.eclipse.jgit/org.eclipse.jgit
-    org.ogce/xpp3
-    org.unbescape/unbescape
-    org.xerial/sqlite-jdbc]}
+    org.eclipse.jgit/org.eclipse.jgit]}
 
   ring/ring-codec
   {:mvn/version "1.3.0"}
