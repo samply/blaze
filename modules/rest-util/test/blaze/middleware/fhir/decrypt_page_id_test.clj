@@ -10,7 +10,8 @@
    [clojure.test :as test :refer [deftest testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [cognitect.anomalies :as anom])
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
    [com.google.crypto.tink Aead KeysetHandle RegistryConfiguration]
    [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]))
@@ -39,5 +40,20 @@
   (testing "random query params can be encrypted"
     (satisfies-prop 100
       (prop/for-all [query-params (s/gen :ring.request/query-params)]
-        (let [page-id (encrypt page-id-cipher query-params)]
-          (= query-params (:params @(handler {:path-params {:page-id page-id}}))))))))
+        (let [page-id (encrypt page-id-cipher query-params)
+              request @(handler {:path-params {:page-id page-id}})]
+          (= query-params (merge (:params request) (:blaze/paging-params request)))))))
+
+  (testing "paging params are separated from the other params"
+    (let [paging-params {"__token" "token-130842"
+                         "__t" "1"
+                         "__page-t" "2"
+                         "__page-id" "id-130902"
+                         "__page-offset" "3"
+                         "__page-type" "Patient"
+                         "__page-id-stack" ["" "id-130918"]}
+          page-id (encrypt page-id-cipher (assoc paging-params "_count" "1"))]
+      (given @(handler {:path-params {:page-id page-id}})
+        :params := {"_count" "1"}
+        :query-params := {"_count" "1"}
+        :blaze/paging-params := paging-params))))

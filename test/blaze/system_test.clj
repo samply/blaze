@@ -492,7 +492,18 @@
           (given (call rest-api {:request-method :get :uri "/Patient/__page/unknown"})
             :status := 404
 
-            [:body json-parser :fhir/type] := :fhir/OperationOutcome)))))
+            [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+        (testing "unencrypted paging params are ignored"
+          (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1&__page-id=1"})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0")
+
+          (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1&__token=invalid"})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0")))))
 
   (testing "using POST"
     (testing "with unsupported media-type"
@@ -538,7 +549,15 @@
           (given (call rest-api {:request-method :post :uri "/Patient/__page/unknown"})
             :status := 404
 
-            [:body json-parser :fhir/type] := :fhir/OperationOutcome))))))
+            [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+        (testing "unencrypted paging params are ignored"
+          (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                                 :headers {"content-type" "application/x-www-form-urlencoded"}
+                                 :body (input-stream (.getBytes "_count=1&__page-id=1" "UTF-8"))})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0"))))))
 
 (deftest search-compartment-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -546,7 +565,21 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"})
       :status := 200
-      [:body json-parser :fhir/type] := :fhir/Bundle)))
+      [:body json-parser :fhir/type] := :fhir/Bundle))
+
+  (testing "unencrypted paging params are ignored"
+    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"
+                             :query-string "_count=1&__page-offset=1"})
+        :status := 200
+        [:body json-parser :entry count] := 1
+        [:body json-parser :entry 0 :resource :id] := "0"))))
 
 (deftest history-type-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -555,7 +588,17 @@
     (given (call rest-api {:request-method :get :uri "/Patient/_history"})
       :status := 200
       [:headers "Link"] := "<http://localhost:8080/Patient/_history>;rel=\"self\""
-      [:body json-parser :fhir/type] := :fhir/Bundle)))
+      [:body json-parser :fhir/type] := :fhir/Bundle))
+
+  (testing "unencrypted paging params are ignored"
+    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (given (call rest-api {:request-method :get :uri "/Patient/_history"
+                             :query-string "__page-t=1"})
+        :status := 200
+        [:body json-parser :entry count] := 2))))
 
 (deftest redirect-slash-test
   (with-system [{:blaze/keys [rest-api]} config]

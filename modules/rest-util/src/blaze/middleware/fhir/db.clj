@@ -1,7 +1,7 @@
 (ns blaze.middleware.fhir.db
   "This middleware provides a database value for read-only interactions.
 
-  It uses the optional query param __t and vid from path to acquire the right
+  It uses the optional paging param __t and vid from path to acquire the right
   database value."
   (:require
    [blaze.anomaly :as ba]
@@ -22,14 +22,14 @@
 (defn wrap-snapshot-db
   "Database wrapping for requests that like to operate on a known database state.
 
-  The logical timestamp `t` of the database state is taken from the query param
-  `__t`."
+  The logical timestamp `t` of the database state is taken from the paging
+  param `__t` which is only available from decrypted page ids."
   [handler node timeout]
-  (fn [{:keys [params] :as request}]
+  (fn [{:blaze/keys [paging-params] :as request}]
     (if (:blaze/db request)
       (handler request)
-      (if-let [t (fhir-util/t params)]
+      (if-let [t (fhir-util/t paging-params)]
         (-> (fhir-util/sync node t timeout)
             (ac/then-compose #(handler (assoc request :blaze/db %))))
         (ac/completed-future
-         (ba/incorrect (format "Missing or invalid `__t` query param `%s`." (get params "__t"))))))))
+         (ba/incorrect (format "Missing or invalid `__t` paging param `%s`." (get paging-params "__t"))))))))

@@ -2946,8 +2946,8 @@
             (let [{:keys [status body]}
                   @(handler
                     {::reitit/match (match-of "Observation")
-                     :params {"_include" "Observation:subject" "_count" "2"
-                              "__t" "1" "__page-id" "3"}})]
+                     :params {"_include" "Observation:subject" "_count" "2"}
+                     :blaze/paging-params {"__t" "1" "__page-id" "3"}})]
 
               (is (= 200 status))
 
