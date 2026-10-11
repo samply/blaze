@@ -593,6 +593,41 @@
     (-form [_]
       'time-of-day)))
 
+(defn- unop-with-now
+  "Returns a constructor of unary operator expressions with `name` that call
+  `f` with the evaluated operand and the `now` of the evaluation context."
+  [name f]
+  (fn op [operand]
+    (reify-expr core/Expression
+      (-attach-cache [_ cache]
+        (core/attach-cache-helper op cache operand))
+      (-resolve-refs [_ expression-defs]
+        (core/resolve-refs-helper op expression-defs operand))
+      (-resolve-params [_ parameters]
+        (core/resolve-params-helper op parameters operand))
+      (-optimize [_ db]
+        (core/optimize-helper op db operand))
+      (-eval [_ {:keys [now] :as context} resource scope]
+        (f (core/-eval operand context resource scope) now))
+      (-form [_]
+        (list name (core/-form operand))))))
+
+;; 18.19. TimeFrom
+(def ^:private time-from-op
+  (unop-with-now 'time-from #(p/time-from %1 %2)))
+
+(defmethod core/compile* :elm.compiler.type/time-from
+  [context {:keys [operand]}]
+  (some-> (core/compile* context operand) time-from-op))
+
+;; 18.20. TimezoneOffsetFrom
+(def ^:private timezone-offset-from-op
+  (unop-with-now 'timezone-offset-from #(p/timezone-offset-from %1 %2)))
+
+(defmethod core/compile* :elm.compiler.type/timezone-offset-from
+  [context {:keys [operand]}]
+  (some-> (core/compile* context operand) timezone-offset-from-op))
+
 ;; 18.21. TimeOfDay
 (defmethod core/compile* :elm.compiler.type/time-of-day
   [_ _]

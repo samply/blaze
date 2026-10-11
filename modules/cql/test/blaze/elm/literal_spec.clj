@@ -251,6 +251,14 @@
                            :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
+(s/fdef elm/time-from
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
+(s/fdef elm/timezone-offset-from
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
 ;; 19.1. Interval
 (s/def ::interval-arg
   (s/cat :low-open (s/? #{:<})

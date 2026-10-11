@@ -22,7 +22,7 @@
    [java-time.api :as time])
   (:import
    [blaze.fhir.spec.type.system DateDate]
-   [java.time OffsetDateTime]
+   [java.time OffsetDateTime ZoneOffset]
    [java.time.temporal Temporal]))
 
 (set! *warn-on-reflection* true)
@@ -1297,6 +1297,100 @@
   (ctu/testing-unary-op elm/time)
   (ctu/testing-binary-op elm/time)
   (ctu/testing-ternary-op elm/time))
+
+(defn- now-with-offset [offset]
+  (.withOffsetSameInstant ^OffsetDateTime ctu/now (ZoneOffset/of ^String offset)))
+
+(defn- offset-date-time [year month day hour minute offset]
+  (system/date-time year month day hour minute 0 0 (ZoneOffset/of ^String offset)))
+
+(defn- compile-eval-x
+  "Compiles `elm` referencing the parameter `x` and evaluates it with `x` bound
+  to `value` and the evaluation request timestamp `now`."
+  [elm value now]
+  (core/-eval (c/compile {:library {:parameters {:def [{:name "x"}]}}} elm)
+              {:parameters {"x" value} :now now} nil nil))
+
+;; 18.19. TimeFrom
+;;
+;; The TimeFrom operator returns the Time of the argument.
+;;
+;; When extracting the Time from a DateTime value, implementations should
+;; normalize to the timezone offset of the evaluation request timestamp.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-time-from-test
+  (testing "literals"
+    (are [x res] (= res (core/-eval (c/compile {} (elm/time-from x)) {:now ctu/now} nil nil))
+      #elm/date-time"2019" nil
+      #elm/date-time"2019-04" nil
+      #elm/date-time"2019-04-17" nil
+      #elm/date-time"2019-04-17T12:48" (time/local-time 12 48)
+      #elm/date-time"2019-04-17T12:48:13.123" (time/local-time 12 48 13 123000000)))
+
+  (testing "DateTime without offset already has the offset of now"
+    (are [now] (= (time/local-time 12 48)
+                  (compile-eval-x (elm/time-from #elm/parameter-ref "x")
+                                  #system/date-time"2019-04-17T12:48"
+                                  (now-with-offset now)))
+      "Z"
+      "+02:00"
+      "-05:00"))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [x now res] (= res (compile-eval-x (elm/time-from #elm/parameter-ref "x")
+                                            x (now-with-offset now)))
+      (offset-date-time 2019 4 17 12 48 "+02:00") "Z" (time/local-time 10 48)
+      (offset-date-time 2019 4 17 12 48 "+02:00") "+02:00" (time/local-time 12 48)
+      (offset-date-time 2019 4 17 12 48 "+02:00") "-05:00" (time/local-time 5 48)
+      (offset-date-time 2019 4 17 0 30 "+01:00") "Z" (time/local-time 23 30)))
+
+  (ctu/testing-unary-null elm/time-from)
+
+  (ctu/testing-unary-op elm/time-from))
+
+;; 18.20. TimezoneOffsetFrom
+;;
+;; The TimezoneOffsetFrom operator returns the timezone offset of the argument
+;; in hours as a Decimal.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-timezone-offset-from-test
+  (testing "literals"
+    (are [x res] (= res (core/-eval (c/compile {} (elm/timezone-offset-from x))
+                                    {:now (now-with-offset "+01:00")} nil nil))
+      #elm/date-time"2019" nil
+      #elm/date-time"2019-04" nil
+      #elm/date-time"2019-04-17" nil
+      #elm/date-time"2019-04-17T12:48" 1M
+      #elm/date-time"2019-04-17T12:48:13.123" 1M))
+
+  (testing "DateTime without offset has the offset of now"
+    (are [now res] (= res (compile-eval-x (elm/timezone-offset-from #elm/parameter-ref "x")
+                                          #system/date-time"2019-04-17T12:48"
+                                          (now-with-offset now)))
+      "Z" 0M
+      "+02:00" 2M
+      "+10:00" 10M
+      "-05:30" -5.5M
+      "+05:45" 5.75M))
+
+  (testing "DateTime with offset has its own offset"
+    (are [x res] (= res (compile-eval-x (elm/timezone-offset-from #elm/parameter-ref "x")
+                                        x ctu/now))
+      (offset-date-time 2019 4 17 12 48 "Z") 0M
+      (offset-date-time 2019 4 17 12 48 "+01:00") 1M
+      (offset-date-time 2019 4 17 12 48 "-03:30") -3.5M
+      (offset-date-time 2019 4 17 12 48 "+05:45") 5.75M
+      (offset-date-time 2019 4 17 12 48 "+00:20") 0.33333333M))
+
+  (testing "the result is a Decimal"
+    (is (decimal? (compile-eval-x (elm/timezone-offset-from #elm/parameter-ref "x")
+                                  #system/date-time"2019-04-17T12:48" ctu/now))))
+
+  (ctu/testing-unary-null elm/timezone-offset-from)
+
+  (ctu/testing-unary-op elm/timezone-offset-from))
 
 ;; 18.21. TimeOfDay
 ;;

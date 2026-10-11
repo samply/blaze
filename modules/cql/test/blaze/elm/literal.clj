@@ -551,6 +551,16 @@
     {:type "Time"
      :hour arg}))
 
+;; 18.19. TimeFrom
+(defn time-from [op]
+  {:type "TimeFrom"
+   :operand op})
+
+;; 18.20. TimezoneOffsetFrom
+(defn timezone-offset-from [op]
+  {:type "TimezoneOffsetFrom"
+   :operand op})
+
 ;; 18.21. TimeOfDay
 (def time-of-day
   {:type "TimeOfDay"})

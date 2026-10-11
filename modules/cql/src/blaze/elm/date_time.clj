@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.elm.decimal]
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type]
    [blaze.fhir.spec.type.system :as system]
@@ -15,7 +16,7 @@
    [blaze.fhir.spec.type.system
     Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear
     DateYearMonth]
-   [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime]
+   [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime ZoneOffset]
    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 (set! *warn-on-reflection* true)
@@ -984,6 +985,35 @@
                                                p-num p-num 3)]
             (>= cmp 0)))
         (p/greater-or-equal this other)))))
+
+;; 18.19. TimeFrom
+(extend-protocol p/TimeFrom
+  DateTime
+  (time-from [_ _])
+
+  LocalDateTime
+  (time-from [this now]
+    (p/to-time this now))
+
+  OffsetDateTime
+  (time-from [this now]
+    (p/to-time this now)))
+
+;; 18.20. TimezoneOffsetFrom
+(defn- offset-hours [^ZoneOffset offset]
+  (p/divide (BigDecimal/valueOf (.getTotalSeconds offset)) 3600M))
+
+(extend-protocol p/TimezoneOffsetFrom
+  DateTime
+  (timezone-offset-from [_ _])
+
+  LocalDateTime
+  (timezone-offset-from [_ now]
+    (offset-hours (.getOffset ^OffsetDateTime now)))
+
+  OffsetDateTime
+  (timezone-offset-from [this _]
+    (offset-hours (.getOffset this))))
 
 ;; 19.2. After
 (extend-protocol p/After

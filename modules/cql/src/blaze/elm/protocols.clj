@@ -147,6 +147,17 @@
 (defprotocol SameOrAfter
   (same-or-after [x y precision]))
 
+;; 18.19. TimeFrom
+(defprotocol TimeFrom
+  "Returns the time of `x` normalized to the timezone offset of `now`."
+  (time-from [x now]))
+
+;; 18.20. TimezoneOffsetFrom
+(defprotocol TimezoneOffsetFrom
+  "Returns the timezone offset of `x` in hours as decimal. DateTime values
+  without explicit timezone offset have the timezone offset of `now`."
+  (timezone-offset-from [x now]))
+
 ;; 19.2. After
 (defprotocol After
   (after [x y precision]))

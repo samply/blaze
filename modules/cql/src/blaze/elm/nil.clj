@@ -152,6 +152,16 @@
   nil
   (same-or-after [_ _ _]))
 
+;; 18.19. TimeFrom
+(extend-protocol p/TimeFrom
+  nil
+  (time-from [_ _]))
+
+;; 18.20. TimezoneOffsetFrom
+(extend-protocol p/TimezoneOffsetFrom
+  nil
+  (timezone-offset-from [_ _]))
+
 ;; 19.2. After
 (extend-protocol p/After
   nil
