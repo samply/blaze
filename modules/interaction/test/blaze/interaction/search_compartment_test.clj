@@ -17,8 +17,8 @@
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
@@ -167,7 +167,7 @@
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= "compartment-page" (some-> match :data :name name))
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)
@@ -186,10 +186,10 @@
          ~@body))))
 
 (defn- page-url [page-id-cipher type query-params]
-  (str base-url context-path "/Patient/0/" type "/__page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+  (str base-url context-path "/Patient/0/" type "/__page/" (page-id/encrypt page-id-cipher query-params)))
 
 (defn- page-path-params [page-id-cipher params]
-  {:id "0" :type "Observation" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
+  {:id "0" :type "Observation" :page-id (page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "Returns an Error on Invalid Id"

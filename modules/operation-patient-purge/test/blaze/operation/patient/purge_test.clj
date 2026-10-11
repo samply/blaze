@@ -6,7 +6,7 @@
    [blaze.db.spec]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.patient.purge]
    [blaze.test-util :as tu]

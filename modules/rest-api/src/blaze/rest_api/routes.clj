@@ -3,9 +3,9 @@
   (:require
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.middleware.fhir.db :as db]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.error :as error]
    [blaze.middleware.fhir.output :as fhir-output]
+   [blaze.middleware.fhir.page-id :as page-id]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.link-headers :as link-headers]
    [blaze.middleware.output :as output]
@@ -91,7 +91,7 @@
 
 (def ^:private wrap-decrypt-page-id
   {:name :decrypt-page-id
-   :wrap decrypt-page-id/wrap-decrypt-page-id})
+   :wrap page-id/wrap-decrypt-page-id})
 
 (defn resource-route
   "Builds routes for one resource according to `structure-definition`.

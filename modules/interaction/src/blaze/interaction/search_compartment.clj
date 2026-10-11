@@ -118,7 +118,7 @@
    {{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
     {:keys [id type]} :path-params
     :keys [headers params]
-    :blaze/keys [base-url db]
+    :blaze/keys [base-url db paging-params]
     ::reitit/keys [router]}]
   (cond
     (not (s/valid? :blaze.resource/id id))
@@ -135,7 +135,7 @@
 
     :else
     (let [handling (handler-util/preference headers "handling")]
-      (do-sync [params (params/decode page-store handling params)]
+      (do-sync [params (params/decode page-store handling params paging-params)]
         (cond->
          (assoc context
                 :blaze/base-url base-url

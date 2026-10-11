@@ -23,8 +23,8 @@
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher.spec]
@@ -228,7 +228,7 @@
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= "page" (some-> match :data :name name))
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)
@@ -266,10 +266,10 @@
          ~@body))))
 
 (defn- page-url [page-id-cipher type query-params]
-  (str base-url context-path "/" type "/__page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+  (str base-url context-path "/" type "/__page/" (page-id/encrypt page-id-cipher query-params)))
 
 (defn- page-path-params [page-id-cipher params]
-  {:page-id (decrypt-page-id/encrypt page-id-cipher params)})
+  {:page-id (page-id/encrypt page-id-cipher params)})
 
 (defn- sorted-includes
   "Extracts and sorts included resource from the entries."
@@ -2946,8 +2946,8 @@
             (let [{:keys [status body]}
                   @(handler
                     {::reitit/match (match-of "Observation")
-                     :params {"_include" "Observation:subject" "_count" "2"
-                              "__t" "1" "__page-id" "3"}})]
+                     :params {"_include" "Observation:subject" "_count" "2"}
+                     :blaze/paging-params {"__t" "1" "__page-id" "3"}})]
 
               (is (= 200 status))
 

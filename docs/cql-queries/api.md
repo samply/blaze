@@ -411,13 +411,13 @@ results in, thinned out, the following bundle:
   "link": [
     {
       "relation": "next",
-      "url": "http://localhost:8080/fhir/Patient?_list=C6QKSKQ2V7DAF3X6&_count=2&__t=913&__page-id=C6QKGRPAJHAD6KFW"
+      "url": "http://localhost:8080/fhir/Patient/__page/ARfk3mZ1rN0pQ8sT2uVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789-_abcdefghijklmnopqrstuvwxyzABCDEFGH"
     }
   ]
 }
 ```
 
-This variant uses the special search parameter `_list` to search for patients included in the list with the given ID. This list of patients can be further shaped using the normal search parameters like `_count` or additionally using `_include`.
+This variant uses the special search parameter `_list` to search for patients included in the list with the given ID. This list of patients can be further shaped using the normal search parameters like `_count` or additionally using `_include`. The next link is opaque and has to be followed as is. See [paging sessions](../api.md#paging-sessions) for details.
 
 [1]: <https://www.hl7.org/fhir/clinicalreasoning-quality-reporting.html>
 [2]: <https://curl.se>

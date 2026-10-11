@@ -42,7 +42,7 @@ The output should be:
   "link": [
     {
       "relation": "self",
-      "url": "http://localhost:8080/fhir?_count=50&__t=0"
+      "url": "http://localhost:8080/fhir?_count=50"
     }
   ]
 }

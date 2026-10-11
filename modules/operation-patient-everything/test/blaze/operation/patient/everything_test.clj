@@ -12,8 +12,8 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
    [blaze.middleware.fhir.db :as db]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.patient.everything]
@@ -141,7 +141,7 @@
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)
@@ -170,10 +170,10 @@
          ~@body))))
 
 (defn- page-url [page-id-cipher query-params]
-  (str base-url context-path "/Patient/0/__everything-page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+  (str base-url context-path "/Patient/0/__everything-page/" (page-id/encrypt page-id-cipher query-params)))
 
 (defn- page-path-params [page-id-cipher params]
-  {:id "0" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
+  {:id "0" :page-id (page-id/encrypt page-id-cipher params)})
 
 (deftest params-test
   (testing "Patient not found"
@@ -991,7 +991,18 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/3")
-                   (-> entry :fullUrl :value)))))))
+                   (-> entry :fullUrl :value))))))
+
+      (testing "unencrypted paging params are ignored"
+        (let [{{[first-entry] :entry} :body}
+              @(handler
+                {::reitit/match match
+                 :path-params {:id "0"}
+                 :query-params {"_count" "2" "__t" "1" "__page-offset" "2"}})]
+
+          (testing "the first page is returned"
+            (is (= (str base-url context-path "/Patient/0")
+                   (-> first-entry :fullUrl :value)))))))
 
     (testing "with start date"
       (with-handler [handler _ page-id-cipher]

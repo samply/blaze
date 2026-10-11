@@ -37,6 +37,40 @@
       ["<invalid>" "2"] 2
       ["3" "4"] 3)))
 
+(deftest decode-params-test
+  (testing "defaults"
+    (given (history-util/decode-params {} {})
+      :page-size := 50
+      :since := nil
+      :summary := :complete
+      :page-t := nil
+      :page-type := nil
+      :page-id := nil))
+
+  (testing "query params"
+    (given (history-util/decode-params
+            {"_count" "1" "_since" "2000-01-01T00:00:00+01:00" "_summary" "true"}
+            {})
+      :page-size := 1
+      :since := (Instant/parse "1999-12-31T23:00:00Z")
+      :summary := :summary))
+
+  (testing "paging params"
+    (given (history-util/decode-params
+            {}
+            {"__page-t" "1" "__page-type" "Patient" "__page-id" "0"})
+      :page-t := 1
+      :page-type := "Patient"
+      :page-id := "0"))
+
+  (testing "paging params are not taken from query params"
+    (given (history-util/decode-params
+            {"__page-t" "1" "__page-type" "Patient" "__page-id" "0"}
+            {})
+      :page-t := nil
+      :page-type := nil
+      :page-id := nil)))
+
 (def base-url "base-url-183028")
 (def context-path "/context-path-183031")
 
@@ -144,19 +178,19 @@
     (testing "minimum allowed FHIR unsignedInt value"
       (let [min-int 0]
         (with-system [{::keys [context]} config]
-          (given (history-util/build-bundle context min-int {})
+          (given (history-util/build-bundle context min-int (history-util/decode-params {} {}))
             [:total :value] := min-int))))
 
     (testing "maximum allowed FHIR unsignedInt value"
       (let [max-int (dec (bit-shift-left 1 31))]
         (with-system [{::keys [context]} config]
-          (given (history-util/build-bundle context max-int {})
+          (given (history-util/build-bundle context max-int (history-util/decode-params {} {}))
             [:total :value] := max-int))))
 
     (testing "one above the maximum allowed FHIR unsignedInt value"
       (let [overflowed-int (bit-shift-left 1 31)]
         (with-system [{::keys [context]} config]
-          (given (history-util/build-bundle context overflowed-int {})
+          (given (history-util/build-bundle context overflowed-int (history-util/decode-params {} {}))
             [:total :value] := nil
             [:total :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/grand-total"
             [:total :extension 0 :value] := (type/string (str overflowed-int))
@@ -166,7 +200,7 @@
     (testing "values of a trillion are possible"
       (let [trillion-int 1000000000000]
         (with-system [{::keys [context]} config]
-          (given (history-util/build-bundle context trillion-int {})
+          (given (history-util/build-bundle context trillion-int (history-util/decode-params {} {}))
             [:total :value] := nil
             [:total :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/grand-total"
             [:total :extension 0 :value] := (type/string (str trillion-int))

@@ -19,8 +19,8 @@
    [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
@@ -176,7 +176,7 @@
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
-      ((decrypt-page-id/wrap-decrypt-page-id
+      ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node 100)
         page-id-cipher)
        request)
@@ -200,10 +200,16 @@
          ~@body))))
 
 (defn- page-url [page-id-cipher query-params]
-  (str base-url context-path "/Patient/0/__history-page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+  (str base-url context-path "/Patient/0/__history-page/" (page-id/encrypt page-id-cipher query-params)))
 
 (defn- page-path-params [page-id-cipher params]
-  {:id "0" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
+  {:id "0" :page-id (page-id/encrypt page-id-cipher params)})
+
+(def ^:private client-paging-params
+  "Paging params a client could try to supply directly."
+  {"__token" (apply str (repeat 64 "A")) "__t" "1" "__page-t" "1"
+   "__page-id" "1" "__page-offset" "1" "__page-type" "Observation"
+   "__page-id-stack" "1"})
 
 (deftest handler-test
   (testing "returns not found on empty node"
@@ -240,7 +246,7 @@
           (is (= #fhir/unsignedInt 1 (:total body))))
 
         (testing "has a self link"
-          (is (= (str base-url context-path "/Patient/0/_history")
+          (is (= (str base-url context-path "/Patient/0/_history?_count=50")
                  (link-url body "self"))))
 
         (testing "has no next link"
@@ -300,7 +306,7 @@
           (is (= #fhir/unsignedInt 1 (:total body))))
 
         (testing "has a self link"
-          (is (= (str base-url context-path "/CodeSystem/0/_history")
+          (is (= (str base-url context-path "/CodeSystem/0/_history?_count=50")
                  (link-url body "self"))))
 
         (testing "has no next link"
@@ -353,7 +359,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/CodeSystem/0/_history")
+            (is (= (str base-url context-path "/CodeSystem/0/_history?_count=50&_summary=true")
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -410,7 +416,7 @@
           (is (= #fhir/unsignedInt 2 (:total body))))
 
         (testing "has a self link"
-          (is (= (str base-url context-path "/Patient/0/_history")
+          (is (= (str base-url context-path "/Patient/0/_history?_count=50")
                  (link-url body "self"))))
 
         (testing "has no next link"
@@ -464,24 +470,25 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
-      (let [{:keys [body]}
-            @(handler
-              {:path-params {:id "0"}
-               :params {"_count" "1"}})]
+      ;; additional params are ignored
+      (doseq [additional-params [{} {"foo" "bar"} client-paging-params]]
+        (let [{:keys [body]}
+              @(handler
+                {:path-params {:id "0"}
+                 :params (merge {"_count" "1"} additional-params)})]
 
-        (testing "the total count is 2"
-          (is (= #fhir/unsignedInt 2 (:total body))))
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
 
-        (testing "has a self link"
-          (is (= (str base-url context-path "/Patient/0/_history?_count=1")
-                 (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient/0/_history?_count=1")
+                   (link-url body "self"))))
 
-        (testing "has a next link"
-          (is (= (page-url page-id-cipher {"_count" "1" "__t" "2" "__page-t" "1"})
-                 (link-url body "next")))))
+          (testing "has a next link"
+            (is (= (page-url page-id-cipher {"_count" "1" "__t" "2" "__page-t" "1"})
+                   (link-url body "next"))))))
 
       (testing "calling the second page"
-
         (testing "updating the patient will not affect the second page"
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]))
 
@@ -508,7 +515,17 @@
 
           (testing "the entry has the right resource"
             (given (:resource first-entry)
-              :gender := #fhir/code "male"))))))
+              :gender := #fhir/code "male"))))
+
+      (testing "unencrypted paging params are ignored"
+        (let [{{[first-entry] :entry} :body}
+              @(handler
+                {:path-params {:id "0"}
+                 :params {"_count" "1" "__t" "2" "__page-t" "1"}})]
+
+          (testing "the newest version is returned"
+            (given (:resource first-entry)
+              :active := #fhir/boolean true))))))
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]

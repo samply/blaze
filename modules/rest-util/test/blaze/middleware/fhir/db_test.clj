@@ -77,13 +77,18 @@
   (testing "with missing params"
     (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) nil)
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Missing or invalid `__t` query param `null`."))
+      ::anom/message := "Missing or invalid `__t` paging param `null`."))
+
+  (testing "ignores __t from params"
+    (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114429"}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing or invalid `__t` paging param `null`."))
 
   (testing "with missing or invalid __t"
     (doseq [t ["a" "-1"]]
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" t}})
+      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" t}})
         ::anom/category := ::anom/incorrect
-        ::anom/message := (format "Missing or invalid `__t` query param `%s`." t))))
+        ::anom/message := (format "Missing or invalid `__t` paging param `%s`." t))))
 
   (testing "uses __t for database value acquisition"
     (with-redefs
@@ -98,7 +103,7 @@
         (assert (= 114429 t))
         ::as-of-db)]
 
-      (is (= ::as-of-db @((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114429"}})))))
+      (is (= ::as-of-db @((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114429"}})))))
 
   (testing "fails on timeout"
     (with-redefs
@@ -108,7 +113,7 @@
         (assert (= 114148 t))
         (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114148"}})
+      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114148"}})
         ::anom/category := ::anom/busy
         ::anom/message := "Timeout while trying to acquire the database state with t=114148. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))
 
@@ -120,6 +125,6 @@
         (assert (= 114148 t))
         (ac/completed-future (ba/fault "msg-115945")))]
 
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114148"}})
+      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114148"}})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115945"))))

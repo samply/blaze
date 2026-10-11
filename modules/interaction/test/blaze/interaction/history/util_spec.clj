@@ -4,6 +4,7 @@
    [blaze.handler.fhir.util-spec]
    [blaze.http.spec]
    [blaze.interaction.history.util :as util]
+   [blaze.interaction.history.util.spec]
    [blaze.interaction.search.util :as-alias search-util]
    [blaze.module-spec]
    [blaze.spec]
@@ -12,14 +13,19 @@
    [reitit.core :as reitit]))
 
 (s/fdef util/page-t
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :paging-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
+
+(s/fdef util/decode-params
+  :args (s/cat :query-params (s/nilable :ring.request/query-params)
+               :paging-params (s/nilable :ring.request/query-params))
+  :ret ::util/params)
 
 (s/fdef util/page-nav-url
   :args
   (s/cat
    :context (s/keys :req [:blaze/base-url :blaze/db ::reitit/match])
-   :query-params (s/nilable :ring.request/query-params)
+   :params ::util/params
    :page-t :blaze.db/t
    :type (s/? :fhir.resource/type)
    :id (s/? :blaze.resource/id))
@@ -33,4 +39,4 @@
   :args (s/cat
          :context (s/keys :req [::search-util/link :blaze/base-url ::reitit/match])
          :total nat-int?
-         :query-params (s/nilable :ring.request/query-params)))
+         :params ::util/params))

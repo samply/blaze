@@ -4,11 +4,13 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :refer [parse-date-time]]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util :refer [link-url structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.delete]
    [blaze.interaction.delete-history]
+   [blaze.interaction.history.instance]
+   [blaze.interaction.history.system]
    [blaze.interaction.history.type]
    [blaze.interaction.read]
    [blaze.interaction.search-compartment]
@@ -17,10 +19,11 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.transaction]
    [blaze.interaction.vread]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
-   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.middleware.fhir.page-id :as page-id]
+   [blaze.middleware.fhir.page-id-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.module.test-util.ring :as tu-r]
+   [blaze.operation.patient.everything]
    [blaze.page-store.protocols :as pp]
    [blaze.rest-api :as rest-api]
    [blaze.rest-api.async-status-cancel-handler]
@@ -37,7 +40,7 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [ring.core.protocols :as rp]
@@ -152,6 +155,7 @@
     :auth-backends [(ig/ref ::auth-backend)]
     :search-system-handler (ig/ref :blaze.interaction/search-system)
     :transaction-handler (ig/ref :blaze.interaction/transaction)
+    :history-system-handler (ig/ref :blaze.interaction.history/system)
     :async-status-handler (ig/ref ::rest-api/async-status-handler)
     :async-status-cancel-handler (ig/ref ::rest-api/async-status-cancel-handler)
     :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
@@ -160,6 +164,14 @@
     [#:blaze.rest-api.compartment
       {:code "Patient"
        :search-handler (ig/ref :blaze.interaction/search-compartment)}]
+    :operations
+    [#:blaze.rest-api.operation
+      {:code "everything"
+       :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
+       :affects-state false
+       :resource-types ["Patient"]
+       :instance-handler (ig/ref :blaze.operation.patient/everything)
+       :instance-page-handler (ig/ref :blaze.operation.patient/everything)}]
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -200,7 +212,22 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.interaction.history/system
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction.history/type
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.interaction.history/instance
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.operation.patient/everything
    {::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -248,7 +275,10 @@
       {:handler (ig/ref :blaze.interaction/search-type)}
      :history-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction.history/type)}}}
+      {:handler (ig/ref :blaze.interaction.history/type)}
+     :history-instance
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction.history/instance)}}}
    ::search-util/link {:fhir/version "4.0.1"}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
@@ -456,9 +486,28 @@
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
-      [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "50" "__t" "1"}))
+      [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "50" "__t" "1"}))
       [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080?_count=50>;rel=\"self\""
-      [:body json-parser :fhir/type] := :fhir/Bundle)))
+      [:body json-parser :fhir/type] := :fhir/Bundle))
+
+  (testing "unencrypted paging params are ignored"
+    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (testing "the page id starts at the second patient"
+        (given (call rest-api {:request-method :get :uri (str "/__page/" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-type" "Patient" "__page-id" "1"}))})
+          :status := 200
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :fhir/type] := :fhir/Patient
+          [:body json-parser :entry 0 :resource :id] := "1"))
+
+      (testing "the same paging params as query params don't"
+        (given (call rest-api {:request-method :get :uri ""
+                               :query-string "_count=1&__page-type=Patient&__page-id=1"})
+          :status := 200
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :fhir/type] :? (complement #{:fhir/Patient}))))))
 
 (deftest search-type-test
   (testing "using GET"
@@ -475,24 +524,35 @@
 
         (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
           [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
           [:body json-parser :fhir/type] := :fhir/Bundle)
 
         (testing "fetch the second page"
-          (given (call rest-api {:request-method :get :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1" "__page-id-stack" [""]}))})
+          (given (call rest-api {:request-method :get :uri (str "/Patient/__page/" (page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1" "__page-id-stack" [""]}))})
             :status := 200
 
-            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-            [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:body json-parser :fhir/type] := :fhir/Bundle))
 
         (testing "fetch an unknown page"
           (given (call rest-api {:request-method :get :uri "/Patient/__page/unknown"})
             :status := 404
 
-            [:body json-parser :fhir/type] := :fhir/OperationOutcome)))))
+            [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+        (testing "unencrypted paging params are ignored"
+          (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1&__page-id=1"})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0")
+
+          (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1&__token=invalid"})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0")))))
 
   (testing "using POST"
     (testing "with unsupported media-type"
@@ -521,24 +581,32 @@
                                :headers {"content-type" "application/x-www-form-urlencoded"}
                                :body (input-stream (byte-array 0))})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
           [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
           [:body json-parser :fhir/type] := :fhir/Bundle)
 
         (testing "fetch the second page"
-          (given (call rest-api {:request-method :post :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1" "__page-id-stack" [""]}))})
+          (given (call rest-api {:request-method :post :uri (str "/Patient/__page/" (page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "2" "_count" "1" "__page-id-stack" [""]}))})
             :status := 200
 
-            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-            [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:body json-parser :fhir/type] := :fhir/Bundle))
 
         (testing "fetch an unknown page"
           (given (call rest-api {:request-method :post :uri "/Patient/__page/unknown"})
             :status := 404
 
-            [:body json-parser :fhir/type] := :fhir/OperationOutcome))))))
+            [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+        (testing "unencrypted paging params are ignored"
+          (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                                 :headers {"content-type" "application/x-www-form-urlencoded"}
+                                 :body (input-stream (.getBytes "_count=1&__page-id=1" "UTF-8"))})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0"))))))
 
 (deftest search-compartment-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -546,7 +614,64 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"})
       :status := 200
-      [:body json-parser :fhir/type] := :fhir/Bundle)))
+      [:body json-parser :fhir/type] := :fhir/Bundle))
+
+  (testing "unencrypted paging params are ignored"
+    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"
+                             :query-string "_count=1&__page-offset=1"})
+        :status := 200
+        [:body json-parser :entry count] := 1
+        [:body json-parser :entry 0 :resource :id] := "0"))))
+
+(def ^:private client-paging-params
+  "Paging params a client could try to supply directly."
+  (str "__token=" (str/join (repeat 64 "A")) "&__t=1&__page-t=1&__page-id=1"
+       "&__page-offset=1&__page-type=Observation&__page-id-stack=1"))
+
+(defn- next-link [response]
+  (some #(when (str/ends-with? % ";rel=\"next\"") %)
+        (str/split (get-in response [:headers "Link"]) #",")))
+
+(deftest history-system-test
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (given (call rest-api {:request-method :get :uri "/_history"})
+      :status := 200
+      [:body json-parser :fhir/type] := :fhir/Bundle
+      [:body json-parser :entry 0 :resource :id] := "0"))
+
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+     [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (testing "unencrypted paging params are ignored"
+      (given (call rest-api {:request-method :get :uri "/_history"
+                             :query-string "__page-t=2&__page-type=Patient&__page-id=0"})
+        :status := 200
+        [:body json-parser :entry 0 :resource :id] := "1"))
+
+    (testing "the next link doesn't carry client paging params"
+      (let [page-id (page-id/encrypt page-id-cipher {"_count" "1" "__t" "3" "__page-t" "2" "__page-type" "Patient" "__page-id" "0"})]
+        (given (call rest-api {:request-method :get :uri "/_history"
+                               :query-string (str "_count=1&" client-paging-params)})
+          :status := 200
+          next-link := (format "<http://localhost:8080/__history-page/%s>;rel=\"next\"" page-id)
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :id] := "1")
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :get :uri (str "/__history-page/" page-id)})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0"))))))
 
 (deftest history-type-test
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -554,8 +679,95 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/_history"})
       :status := 200
-      [:headers "Link"] := "<http://localhost:8080/Patient/_history>;rel=\"self\""
-      [:body json-parser :fhir/type] := :fhir/Bundle)))
+      [:headers "Link"] := "<http://localhost:8080/Patient/_history?_count=50>;rel=\"self\""
+      [:body json-parser :fhir/type] := :fhir/Bundle))
+
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+     [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (testing "unencrypted paging params are ignored"
+      (given (call rest-api {:request-method :get :uri "/Patient/_history"
+                             :query-string "__page-t=1"})
+        :status := 200
+        [:body json-parser :entry count] := 2))
+
+    (testing "the next link doesn't carry client paging params"
+      (let [page-id (page-id/encrypt page-id-cipher {"_count" "1" "__t" "3" "__page-t" "2" "__page-id" "0"})]
+        (given (call rest-api {:request-method :get :uri "/Patient/_history"
+                               :query-string (str "_count=1&" client-paging-params)})
+          :status := 200
+          next-link := (format "<http://localhost:8080/Patient/__history-page/%s>;rel=\"next\"" page-id)
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :id] := "1")
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :get :uri (str "/Patient/__history-page/" page-id)})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :id] := "0"))))))
+
+(deftest history-instance-test
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+    (given (call rest-api {:request-method :get :uri "/Patient/0/_history"})
+      :status := 200
+      [:headers "Link"] := "<http://localhost:8080/Patient/0/_history?_count=50>;rel=\"self\""
+      [:body json-parser :fhir/type] := :fhir/Bundle)
+
+    (testing "unencrypted paging params are ignored"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history"
+                             :query-string "__page-t=1"})
+        :status := 200
+        [:body json-parser :entry count] := 2))
+
+    (testing "the next link doesn't carry client paging params"
+      (let [page-id (page-id/encrypt page-id-cipher {"_count" "1" "__t" "3" "__page-t" "2"})]
+        (given (call rest-api {:request-method :get :uri "/Patient/0/_history"
+                               :query-string (str "_count=1&" client-paging-params)})
+          :status := 200
+          next-link := (format "<http://localhost:8080/Patient/0/__history-page/%s>;rel=\"next\"" page-id)
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :active] := #fhir/boolean true)
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :get :uri (str "/Patient/0/__history-page/" page-id)})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :active] := #fhir/boolean false))))))
+
+(deftest patient-everything-test
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+    (given (call rest-api {:request-method :get :uri "/Patient/0/$everything"})
+      :status := 200
+      [:body json-parser :entry count] := 2)
+
+    (testing "unencrypted paging params are ignored"
+      (let [page-id (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-offset" "1"})
+            {:keys [body] :as response}
+            (call rest-api {:request-method :get :uri "/Patient/0/$everything"
+                            :query-string (str "_count=1&" client-paging-params)})]
+
+        (given response
+          :status := 200
+          [:body json-parser :entry count] := 1
+          [:body json-parser :entry 0 :resource :fhir/type] := :fhir/Patient)
+
+        (testing "the next link doesn't carry client paging params"
+          (is (= (str "http://localhost:8080/Patient/0/__everything-page/" page-id)
+                 (link-url (json-parser body) "next"))))
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :get :uri (str "/Patient/0/__everything-page/" page-id)})
+            :status := 200
+            [:body json-parser :entry count] := 1
+            [:body json-parser :entry 0 :resource :fhir/type] := :fhir/Observation))))))
 
 (deftest redirect-slash-test
   (with-system [{:blaze/keys [rest-api]} config]

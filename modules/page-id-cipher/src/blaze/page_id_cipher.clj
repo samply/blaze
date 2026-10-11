@@ -5,7 +5,7 @@
   clear. Instead the query params are encrypted into an opaque page ID that is
   used as a path segment of the paging URL. This component provides the AEAD
   primitive used for that. The encryption and decryption themselves happen in
-  `blaze.middleware.fhir.decrypt-page-id`.
+  `blaze.middleware.fhir.page-id`.
 
   Encrypting page IDs has three effects. First, clients can't tamper with the
   query params of a page, because a page ID that wasn't produced by Blaze itself

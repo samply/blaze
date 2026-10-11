@@ -10,7 +10,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
-   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.page-id :as page-id]
    [blaze.module :as m]
    [blaze.spec]
    [blaze.util :refer [str]]
@@ -59,7 +59,7 @@
          (assoc "end" (str end))
          since
          (assoc "_since" (str since)))
-       (decrypt-page-id/encrypt page-id-cipher)
+       (page-id/encrypt page-id-cipher)
        (page-match request)
        (reitit/match->path)
        (str base-url)
@@ -143,10 +143,10 @@
     (cond->> params body-params (merge body-params))))
 
 (defn- handler [context]
-  (fn [{:blaze/keys [db]
+  (fn [{:blaze/keys [db paging-params]
         {:keys [id]} :path-params
-        :keys [query-params] :as request}]
-    (let [page-offset (fhir-util/page-offset query-params)]
+        :as request}]
+    (let [page-offset (fhir-util/page-offset paging-params)]
       (when-ok [{:keys [start end since page-size]} (params request)
                 {:keys [handles next-offset]}
                 (handles db id start end page-offset page-size since)]
