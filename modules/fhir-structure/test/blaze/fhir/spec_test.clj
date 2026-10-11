@@ -33,11 +33,14 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.fhir.spec.type Base]
+   [blaze.fhir XmlUtf8Writer]
+   [blaze.fhir.spec.type Base XmlDirectWriter]
    [blaze.fhir.spec.type.system DateTime Times]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [com.google.common.hash Hashing]
-   [java.nio.charset StandardCharsets]))
+   [java.io ByteArrayInputStream ByteArrayOutputStream StringWriter]
+   [java.nio.charset StandardCharsets]
+   [java.time LocalDateTime]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
@@ -59,6 +62,10 @@
 
 (defn- read-cbor [source]
   (j/read-value source cbor-object-mapper))
+
+(defn- read-xml [source]
+  (with-open [in (ByteArrayInputStream. source)]
+    (fhir-spec/conform-xml (xml/parse in))))
 
 (def ^:private parsing-context
   (ig/init-key
@@ -89,6 +96,348 @@
   (ig/init-key
    :blaze.fhir/writing-context
    {:structure-definition-repo structure-definition-repo}))
+
+(defn- write-xml-as-string [x]
+  (let [out (ByteArrayOutputStream.)]
+    (fhir-spec/write-xml writing-context out x)
+    (String. (.toByteArray out) StandardCharsets/UTF_8)))
+
+(deftest xml-utf8-writer-test
+  (testing "UTF-8 encoding"
+    (let [out (ByteArrayOutputStream.)]
+      (with-open [writer (XmlUtf8Writer. out 16)]
+        (.write writer "Aä")
+        (.write writer "😀")
+        (.write writer (char-array [\B \C]) 0 2))
+      (is (= "Aä😀BC" (String. (.toByteArray out) StandardCharsets/UTF_8)))))
+
+  (testing "escaping"
+    (let [out (ByteArrayOutputStream.)]
+      (with-open [writer (XmlUtf8Writer. out 16)]
+        (.writeEscaped writer "A&B <C> \"D\" ä 😀 \u001E"))
+      (is (= "A&amp;B &lt;C&gt; &quot;D&quot; ä 😀 ?"
+             (String. (.toByteArray out) StandardCharsets/UTF_8))))))
+
+(deftest write-xml-test
+  (let [out (ByteArrayOutputStream.)
+        patient {:fhir/type :fhir/Patient :id "0"}]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= patient (read-xml (.toByteArray out))))))
+
+(deftest write-xml-escaping-test
+  (let [out (ByteArrayOutputStream.)
+        patient {:fhir/type :fhir/Patient
+                 :id "0"
+                 :name [{:fhir/type :fhir/HumanName
+                         :family #fhir/string "A&B <C> \"D\"\u001E"}]}]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Patient xmlns=\"http://hl7.org/fhir\">"
+                "<id value=\"0\"/>"
+                "<name><family value=\"A&amp;B &lt;C&gt; &quot;D&quot;?\"/></name>"
+                "</Patient>")
+           (String. (.toByteArray out) StandardCharsets/UTF_8)))))
+
+(deftest write-xml-xhtml-test
+  (let [out (ByteArrayOutputStream.)
+        patient (fhir-spec/conform-xml
+                 (prxml/sexp-as-element
+                  [::f/Patient {:xmlns "http://hl7.org/fhir"}
+                   [::f/id {:value "0"}]
+                   [::f/text
+                    [::xhtml/div {:xmlns "http://www.w3.org/1999/xhtml"}
+                     [::xhtml/p "FHIR is cool."]]]]))]
+    (is (nil? (fhir-spec/write-xml writing-context out patient)))
+    (is (= patient (read-xml (.toByteArray out))))))
+
+(deftest write-xml-bundle-entry-test
+  (testing "search entry"
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                "<entry>"
+                "<fullUrl value=\"http://example.com/fhir/Patient/0\"/>"
+                "<resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient></resource>"
+                "<search/>"
+                "</entry>"
+                "</Bundle>")
+           (write-xml-as-string
+            {:fhir/type :fhir/Bundle
+             :entry [{:fhir/type :fhir.Bundle/entry
+                      :fullUrl #fhir/uri "http://example.com/fhir/Patient/0"
+                      :resource {:fhir/type :fhir/Patient :id "0"}
+                      :search #fhir.Bundle.entry/search{}}]}))))
+
+  (testing "search mode and score"
+    (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                "<entry>"
+                "<search>"
+                "<mode value=\"match\"/>"
+                "<score value=\"1.1\"/>"
+                "</search>"
+                "</entry>"
+                "</Bundle>")
+           (write-xml-as-string
+            {:fhir/type :fhir/Bundle
+             :entry [{:fhir/type :fhir.Bundle/entry
+                      :search #fhir.Bundle.entry/search{:mode #fhir/code "match"
+                                                        :score #fhir/decimal 1.1M}}]}))))
+
+  (testing "search with extensions falls back to the general writer"
+    (let [bundle {:fhir/type :fhir/Bundle
+                  :entry [{:fhir/type :fhir.Bundle/entry
+                           :search #fhir.Bundle.entry/search
+                                    {:extension [#fhir/Extension
+                                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]}}]}]
+      (is (= (str "<?xml version='1.0' encoding='UTF-8'?>"
+                  "<Bundle xmlns=\"http://hl7.org/fhir\">"
+                  "<entry>"
+                  "<search>"
+                  "<extension><url value=\"http://example.com/fhir/StructureDefinition/foo\"/></extension>"
+                  "</search>"
+                  "</entry>"
+                  "</Bundle>")
+             (write-xml-as-string bundle))))))
+
+(deftest write-xml-direct-complex-type-fields-test
+  (testing "non-polymorphic fields"
+    (let [out (ByteArrayOutputStream.)
+          patient {:fhir/type :fhir/Patient
+                   :meta #fhir/Meta
+                          {:security
+                           [#fhir/Coding
+                             {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+                              :code #fhir/code "HTEST"}]}
+                   :name [#fhir/HumanName
+                           {:period #fhir/Period
+                                     {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"
+                                      :end #fhir/dateTime #system/date-time "2048-12-31T00:00:00+01:00"}}]}]
+      (is (nil? (fhir-spec/write-xml writing-context out patient)))
+      (is (= patient (read-xml (.toByteArray out))))))
+
+  (testing "polymorphic Period field"
+    (let [out (ByteArrayOutputStream.)
+          observation {:fhir/type :fhir/Observation
+                       :status #fhir/code "final"
+                       :code #fhir/CodeableConcept
+                              {:coding
+                               [#fhir/Coding
+                                 {:system #fhir/uri "http://loinc.org"
+                                  :code #fhir/code "718-7"}]}
+                       :effective #fhir/Period
+                                   {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"
+                                    :end #fhir/dateTime #system/date-time "2048-12-31T00:00:00+01:00"}}]
+      (is (nil? (fhir-spec/write-xml writing-context out observation)))
+      (is (= observation (read-xml (.toByteArray out)))))))
+
+(deftest write-xml-direct-complex-type-fallback-test
+  (testing "non-polymorphic fields with extensions"
+    (let [patient {:fhir/type :fhir/Patient
+                   :meta #fhir/Meta
+                          {:security
+                           [#fhir/Coding
+                             {:extension [#fhir/Extension
+                                           {:url "http://example.com/fhir/StructureDefinition/coding"}]
+                              :system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+                              :code #fhir/code "HTEST"}]}
+                   :name [#fhir/HumanName
+                           {:period #fhir/Period
+                                     {:extension [#fhir/Extension
+                                                   {:url "http://example.com/fhir/StructureDefinition/period"}]
+                                      :start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"}}]}
+          ^String xml (write-xml-as-string patient)]
+      (is (.contains xml "<extension><url value=\"http://example.com/fhir/StructureDefinition/coding\"/></extension>"))
+      (is (.contains xml "<extension><url value=\"http://example.com/fhir/StructureDefinition/period\"/></extension>"))))
+
+  (testing "CodeableConcept and polymorphic Period with extensions"
+    (let [observation {:fhir/type :fhir/Observation
+                       :status #fhir/code "final"
+                       :code #fhir/CodeableConcept
+                              {:extension [#fhir/Extension
+                                            {:url "http://example.com/fhir/StructureDefinition/code"}]
+                               :coding
+                               [#fhir/Coding
+                                 {:system #fhir/uri "http://loinc.org"
+                                  :code #fhir/code "718-7"}]}
+                       :effective #fhir/Period
+                                   {:extension [#fhir/Extension
+                                                 {:url "http://example.com/fhir/StructureDefinition/effective"}]
+                                    :start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"}}
+          ^String xml (write-xml-as-string observation)]
+      (is (.contains xml "<extension><url value=\"http://example.com/fhir/StructureDefinition/code\"/></extension>"))
+      (is (.contains xml "<extension><url value=\"http://example.com/fhir/StructureDefinition/effective\"/></extension>")))))
+
+(deftest write-xml-codeable-concept-direct-test
+  (testing "simple CodeableConcept"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writeCodeableConcept
+                  writer
+                  "code"
+                  #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                      {:system #fhir/uri "http://loinc.org"
+                       :code #fhir/code "718-7"
+                       :display #fhir/string "Hemoglobin [Mass/volume] & friends"
+                       :userSelected #fhir/boolean true}]
+                    :text #fhir/string "Hemoglobin <blood>"})))
+      (is (= (str "<code>"
+                  "<coding>"
+                  "<system value=\"http://loinc.org\"/>"
+                  "<code value=\"718-7\"/>"
+                  "<display value=\"Hemoglobin [Mass/volume] &amp; friends\"/>"
+                  "<userSelected value=\"true\"/>"
+                  "</coding>"
+                  "<text value=\"Hemoglobin &lt;blood&gt;\"/>"
+                  "</code>")
+             (str writer)))))
+
+  (testing "extended CodeableConcept falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writeCodeableConcept
+                   writer
+                   "code"
+                   #fhir/CodeableConcept
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
+
+(deftest write-xml-period-direct-test
+  (testing "simple Period"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  #fhir/Period
+                   {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"
+                    :end #fhir/dateTime #system/date-time "2048-12-31T00:00:00+01:00"})))
+      (is (= (str "<period>"
+                  "<start value=\"2019-01-01T00:00:00+01:00\"/>"
+                  "<end value=\"2048-12-31T00:00:00+01:00\"/>"
+                  "</period>")
+             (str writer)))))
+
+  (testing "Period with only start"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  #fhir/Period
+                   {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"})))
+      (is (= (str "<period>"
+                  "<start value=\"2019-01-01T00:00:00+01:00\"/>"
+                  "</period>")
+             (str writer)))))
+
+  (testing "Period with fractional seconds and UTC"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  #fhir/Period
+                   {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00.12Z"})))
+      (is (= (str "<period>"
+                  "<start value=\"2019-01-01T00:00:00.12Z\"/>"
+                  "</period>")
+             (str writer)))))
+
+  (testing "Period with year outside the direct writer range falls back"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writePeriod
+                  writer
+                  "period"
+                  (type/period
+                   {:start (type/dateTime (LocalDateTime/of 10000 1 1 0 0))}))))
+      (is (= (str "<period>"
+                  "<start value=\"+10000-01-01T00:00:00\"/>"
+                  "</period>")
+             (str writer)))))
+
+  (testing "extended Period falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writePeriod
+                   writer
+                   "period"
+                   #fhir/Period
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
+
+(deftest write-xml-identifier-direct-test
+  (testing "simple Identifier"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writeIdentifier
+                  writer
+                  "identifier"
+                  #fhir/Identifier
+                   {:use #fhir/code "usual"
+                    :type #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                              {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v2-0203"
+                               :code #fhir/code "MR"}]}
+                    :system #fhir/uri "http://example.com/mrn"
+                    :value #fhir/string "123 & 456"
+                    :period #fhir/Period
+                             {:start #fhir/dateTime #system/date-time "2019-01-01T00:00:00+01:00"}})))
+      (is (= (str "<identifier>"
+                  "<use value=\"usual\"/>"
+                  "<type><coding>"
+                  "<system value=\"http://terminology.hl7.org/CodeSystem/v2-0203\"/>"
+                  "<code value=\"MR\"/>"
+                  "</coding></type>"
+                  "<system value=\"http://example.com/mrn\"/>"
+                  "<value value=\"123 &amp; 456\"/>"
+                  "<period><start value=\"2019-01-01T00:00:00+01:00\"/></period>"
+                  "</identifier>")
+             (str writer)))))
+
+  (testing "extended Identifier falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writeIdentifier
+                   writer
+                   "identifier"
+                   #fhir/Identifier
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
+
+(deftest write-xml-meta-direct-test
+  (testing "simple Meta"
+    (let [writer (StringWriter.)]
+      (is (true? (XmlDirectWriter/writeMeta
+                  writer
+                  "meta"
+                  #fhir/Meta
+                   {:versionId #fhir/id "42"
+                    :lastUpdated #fhir/instant #system/date-time "2026-06-08T08:00:00Z"
+                    :source #fhir/uri "http://example.com/source"
+                    :profile [#fhir/canonical "http://example.com/profile"]
+                    :security
+                    [#fhir/Coding
+                      {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+                       :code #fhir/code "HTEST"}]})))
+      (is (= (str "<meta>"
+                  "<versionId value=\"42\"/>"
+                  "<lastUpdated value=\"2026-06-08T08:00:00Z\"/>"
+                  "<source value=\"http://example.com/source\"/>"
+                  "<profile value=\"http://example.com/profile\"/>"
+                  "<security>"
+                  "<system value=\"http://terminology.hl7.org/CodeSystem/v3-ActReason\"/>"
+                  "<code value=\"HTEST\"/>"
+                  "</security>"
+                  "</meta>")
+             (str writer)))))
+
+  (testing "extended Meta falls back before writing"
+    (let [writer (StringWriter.)]
+      (is (false? (XmlDirectWriter/writeMeta
+                   writer
+                   "meta"
+                   #fhir/Meta
+                    {:extension [#fhir/Extension
+                                  {:url "http://example.com/fhir/StructureDefinition/foo"}]})))
+      (is (= "" (str writer))))))
 
 (defn- write-json [x]
   (fhir-spec/write-json-as-bytes writing-context x))

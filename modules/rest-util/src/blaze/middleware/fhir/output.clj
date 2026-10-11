@@ -8,8 +8,6 @@
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.util :as handler-util]
-   [clojure.data.xml :as xml]
-   [clojure.java.io :as io]
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.core.protocols :as rp]
@@ -44,16 +42,15 @@
           (catch Throwable e
             (log/error "Error while outputting JSON:" e)))))))
 
-(defn- generate-xml [body]
+(defn- generate-xml [writing-context body]
   (reify rp/StreamableResponseBody
     (write-body-to-stream [_body _response output-stream]
       (log/trace "generate XML")
       (with-open [_ (prom/timer generate-duration-seconds "xml")]
-        (with-open [writer (io/writer output-stream)]
-          (try
-            (xml/emit (fhir-spec/unform-xml body) writer)
-            (catch Throwable e
-              (log/error "Error while outputting XML:" e))))))))
+        (try
+          (fhir-spec/write-xml writing-context output-stream body)
+          (catch Throwable e
+            (log/error "Error while outputting XML:" e)))))))
 
 (defn- generate-binary** [{{data :value} :data}]
   (when data
@@ -81,8 +78,8 @@
   (cond-> response body (-> (update :body (partial generate-json writing-context))
                             (ring/content-type content-type))))
 
-(defn- encode-response-xml [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-xml)
+(defn- encode-response-xml [writing-context {:keys [body] :as response} content-type]
+  (cond-> response body (-> (update :body (partial generate-xml writing-context))
                             (ring/content-type content-type))))
 
 (defn- encode-response-binary [writing-context {:keys [body] :as response}]
@@ -113,11 +110,11 @@
 (defn handle-response [writing-context opts request response]
   (case (request-format request)
     :fhir+json (encode-response-json writing-context response "application/fhir+json;charset=utf-8")
-    :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
+    :fhir+xml (encode-response-xml writing-context response "application/fhir+xml;charset=utf-8")
     :json (encode-response-json writing-context response "application/json;charset=utf-8")
-    :xml (encode-response-xml response "application/xml;charset=utf-8")
+    :xml (encode-response-xml writing-context response "application/xml;charset=utf-8")
     :text-json (encode-response-json writing-context response "text/json;charset=utf-8")
-    :text-xml (encode-response-xml response "text/xml;charset=utf-8")
+    :text-xml (encode-response-xml writing-context response "text/xml;charset=utf-8")
     (when (:accept-all? opts) (dissoc response :body))))
 
 (defn wrap-output
@@ -131,7 +128,7 @@
 (defn handle-binary-response [writing-context request response]
   (case (request-format request)
     :fhir+json (encode-response-json writing-context response "application/fhir+json;charset=utf-8")
-    :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
+    :fhir+xml (encode-response-xml writing-context response "application/fhir+xml;charset=utf-8")
     (encode-response-binary writing-context response)))
 
 (defn wrap-binary-output
