@@ -1384,6 +1384,13 @@
             #system/date-time"2023-05-07T16:07:00" #system/date"2023-05-07"
             #system/date-time"2023-05-07T16:07:00+02:00" #system/date"2023-05-07")))))
 
+  (testing "DateTime with offset is taken as written"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (= #system/date"2023-05-07"
+             (ctu/eval-with-now (elm/to-date #elm/parameter-ref "x") now
+                                #system/date-time"2023-05-07T00:30:00+02:00"
+                                nil)))))
+
   (ctu/testing-unary-null elm/to-date)
 
   (ctu/testing-unary-op elm/to-date))
@@ -1424,8 +1431,8 @@
         "2020-03" #system/date-time"2020-03"
         "2020-03-08" #system/date-time"2020-03-08"
         "2020-03-08T12:54:00" (system/date-time 2020 3 8 12 54)
-        "2020-03-08T12:54:00+00:00" (system/date-time 2020 3 8 12 54)
-        "2020-03-08T12:54:00+01:00" (system/date-time 2020 3 8 11 54)
+        "2020-03-08T12:54:00+00:00" #system/date-time "2020-03-08T12:54:00Z"
+        "2020-03-08T12:54:00+01:00" #system/date-time "2020-03-08T12:54:00+01:00"
 
         "aaaa" nil
         "2019-13" nil
@@ -1447,6 +1454,13 @@
         "2020-03" #system/date-time"2020-03"
         "2020-03-08" #system/date-time"2020-03-08"
         "2020-03-08T12:13" #system/date-time"2020-03-08T12:13")))
+
+  (testing "DateTime with offset keeps its offset"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (= #system/date-time "2025-02-18T00:30:00+01:00"
+             (ctu/eval-with-now (elm/to-date-time #elm/parameter-ref "x") now
+                                #system/date-time "2025-02-18T00:30:00+01:00"
+                                nil)))))
 
   (ctu/testing-unary-null elm/to-date-time)
 
@@ -1837,6 +1851,13 @@
       "2019-01" "2019-01"
       "2019-01-01" "2019-01-01"
       "2019-01-01T01:00" "2019-01-01T01:00"))
+
+  (testing "DateTime with offset keeps its offset"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (= "2025-02-18T00:30+01:00"
+             (ctu/eval-with-now (elm/to-string #elm/parameter-ref "x") now
+                                #system/date-time "2025-02-18T00:30:00+01:00"
+                                nil)))))
 
   (testing "Time"
     (are [x res] (= res (ctu/compile-unop elm/to-string elm/time x))

@@ -219,16 +219,15 @@
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
 
-  Converts OffsetDateTime to LocalDate so that we can compare
-  temporal fields directly."
+  Takes the date of an OffsetDateTime as written."
   (to-date [x now]))
 
 ;; 22.23. ToDateTime
 (defprotocol ToDateTime
   "Converts an object into something usable as DateTime relative to `now`.
 
-  Converts OffsetDateTime to LocalDateTime so that we can compare
-  temporal fields directly.
+  Keeps the offset of an OffsetDateTime. Normalization to the offset of `now`
+  happens only in comparisons at hour precision or finer.
 
   Returns nil if not convertable."
   (to-date-time [x now]))

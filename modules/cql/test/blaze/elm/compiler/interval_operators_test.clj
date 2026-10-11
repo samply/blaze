@@ -32,6 +32,15 @@
 
 (def interval-zero #elm/interval [#elm/integer "0" #elm/integer "0"])
 
+(defn- eval-with-now
+  "Evaluates the binary operator of `elm-constructor` with `x` and `y` as
+  operands and the optional `precision` relative to `now`."
+  [elm-constructor precision now x y]
+  (ctu/eval-with-now
+   (elm-constructor (cond-> [#elm/parameter-ref "x" #elm/parameter-ref "y"]
+                      precision (conj precision)))
+   now x y))
+
 ;; 19.1. Interval
 ;;
 ;; The Interval selector defines an interval value. An interval must be defined
@@ -304,6 +313,14 @@
         "2019-04-17" "2019-04-17" false?
         "2019-04-17" "2019-04-18" false?))
 
+    (testing "DateTime with offset is normalized to the offset of now"
+      (doseq [precision [nil "Hour"]]
+        (are [now pred] (pred (eval-with-now elm/after precision now
+                                             #system/date-time "2025-02-18T00:30:00+01:00"
+                                             #system/date-time "2025-02-17T23:45:00"))
+          ctu/now false?
+          ctu/now-plus-one true?)))
+
     (ctu/testing-binary-precision-op elm/after)))
 
 ;; 19.3. Before
@@ -440,6 +457,21 @@
         "2019-04-17" "2019-04-17" false?
         "2019-04-17" "2019-04-16" false?)))
 
+  (testing "DateTime with offset"
+    (testing "at day precision the values are taken as written"
+      (doseq [now [ctu/now ctu/now-plus-one]]
+        (is (false? (eval-with-now elm/before "Day" now
+                                   #system/date-time "2025-02-18T00:30:00+01:00"
+                                   #system/date-time "2025-02-18T12:00:00")))))
+
+    (testing "without or at hour precision the values are normalized to the offset of now"
+      (doseq [precision [nil "Hour"]]
+        (are [now pred] (pred (eval-with-now elm/before precision now
+                                             #system/date-time "2025-02-18T00:30:00+01:00"
+                                             #system/date-time "2025-02-18T00:00:00"))
+          ctu/now true?
+          ctu/now-plus-one false?))))
+
   (ctu/testing-binary-precision-op elm/before))
 
 ;; 19.4. Collapse
@@ -557,7 +589,23 @@
         (are [interval x pred] (pred (ctu/dynamic-compile-eval (elm/contains [interval x "year"])))
           #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2020" true?
           #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2022" false?
-          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] {:type "Null"} nil?))))
+          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] {:type "Null"} nil?)))
+
+    (testing "DateTime with offset"
+      (let [eval #(eval-with-now
+                   elm/contains %1 %2
+                   (interval #system/date-time "2025-02-18T00:00:00"
+                             #system/date-time "2025-02-18T23:59:59.999")
+                   #system/date-time "2025-02-18T00:30:00+01:00")]
+        (testing "at day precision the values are taken as written"
+          (doseq [now [ctu/now ctu/now-plus-one]]
+            (is (true? (eval "Day" now)))))
+
+        (testing "without or at hour precision the values are normalized to the offset of now"
+          (doseq [precision [nil "Hour"]]
+            (are [now pred] (pred (eval precision now))
+              ctu/now false?
+              ctu/now-plus-one true?))))))
 
   (testing "List"
     (are [list x pred] (pred (core/-eval (c/compile {} (elm/contains [list x])) {} nil nil))
@@ -672,6 +720,16 @@
       [#elm/date-time "2019" {:type "Null"} :>] [#elm/date-time "2018" {:type "Null"} :>] nil?
       [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] true?
       [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2020" {:type "Null"}] false?))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/ends precision now
+                                           (interval #system/date-time "2025-02-18T00:30:00+01:00"
+                                                     #system/date-time "2025-02-18T01:00:00+01:00")
+                                           (interval #system/date-time "2025-02-17T23:00:00"
+                                                     #system/date-time "2025-02-18T00:00:00")))
+        ctu/now true?
+        ctu/now-plus-one false?)))
 
   (ctu/testing-binary-null elm/ends interval-zero)
 
@@ -828,6 +886,16 @@
 
     (ctu/testing-binary-null elm/includes interval-zero))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/includes precision now
+                                           (interval #system/date-time "2025-02-18T02:00:00"
+                                                     #system/date-time "2025-02-18T04:00:00")
+                                           (interval #system/date-time "2025-02-18T02:30:00+01:00"
+                                                     #system/date-time "2025-02-18T03:30:00+01:00")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
+
   (ctu/testing-binary-precision-op elm/includes))
 
 ;; 19.14. IncludedIn
@@ -934,6 +1002,16 @@
       [#elm/date-time "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] nil?
       [#elm/date-time "2019" {:type "Null"}] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] nil?))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/meets-before precision now
+                                           (interval #system/date-time "2025-02-18T00:00:00+01:00"
+                                                     #system/date-time "2025-02-18T00:30:00+01:00")
+                                           (interval #system/date-time "2025-02-18T00:30:00.001"
+                                                     #system/date-time "2025-02-18T01:00:00")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
+
   (ctu/testing-binary-null elm/meets-before interval-zero)
 
   (ctu/testing-binary-precision-op elm/meets-before))
@@ -971,6 +1049,16 @@
       [#elm/date-time "2020" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2018"] false?
       [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] [#elm/date-time "2019" {:type "Null"}] nil?
       [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] [#elm/date-time "2019" {:type "Null"}] nil?))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/meets-after precision now
+                                           (interval #system/date-time "2025-02-18T00:30:00+01:00"
+                                                     #system/date-time "2025-02-18T01:00:00+01:00")
+                                           (interval #system/date-time "2025-02-18T00:00:00"
+                                                     #system/date-time "2025-02-18T00:29:59.999")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
 
   (ctu/testing-binary-null elm/meets-after interval-zero)
 
@@ -1039,6 +1127,18 @@
       [#elm/date-time "2021" {:type "Null"} :>] [#elm/date-time "2020" #elm/date-time "2022"] nil?
       [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] [#elm/date-time "2020" #elm/date-time "2021"] false?
       [#elm/date-time "2019" {:type "Null"}] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2021"] true?))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred]
+           (pred (eval-with-now
+                  elm/overlaps precision now
+                  (interval #system/date-time "2025-02-18T00:30:00+01:00"
+                            #system/date-time "2025-02-18T00:45:00+01:00")
+                  (interval #system/date-time "2025-02-18T00:00:00"
+                            #system/date-time "2025-02-18T01:00:00")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
 
   (ctu/testing-binary-null elm/overlaps interval-zero)
 
@@ -1138,6 +1238,15 @@
 
     (ctu/testing-binary-null elm/proper-contains #elm/list []))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/proper-contains precision now
+                                           (interval #system/date-time "2025-02-18T02:00:00"
+                                                     #system/date-time "2025-02-18T04:00:00")
+                                           #system/date-time "2025-02-18T03:00:00+01:00"))
+        ctu/now false?
+        ctu/now-plus-one true?)))
+
   (ctu/testing-binary-precision-op elm/proper-contains))
 
 ;; 19.25. ProperIn
@@ -1176,6 +1285,16 @@
         [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] false?))
 
     (ctu/testing-binary-null elm/proper-includes interval-zero))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/proper-includes precision now
+                                           (interval #system/date-time "2025-02-18T02:00:00"
+                                                     #system/date-time "2025-02-18T04:00:00")
+                                           (interval #system/date-time "2025-02-18T02:30:00+01:00"
+                                                     #system/date-time "2025-02-18T03:30:00+01:00")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
 
   (ctu/testing-binary-precision-op elm/proper-includes))
 
@@ -1284,6 +1403,16 @@
       [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] nil?
       [#elm/date-time "2019" {:type "Null"}] [#elm/date-time "2019" {:type "Null"}] true?
       [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2020"] [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"} #elm/date-time "2019"] false?))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (doseq [precision [nil "Hour"]]
+      (are [now pred] (pred (eval-with-now elm/starts precision now
+                                           (interval #system/date-time "2025-02-18T00:30:00+01:00"
+                                                     #system/date-time "2025-02-18T01:00:00+01:00")
+                                           (interval #system/date-time "2025-02-18T00:30:00"
+                                                     #system/date-time "2025-02-18T02:00:00")))
+        ctu/now false?
+        ctu/now-plus-one true?)))
 
   (ctu/testing-binary-null elm/starts interval-zero)
 

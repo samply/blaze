@@ -235,6 +235,35 @@
 
     (ctu/testing-binary-null elm/equal #elm/date-time"2013-01-01"))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" false?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:31:00Z" false?))
+
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/equal elm/time x y))
       "12:30:15" "12:30:15" true?
@@ -458,6 +487,35 @@
         {:type "Null"} #elm/concept [[#elm/code ["a" "0"]]] false?
         #elm/concept [[#elm/code ["a" "0"]]] {:type "Null"} false?)))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equivalent [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" false?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:31:00Z" false?))
+
   (ctu/testing-binary-op elm/equivalent))
 
 ;; 12.3. Greater
@@ -552,6 +610,27 @@
     (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date x y))
       "2013" "2013-01" nil?
       "2013-01" "2013" nil?))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/greater [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00" false?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:00:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00Z" false?))
 
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/greater elm/time x y))
@@ -680,6 +759,27 @@
   (testing "DateTime with mixed precision"
     (are [x y] (nil? (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
       "2005-06-17" "2005"))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/greater-or-equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00" false?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00" true?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00Z" false?))
 
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/time x y))
@@ -820,6 +920,27 @@
 
     (ctu/testing-binary-null elm/less #elm/date-time"2013-06-15T12"))
 
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/less [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00" false?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:00:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:00:00Z" false?))
+
   (testing "Time with full precision (there is only one precision)"
     (are [x y pred] (pred (ctu/compile-binop elm/less elm/time x y))
       "12:30:14" "12:30:15" true?
@@ -939,6 +1060,27 @@
       "2013-06-16" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
+
+  (testing "DateTime with offset is normalized to the offset of now"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/less-or-equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00" false?
+
+      ctu/now
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-17T23:00:00Z" false?))
 
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/time x y))

@@ -1113,6 +1113,9 @@
 
   (testing-query "q70-period-without-end-overlaps" 2)
 
+  (testing "DateTime values with offset are compared as written at day precision"
+    (testing-query "q71-encounter-start-same-day" 2))
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :fhir/Resource (:resource result))))

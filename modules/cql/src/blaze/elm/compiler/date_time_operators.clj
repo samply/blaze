@@ -446,18 +446,20 @@
   (p/date-time-component-from x precision))
 
 ;; 18.10. DifferenceBetween
-(defbinopp difference-between [operand-1 operand-2 ^:required precision]
+(defbinopp difference-between {:normalize-offset true}
+  [operand-1 operand-2 ^:required precision]
   (p/difference-between operand-1 operand-2 precision))
 
 ;; 18.11. DurationBetween
-(defbinopp duration-between [operand-1 operand-2 ^:required precision]
+(defbinopp duration-between {:normalize-offset true}
+  [operand-1 operand-2 ^:required precision]
   (p/duration-between operand-1 operand-2 precision))
 
 ;; 18.13. Now
 (def ^:private now-expression
   (reify-expr core/Expression
     (-eval [_ {:keys [now]} _ _]
-      (p/to-date-time now now))
+      now)
     (-form [_]
       'now)))
 
@@ -465,15 +467,15 @@
   now-expression)
 
 ;; 18.14. SameAs
-(defbinopp same-as [x y precision]
+(defbinopp same-as {:normalize-offset true} [x y precision]
   (p/same-as x y precision))
 
 ;; 18.15. SameOrBefore
-(defbinopp same-or-before [x y precision]
+(defbinopp same-or-before {:normalize-offset true} [x y precision]
   (p/same-or-before x y precision))
 
 ;; 18.16. SameOrAfter
-(defbinopp same-or-after [x y precision]
+(defbinopp same-or-after {:normalize-offset true} [x y precision]
   (p/same-or-after x y precision))
 
 ;; 18.18. Time

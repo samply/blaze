@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.date-time :as date-time]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.expression.cache.spec]
@@ -57,6 +58,28 @@
   `elm-elm-expr-binding` is given."
   [operand-binding operand elm-expr-binding elm-expr]
   (cond-> [operand-binding operand] elm-expr-binding (conj elm-expr-binding elm-expr)))
+
+(defn- binary-operand-bindings
+  "Returns a binding vector that binds the evaluated `op-1` and `op-2` to
+  `op-1-binding` and `op-2-binding`.
+
+  If `normalize-offset` is true, DateTime values with different offsets are
+  normalized to the offset of `now` depending on `precision`."
+  [normalize-offset op-1-binding op-1 op-2-binding op-2 context resource scope
+   precision]
+  (if normalize-offset
+    (let [x (gensym "x")
+          y (gensym "y")
+          now (gensym "now")
+          normalize (gensym "normalize")]
+      [x `(core/-eval ~op-1 ~context ~resource ~scope)
+       y `(core/-eval ~op-2 ~context ~resource ~scope)
+       now `(:now ~context)
+       normalize `(date-time/normalize-offset? ~x ~y ~now ~precision)
+       op-1-binding `(cond-> ~x ~normalize (date-time/normalize-offset ~now))
+       op-2-binding `(cond-> ~y ~normalize (date-time/normalize-offset ~now))])
+    [op-1-binding `(core/-eval ~op-1 ~context ~resource ~scope)
+     op-2-binding `(core/-eval ~op-2 ~context ~resource ~scope)]))
 
 (defn- compile-kw [name]
   (keyword "elm.compiler.type" (clojure.core/name name)))
@@ -280,12 +303,22 @@
                   `(~op ~operand)))))))))
 
 (defmacro defbinop
+  "Defines a binary operator.
+
+  If the attr-map contains `:normalize-offset true`, DateTime values with
+  different offsets are normalized to the offset of the evaluation request
+  before they are bound."
   {:arglists '([name attr-map? bindings & body])}
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
+        normalize-offset (:normalize-offset attr-map)
+        attr-map (not-empty (dissoc attr-map :normalize-offset))
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding] & body] more
         context (gensym "context")
+        eval-context (gensym "eval-context")
+        resource (gensym "resource")
+        scope (gensym "scope")
         op (symbol (str name "-op"))
         op-1 (gensym "op-1")
         op-2 (gensym "op-2")]
@@ -302,9 +335,10 @@
              (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
            (~'-optimize [~'_ ~'node]
              (core/optimize-helper ~op ~'node ~op-1 ~op-2))
-           (~'-eval [~'_ context# resource# scope#]
-             (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                   ~op-2-binding (core/-eval ~op-2 context# resource# scope#)]
+           (~'-eval [~'_ ~eval-context ~resource ~scope]
+             (let ~(binary-operand-bindings
+                    normalize-offset op-1-binding op-1 op-2-binding op-2
+                    eval-context resource scope nil)
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)))))
@@ -452,17 +486,29 @@
           precision#)))))
 
 (defmacro defbinopp
+  "Defines a binary operator with an optional precision.
+
+  If the attr-map contains `:normalize-offset true`, DateTime values with
+  different offsets are normalized to the offset of the evaluation request
+  before they are bound, but only if the precision is absent or hours or
+  finer."
   {:arglists '([name attr-map? bindings & body])}
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
+        normalize-offset (:normalize-offset attr-map)
+        attr-map (not-empty (dissoc attr-map :normalize-offset))
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding precision-binding] & body] more
         precision-required (:required (meta precision-binding))
         context (gensym "context")
+        eval-context (gensym "eval-context")
+        resource (gensym "resource")
+        scope (gensym "scope")
         op (symbol (str name "-op"))
         precision-op (symbol (str name "-precision-op"))
         op-1 (gensym "op-1")
         op-2 (gensym "op-2")
+        chrono-unit (gensym "chrono-unit")
         precision (gensym "precision")]
     `(do
        ~(when-not precision-required
@@ -478,38 +524,41 @@
                  (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
                (~'-optimize [~'_ ~'node]
                  (core/optimize-helper ~op ~'node ~op-1 ~op-2))
-               (~'-eval [~'_ context# resource# scope#]
-                 (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                       ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
-                       ~precision-binding nil]
+               (~'-eval [~'_ ~eval-context ~resource ~scope]
+                 (let ~(conj (binary-operand-bindings
+                              normalize-offset op-1-binding op-1 op-2-binding op-2
+                              eval-context resource scope nil)
+                             precision-binding nil)
                    ~@body))
                (~'-form [~'_]
                  (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2))))))
 
        (defn ~precision-op
-         [~op-1 ~op-2 ~precision-binding ~precision]
+         [~op-1 ~op-2 ~chrono-unit ~precision]
          (reify-expr core/Expression
            (~'-attach-cache [~'_ ~'cache]
              (core/attach-cache-helper-2 ~precision-op ~'cache ~op-1 ~op-2
-                                         ~precision-binding ~precision))
+                                         ~chrono-unit ~precision))
            (~'-resolve-refs [~'_ ~'expression-defs]
              (~precision-op
               (core/-resolve-refs ~op-1 ~'expression-defs)
               (core/-resolve-refs ~op-2 ~'expression-defs)
-              ~precision-binding ~precision))
+              ~chrono-unit ~precision))
            (~'-resolve-params [~'_ ~'parameters]
              (~precision-op
               (core/-resolve-params ~op-1 ~'parameters)
               (core/-resolve-params ~op-2 ~'parameters)
-              ~precision-binding ~precision))
+              ~chrono-unit ~precision))
            (~'-optimize [~'_ ~'db]
              (~precision-op
               (core/-optimize ~op-1 ~'db)
               (core/-optimize ~op-2 ~'db)
-              ~precision-binding ~precision))
-           (~'-eval [~'_ context# resource# scope#]
-             (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                   ~op-2-binding (core/-eval ~op-2 context# resource# scope#)]
+              ~chrono-unit ~precision))
+           (~'-eval [~'_ ~eval-context ~resource ~scope]
+             (let ~(conj (binary-operand-bindings
+                          normalize-offset op-1-binding op-1 op-2-binding op-2
+                          eval-context resource scope chrono-unit)
+                         precision-binding chrono-unit)
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)

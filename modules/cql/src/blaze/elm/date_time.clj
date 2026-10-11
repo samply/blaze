@@ -161,18 +161,116 @@
   DateTimeDate
   (precision-num [_] 2)
   LocalDateTime
+  (precision-num [_] 6)
+  OffsetDateTime
   (precision-num [_] 6))
+
+(defn- fine-precision?
+  "Returns true if `precision` is nil or hours or finer.
+
+  Only at such precisions DateTime values with different offsets have to be
+  normalized to the offset of the evaluation request."
+  [precision]
+  (or (nil? precision) (<= 3 (long (precision->p-num precision)))))
+
+(defn- as-written
+  "Returns `x` as local date-time with the fields as written if `x` is an
+  OffsetDateTime. Returns `x` unchanged otherwise."
+  [x]
+  (if (instance? OffsetDateTime x)
+    (.toLocalDateTime ^OffsetDateTime x)
+    x))
+
+(defn- in-offset-of
+  "Returns `x` as local date-time in the offset of `date-time` if `x` is an
+  OffsetDateTime. Returns `x` unchanged otherwise."
+  [^OffsetDateTime date-time x]
+  (if (instance? OffsetDateTime x)
+    (.toLocalDateTime (.withOffsetSameInstant ^OffsetDateTime x (.getOffset date-time)))
+    x))
+
+(defn- local-other
+  "Returns `other` in a form that can be compared to the local date-time of
+  `date-time` at `precision`."
+  [date-time other precision]
+  (if (fine-precision? precision)
+    (in-offset-of date-time other)
+    (as-written other)))
+
+(defprotocol NormalizeOffset
+  (-offset [x now]
+    "Returns the offset of the DateTime values in `x`, nil if `x` has no
+    DateTime values with offset or ::mixed if its DateTime values have
+    different offsets.")
+  (-normalize-offset [x now]))
+
+(extend-protocol NormalizeOffset
+  OffsetDateTime
+  (-offset [x _]
+    (.getOffset x))
+  (-normalize-offset [x now]
+    (.toLocalDateTime (.withOffsetSameInstant x (.getOffset ^OffsetDateTime now))))
+
+  Object
+  (-offset [_ _])
+  (-normalize-offset [x _]
+    x)
+
+  nil
+  (-offset [_ _])
+  (-normalize-offset [_ _]))
+
+(defn same-offset?
+  "Returns true if the offsets `o1` and `o2` are the same. A nil offset stands
+  for the offset of `now`."
+  [o1 o2 now]
+  (cond
+    (= o1 o2) true
+    (and o1 o2) false
+    :else (= (or o1 o2) (.getOffset ^OffsetDateTime now))))
+
+(defn normalize-offset?
+  "Returns true if `x` and `y` have to be normalized to the offset of `now`
+  before comparing them at `precision`.
+
+  The CQL spec normalizes DateTime values with different offsets to the offset
+  of the evaluation request only at hour precision or finer. Comparisons
+  without precision are treated as comparisons at millisecond precision.
+  DateTime values without offset have the offset of the evaluation request."
+  [x y now precision]
+  (and (fine-precision? precision)
+       (let [ox (-offset x now)
+             oy (-offset y now)]
+         (or (identical? ::mixed ox)
+             (identical? ::mixed oy)
+             (not (same-offset? ox oy now))))))
+
+(defn normalize-offset
+  "Converts DateTime values with offset in `x` into local date-times in the
+  offset of `now`."
+  [x now]
+  (-normalize-offset x now))
 
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
 (extend-protocol p/Equal
+  OffsetDateTime
+  (equal [x y]
+    (p/equal (.toLocalDateTime x) (in-offset-of x y)))
+
   PrecisionLocalTime
   (equal [x y]
     (when (instance? PrecisionLocalTime y)
       (when-let [cmp (compare-to-precision (:local-time x) (:local-time y)
                                            (:p-num x) (:p-num y) 3)]
         (zero? cmp)))))
+
+;; 12.2. Equivalent
+(extend-protocol p/Equivalent
+  OffsetDateTime
+  (equivalent [x y]
+    (p/equivalent (.toLocalDateTime x) (in-offset-of x y))))
 
 ;; 12.3. Greater
 (extend-protocol p/Greater
@@ -217,6 +315,10 @@
     (when other
       (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
         (> cmp 0))))
+
+  OffsetDateTime
+  (greater [this other]
+    (p/greater (.toLocalDateTime this) (in-offset-of this other)))
 
   PrecisionLocalTime
   (greater [this other]
@@ -269,6 +371,10 @@
       (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
         (>= cmp 0))))
 
+  OffsetDateTime
+  (greater-or-equal [this other]
+    (p/greater-or-equal (.toLocalDateTime this) (in-offset-of this other)))
+
   PrecisionLocalTime
   (greater-or-equal [this other]
     (when (instance? PrecisionLocalTime other)
@@ -320,6 +426,10 @@
       (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
         (< cmp 0))))
 
+  OffsetDateTime
+  (less [this other]
+    (p/less (.toLocalDateTime this) (in-offset-of this other)))
+
   PrecisionLocalTime
   (less [this other]
     (when (instance? PrecisionLocalTime other)
@@ -370,6 +480,10 @@
     (when other
       (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
         (<= cmp 0))))
+
+  OffsetDateTime
+  (less-or-equal [this other]
+    (p/less-or-equal (.toLocalDateTime this) (in-offset-of this other)))
 
   PrecisionLocalTime
   (less-or-equal [this other]
@@ -441,6 +555,14 @@
       (throw (ex-info (str "Invalid RHS adding to LocalDateTime. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
+  OffsetDateTime
+  (add [this other]
+    (if (instance? Period other)
+      (-> (bt/plus-unit this (:months other) ChronoUnit/MONTHS)
+          (bt/plus-unit (* (:millis other) 1000000) ChronoUnit/NANOS))
+      (throw (ex-info (str "Invalid RHS adding to OffsetDateTime. Expected Period but was `" (type other) "`.")
+                      {:op :add :this this :other other}))))
+
   PrecisionLocalTime
   (add [this other]
     (if (instance? Period other)
@@ -477,6 +599,11 @@
   LocalDateTime
   (predecessor [x]
     (when (time/after? x min-date-time)
+      (.minusNanos x 1000000)))
+
+  OffsetDateTime
+  (predecessor [x]
+    (when (time/after? (.toLocalDateTime x) min-date-time)
       (.minusNanos x 1000000)))
 
   PrecisionLocalTime
@@ -543,6 +670,17 @@
       (throw (ex-info (str "Invalid RHS adding to LocalDateTime. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
+  OffsetDateTime
+  (subtract [this other]
+    (if (instance? Period other)
+      (let [result (-> this
+                       (.minusMonths (:months other))
+                       (.minusNanos (* (:millis other) 1000000)))]
+        (when (>= (.compareTo (.toLocalDateTime result) min-date-time) 0)
+          result))
+      (throw (ex-info (str "Invalid RHS subtracting from OffsetDateTime. Expected Period but was `" (type other) "`.")
+                      {:op :subtract :this this :other other}))))
+
   PrecisionLocalTime
   (subtract [this other]
     (if (instance? Period other)
@@ -582,6 +720,11 @@
     (when (time/before? x max-date-time)
       (.plusNanos x 1000000)))
 
+  OffsetDateTime
+  (successor [x]
+    (when (time/before? (.toLocalDateTime x) max-date-time)
+      (.plusNanos x 1000000)))
+
   PrecisionLocalTime
   (successor [{:keys [local-time p-num] :as x}]
     (when (p/less x max-time)
@@ -600,6 +743,10 @@
     (.toDate x))
 
   LocalDateTime
+  (date-from [x]
+    (DateDate/fromLocalDate (.toLocalDate x)))
+
+  OffsetDateTime
   (date-from [x]
     (DateDate/fromLocalDate (.toLocalDate x))))
 
@@ -642,6 +789,12 @@
         (get-chrono-field x req-p-num))))
 
   LocalDateTime
+  (date-time-component-from [x precision]
+    (let [req-p-num (precision->p-num precision)]
+      (when (<= req-p-num 6)
+        (get-chrono-field x req-p-num))))
+
+  OffsetDateTime
   (date-time-component-from [x precision]
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num 6)
@@ -704,6 +857,12 @@
             :else
             duration)))))
 
+  OffsetDateTime
+  (difference-between [this other precision]
+    (p/difference-between (.toLocalDateTime this)
+                          (local-other this other precision)
+                          precision))
+
   PrecisionLocalTime
   (difference-between [this other precision]
     (when (instance? PrecisionLocalTime other)
@@ -753,6 +912,12 @@
     (when other
       (when (<= (precision->p-num precision) (min 6 (precision-num other)))
         (.until this other precision))))
+
+  OffsetDateTime
+  (duration-between [this other precision]
+    (p/duration-between (.toLocalDateTime this)
+                        (local-other this other precision)
+                        precision))
 
   PrecisionLocalTime
   (duration-between [this other precision]
@@ -824,6 +989,11 @@
           (when-let [cmp (compare-to-precision this other p-num p-num)]
             (= cmp 0)))
         (p/equal this other))))
+
+  OffsetDateTime
+  (same-as [this other precision]
+    (p/same-as (.toLocalDateTime this) (local-other this other precision)
+               precision))
 
   PrecisionLocalTime
   (same-as [this other precision]
@@ -900,6 +1070,11 @@
             (<= cmp 0)))
         (p/less-or-equal this other))))
 
+  OffsetDateTime
+  (same-or-before [this other precision]
+    (p/same-or-before (.toLocalDateTime this) (local-other this other precision)
+                      precision))
+
   PrecisionLocalTime
   (same-or-before [this other precision]
     (when (instance? PrecisionLocalTime other)
@@ -974,6 +1149,11 @@
           (when-let [cmp (compare-to-precision this other p-num p-num)]
             (>= cmp 0)))
         (p/greater-or-equal this other))))
+
+  OffsetDateTime
+  (same-or-after [this other precision]
+    (p/same-or-after (.toLocalDateTime this) (local-other this other precision)
+                     precision))
 
   PrecisionLocalTime
   (same-or-after [this other precision]
@@ -1050,6 +1230,11 @@
             (> cmp 0))
           (p/greater this other)))))
 
+  OffsetDateTime
+  (after [this other precision]
+    (p/after (.toLocalDateTime this) (local-other this other precision)
+             precision))
+
   PrecisionLocalTime
   (after [this other precision]
     (when (instance? PrecisionLocalTime other)
@@ -1125,6 +1310,11 @@
             (< cmp 0))
           (p/less this other)))))
 
+  OffsetDateTime
+  (before [this other precision]
+    (p/before (.toLocalDateTime this) (local-other this other precision)
+              precision))
+
   PrecisionLocalTime
   (before [this other precision]
     (when (instance? PrecisionLocalTime other)
@@ -1152,10 +1342,8 @@
     (DateDate/fromLocalDate (.toLocalDate this)))
 
   OffsetDateTime
-  (to-date [this now]
-    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDate)
-        (DateDate/fromLocalDate))))
+  (to-date [this _]
+    (DateDate/fromLocalDate (.toLocalDate this))))
 
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
@@ -1172,9 +1360,8 @@
     this)
 
   OffsetDateTime
-  (to-date-time [this now]
-    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime))))
+  (to-date-time [this _]
+    this))
 
 ;; 22.30. ToString
 (extend-protocol p/ToString
@@ -1207,6 +1394,10 @@
     (str x))
 
   LocalDateTime
+  (to-string [x]
+    (str x))
+
+  OffsetDateTime
   (to-string [x]
     (str x)))
 

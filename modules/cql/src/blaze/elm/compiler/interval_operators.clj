@@ -103,11 +103,11 @@
                      high-closed-expression low-closed high-closed))))
 
 ;; 19.2. After
-(defbinopp after [operand-1 operand-2 precision]
+(defbinopp after {:normalize-offset true} [operand-1 operand-2 precision]
   (p/after operand-1 operand-2 precision))
 
 ;; 19.3. Before
-(defbinopp before [operand-1 operand-2 precision]
+(defbinopp before {:normalize-offset true} [operand-1 operand-2 precision]
   (p/before operand-1 operand-2 precision))
 
 ;; 19.4. Collapse
@@ -126,7 +126,8 @@
 
 ;; 19.5. Contains
 (defbinopp contains
-  {:optimizations #{:first :non-distinct}}
+  {:optimizations #{:first :non-distinct}
+   :normalize-offset true}
   [list-or-interval x precision]
   (p/contains list-or-interval x precision))
 
@@ -135,7 +136,7 @@
   high)
 
 ;; 19.7. Ends
-(defbinopp ends [x y _]
+(defbinopp ends {:normalize-offset true} [x y _]
   (and (p/greater-or-equal (:low x) (:low y))
        (p/equal (:high x) (:high y))))
 
@@ -151,7 +152,7 @@
   (throw (Exception. "Unsupported In expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.13. Includes
-(defbinopp includes [x y precision]
+(defbinopp includes {:normalize-offset true} [x y precision]
   (p/includes x y precision))
 
 ;; 19.14. IncludedIn
@@ -169,15 +170,15 @@
   (throw (Exception. "Unsupported Meets expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.17. MeetsBefore
-(defbinopp meets-before [x y _]
+(defbinopp meets-before {:normalize-offset true} [x y _]
   (p/equal (:high x) (p/predecessor (:low y))))
 
 ;; 19.18. MeetsAfter
-(defbinopp meets-after [x y _]
+(defbinopp meets-after {:normalize-offset true} [x y _]
   (p/equal (:low x) (p/successor (:high y))))
 
 ;; 19.20. Overlaps
-(defbinopp overlaps [x y _]
+(defbinopp overlaps {:normalize-offset true} [x y _]
   (and (p/greater-or-equal (:high x) (:low y))
        (p/less-or-equal (:low x) (:high y))))
 
@@ -200,7 +201,8 @@
                       {:expression expression})))))
 
 ;; 19.24. ProperContains
-(defbinopp proper-contains [list-or-interval x precision]
+(defbinopp proper-contains {:normalize-offset true}
+  [list-or-interval x precision]
   (p/proper-contains list-or-interval x precision))
 
 ;; 19.25. ProperIn
@@ -209,7 +211,7 @@
   (throw (Exception. "Unsupported ProperIn expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.26. ProperIncludes
-(defbinopp proper-includes [x y precision]
+(defbinopp proper-includes {:normalize-offset true} [x y precision]
   (p/proper-includes x y precision))
 
 ;; 19.27. ProperIncludedIn
@@ -222,7 +224,7 @@
   low)
 
 ;; 19.30. Starts
-(defbinopp starts [x y _]
+(defbinopp starts {:normalize-offset true} [x y _]
   (and (p/equal (:low x) (:low y))
        (p/less-or-equal (:high x) (:high y))))
 

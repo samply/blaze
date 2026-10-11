@@ -2,8 +2,12 @@
   "Implementation of the interval type."
   (:require
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.date-time :refer [temporal?]]
-   [blaze.elm.protocols :as p]))
+   [blaze.elm.date-time :as date-time :refer [temporal?]]
+   [blaze.elm.protocols :as p])
+  (:import
+   [java.time OffsetDateTime]))
+
+(set! *warn-on-reflection* true)
 
 (defrecord Interval [low high]
   p/Equal
@@ -101,6 +105,19 @@
     (let [[left right] (if (p/less (:low a) (:low b)) [a b] [b a])]
       (when (p/greater-or-equal (:high left) (p/predecessor (:low right)))
         (->Interval (:low left) (:high right)))))
+
+  date-time/NormalizeOffset
+  (-offset [_ now]
+    (let [low-offset (date-time/-offset low now)
+          high-offset (date-time/-offset high now)]
+      (if (date-time/same-offset? low-offset high-offset now)
+        (or low-offset high-offset)
+        ::date-time/mixed)))
+  (-normalize-offset [x now]
+    (if (or (instance? OffsetDateTime low) (instance? OffsetDateTime high))
+      (->Interval (date-time/-normalize-offset low now)
+                  (date-time/-normalize-offset high now))
+      x))
 
   core/Expression
   (-static [_]
