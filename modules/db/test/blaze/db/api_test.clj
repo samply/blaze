@@ -641,6 +641,20 @@
             :op := :delete
             :num-changes := 2)))))
 
+  (testing "patient with an organization referencing it via an extension not covered by a search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Organization :id "0"
+                  :extension
+                  [#fhir/Extension{:url "foo"
+                                   :value #fhir/Reference{:reference #fhir/string "Patient/0"}}]}]]]
+
+      (testing "deleting only the patient fails"
+        (given-failed-future
+         (d/transact node [[:delete "Patient" "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Organization/0`."))))
+
   (testing "a patient with several resources referencing it"
     (satisfies-prop 10
       (prop/for-all [resources mixed-resource-gen]
@@ -1464,6 +1478,18 @@
       (given-failed-future (d/transact node [[:patient-purge "0"]])
         ::anom/category := ::anom/conflict
         ::anom/message := "Referential integrity violated. Resource `Encounter/0` should be deleted but is referenced from `Observation/1`.")))
+
+  (testing "one patient referenced by an organization via an extension not covered by a search param"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Organization :id "0"
+                  :extension
+                  [#fhir/Extension{:url "foo"
+                                   :value #fhir/Reference{:reference #fhir/string "Patient/0"}}]}]]]
+
+      (given-failed-future (d/transact node [[:patient-purge "0"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Organization/0`.")))
 
   (testing "purging an creating the same patient in one transaction fails"
     (with-system-data [{:blaze.db/keys [node]} config]
