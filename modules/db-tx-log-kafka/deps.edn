@@ -20,7 +20,7 @@
   ;; pinned to fix CVE-2026-106451, can be removed if kafka-clients depends on
   ;; at least this version
   at.yawk.lz4/lz4-java
-  {:mvn/version "1.11.4"}}
+  {:mvn/version "1.12.0"}}
 
  :aliases
  {:test
