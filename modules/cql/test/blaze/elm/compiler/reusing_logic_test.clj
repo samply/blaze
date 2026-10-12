@@ -559,7 +559,8 @@
             :end nil}
           (interval/interval
            #system/date-time "2021-02-23T15:12:45+01:00"
-           date-time/max-date-time)
+           date-time/max-date-time
+           ctu/now)
           #fhir/Period
            {:start nil
             :end nil}

@@ -14,10 +14,12 @@
    [blaze.elm.interval :refer [interval]]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.elm.protocols :as p]
    [blaze.elm.util-spec]
    [blaze.test-util :refer [given-thrown]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -29,6 +31,12 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(def ^:private date-time-param-x
+  (assoc #elm/parameter-ref "x" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"))
+
+(def ^:private date-time-param-y
+  (assoc #elm/parameter-ref "y" :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"))
 
 (def interval-zero #elm/interval [#elm/integer "0" #elm/integer "0"])
 
@@ -75,6 +83,23 @@
 ;; interpreted to end at the maximum value of the point type, and computations
 ;; involving the high boundary will be performed with that interpretation.
 (deftest compile-interval-test
+  (testing "DateTime with offset and DateTime without offset"
+    (testing "the bounds are compared in the offset of now"
+      (given (ctu/eval-with-now
+              (elm/interval [date-time-param-x date-time-param-y])
+              ctu/now
+              #system/date-time "2025-02-18T00:30:00+01:00"
+              #system/date-time "2025-02-18T00:00:00")
+        :high := #system/date-time "2025-02-18T00:00:00"))
+
+    (testing "invalid bounds"
+      (given-thrown (ctu/eval-with-now
+                     (elm/interval [date-time-param-x date-time-param-y])
+                     ctu/now-plus-one
+                     #system/date-time "2025-02-18T00:30:00+01:00"
+                     #system/date-time "2025-02-18T00:00:00")
+        :message := "Invalid interval bounds.")))
+
   (testing "Static"
     (testing "Integer"
       (are [s e res] (= res (ctu/compile-binop elm/interval elm/integer s e))
@@ -620,6 +645,27 @@
 
       #elm/list [] {:type "Null"} nil?))
 
+  (testing "DateTime with offset"
+    (are [now list x pred] (pred (ctu/eval-with-now
+                                  (elm/contains [#elm/parameter-ref "x"
+                                                 #elm/parameter-ref "y"])
+                                  now list x))
+      ctu/now-plus-one
+      [#system/date-time "2025-02-18T01:30:00+02:00"]
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      [#system/date-time "2025-02-18T00:30:00+01:00"]
+      #system/date-time "2025-02-17T23:30:00" true?
+
+      ctu/now
+      [#system/date-time "2025-02-17T23:30:00"]
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      ctu/now-plus-one
+      [#system/date-time "2025-02-18T00:30:00+01:00"]
+      #system/date-time "2025-02-17T23:30:00" false?))
+
   (ctu/testing-binary-precision-op elm/contains))
 
 ;; 19.6. End
@@ -1011,6 +1057,15 @@
                                                      #system/date-time "2025-02-18T01:00:00")))
         ctu/now false?
         ctu/now-plus-one true?)))
+
+  (testing "DateTime with offset is normalized to the offset of now at day precision"
+    (are [now pred] (pred (eval-with-now elm/meets-before "Day" now
+                                         (interval #system/date-time "2025-02-18T00:00:00+01:00"
+                                                   #system/date-time "2025-02-18T00:59:59.999+01:00")
+                                         (interval #system/date-time "2025-02-18T00:00:00"
+                                                   #system/date-time "2025-02-18T01:00:00")))
+      ctu/now true?
+      ctu/now-plus-one false?))
 
   (ctu/testing-binary-null elm/meets-before interval-zero)
 
@@ -1448,6 +1503,15 @@
   (testing "Interval"
     (are [x y res] (= res (ctu/compile-binop elm/union elm/interval x y))
       [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] (interval 1 4))
+
+    (testing "DateTime with offset is compared in the offset of now"
+      (given (eval-with-now elm/union nil ctu/now
+                            (interval #system/date-time "2025-02-18T00:30:00+01:00"
+                                      #system/date-time "2025-02-18T01:30:00+01:00")
+                            (interval #system/date-time "2025-02-17T23:00:00"
+                                      #system/date-time "2025-02-17T23:45:00"))
+        :low := #system/date-time "2025-02-17T23:00:00"
+        [:high p/to-string] := "2025-02-18T01:30+01:00"))
 
     (ctu/testing-binary-null elm/union interval-zero))
 

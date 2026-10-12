@@ -27,7 +27,7 @@
 
 (defrecord Period [months millis]
   p/Equal
-  (equal [this other]
+  (equal [this other _]
     (some->> other (.equals this)))
 
   p/Add
@@ -81,30 +81,61 @@
                  5 ChronoField/SECOND_OF_MINUTE
                  6 ChronoField/MILLI_OF_SECOND)))
 
-(defn- compare-to-precision
-  "Compares two date time values up to the minimum of the specified precisions.
+(defn- compare-fields
+  "Compares the fields of two date time values starting at `p-start` up to the
+  minimum of the specified precisions.
 
   Returns nil (unknown) if the fields up to the smaller precision are equal but
   one of the precisions is higher."
-  ([dt-1 dt-2 p-1 p-2]
-   (compare-to-precision dt-1 dt-2 p-1 p-2 0))
-  ([dt-1 dt-2 p-1 p-2 p-start]
-   (let [min-precision (min p-1 p-2)]
-     (loop [precision p-start]
-       (let [cmp (- (get-chrono-field dt-1 precision)
-                    (get-chrono-field dt-2 precision))]
-         (if (zero? cmp)
-           (if (< precision min-precision)
-             (recur (inc precision))
-             (when (= p-1 p-2) 0))
-           cmp))))))
+  [dt-1 dt-2 p-1 p-2 p-start]
+  (let [min-precision (min p-1 p-2)]
+    (loop [precision p-start]
+      (let [cmp (- (get-chrono-field dt-1 precision)
+                   (get-chrono-field dt-2 precision))]
+        (if (zero? cmp)
+          (if (< precision min-precision)
+            (recur (inc precision))
+            (when (= p-1 p-2) 0))
+          cmp)))))
+
+(defn- same-offset? [^OffsetDateTime x y]
+  (and (instance? OffsetDateTime y)
+       (.equals (.getOffset x) (.getOffset ^OffsetDateTime y))))
+
+(defn- local
+  "Returns `x` as local date-time to compare it with `other` at the precision
+  `p-num` relative to the evaluation request at `now`. Returns `x` unchanged if
+  it is no DateTime value with offset.
+
+  DateTime values without offset have the offset of the evaluation request.
+  DateTime values with offset are taken as written at day precision or coarser
+  and if `other` has the same offset. Otherwise they are normalized to the
+  offset of the evaluation request."
+  [x other ^long p-num now]
+  (if (instance? OffsetDateTime x)
+    (let [x ^OffsetDateTime x]
+      (if (or (< p-num 3) (same-offset? x other))
+        (.toLocalDateTime x)
+        (.toLocalDateTime (.withOffsetSameInstant x (.getOffset ^OffsetDateTime now)))))
+    x))
+
+(defn- compare-to-precision
+  "Compares two date time values up to the minimum of the specified precisions
+  relative to the evaluation request at `now`.
+
+  Returns nil (unknown) if the fields up to the smaller precision are equal but
+  one of the precisions is higher."
+  [dt-1 dt-2 p-1 p-2 now]
+  (let [p-num (min p-1 p-2)]
+    (compare-fields (local dt-1 dt-2 p-num now) (local dt-2 dt-1 p-num now)
+                    p-1 p-2 0)))
 
 (defrecord PrecisionLocalTime [local-time p-num]
   Comparable
   (compareTo [this other]
     (if (instance? PrecisionLocalTime other)
-      (if-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                         (:p-num this) (:p-num other) 3)]
+      (if-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                   (:p-num this) (:p-num other) 3)]
         cmp
         (throw (ClassCastException. "Precisions differ.")))
       (throw (ClassCastException. "Not a PrecisionLocalTime.")))))
@@ -165,331 +196,277 @@
   OffsetDateTime
   (precision-num [_] 6))
 
-(defn- fine-precision?
-  "Returns true if `precision` is nil or hours or finer.
+(defn- comparison-p-num
+  "Returns the precision number of comparisons with `other` at the optional
+  `precision`."
+  ^long [other precision]
+  (cond-> (if other (long (precision-num other)) 6)
+    precision (min (long (precision->p-num precision)))))
 
-  Only at such precisions DateTime values with different offsets have to be
-  normalized to the offset of the evaluation request."
-  [precision]
-  (or (nil? precision) (<= 3 (long (precision->p-num precision)))))
+(defn- local-op
+  "Applies `op` to the local date-times of `x` and `y` at the precision of their
+  comparison."
+  ([op x y now]
+   (let [p-num (comparison-p-num y nil)]
+     (op (local x y p-num now) (local y x p-num now) now)))
+  ([op x y precision now]
+   (local-op op x y precision (comparison-p-num y precision) now))
+  ([op x y precision p-num now]
+   (op (local x y p-num now) (local y x p-num now) precision now)))
 
-(defn- as-written
-  "Returns `x` as local date-time with the fields as written if `x` is an
-  OffsetDateTime. Returns `x` unchanged otherwise."
-  [x]
-  (if (instance? OffsetDateTime x)
-    (.toLocalDateTime ^OffsetDateTime x)
-    x))
-
-(defn- in-offset-of
-  "Returns `x` as local date-time in the offset of `date-time` if `x` is an
-  OffsetDateTime. Returns `x` unchanged otherwise."
-  [^OffsetDateTime date-time x]
-  (if (instance? OffsetDateTime x)
-    (.toLocalDateTime (.withOffsetSameInstant ^OffsetDateTime x (.getOffset date-time)))
-    x))
-
-(defn- local-other
-  "Returns `other` in a form that can be compared to the local date-time of
-  `date-time` at `precision`."
-  [date-time other precision]
-  (if (fine-precision? precision)
-    (in-offset-of date-time other)
-    (as-written other)))
-
-(defprotocol NormalizeOffset
-  (-offset [x now]
-    "Returns the offset of the DateTime values in `x`, nil if `x` has no
-    DateTime values with offset or ::mixed if its DateTime values have
-    different offsets.")
-  (-normalize-offset [x now]))
-
-(extend-protocol NormalizeOffset
-  OffsetDateTime
-  (-offset [x _]
-    (.getOffset x))
-  (-normalize-offset [x now]
-    (.toLocalDateTime (.withOffsetSameInstant x (.getOffset ^OffsetDateTime now))))
-
-  Object
-  (-offset [_ _])
-  (-normalize-offset [x _]
-    x)
-
-  nil
-  (-offset [_ _])
-  (-normalize-offset [_ _]))
-
-(defn same-offset?
-  "Returns true if the offsets `o1` and `o2` are the same. A nil offset stands
-  for the offset of `now`."
-  [o1 o2 now]
-  (cond
-    (= o1 o2) true
-    (and o1 o2) false
-    :else (= (or o1 o2) (.getOffset ^OffsetDateTime now))))
-
-(defn normalize-offset?
-  "Returns true if `x` and `y` have to be normalized to the offset of `now`
-  before comparing them at `precision`.
-
-  The CQL spec normalizes DateTime values with different offsets to the offset
-  of the evaluation request only at hour precision or finer. Comparisons
-  without precision are treated as comparisons at millisecond precision.
-  DateTime values without offset have the offset of the evaluation request."
-  [x y now precision]
-  (and (fine-precision? precision)
-       (let [ox (-offset x now)
-             oy (-offset y now)]
-         (or (identical? ::mixed ox)
-             (identical? ::mixed oy)
-             (not (same-offset? ox oy now))))))
-
-(defn normalize-offset
-  "Converts DateTime values with offset in `x` into local date-times in the
-  offset of `now`."
-  [x now]
-  (-normalize-offset x now))
+(defn- with-offset-of
+  "Returns `local-date-time` with the offset of `date-time` or nil if
+  `local-date-time` is nil."
+  [^OffsetDateTime date-time local-date-time]
+  (some-> ^LocalDateTime local-date-time (.atOffset (.getOffset date-time))))
 
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
 (extend-protocol p/Equal
+  LocalDateTime
+  (equal [x y now]
+    (system/equals x (local y x 6 now)))
+
   OffsetDateTime
-  (equal [x y]
-    (p/equal (.toLocalDateTime x) (in-offset-of x y)))
+  (equal [x y now]
+    (p/equal (local x y 6 now) (local y x 6 now) now))
 
   PrecisionLocalTime
-  (equal [x y]
+  (equal [x y _]
     (when (instance? PrecisionLocalTime y)
-      (when-let [cmp (compare-to-precision (:local-time x) (:local-time y)
-                                           (:p-num x) (:p-num y) 3)]
+      (when-let [cmp (compare-fields (:local-time x) (:local-time y)
+                                     (:p-num x) (:p-num y) 3)]
         (zero? cmp)))))
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
+  LocalDateTime
+  (equivalent [x y now]
+    (= x (local y x 6 now)))
+
   OffsetDateTime
-  (equivalent [x y]
-    (p/equivalent (.toLocalDateTime x) (in-offset-of x y))))
+  (equivalent [x y now]
+    (p/equivalent (local x y 6 now) (local y x 6 now) now)))
 
 ;; 12.3. Greater
 (extend-protocol p/Greater
   DateYear
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (> cmp 0))))
 
   DateTimeYear
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (> cmp 0))))
 
   DateYearMonth
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (> cmp 0))))
 
   DateTimeYearMonth
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (> cmp 0))))
 
   DateDate
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (> cmp 0))))
 
   DateTimeDate
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (> cmp 0))))
 
   LocalDateTime
-  (greater [this other]
+  (greater [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 6 (precision-num other) now)]
         (> cmp 0))))
 
   OffsetDateTime
-  (greater [this other]
-    (p/greater (.toLocalDateTime this) (in-offset-of this other)))
+  (greater [x y now]
+    (local-op p/greater x y now))
 
   PrecisionLocalTime
-  (greater [this other]
+  (greater [this other _]
     (when (instance? PrecisionLocalTime other)
-      (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                           (:p-num this) (:p-num other) 3)]
+      (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                     (:p-num this) (:p-num other) 3)]
         (> cmp 0)))))
 
 ;; 12.4. GreaterOrEqual
 (extend-protocol p/GreaterOrEqual
   DateYear
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (>= cmp 0))))
 
   DateTimeYear
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (>= cmp 0))))
 
   DateYearMonth
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (>= cmp 0))))
 
   DateTimeYearMonth
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (>= cmp 0))))
 
   DateDate
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (>= cmp 0))))
 
   DateTimeDate
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (>= cmp 0))))
 
   LocalDateTime
-  (greater-or-equal [this other]
+  (greater-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 6 (precision-num other) now)]
         (>= cmp 0))))
 
   OffsetDateTime
-  (greater-or-equal [this other]
-    (p/greater-or-equal (.toLocalDateTime this) (in-offset-of this other)))
+  (greater-or-equal [x y now]
+    (local-op p/greater-or-equal x y now))
 
   PrecisionLocalTime
-  (greater-or-equal [this other]
+  (greater-or-equal [this other _]
     (when (instance? PrecisionLocalTime other)
-      (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                           (:p-num this) (:p-num other) 3)]
+      (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                     (:p-num this) (:p-num other) 3)]
         (>= cmp 0)))))
 
 ;; 12.5. Less
 (extend-protocol p/Less
   DateYear
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (< cmp 0))))
 
   DateTimeYear
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (< cmp 0))))
 
   DateYearMonth
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (< cmp 0))))
 
   DateTimeYearMonth
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (< cmp 0))))
 
   DateDate
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (< cmp 0))))
 
   DateTimeDate
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (< cmp 0))))
 
   LocalDateTime
-  (less [this other]
+  (less [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 6 (precision-num other) now)]
         (< cmp 0))))
 
   OffsetDateTime
-  (less [this other]
-    (p/less (.toLocalDateTime this) (in-offset-of this other)))
+  (less [x y now]
+    (local-op p/less x y now))
 
   PrecisionLocalTime
-  (less [this other]
+  (less [this other _]
     (when (instance? PrecisionLocalTime other)
-      (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                           (:p-num this) (:p-num other) 3)]
+      (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                     (:p-num this) (:p-num other) 3)]
         (< cmp 0)))))
 
 ;; 12.6. LessOrEqual
 (extend-protocol p/LessOrEqual
   DateYear
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (<= cmp 0))))
 
   DateTimeYear
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 0 (precision-num other) now)]
         (<= cmp 0))))
 
   DateYearMonth
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (<= cmp 0))))
 
   DateTimeYearMonth
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 1 (precision-num other) now)]
         (<= cmp 0))))
 
   DateDate
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (<= cmp 0))))
 
   DateTimeDate
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other) now)]
         (<= cmp 0))))
 
   LocalDateTime
-  (less-or-equal [this other]
+  (less-or-equal [this other now]
     (when other
-      (when-let [cmp (compare-to-precision this other 6 (precision-num other))]
+      (when-let [cmp (compare-to-precision this other 6 (precision-num other) now)]
         (<= cmp 0))))
 
   OffsetDateTime
-  (less-or-equal [this other]
-    (p/less-or-equal (.toLocalDateTime this) (in-offset-of this other)))
+  (less-or-equal [x y now]
+    (local-op p/less-or-equal x y now))
 
   PrecisionLocalTime
-  (less-or-equal [this other]
+  (less-or-equal [this other _]
     (when (instance? PrecisionLocalTime other)
-      (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                           (:p-num this) (:p-num other) 3)]
+      (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                     (:p-num this) (:p-num other) 3)]
         (<= cmp 0)))))
 
 ;; 16. Arithmetic Operators
@@ -556,12 +533,8 @@
                       {:op :add :this this :other other}))))
 
   OffsetDateTime
-  (add [this other]
-    (if (instance? Period other)
-      (-> (bt/plus-unit this (:months other) ChronoUnit/MONTHS)
-          (bt/plus-unit (* (:millis other) 1000000) ChronoUnit/NANOS))
-      (throw (ex-info (str "Invalid RHS adding to OffsetDateTime. Expected Period but was `" (type other) "`.")
-                      {:op :add :this this :other other}))))
+  (add [x y]
+    (with-offset-of x (p/add (.toLocalDateTime x) y)))
 
   PrecisionLocalTime
   (add [this other]
@@ -603,12 +576,11 @@
 
   OffsetDateTime
   (predecessor [x]
-    (when (time/after? (.toLocalDateTime x) min-date-time)
-      (.minusNanos x 1000000)))
+    (with-offset-of x (p/predecessor (.toLocalDateTime x))))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
-    (when (p/greater x min-time)
+    (when (p/greater x min-time nil)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
 ;; 16.20. Subtract
@@ -671,15 +643,8 @@
                       {:op :subtract :this this :other other}))))
 
   OffsetDateTime
-  (subtract [this other]
-    (if (instance? Period other)
-      (let [result (-> this
-                       (.minusMonths (:months other))
-                       (.minusNanos (* (:millis other) 1000000)))]
-        (when (>= (.compareTo (.toLocalDateTime result) min-date-time) 0)
-          result))
-      (throw (ex-info (str "Invalid RHS subtracting from OffsetDateTime. Expected Period but was `" (type other) "`.")
-                      {:op :subtract :this this :other other}))))
+  (subtract [x y]
+    (with-offset-of x (p/subtract (.toLocalDateTime x) y)))
 
   PrecisionLocalTime
   (subtract [this other]
@@ -722,12 +687,11 @@
 
   OffsetDateTime
   (successor [x]
-    (when (time/before? (.toLocalDateTime x) max-date-time)
-      (.plusNanos x 1000000)))
+    (with-offset-of x (p/successor (.toLocalDateTime x))))
 
   PrecisionLocalTime
   (successor [{:keys [local-time p-num] :as x}]
-    (when (p/less x max-time)
+    (when (p/less x max-time nil)
       (->PrecisionLocalTime (.plus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
 ;; 18. Date and Time Operators
@@ -748,7 +712,7 @@
 
   OffsetDateTime
   (date-from [x]
-    (DateDate/fromLocalDate (.toLocalDate x))))
+    (p/date-from (.toLocalDateTime x))))
 
 ;; 18.9. DateTimeComponentFrom
 (extend-protocol p/DateTimeComponentFrom
@@ -796,9 +760,7 @@
 
   OffsetDateTime
   (date-time-component-from [x precision]
-    (let [req-p-num (precision->p-num precision)]
-      (when (<= req-p-num 6)
-        (get-chrono-field x req-p-num))))
+    (p/date-time-component-from (.toLocalDateTime x) precision))
 
   PrecisionLocalTime
   (date-time-component-from [{:keys [local-time p-num]} precision]
@@ -809,46 +771,46 @@
 ;; 18.10. DifferenceBetween
 (extend-protocol p/DifferenceBetween
   DateYear
-  (difference-between [this other precision]
+  (difference-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
         (.until this other precision))))
 
   DateTimeYear
-  (difference-between [this other precision]
+  (difference-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   DateYearMonth
-  (difference-between [this other precision]
+  (difference-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
         (.until this other precision))))
 
   DateTimeYearMonth
-  (difference-between [this other precision]
+  (difference-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   DateDate
-  (difference-between [this other precision]
+  (difference-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
         (.until this other precision))))
 
   DateTimeDate
-  (difference-between [this other precision]
+  (difference-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   LocalDateTime
-  (difference-between [this other precision]
+  (difference-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 6 (precision-num other)))
-        (let [duration (.until this other precision)]
+        (let [duration (.until this (local other this 6 now) precision)]
           (cond
             (pos? duration)
             (inc duration)
@@ -857,14 +819,13 @@
             :else
             duration)))))
 
+  ;; durations are always calculated in the offset of the evaluation request
   OffsetDateTime
-  (difference-between [this other precision]
-    (p/difference-between (.toLocalDateTime this)
-                          (local-other this other precision)
-                          precision))
+  (difference-between [x y precision now]
+    (local-op p/difference-between x y precision 6 now))
 
   PrecisionLocalTime
-  (difference-between [this other precision]
+  (difference-between [this other precision _]
     (when (instance? PrecisionLocalTime other)
       (when (<= (precision->p-num precision) (min (:p-num this) (:p-num other)))
         (.until ^LocalTime (:local-time this) (:local-time other) precision)))))
@@ -872,55 +833,54 @@
 ;; 18.11. DurationBetween
 (extend-protocol p/DurationBetween
   DateYear
-  (duration-between [this other precision]
+  (duration-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
         (.until this other precision))))
 
   DateTimeYear
-  (duration-between [this other precision]
+  (duration-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   DateYearMonth
-  (duration-between [this other precision]
+  (duration-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
         (.until this other precision))))
 
   DateTimeYearMonth
-  (duration-between [this other precision]
+  (duration-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   DateDate
-  (duration-between [this other precision]
+  (duration-between [this other precision _]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
         (.until this other precision))))
 
   DateTimeDate
-  (duration-between [this other precision]
+  (duration-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
   LocalDateTime
-  (duration-between [this other precision]
+  (duration-between [this other precision now]
     (when other
       (when (<= (precision->p-num precision) (min 6 (precision-num other)))
-        (.until this other precision))))
+        (.until this (local other this 6 now) precision))))
 
+  ;; durations are always calculated in the offset of the evaluation request
   OffsetDateTime
-  (duration-between [this other precision]
-    (p/duration-between (.toLocalDateTime this)
-                        (local-other this other precision)
-                        precision))
+  (duration-between [x y precision now]
+    (local-op p/duration-between x y precision 6 now))
 
   PrecisionLocalTime
-  (duration-between [this other precision]
+  (duration-between [this other precision _]
     (when (instance? PrecisionLocalTime other)
       (when (<= (precision->p-num precision) (min (:p-num this) (:p-num other)))
         (.until ^LocalTime (:local-time this) (:local-time other) precision)))))
@@ -928,402 +888,397 @@
 ;; 18.14. SameAs
 (extend-protocol p/SameAs
   DateYear
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   DateTimeYear
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   DateYearMonth
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   DateTimeYearMonth
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   DateDate
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   DateTimeDate
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   LocalDateTime
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 6 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (= cmp 0)))
-        (p/equal this other))))
+        (p/equal this other now))))
 
   OffsetDateTime
-  (same-as [this other precision]
-    (p/same-as (.toLocalDateTime this) (local-other this other precision)
-               precision))
+  (same-as [x y precision now]
+    (local-op p/same-as x y precision now))
 
   PrecisionLocalTime
-  (same-as [this other precision]
+  (same-as [this other precision now]
     (when (instance? PrecisionLocalTime other)
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min (:p-num this) (:p-num other)))
-          (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                               p-num p-num 3)]
+          (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                         p-num p-num 3)]
             (= cmp 0)))
-        (p/equal this other)))))
+        (p/equal this other now)))))
 
 ;; 18.15. SameOrBefore
 (extend-protocol p/SameOrBefore
   DateYear
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   DateTimeYear
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   DateYearMonth
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   DateTimeYearMonth
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   DateDate
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   DateTimeDate
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   LocalDateTime
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 6 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (<= cmp 0)))
-        (p/less-or-equal this other))))
+        (p/less-or-equal this other now))))
 
   OffsetDateTime
-  (same-or-before [this other precision]
-    (p/same-or-before (.toLocalDateTime this) (local-other this other precision)
-                      precision))
+  (same-or-before [x y precision now]
+    (local-op p/same-or-before x y precision now))
 
   PrecisionLocalTime
-  (same-or-before [this other precision]
+  (same-or-before [this other precision now]
     (when (instance? PrecisionLocalTime other)
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min (:p-num this) (:p-num other)))
-          (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                               p-num p-num 3)]
+          (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                         p-num p-num 3)]
             (<= cmp 0)))
-        (p/less-or-equal this other)))))
+        (p/less-or-equal this other now)))))
 
 ;; 18.16. SameOrAfter
 (extend-protocol p/SameOrAfter
   DateYear
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   DateTimeYear
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 0 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   DateYearMonth
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   DateTimeYearMonth
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 1 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   DateDate
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   DateTimeDate
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 2 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   LocalDateTime
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min 6 (precision-num other)))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (>= cmp 0)))
-        (p/greater-or-equal this other))))
+        (p/greater-or-equal this other now))))
 
   OffsetDateTime
-  (same-or-after [this other precision]
-    (p/same-or-after (.toLocalDateTime this) (local-other this other precision)
-                     precision))
+  (same-or-after [x y precision now]
+    (local-op p/same-or-after x y precision now))
 
   PrecisionLocalTime
-  (same-or-after [this other precision]
+  (same-or-after [this other precision now]
     (when (instance? PrecisionLocalTime other)
       (if-let [p-num (some-> precision precision->p-num)]
         (when (<= p-num (min (:p-num this) (:p-num other)))
-          (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                               p-num p-num 3)]
+          (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                         p-num p-num 3)]
             (>= cmp 0)))
-        (p/greater-or-equal this other)))))
+        (p/greater-or-equal this other now)))))
 
 ;; 19.2. After
 (extend-protocol p/After
   DateYear
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 0 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   DateTimeYear
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 0 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   DateYearMonth
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 1 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   DateTimeYearMonth
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 1 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   DateDate
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 2 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   DateTimeDate
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 2 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   LocalDateTime
-  (after [this other precision]
+  (after [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 6 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (> cmp 0))
-          (p/greater this other)))))
+          (p/greater this other now)))))
 
   OffsetDateTime
-  (after [this other precision]
-    (p/after (.toLocalDateTime this) (local-other this other precision)
-             precision))
+  (after [x y precision now]
+    (local-op p/after x y precision now))
 
   PrecisionLocalTime
-  (after [this other precision]
+  (after [this other precision now]
     (when (instance? PrecisionLocalTime other)
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min (:p-num this) (:p-num other))))
-          (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                               p-num p-num 3)]
+          (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                         p-num p-num 3)]
             (> cmp 0))
-          (p/greater this other))))))
+          (p/greater this other now))))))
 
 ;; 19.3. Before
 (extend-protocol p/Before
   DateYear
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 0 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   DateTimeYear
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 0 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   DateYearMonth
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 1 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   DateTimeYearMonth
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 1 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   DateDate
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 2 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   DateTimeDate
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 2 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   LocalDateTime
-  (before [this other precision]
+  (before [this other precision now]
     (when other
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min 6 (precision-num other))))
-          (when-let [cmp (compare-to-precision this other p-num p-num)]
+          (when-let [cmp (compare-to-precision this other p-num p-num now)]
             (< cmp 0))
-          (p/less this other)))))
+          (p/less this other now)))))
 
   OffsetDateTime
-  (before [this other precision]
-    (p/before (.toLocalDateTime this) (local-other this other precision)
-              precision))
+  (before [x y precision now]
+    (local-op p/before x y precision now))
 
   PrecisionLocalTime
-  (before [this other precision]
+  (before [this other precision now]
     (when (instance? PrecisionLocalTime other)
       (let [p-num (some-> precision precision->p-num)]
         (if (some-> p-num (<= (min (:p-num this) (:p-num other))))
-          (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                               p-num p-num 3)]
+          (when-let [cmp (compare-fields (:local-time this) (:local-time other)
+                                         p-num p-num 3)]
             (< cmp 0))
-          (p/less this other))))))
+          (p/less this other now))))))
 
 ;; 22. Type Operators
 

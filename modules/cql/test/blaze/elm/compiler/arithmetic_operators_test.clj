@@ -238,7 +238,7 @@
       [1 "year"] [13.1M "month"] (date-time/period 2 1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y))
+    (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y) nil)
       [1 "m"] [1 "m"] (quantity 2 "m")
       [1 "m"] [1 "cm"] (quantity 1.01M "m")))
 
@@ -467,7 +467,7 @@
 
   (testing "Quantity"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y) nil)
         [1 "m"] [1 "s"] (quantity 1 "m/s")
         [1M "m"] [1M "s"] (quantity 1M "m/s")
 
@@ -477,14 +477,14 @@
 
   (testing "Quantity/Integer"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y) nil)
         [1M "m"] "2" (quantity 0.5M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/integer "1"))
 
   (testing "Quantity/Decimal"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y) nil)
         [2.5M "m"] "2.5" (quantity 1M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/decimal "1.1"))
@@ -796,7 +796,7 @@
         "99999999999999999999.99999999" "2")))
 
   (testing "Quantity"
-    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/multiply [x y])) {} nil nil))
+    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/multiply [x y])) {} nil nil) nil)
       #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
@@ -1132,7 +1132,7 @@
       #elm/quantity [1 "year"] #elm/quantity [13.1M "month"] (date-time/period 0 -1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil))
+    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil) nil)
       #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
       #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 

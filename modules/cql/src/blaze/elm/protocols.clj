@@ -4,6 +4,12 @@
   Implementations can be found in the integer, decimal, quantity and date-time
   namespaces.
 
+  Comparison operations get the timestamp of the evaluation request as `now`.
+  DateTime values without offset have the offset of `now` and DateTime values
+  with offset are normalized to the offset of `now` where necessary. `now` is
+  only used if one of the values is a DateTime value with offset. It can be nil
+  otherwise, for example while folding static expressions at compile time.
+
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [abs get]))
@@ -15,27 +21,27 @@
 
 ;; 12.1. Equal
 (defprotocol Equal
-  (equal [x y]))
+  (equal [x y now]))
 
 ;; 12.2. Equivalent
 (defprotocol Equivalent
-  (equivalent [x y]))
+  (equivalent [x y now]))
 
 ;; 12.3. Greater
 (defprotocol Greater
-  (greater [x y]))
+  (greater [x y now]))
 
 ;; 12.4. GreaterOrEqual
 (defprotocol GreaterOrEqual
-  (greater-or-equal [x y]))
+  (greater-or-equal [x y now]))
 
 ;; 12.5. Less
 (defprotocol Less
-  (less [x y]))
+  (less [x y now]))
 
 ;; 12.6. LessOrEqual
 (defprotocol LessOrEqual
-  (less-or-equal [x y]))
+  (less-or-equal [x y now]))
 
 ;; 16. Arithmetic Operators
 
@@ -129,59 +135,59 @@
 
 ;; 18.10. DifferenceBetween
 (defprotocol DifferenceBetween
-  (difference-between [x y precision]))
+  (difference-between [x y precision now]))
 
 ;; 18.11. DurationBetween
 (defprotocol DurationBetween
-  (duration-between [x y precision]))
+  (duration-between [x y precision now]))
 
 ;; 18.14. SameAs
 (defprotocol SameAs
-  (same-as [x y precision]))
+  (same-as [x y precision now]))
 
 ;; 18.15. SameOrBefore
 (defprotocol SameOrBefore
-  (same-or-before [x y precision]))
+  (same-or-before [x y precision now]))
 
 ;; 18.16. SameOrAfter
 (defprotocol SameOrAfter
-  (same-or-after [x y precision]))
+  (same-or-after [x y precision now]))
 
 ;; 19.2. After
 (defprotocol After
-  (after [x y precision]))
+  (after [x y precision now]))
 
 ;; 19.3. Before
 (defprotocol Before
-  (before [x y precision]))
+  (before [x y precision now]))
 
 ;; 19.5. Contains
 (defprotocol Contains
-  (contains [interval-or-list x precision]))
+  (contains [interval-or-list x precision now]))
 
 ;; 19.10. Except
 (defprotocol Except
-  (except [x y]))
+  (except [x y now]))
 
 ;; 19.13. Includes
 (defprotocol Includes
-  (includes [x y precision]))
+  (includes [x y precision now]))
 
 ;; 19.15. Intersect
 (defprotocol Intersect
-  (intersect [a b]))
+  (intersect [a b now]))
 
 ;; 19.24. ProperContains
 (defprotocol ProperContains
-  (proper-contains [interval-or-list x precision]))
+  (proper-contains [interval-or-list x precision now]))
 
 ;; 19.26. ProperIncludes
 (defprotocol ProperIncludes
-  (proper-includes [x y precision]))
+  (proper-includes [x y precision now]))
 
 ;; 19.31. Union
 (defprotocol Union
-  (union [a b]))
+  (union [a b now]))
 
 ;; 20. List Operators
 

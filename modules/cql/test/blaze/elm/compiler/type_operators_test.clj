@@ -270,7 +270,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-convert-quantity-test
-  (are [argument unit res] (p/equal res (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
+  (are [argument unit res] (p/equal res (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil) nil)
     #elm/quantity [5 "mg"] #elm/string "g" (quantity 0.005M "g"))
 
   (are [argument unit] (nil? (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
@@ -1684,7 +1684,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
   (testing "String"
-    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/string x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/string x) nil)
       "-1" (quantity -1 "1")
       "1" (quantity 1 "1")
 
@@ -1709,12 +1709,12 @@
       "1" (quantity 1 "1")))
 
   (testing "Decimal"
-    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/decimal x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/decimal x) nil)
       "1" (quantity 1 "1")
       "1.1" (quantity 1.1M "1")))
 
   (testing "Ratio"
-    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/ratio x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/ratio x) nil)
       [[1] [1]] (quantity 1 "1")
       [[-1] [1]] (quantity -1 "1")
 
@@ -1751,7 +1751,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-ratio-test
   (testing "String"
-    (are [x res] (p/equal res (ctu/compile-unop elm/to-ratio elm/string x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-ratio elm/string x) nil)
       "-1:-1" (ratio (quantity -1 "1") (quantity -1 "1"))
       "1:1" (ratio (quantity 1 "1") (quantity 1 "1"))
       "1:100" (ratio (quantity 1 "1") (quantity 100 "1"))

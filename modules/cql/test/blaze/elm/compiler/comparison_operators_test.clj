@@ -264,6 +264,54 @@
       #system/date-time "2025-02-18T00:30:00+01:00"
       #system/date-time "2025-02-17T23:31:00Z" false?))
 
+  (testing "DateTime values with different offsets, none of them the offset of
+           now, are compared in the offset of now"
+    (are [x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                ctu/now x y))
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T01:30:00+02:00" true?
+
+      #system/date-time "2025-02-18T01:30:00+02:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T01:31:00+02:00" false?))
+
+  (testing "DateTime values with the same offset, not the offset of now, are
+           compared as written"
+    (are [x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                ctu/now x y))
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:31:00+01:00" false?))
+
+  (testing "DateTime without offset first is compared to DateTime with offset"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equal [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-17T23:30:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-17T23:30:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-17T23:31:00"
+      #system/date-time "2025-02-17T23:30:00Z" false?))
+
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/equal elm/time x y))
       "12:30:15" "12:30:15" true?
@@ -515,6 +563,54 @@
       ctu/now
       #system/date-time "2025-02-18T00:30:00+01:00"
       #system/date-time "2025-02-17T23:31:00Z" false?))
+
+  (testing "DateTime values with different offsets, none of them the offset of
+           now, are compared in the offset of now"
+    (are [x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equivalent [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                ctu/now x y))
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T01:30:00+02:00" true?
+
+      #system/date-time "2025-02-18T01:30:00+02:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T01:31:00+02:00" false?))
+
+  (testing "DateTime values with the same offset, not the offset of now, are
+           compared as written"
+    (are [x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equivalent [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                ctu/now x y))
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:31:00+01:00" false?))
+
+  (testing "DateTime without offset first is compared to DateTime with offset"
+    (are [now x y pred]
+         (pred (ctu/eval-with-now
+                (elm/equivalent [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                now x y))
+      ctu/now
+      #system/date-time "2025-02-17T23:30:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-17T23:30:00"
+      #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+      ctu/now-plus-one
+      #system/date-time "2025-02-18T00:30:00"
+      #system/date-time "2025-02-17T23:30:00Z" true?
+
+      ctu/now
+      #system/date-time "2025-02-17T23:31:00"
+      #system/date-time "2025-02-17T23:30:00Z" false?))
 
   (ctu/testing-binary-op elm/equivalent))
 

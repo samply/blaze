@@ -15,15 +15,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- to-local-date-time-with-offset
-  "Creates a DateTime with a local date time adjusted for the offset of the
-  evaluation request."
-  [now year month day hour minute second millis timezone-offset]
-  (-> ^OffsetDateTime
-   (system/date-time year month day hour minute second millis
-                     (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
-      (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
-      (.toLocalDateTime)))
+(defn- date-time-with-offset
+  "Creates a DateTime with `timezone-offset` in hours."
+  [year month day hour minute second millis timezone-offset]
+  (system/date-time year month day hour minute second millis
+                    (ZoneOffset/ofTotalSeconds (* timezone-offset 3600))))
 
 ;; 18.6. Date
 (defn- date-op
@@ -150,16 +146,22 @@
 
 ;; 18.8. DateTime
 (defn- date-time-static-op
+  "Creates a DateTime expression with offset from static values.
+
+  The expression isn't static itself, because static expressions are evaluated
+  at compile time without the timestamp of the evaluation request which is
+  needed to compare DateTime values with offset."
   [year month day hour minute second millisecond timezone-offset]
-  (reify-expr core/Expression
-    (-eval [_ {:keys [now]} _ _]
-      (to-local-date-time-with-offset
-       now year month day hour minute second millisecond timezone-offset))
-    (-form [_]
-      (list 'date-time (core/-form year) (core/-form month)
-            (core/-form day) (core/-form hour) (core/-form minute)
-            (core/-form second) (core/-form millisecond)
-            (core/-form timezone-offset)))))
+  (let [date-time (date-time-with-offset year month day hour minute second
+                                         millisecond timezone-offset)]
+    (reify-expr core/Expression
+      (-eval [_ _ _ _]
+        date-time)
+      (-form [_]
+        (list 'date-time (core/-form year) (core/-form month)
+              (core/-form day) (core/-form hour) (core/-form minute)
+              (core/-form second) (core/-form millisecond)
+              (core/-form timezone-offset))))))
 
 (defn- date-time-dynamic-op
   ([year month day hour minute second millisecond]
@@ -236,9 +238,8 @@
         (core/-optimize second db)
         (core/-optimize millisecond db)
         (core/-optimize timezone-offset db)))
-     (-eval [_ {:keys [now] :as context} resource scope]
-       (to-local-date-time-with-offset
-        now
+     (-eval [_ context resource scope]
+       (date-time-with-offset
         (core/-eval year context resource scope)
         (core/-eval month context resource scope)
         (core/-eval day context resource scope)
@@ -308,9 +309,8 @@
            (core/-optimize second db)
            (core/-optimize millisecond db)
            timezone-offset))))
-    (-eval [_ {:keys [now] :as context} resource scope]
-      (to-local-date-time-with-offset
-       now
+    (-eval [_ context resource scope]
+      (date-time-with-offset
        (core/-eval year context resource scope)
        (core/-eval month context resource scope)
        (core/-eval day context resource scope)
@@ -446,14 +446,14 @@
   (p/date-time-component-from x precision))
 
 ;; 18.10. DifferenceBetween
-(defbinopp difference-between {:normalize-offset true}
-  [operand-1 operand-2 ^:required precision]
-  (p/difference-between operand-1 operand-2 precision))
+(defbinopp difference-between
+  [operand-1 operand-2 ^:required precision ^:now now]
+  (p/difference-between operand-1 operand-2 precision now))
 
 ;; 18.11. DurationBetween
-(defbinopp duration-between {:normalize-offset true}
-  [operand-1 operand-2 ^:required precision]
-  (p/duration-between operand-1 operand-2 precision))
+(defbinopp duration-between
+  [operand-1 operand-2 ^:required precision ^:now now]
+  (p/duration-between operand-1 operand-2 precision now))
 
 ;; 18.13. Now
 (def ^:private now-expression
@@ -467,16 +467,16 @@
   now-expression)
 
 ;; 18.14. SameAs
-(defbinopp same-as {:normalize-offset true} [x y precision]
-  (p/same-as x y precision))
+(defbinopp same-as [x y precision ^:now now]
+  (p/same-as x y precision now))
 
 ;; 18.15. SameOrBefore
-(defbinopp same-or-before {:normalize-offset true} [x y precision]
-  (p/same-or-before x y precision))
+(defbinopp same-or-before [x y precision ^:now now]
+  (p/same-or-before x y precision now))
 
 ;; 18.16. SameOrAfter
-(defbinopp same-or-after {:normalize-offset true} [x y precision]
-  (p/same-or-after x y precision))
+(defbinopp same-or-after [x y precision ^:now now]
+  (p/same-or-after x y precision now))
 
 ;; 18.18. Time
 (defn- time-op

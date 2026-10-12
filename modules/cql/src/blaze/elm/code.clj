@@ -9,11 +9,11 @@
 
 (defrecord Code [system version code]
   p/Equal
-  (equal [this other]
+  (equal [this other _]
     (some->> other (= this)))
 
   p/Equivalent
-  (equivalent [_ other]
+  (equivalent [_ other _]
     (and (= system (:system other))
          (= code (:code other))))
 

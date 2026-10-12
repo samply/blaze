@@ -84,6 +84,17 @@
 
       #elm/calculate-age-at [#elm/date-time"2018-01-01" #elm/date-time"2018-02-01" "day"] 31))
 
+  (testing "DateTime with offset is normalized to the offset of now at hour precision"
+    (are [now res] (= res (ctu/eval-with-now
+                           (elm/calculate-age-at [#elm/parameter-ref "x"
+                                                  #elm/parameter-ref "y"
+                                                  "hour"])
+                           now
+                           #system/date-time "2025-02-18T00:30:00+01:00"
+                           #system/date-time "2025-02-18T12:00:00"))
+      ctu/now 12
+      ctu/now-plus-one 11))
+
   (ctu/testing-binary-null elm/calculate-age-at #elm/date"2018")
   (ctu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
 
