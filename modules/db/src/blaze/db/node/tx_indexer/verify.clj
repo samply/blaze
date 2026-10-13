@@ -81,6 +81,14 @@
                (plc/index-entry (codec/id-byte-string ref-id) t))))
      refs)))
 
+(defn- add-version
+  "Adds the index entries of the new version of the resource with `tid` and `id`
+  and its update of the resource handle cache to `res`."
+  [res tid id t hash num-changes op refs]
+  (-> (update res :entries into (index-entries tid id t hash num-changes op refs))
+      (update :resource-handle-updates conj
+              [(rts/resource-handle tid id t hash num-changes op) false])))
+
 (def ^:private inc-0 (fnil inc 0))
 (def ^:private dec-0 (fnil dec 0))
 (def ^:private minus-0 (fnil - 0))
@@ -95,7 +103,7 @@
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
-      (-> (update res :entries into (index-entries tid id t hash 1 :create refs))
+      (-> (add-version res tid id t hash 1 :create refs)
           (update :new-resources conj [type id])
           (update-in [:stats tid] inc-num-changes-and-total)))))
 
@@ -166,7 +174,7 @@
 
         :else
         (cond->
-         (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put refs))
+         (-> (add-version res tid id t hash (inc num-changes) :put refs)
              (update :new-resources conj [type id])
              (update-in [:stats tid :num-changes] inc-0))
           (or (nil? old-t) (identical? :delete op))
@@ -220,13 +228,17 @@
 
         :else
         (cond->
-         (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete refs))
+         (-> (add-version res tid id t hash/deleted-hash (inc num-changes) :delete refs)
              (update :del-resources conj [type id])
              (update-in [:stats tid :num-changes] inc-0))
           old-resource-handle
           (update-in [:stats tid :total] dec-0))))))
 
 (def ^:private ^:const ^long delete-history-max 100000)
+
+(defn- limited-instance-history [db type id]
+  (into [] (comp (drop 1) (take delete-history-max))
+        (d/instance-history db type id)))
 
 (defn- too-many-history-entries-msg [type id]
   (format "Deleting the history of `%s/%s` failed because there are more than %,d history entries."
@@ -240,17 +252,23 @@
 (defn- purge-entry [tid id t rh]
   (rts/purge-index-entries tid id rh t))
 
-(defn- add-purge-entries [res tid id t resource-handles]
-  (-> (update res :entries into (mapcat (partial purge-entry tid (codec/id-byte-string id) t)) resource-handles)
+(defn- purge-entry-xf [tid id t]
+  (mapcat (partial purge-entry tid (codec/id-byte-string id) t)))
+
+(defn- add-purge-entries
+  "Adds the purge index entries of `resource-handles` to `res`.
+
+  Doesn't add updates of the resource handle cache, because it only holds the
+  current version of a resource."
+  [res tid id t resource-handles]
+  (-> (update res :entries into (purge-entry-xf tid id t) resource-handles)
       (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
   [{:keys [db-before]} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history")]
-    (let [tid (codec/tid type)
-          instance-history (into [] (comp (drop 1) (take delete-history-max))
-                                 (d/instance-history db-before type id))]
+    (let [instance-history (limited-instance-history db-before type id)]
       (cond
         (empty? instance-history) res
 
@@ -258,7 +276,7 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (add-purge-entries res tid id t instance-history)))))
+        (add-purge-entries res (codec/tid type) id t instance-history)))))
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
@@ -275,7 +293,11 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (cond-> (add-purge-entries res tid id t instance-history)
+        (cond-> (-> (add-purge-entries res tid id t instance-history)
+                    ;; the current version is the only one the resource handle
+                    ;; cache can hold
+                    (update :resource-handle-updates conj
+                            [(first instance-history) true]))
           (not (identical? :delete (:op (first instance-history))))
           (-> (update :del-resources conj [type id])
               (update-in [:stats tid :total] dec-0)))))))
@@ -284,6 +306,7 @@
   (reduce
    (partial verify context t)
    {:entries []
+    :resource-handle-updates []
     :new-resources #{}
     :del-resources #{}}
    tx-cmds))
@@ -298,12 +321,14 @@
   database before the transaction. That addition yields the stats after the
   transaction as well.
 
-  Returns a map of the `:entries` and the `:stats` after the transaction."
-  [stats t {:keys [entries] increments :stats}]
+  Returns a map of the `:entries`, the `:stats` after the transaction and the
+  `:resource-handle-updates`."
+  [stats t {:keys [entries resource-handle-updates] increments :stats}]
   (with-open [_ (prom/timer tx-u/duration-seconds "stats")]
     (let [[stat-entries new-stats] (node-stats/apply-tx stats t increments)]
       {:entries (into entries stat-entries)
-       :stats new-stats})))
+       :stats new-stats
+       :resource-handle-updates resource-handle-updates})))
 
 (defn- resource-exists? [db type id]
   (when-let [{:keys [op]} (d/resource-handle db type id)]
@@ -367,10 +392,16 @@
 (defn verify-tx-cmds
   "Verifies terminal `tx-cmds`.
 
-  Returns a map of the `:entries` of the transaction outcome and the `:stats`
-  after it if it is successful or an anomaly if it fails. The stats are the ones
-  of `context` with the transaction applied, to be taken over by the node after
-  its entries were stored.
+  Returns a map of the `:entries` of the transaction outcome, the `:stats` after
+  it and the `:resource-handle-updates` if it is successful or an anomaly if it
+  fails. The stats are the ones of `context` with the transaction applied, to be
+  taken over by the node after its entries were stored.
+
+  The resource handle updates are tuples of the resource handle of each new
+  version and of each purged current version and whether that version is
+  purged, to be applied to the resource handle cache of the node, if it has
+  one. Purged versions of the history aren't included, because the cache only
+  holds current versions.
 
   The `t` is for the new transaction to commit."
   {:arglists '([context t tx-cmds])}

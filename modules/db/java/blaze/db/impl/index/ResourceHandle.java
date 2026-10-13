@@ -116,6 +116,23 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
     }
 
     /**
+     * Creates a resource handle with {@code hash}.
+     */
+    public ResourceHandle(int tid, String id, long t, Hash hash, long state) {
+        this(tid, id, t, hash.l0(), hash.l1(), hash.l2(), hash.l3(), state);
+    }
+
+    /**
+     * Returns a copy of this handle with {@code id}, which has to be equal to
+     * the id of this handle.
+     * <p>
+     * Used to share the id instance with another object.
+     */
+    public ResourceHandle withId(String id) {
+        return new ResourceHandle(tid, id, t, h0, h1, h2, h3, state);
+    }
+
+    /**
      * Returns the keyword {@code :fhir/<type>} of the type of this handle,
      * determined by its {@code tid}.
      * <p>

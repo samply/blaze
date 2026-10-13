@@ -106,9 +106,15 @@ The size of the resource cache of the DB in number of resources. (Deprecated) Re
 
 #### `DB_RESOURCE_CACHE_SIZE_RATIO` <Badge type="warning" text="Since 1.5.0"/>
 
-The ratio of JVM heap size that is allocated to the resource cache. A value of 0 disables the resource cache and a value of 0.8 is the maximum. 
+The ratio of JVM heap size that is allocated to the resource cache. A value of 0 or `false` disables the resource cache and a value of 0.8 is the maximum. Together with [`DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO`](#db-resource-handle-cache-size-ratio), the ratio is at most 0.8. If both exceed 0.8 together, both are lowered by the same amount and a warning is logged.
 
 **Default:** 0.25
+
+#### `DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO` <Badge type="warning" text="Since 1.12.0"/>
+
+The ratio of JVM heap size that is allocated to the resource handle cache. It speeds up FHIR searches, reads and CQL evaluation. A value of 0 or `false` disables the resource handle cache and a value of 0.8 is the maximum. Together with [`DB_RESOURCE_CACHE_SIZE_RATIO`](#db-resource-cache-size-ratio), the ratio is at most 0.8. If both exceed 0.8 together, both are lowered by the same amount and a warning is logged. See [Resource Handle Cache](../implementation/database.md#resource-handle-cache) for details.
+
+**Default:** 0.1
 
 #### `DB_SCALE_FACTOR` <Badge type="warning" text="Since 1.4"/>
 
@@ -192,9 +198,15 @@ The size of the resource cache of the DB in number of resources. (Deprecated) Re
 
 #### `DB_RESOURCE_CACHE_SIZE_RATIO` <Badge type="warning" text="Since 1.5.0"/>
 
-The ratio of JVM heap size that is allocated to the resource cache. A value of 0 disables the resource cache and a value of 0.8 is the maximum.
+The ratio of JVM heap size that is allocated to the resource cache. A value of 0 or `false` disables the resource cache and a value of 0.8 is the maximum. Together with [`DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO`](#db-resource-handle-cache-size-ratio), the ratio is at most 0.8. If both exceed 0.8 together, both are lowered by the same amount and a warning is logged.
 
 **Default:** 0.25
+
+#### `DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO` <Badge type="warning" text="Since 1.12.0"/>
+
+The ratio of JVM heap size that is allocated to the resource handle cache. It speeds up FHIR searches, reads and CQL evaluation. A value of 0 or `false` disables the resource handle cache and a value of 0.8 is the maximum. Together with [`DB_RESOURCE_CACHE_SIZE_RATIO`](#db-resource-cache-size-ratio), the ratio is at most 0.8. If both exceed 0.8 together, both are lowered by the same amount and a warning is logged. See [Resource Handle Cache](../implementation/database.md#resource-handle-cache) for details.
+
+**Default:** 0.1
 
 #### `DB_MAX_BACKGROUND_JOBS` <Badge type="warning" text="Since 0.8"/>
 

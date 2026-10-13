@@ -12,7 +12,9 @@
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [integrant.core :as ig]))
+   [integrant.core :as ig])
+  (:import
+   [blaze.fhir Hash]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -24,6 +26,13 @@
   (satisfies-prop 10000
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
       (= hash (hash/from-hex (str hash))))))
+
+(deftest longs-test
+  (testing "the four longs recreate the hash"
+    (satisfies-prop 1000
+      (prop/for-all [hash (s/gen :blaze.resource/hash)]
+        (= hash (Hash/fromLongs (.l0 ^Hash hash) (.l1 ^Hash hash)
+                                (.l2 ^Hash hash) (.l3 ^Hash hash)))))))
 
 (deftest equals-test
   (let [hash (hash/generate {:fhir/type :fhir/Patient :id "0"})]

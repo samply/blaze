@@ -1,9 +1,12 @@
 (ns blaze.coerce-env-test
   (:require
    [blaze.coerce-env :as ce]
-   [blaze.test-util :as tu]
+   [blaze.coerce-env-spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest]]
+   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
@@ -82,6 +85,37 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid DB block size 10000. Must be one of 4096, 8192, 16384, 32768, 65536, 131072."))
 
+  (let [conf ["DB_RESOURCE_CACHE_SIZE_RATIO" ce/coerce-cache-size-ratio "0.25"]]
+    (given (ce/bindings-and-settings {} 'resource-cache-size-ratio conf)
+      :bind-map := {'resource-cache-size-ratio 0.25}
+      [:settings "DB_RESOURCE_CACHE_SIZE_RATIO" :value] := 0.25
+      [:settings "DB_RESOURCE_CACHE_SIZE_RATIO" :default-value] := "0.25")
+
+    (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" "0"} 'resource-cache-size-ratio conf)
+      :bind-map := {'resource-cache-size-ratio 0.0})
+
+    (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" " 0.5 "} 'resource-cache-size-ratio conf)
+      :bind-map := {'resource-cache-size-ratio 0.5})
+
+    (testing "false disables the cache"
+      (doseq [value ["false" " false "]]
+        (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" value} 'resource-cache-size-ratio conf)
+          :bind-map := {'resource-cache-size-ratio 0.0})))
+
+    (testing "non-finite ratios are invalid"
+      (doseq [value ["NaN" "Infinity" "-Infinity"]]
+        (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" value} 'resource-cache-size-ratio conf)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid non-finite cache size ratio %s." value))))
+
+    (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" "-0.1"} 'resource-cache-size-ratio conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid negative cache size ratio -0.1.")
+
+    (given (ce/bindings-and-settings {"DB_RESOURCE_CACHE_SIZE_RATIO" "foo"} 'resource-cache-size-ratio conf)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Can't parse a cache size ratio from `foo`."))
+
   (let [conf ["VALIDATOR_FAILURE_MODE" ce/coerce-validator-failure-mode "tag-outcome"]]
     (given (ce/bindings-and-settings {} 'validator-failure-mode conf)
       :bind-map := {'validator-failure-mode :tag-outcome}
@@ -109,3 +143,54 @@
     (given (ce/bindings-and-settings {"VALIDATOR_FAILURE_MODE" "foo"} 'validator-failure-mode conf)
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid validator failure mode `foo`. Must be one of tag-only, tag-outcome or reject.")))
+
+(defn- approx= [a b]
+  (< (abs (- (double a) (double b))) 1e-9))
+
+(defn- ratios [bind-map]
+  ((juxt #(get % 'resource-cache-size-ratio)
+         #(get % 'resource-handle-cache-size-ratio))
+   bind-map))
+
+(deftest limit-cache-size-ratios-test
+  (testing "keeps ratios which fit together into 0.8"
+    (let [bind-map {'resource-cache-size-ratio 0.25
+                    'resource-handle-cache-size-ratio 0.1
+                    'db-scale-factor 1}]
+      (is (= bind-map (ce/limit-cache-size-ratios bind-map)))))
+
+  (testing "lowers both ratios by the same amount if they exceed 0.8 together"
+    (let [[rc rhc] (ratios (ce/limit-cache-size-ratios
+                            {'resource-cache-size-ratio 0.6
+                             'resource-handle-cache-size-ratio 0.4}))]
+      (is (approx= 0.5 rc))
+      (is (approx= 0.3 rhc))))
+
+  (testing "constrains each ratio to 0.8 first"
+    (let [[rc rhc] (ratios (ce/limit-cache-size-ratios
+                            {'resource-cache-size-ratio 1.0
+                             'resource-handle-cache-size-ratio 0.1}))]
+      (is (approx= 0.75 rc))
+      (is (approx= 0.05 rhc))))
+
+  (testing "a disabled resource handle cache keeps the ratio of the resource
+            cache"
+    (let [bind-map {'resource-cache-size-ratio 0.8
+                    'resource-handle-cache-size-ratio 0.0}]
+      (is (= bind-map (ce/limit-cache-size-ratios bind-map)))))
+
+  (testing "keeps the other bindings"
+    (is (= 4 (get (ce/limit-cache-size-ratios
+                   {'resource-cache-size-ratio 0.6
+                    'resource-handle-cache-size-ratio 0.4
+                    'db-scale-factor 4})
+                  'db-scale-factor))))
+
+  (testing "the limited ratios are never negative and fit together into 0.8"
+    (satisfies-prop 1000
+      (prop/for-all [rc (gen/double* {:min 0 :max 2 :NaN? false})
+                     rhc (gen/double* {:min 0 :max 2 :NaN? false})]
+        (let [[rc rhc] (ratios (ce/limit-cache-size-ratios
+                                {'resource-cache-size-ratio rc
+                                 'resource-handle-cache-size-ratio rhc}))]
+          (and (<= 0 rc) (<= 0 rhc) (<= (+ rc rhc) (+ 0.8 1e-9))))))))

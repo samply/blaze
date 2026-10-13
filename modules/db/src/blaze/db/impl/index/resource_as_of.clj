@@ -9,6 +9,7 @@
    [blaze.db.impl.index.util :refer [read-t!]]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
+   [blaze.db.resource-handle-cache :as rhc]
    [blaze.fhir.hash :as hash])
   (:import
    [com.google.common.primitives Ints]
@@ -361,15 +362,60 @@
                base-t
                value-buf))))))))
 
-(defn resource-handle
-  "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
-  found and changed after `since-t`."
-  [snapshot t since-t tid id]
+(defn- since
+  "Returns `handle` if it was changed after `since-t`."
+  [since-t handle]
+  (when (< (long since-t) (long (:t handle)))
+    handle))
+
+(defn- cached-resource-handle
+  "Returns the resource handle with `tid` and `id` at `t` from `cache` when
+  found and changed after `since-t`.
+
+  Calls `seek` on a cache miss, inserting the handle it returns into `cache`."
+  [cache seek tid id t since-t]
+  (if-let [handle (rhc/get cache tid (codec/id-string id) t)]
+    (since since-t handle)
+    (when-let [handle (seek tid id)]
+      (rhc/put! cache t handle)
+      (since since-t handle))))
+
+(defn- resource-handle-fn
+  "Returns a function of `tid` and `id` that returns the resource handle when
+  found in `batch-db` and changed after its `since-t`.
+
+  Uses the resource handle cache of `batch-db` if it has one, seeking with
+  `iter` otherwise and on cache misses."
+  {:arglists '([batch-db iter])}
+  [{:keys [resource-handle-cache t since-t]} iter]
+  (let [target-buf (bb/allocate max-key-size)
+        key-buf (bb/allocate max-key-size)
+        value-buf (bb/allocate max-value-size)]
+    (if resource-handle-cache
+      (let [seek #(resource-handle* iter target-buf key-buf value-buf %1 %2 t 0)]
+        #(cached-resource-handle resource-handle-cache seek %1 %2 t since-t))
+      #(resource-handle* iter target-buf key-buf value-buf %1 %2 t since-t))))
+
+(defn- seek-resource-handle [snapshot t since-t tid id]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
         value-buf (bb/allocate max-value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
       (resource-handle* iter target-buf key-buf value-buf tid id t since-t))))
+
+(defn resource-handle
+  "Returns the resource handle with `tid` and `id` when found in `batch-db` and
+  changed after its `since-t`.
+
+  Uses the resource handle cache of `batch-db` if it has one. Opens an iterator
+  only if the handle has to be seeked."
+  {:arglists '([batch-db tid id])}
+  [{:keys [snapshot resource-handle-cache t since-t]} tid id]
+  (if resource-handle-cache
+    (cached-resource-handle
+     resource-handle-cache #(seek-resource-handle snapshot t 0 %1 %2)
+     tid id t since-t)
+    (seek-resource-handle snapshot t since-t tid id)))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
@@ -377,19 +423,16 @@
 
   Can only be used by a single thread."
   {:arglists '([batch-db])}
-  [{:keys [snapshot t since-t]}]
+  [{:keys [snapshot] :as batch-db}]
   (fn [rf]
-    (let [target-buf (bb/allocate max-key-size)
-          key-buf (bb/allocate max-key-size)
-          value-buf (bb/allocate max-value-size)
-          iter (kv/new-iterator snapshot :resource-as-of-index)]
+    (let [iter (kv/new-iterator snapshot :resource-as-of-index)
+          resource-handle (resource-handle-fn batch-db iter)]
       (fn
         ([result]
          (.close ^AutoCloseable iter)
          (rf result))
         ([result [tid id]]
-         (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                           tid id t since-t)]
+         (if-let [handle (resource-handle tid id)]
            (rf result handle)
            result))))))
 
@@ -403,19 +446,16 @@
   {:arglists '([batch-db tid] [batch-db tid id-extractor matcher])}
   ([batch-db tid]
    (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))
-  ([{:keys [snapshot t since-t]} tid id-extractor matcher]
+  ([{:keys [snapshot] :as batch-db} tid id-extractor matcher]
    (fn [rf]
-     (let [target-buf (bb/allocate max-key-size)
-           key-buf (bb/allocate max-key-size)
-           value-buf (bb/allocate max-value-size)
-           iter (kv/new-iterator snapshot :resource-as-of-index)]
+     (let [iter (kv/new-iterator snapshot :resource-as-of-index)
+           resource-handle (resource-handle-fn batch-db iter)]
        (fn
          ([result]
           (.close ^AutoCloseable iter)
           (rf result))
          ([result input]
-          (if-let [handle (resource-handle* iter target-buf key-buf value-buf
-                                            tid (id-extractor input) t since-t)]
+          (if-let [handle (resource-handle tid (id-extractor input))]
             (if (matcher input handle)
               (rf result handle)
               result)

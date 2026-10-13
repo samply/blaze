@@ -5,11 +5,14 @@
    [blaze.async.comp-spec]
    [blaze.async.flow :as flow]
    [blaze.async.flow-spec]
+   [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
+   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db-spec]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.patient-last-change-spec]
+   [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
@@ -24,12 +27,15 @@
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
    [blaze.db.node.version :as version]
    [blaze.db.resource-cache.spec]
+   [blaze.db.resource-handle-cache :as rhc]
+   [blaze.db.resource-handle-cache-spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.spec]
-   [blaze.db.test-util :refer [config wait-for]]
+   [blaze.db.test-util :refer [config resource-handle-cache-config wait-for
+                               with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
@@ -51,6 +57,7 @@
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
   (:import
+   [com.github.benmanes.caffeine.cache.stats CacheStats]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
 
@@ -1347,3 +1354,238 @@
             :error-t := 1)))
 
       (is (= (inc observations) (index-resources-observations))))))
+
+(def ^:private patient-tid (codec/tid "Patient"))
+
+(defn- cached-handle [cache id t]
+  (rhc/get cache patient-tid id t))
+
+(deftest resource-handle-cache-test
+  (testing "the indexer doesn't insert"
+    (with-system-data [{:blaze.db/keys [resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       ;; the put verifies against the existing handle
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       ;; the conditional create searches for the existing Patient
+       [[:create {:fhir/type :fhir/Patient :id "1"} [["gender" "male"]]]]]
+
+      (is (nil? (cached-handle resource-handle-cache "0" 3)))
+      (is (zero? (ccp/-estimated-size resource-handle-cache)))))
+
+  (testing "reading a resource handle inserts it"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given (d/resource-handle (d/db node) "Patient" "0")
+        :id := "0"
+        :t := 1)
+
+      (given (cached-handle resource-handle-cache "0" 1)
+        :id := "0"
+        :t := 1)
+
+      (testing "reading it again hits the cache"
+        (let [hit-count (.hitCount ^CacheStats (ccp/-stats resource-handle-cache))]
+          (given (d/resource-handle (d/db node) "Patient" "0")
+            :id := "0"
+            :t := 1)
+
+          (given (ccp/-stats resource-handle-cache)
+            CacheStats/.hitCount := (inc hit-count))))))
+
+  (testing "a missing resource isn't inserted"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (is (nil? (d/resource-handle (d/db node) "Patient" "1")))
+      (is (zero? (ccp/-estimated-size resource-handle-cache)))))
+
+  (testing "a query inserts the resource handles it resolves"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]]]
+
+      (given (vec @(d/type-query (d/db node) "Patient" [["gender" "male"]]))
+        count := 1
+        [0 :id] := "0")
+
+      (given (cached-handle resource-handle-cache "0" 1)
+        :id := "0"
+        :t := 1)
+      (is (nil? (cached-handle resource-handle-cache "1" 1)))
+
+      (testing "running it again gives the same result"
+        (given (vec @(d/type-query (d/db node) "Patient" [["gender" "male"]]))
+          count := 1
+          [0 :id] := "0"))))
+
+  (testing "the indexer updates the entries present"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [db-before (d/db node)]
+        (d/resource-handle db-before "Patient" "0")
+
+        (let [db-after @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                                 :gender #fhir/code "male"}]])]
+
+          (given (cached-handle resource-handle-cache "0" 2)
+            :t := 2
+            :num-changes := 2
+            :op := :put)
+
+          (testing "the database value after the update sees the new version"
+            (given (d/resource-handle db-after "Patient" "0")
+              :t := 2))
+
+          (testing "the database value before the update sees the old version"
+            (given (d/resource-handle db-before "Patient" "0")
+              :t := 1))
+
+          (testing "an as-of database value sees the old version"
+            (given (d/resource-handle (d/as-of db-after 1) "Patient" "0")
+              :t := 1))
+
+          (testing "readers of the old version don't replace the new one"
+            (given (cached-handle resource-handle-cache "0" 2)
+              :t := 2))))))
+
+  (testing "the indexer updates the entry of a deleted resource"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (d/resource-handle (d/db node) "Patient" "0")
+
+      (let [db-after @(d/transact node [[:delete "Patient" "0"]])]
+
+        (given (cached-handle resource-handle-cache "0" 2)
+          :t := 2
+          :op := :delete)
+
+        (given (d/resource-handle db-after "Patient" "0")
+          :t := 2
+          :op := :delete)
+
+        (is (empty? (vec (d/type-list db-after "Patient")))))))
+
+  (testing "the indexer removes the entry of a purged resource"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [db-before (d/db node)]
+        (d/resource-handle db-before "Patient" "0")
+
+        (let [db-after @(d/transact node [[:patient-purge "0"]])]
+
+          (is (nil? (cached-handle resource-handle-cache "0" 2)))
+          (is (nil? (d/resource-handle db-after "Patient" "0")))
+
+          (testing "the database value before the purge still sees the resource"
+            (given (d/resource-handle db-before "Patient" "0")
+              :t := 1))
+
+          (testing "readers of the purged version don't insert it again"
+            (is (nil? (cached-handle resource-handle-cache "0" 2))))))))
+
+  (testing "the indexer removes the entry of a purged resource with two versions"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+
+      (d/resource-handle (d/db node) "Patient" "0")
+
+      (given (cached-handle resource-handle-cache "0" 2)
+        :t := 2)
+
+      (let [db-after @(d/transact node [[:patient-purge "0"]])]
+
+        (is (nil? (cached-handle resource-handle-cache "0" 3)))
+        (is (nil? (d/resource-handle db-after "Patient" "0"))))))
+
+  (testing "the indexer keeps the entry if only the history is deleted"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+
+      (d/resource-handle (d/db node) "Patient" "0")
+
+      (let [db-after @(d/transact node [[:delete-history "Patient" "0"]])]
+
+        (given (cached-handle resource-handle-cache "0" 3)
+          :t := 2)
+
+        (given (d/resource-handle db-after "Patient" "0")
+          :t := 2))))
+
+  (testing "an as-of reader doesn't insert"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:create {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (given (d/resource-handle (d/as-of (d/db node) 1) "Patient" "0")
+        :t := 1)
+
+      (is (nil? (cached-handle resource-handle-cache "0" 2)))))
+
+  (testing "a since database value doesn't return a cached handle not changed since"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       (assoc-in resource-handle-cache-config
+                                 [::tx-log/local :clock]
+                                 (ig/ref :blaze.test/step-clock))]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:create {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (let [db (d/db node)
+            since-db (d/since db (:blaze.db.tx/instant (d/tx db 1)))]
+        (d/resource-handle db "Patient" "0")
+        (d/resource-handle db "Patient" "1")
+
+        (testing "both handles are cached"
+          (is (cached-handle resource-handle-cache "0" 2))
+          (is (cached-handle resource-handle-cache "1" 2)))
+
+        (is (nil? (d/resource-handle since-db "Patient" "0")))
+        (given (d/resource-handle since-db "Patient" "1")
+          :t := 2)))))
+
+(defn- with-existing-patient-versions
+  "Returns `config` with an index store already containing two transactions
+  creating and updating the Patient with id 0."
+  [config]
+  (let [id (codec/id-byte-string "0")
+        hash-1 (hash/generate {:fhir/type :fhir/Patient :id "0"})
+        hash-2 (hash/generate {:fhir/type :fhir/Patient :id "0"
+                               :gender #fhir/code "male"})]
+    (assoc-in config [[::kv/mem :blaze.db/index-kv-store] :init-data]
+              (-> [(tx-success/index-entry 1 Instant/EPOCH)
+                   (tx-success/index-entry 2 Instant/EPOCH)
+                   [:default version/key (version/encode-value 0)]]
+                  (into (rts/index-entries patient-tid id 1 hash-1 1 :create))
+                  (into (rts/index-entries patient-tid id 2 hash-2 2 :put))))))
+
+(deftest resource-handle-cache-existing-data-test
+  (with-system [{:blaze.db/keys [node resource-handle-cache]}
+                (with-existing-patient-versions resource-handle-cache-config)]
+
+    (testing "a reader at an older t than the start doesn't insert"
+      (given (d/resource-handle (d/as-of (d/db node) 1) "Patient" "0")
+        :t := 1)
+
+      (is (nil? (cached-handle resource-handle-cache "0" 2))))
+
+    (testing "a reader at the t of the start inserts"
+      (given (d/resource-handle (d/db node) "Patient" "0")
+        :t := 2)
+
+      (given (cached-handle resource-handle-cache "0" 2)
+        :t := 2))))

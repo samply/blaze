@@ -1,6 +1,7 @@
 (ns blaze.system-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.coerce-env :as ce]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type.system :refer [parse-date-time]]
@@ -35,7 +36,7 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-thrown]]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -125,20 +126,54 @@
       "FOO_PASS_BAR")))
 
 (deftest merge-features-test
+  (testing "the args spec rejects a bind-map that isn't a map"
+    (given-thrown (system/merge-features {:base-config {} :features []} {} nil)
+      :clojure.spec.alpha/failure := :instrument))
+
   (testing "vector"
     (given (system/merge-features
             {:base-config {:foo [:a]}
              :features [{:key :bar :name "bar" :toggle "T" :config {:foo [:b]}}]}
-            {"T" "true"})
+            {"T" "true"} {})
       :foo := [:a :b]))
 
   (testing "nested map"
     (given (system/merge-features
             {:base-config {:foo {:default {:read {}}}}
              :features [{:key :bar :name "bar" :toggle "T" :config {:foo {:default {:delete-history {}}}}}]}
-            {"T" "true"})
+            {"T" "true"} {})
       :foo := {:default {:read {}
-                         :delete-history {}}})))
+                         :delete-history {}}}))
+
+  (testing "feature enabled by a positive bind var"
+    (let [blaze-edn {:base-config {}
+                     :features [{:key :bar :name "bar" :toggle "T"
+                                 :enabled-if-pos 'ratio :config {:foo [:a]}}]}]
+      (testing "is enabled with a positive value"
+        (given (system/merge-features blaze-edn {} {'ratio 0.1})
+          :foo := [:a]
+          [:blaze/admin-api :features 0 :enabled] := true))
+
+      (testing "is disabled with zero"
+        (given (system/merge-features blaze-edn {} {'ratio 0.0})
+          :foo := nil
+          [:blaze/admin-api :features 0 :enabled] := false))
+
+      (testing "ignores the env var"
+        (doseq [value ["true" "false" "0" "0.1"]]
+          (given (system/merge-features blaze-edn {"T" value} {'ratio 0.0})
+            :foo := nil))))
+
+    (testing "the env var false disables the feature"
+      (let [blaze-edn {:base-config {}
+                       :features [{:key :bar :name "bar" :toggle "T"
+                                   :enabled-if-pos 'ratio :config {:foo [:a]}}]}
+            env {"T" "false"}
+            {:keys [bind-map]} (ce/bindings-and-settings
+                                env 'ratio ["T" ce/coerce-cache-size-ratio "0.1"])]
+        (given (system/merge-features blaze-edn env bind-map)
+          :foo := nil
+          [:blaze/admin-api :features 0 :enabled] := false)))))
 
 (def ^:private config
   (assoc
