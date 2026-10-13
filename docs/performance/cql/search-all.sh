@@ -7,40 +7,22 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 compose_file="$1"
 
 restart "$compose_file"
-cql/search.sh observation-17861-6
-cql/search.sh observation-17861-6 false
-cql/search.sh observation-17861-6 false
-cql/search.sh observation-17861-6 false
+profile "$compose_file" "observation-17861-6" search-repeatedly observation-17861-6 4
 
 restart "$compose_file"
-cql/search.sh observation-8310-5
-cql/search.sh observation-8310-5 false
-cql/search.sh observation-8310-5 false
-cql/search.sh observation-8310-5 false
+profile "$compose_file" "observation-8310-5" search-repeatedly observation-8310-5 4
 
 restart "$compose_file"
-cql/search.sh observation-72514-3
-cql/search.sh observation-72514-3 false
-cql/search.sh observation-72514-3 false
-cql/search.sh observation-72514-3 false
+profile "$compose_file" "observation-72514-3" search-repeatedly observation-72514-3 4
 
 restart "$compose_file"
-cql/search.sh observation-body-weight-10
-cql/search.sh observation-body-weight-10 false
-cql/search.sh observation-body-weight-10 false
-cql/search.sh observation-body-weight-10 false
+profile "$compose_file" "observation-body-weight-10" search-repeatedly observation-body-weight-10 4
 
 restart "$compose_file"
-cql/search.sh observation-body-weight-50
-cql/search.sh observation-body-weight-50 false
-cql/search.sh observation-body-weight-50 false
-cql/search.sh observation-body-weight-50 false
+profile "$compose_file" "observation-body-weight-50" search-repeatedly observation-body-weight-50 4
 
 restart "$compose_file"
-cql/search.sh observation-body-weight-100
-cql/search.sh observation-body-weight-100 false
-cql/search.sh observation-body-weight-100 false
-cql/search.sh observation-body-weight-100 false
+profile "$compose_file" "observation-body-weight-100" search-repeatedly observation-body-weight-100 4
 
 #restart "$compose_file"
 #cql/search.sh hemoglobin-date-age
@@ -58,61 +40,31 @@ cql/search.sh observation-body-weight-100 false
 #cql/search.sh condition-two
 
 restart "$compose_file"
-cql/search.sh condition-ten-frequent
-cql/search.sh condition-ten-frequent false
-cql/search.sh condition-ten-frequent false
-cql/search.sh condition-ten-frequent false
+profile "$compose_file" "condition-ten-frequent" search-repeatedly condition-ten-frequent 4
 
 restart "$compose_file"
-cql/search.sh condition-ten-rare
-cql/search.sh condition-ten-rare false
-cql/search.sh condition-ten-rare false
-cql/search.sh condition-ten-rare false
+profile "$compose_file" "condition-ten-rare" search-repeatedly condition-ten-rare 4
 
 restart "$compose_file"
-cql/search.sh condition-ten-frequent-vs
-cql/search.sh condition-ten-frequent-vs false
-cql/search.sh condition-ten-frequent-vs false
-cql/search.sh condition-ten-frequent-vs false
+profile "$compose_file" "condition-ten-frequent-vs" search-repeatedly condition-ten-frequent-vs 4
 
 restart "$compose_file"
-cql/search.sh condition-ten-rare-vs
-cql/search.sh condition-ten-rare-vs false
-cql/search.sh condition-ten-rare-vs false
-cql/search.sh condition-ten-rare-vs false
+profile "$compose_file" "condition-ten-rare-vs" search-repeatedly condition-ten-rare-vs 4
 
 restart "$compose_file"
-cql/search.sh condition-all
-cql/search.sh condition-all false
-cql/search.sh condition-all false
-cql/search.sh condition-all false
+profile "$compose_file" "condition-all" search-repeatedly condition-all 4
 
 restart "$compose_file"
-cql/search.sh inpatient-stress
-cql/search.sh inpatient-stress false
-cql/search.sh inpatient-stress false
-cql/search.sh inpatient-stress false
+profile "$compose_file" "inpatient-stress" search-repeatedly inpatient-stress 4
 
 restart "$compose_file"
-cql/search.sh medication-1
-cql/search.sh medication-1 false
-cql/search.sh medication-1 false
-cql/search.sh medication-1 false
+profile "$compose_file" "medication-1" search-repeatedly medication-1 4
 
 restart "$compose_file"
-cql/search.sh medication-7
-cql/search.sh medication-7 false
-cql/search.sh medication-7 false
-cql/search.sh medication-7 false
+profile "$compose_file" "medication-7" search-repeatedly medication-7 4
 
 restart "$compose_file"
-cql/search.sh medication-ten
-cql/search.sh medication-ten false
-cql/search.sh medication-ten false
-cql/search.sh medication-ten false
+profile "$compose_file" "medication-ten" search-repeatedly medication-ten 4
 
 restart "$compose_file"
-cql/search.sh cardiometabolic-risk
-cql/search.sh cardiometabolic-risk false
-cql/search.sh cardiometabolic-risk false
-cql/search.sh cardiometabolic-risk false
+profile "$compose_file" "cardiometabolic-risk" search-repeatedly cardiometabolic-risk 4

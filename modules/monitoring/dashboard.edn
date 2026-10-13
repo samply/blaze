@@ -88,6 +88,40 @@
      [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-cache\"}[$__rate_interval])"
        :legend ""}]}]}
 
+  {:title "Resource Handle Cache"
+   :panels
+   [{:title "Estimated Size"
+     :unit "short"
+     :width 6
+     :legend false
+     :queries
+     [{:expr "blaze_cache_estimated_size{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}"
+       :legend ""}]}
+    {:title "Hit Ratio"
+     :unit "percentunit"
+     :width 6
+     :max 1
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval]) / (rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval]) + rate(blaze_cache_misses_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval]))"
+       :legend ""}]}
+    {:title "Lookups"
+     :unit "ops"
+     :width 6
+     :queries
+     [{:expr "rate(blaze_cache_hits_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval])"
+       :legend "Hits"}
+      {:expr "rate(blaze_cache_misses_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval])"
+       :legend "Misses"}]}
+    {:title "Evictions"
+     :unit "ops"
+     :width 6
+     :span-nulls true
+     :legend false
+     :queries
+     [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"resource-handle-cache\"}[$__rate_interval])"
+       :legend ""}]}]}
+
   {:title "RocksDB Block Cache"
    :panels
    [{:title "Usage Bytes"

@@ -7,8 +7,11 @@
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
-   [juxt.iota :refer [given]]))
+   [juxt.iota :refer [given]])
+  (:import
+   [java.util List]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
@@ -65,7 +68,7 @@
                 (source-panels source))))
 
   (testing "panel count"
-    (is (= 115 (count (source-panels source))))))
+    (is (= 119 (count (source-panels source))))))
 
 (deftest indexer-utilization-panel-test
   (testing "the indexer utilization is shown as two series"
@@ -80,6 +83,23 @@
         (is (str/includes? (:expr working) "poll-tx-log"))
         (is (str/includes? (:expr working) "await-resources"))))))
 
+(deftest resource-handle-cache-row-test
+  (let [rows (:rows source)
+        row-titles (mapv :title rows)
+        idx (.indexOf ^List row-titles "Resource Handle Cache")
+        {:keys [panels]} (get rows idx)]
+
+    (testing "follows the resource cache row"
+      (is (= "Resource Cache" (get row-titles (dec idx)))))
+
+    (testing "all queries select the resource handle cache"
+      (is (every? #(str/includes? (:expr %) "name=\"resource-handle-cache\"")
+                  (mapcat :queries panels))))
+
+    (testing "has no loads panel, because the cache doesn't load entries"
+      (is (= ["Estimated Size" "Hit Ratio" "Lookups" "Evictions"]
+             (mapv :title panels))))))
+
 (deftest dashboard-test
   (testing "of the real source"
     (let [dashboard (dashboard/dashboard source)]
@@ -90,17 +110,17 @@
         (is (not (contains? dashboard "uid"))))
 
       (testing "has one row panel per row"
-        (is (= 16 (count (get dashboard "panels"))))
+        (is (= 17 (count (get dashboard "panels"))))
         (is (every? #(= "row" (get % "type")) (get dashboard "panels"))))
 
       (testing "has all panels nested in the row panels"
-        (is (= 115 (count (panels dashboard)))))
+        (is (= 119 (count (panels dashboard)))))
 
       (testing "every panel is a timeseries panel"
         (is (every? #(= "timeseries" (get % "type")) (panels dashboard))))
 
       (testing "all ids are distinct"
-        (is (= 131 (count (distinct (map #(get % "id")
+        (is (= 136 (count (distinct (map #(get % "id")
                                          (concat (get dashboard "panels")
                                                  (panels dashboard))))))))
 

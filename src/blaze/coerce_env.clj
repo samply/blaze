@@ -3,7 +3,10 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.log]
    [blaze.spec]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [taoensso.timbre :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn coerce-base-url [s]
   (cond-> s (str/ends-with? s "/") (subs 0 (dec (count s)))))
@@ -64,6 +67,52 @@
     (if (valid-db-block-sizes i)
       i
       (ba/incorrect (format "Invalid DB block size %d. Must be one of %s." i (str/join ", " (sort valid-db-block-sizes)))))))
+
+(defn coerce-cache-size-ratio
+  "Coerces `s` to a finite, non-negative ratio of the JVM heap size allocated
+  to a cache. The word `false` disables the cache with a ratio of zero."
+  [s]
+  (let [s (str/trim s)]
+    (if (= "false" s)
+      0.0
+      (if-some [ratio (parse-double s)]
+        (cond
+          (not (Double/isFinite ratio))
+          (ba/incorrect (format "Invalid non-finite cache size ratio %s." ratio))
+
+          (neg? ratio)
+          (ba/incorrect (format "Invalid negative cache size ratio %s." ratio))
+
+          :else ratio)
+        (ba/incorrect (format "Can't parse a cache size ratio from `%s`." s))))))
+
+(def ^:private ^:const max-cache-size-ratio
+  "The maximum ratio of the JVM heap size the resource cache and the resource
+  handle cache may take together."
+  0.8)
+
+(defn limit-cache-size-ratios
+  "Limits the ratios of the resource cache and the resource handle cache in
+  `bind-map`, so that both caches take at most 0.8 of the JVM heap together.
+
+  Constrains each ratio to 0.8 first. If both exceed 0.8 together, lowers both
+  by the same amount and logs a warning. A disabled resource handle cache has a
+  ratio of zero and so leaves the ratio of the resource cache untouched."
+  [bind-map]
+  (let [rc (min max-cache-size-ratio (double (bind-map 'resource-cache-size-ratio)))
+        rhc (min max-cache-size-ratio (double (bind-map 'resource-handle-cache-size-ratio)))
+        excess (- (+ rc rhc) max-cache-size-ratio)]
+    (if (pos? excess)
+      (let [rc' (- rc (/ excess 2))
+            rhc' (- rhc (/ excess 2))]
+        (log/warn (format "The ratios DB_RESOURCE_CACHE_SIZE_RATIO (%.3f) and DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO (%.3f) exceed %.1f together. Lower them to %.3f and %.3f."
+                          rc rhc max-cache-size-ratio rc' rhc'))
+        (assoc bind-map
+               'resource-cache-size-ratio rc'
+               'resource-handle-cache-size-ratio rhc'))
+      (assoc bind-map
+             'resource-cache-size-ratio rc
+             'resource-handle-cache-size-ratio rhc))))
 
 (defn get-blank [m k default]
   (let [v (get m k)]

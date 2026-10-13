@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Under ideal conditions, Blaze can execute a FHIR Search query for a single code at a rate of **6 million resources per second** and export the matching resources at **200,000 resources per second**. This performance is independent of the total number of resources held in the database.
+Under ideal conditions, Blaze can execute a FHIR Search query for a single code at a rate of **9.5 million resources per second** and export the matching resources at **280,000 resources per second**. This performance is independent of the total number of resources held in the database.
 
 ## Systems
 
@@ -55,18 +55,18 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 100k    | 8310-5  |  115 k |     0.07 |  0.002 |  1.64 M |
 | LEA58  | 100k    | 55758-7 |  1.0 M |     0.54 |  0.020 |  1.85 M |
 | LEA58  | 100k    | 72514-3 |  2.7 M |     1.43 |  0.045 |  1.89 M |
-| LEA47  | 1M      | 8310-5  |  1.1 M |     0.42 |  0.010 |   2.8 M |
+| LEA47  | 1M      | 8310-5  |  1.2 M |     0.42 |  0.010 |   2.8 M |
 | LEA47  | 1M      | 55758-7 | 10.1 M |     3.85 |  0.068 |   2.6 M |
 | LEA47  | 1M      | 72514-3 | 27.3 M |     8.96 |  0.098 |   3.0 M |
-| LEA58  | 1M      | 8310-5  |  1.1 M |     0.39 |  0.009 |   3.0 M |
+| LEA58  | 1M      | 8310-5  |  1.2 M |     0.39 |  0.009 |   3.0 M |
 | LEA58  | 1M      | 55758-7 | 10.1 M |     2.84 |  0.026 |   3.6 M |
 | LEA58  | 1M      | 72514-3 | 27.3 M |     7.52 |  0.138 |   3.6 M |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     0.19 |  0.002 |   6.1 M |
-| LEA79  | 1M      | 55758-7 | 10.1 M |     1.46 |  0.023 |   6.9 M |
-| LEA79  | 1M      | 72514-3 | 27.3 M |     3.95 |  0.018 |   6.9 M |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     0.18 |  0.010 |   6.3 M |
-| A5N46  | 1M      | 55758-7 | 10.1 M |     2.47 |  0.420 |   4.1 M |
-| A5N46  | 1M      | 72514-3 | 27.3 M |     4.12 |  0.093 |   6.6 M |
+| LEA79  | 1M      | 8310-5  |  1.2 M |     0.16 |  0.015 |   7.5 M |
+| LEA79  | 1M      | 55758-7 | 10.1 M |     1.27 |  0.083 |   8.0 M |
+| LEA79  | 1M      | 72514-3 | 27.3 M |     3.39 |  0.127 |   8.1 M |
+| A5N46  | 1M      | 8310-5  |  1.2 M |     0.12 |  0.009 |   9.5 M |
+| A5N46  | 1M      | 55758-7 | 10.1 M |     1.19 |  0.049 |   8.5 M |
+| A5N46  | 1M      | 72514-3 | 27.3 M |     3.87 |  0.082 |   7.1 M |
 
 ¹ resources per second
 
@@ -75,7 +75,7 @@ The script `simple-code-search.sh` is used.
 <BarChart src="fhir-search/chart-data/simple-code-search-download-1M.txt"
   title="Simple Code Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="230"
+  y-label="Resources/s" :y-col="4" :y-max="300"
   :series="['0.2 % hits', '2 % hits', '5 % hits']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -89,18 +89,18 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 100k    | 8310-5  |  115 k |     1.96 |  0.039 | 58.67 k |  
 | LEA58  | 100k    | 55758-7 |  1.0 M |    16.61 |  0.161 | 60.20 k |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    43.84 |  0.124 | 61.59 k |         
-| LEA47  | 1M      | 8310-5  |  1.1 M |    19.08 |  0.095 |  60.7 k |         
+| LEA47  | 1M      | 8310-5  |  1.2 M |    19.08 |  0.095 |  60.7 k |         
 | LEA47  | 1M      | 55758-7 | 10.1 M |   296.37 | 46.454 |  34.2 k |         
 | LEA47  | 1M      | 72514-3 | 27.3 M |   658.56 |  6.587 |  41.5 k |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    20.70 |  0.320 |  56.0 k |         
+| LEA58  | 1M      | 8310-5  |  1.2 M |    20.70 |  0.320 |  56.0 k |         
 | LEA58  | 1M      | 55758-7 | 10.1 M |   171.60 |  4.241 |  59.1 k |         
 | LEA58  | 1M      | 72514-3 | 27.3 M |   497.29 | 26.969 |  55.0 k |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     9.36 |  0.052 | 123.9 k |         
-| LEA79  | 1M      | 55758-7 | 10.1 M |    63.22 |  2.045 | 160.4 k |         
-| LEA79  | 1M      | 72514-3 | 27.3 M |   145.33 |  0.361 | 188.1 k |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     6.03 |  0.054 | 192.2 k |         
-| A5N46  | 1M      | 55758-7 | 10.1 M |    83.25 |  0.142 | 121.8 k |        
-| A5N46  | 1M      | 72514-3 | 27.3 M |   126.34 |  0.880 | 216.4 k |
+| LEA79  | 1M      | 8310-5  |  1.2 M |     4.46 |  0.036 | 259.9 k |
+| LEA79  | 1M      | 55758-7 | 10.1 M |    35.34 |  0.077 | 286.9 k |
+| LEA79  | 1M      | 72514-3 | 27.3 M |    97.35 |  0.385 | 280.9 k |
+| A5N46  | 1M      | 8310-5  |  1.2 M |     4.12 |  0.085 | 281.3 k |
+| A5N46  | 1M      | 55758-7 | 10.1 M |    42.37 |  0.938 | 239.3 k |
+| A5N46  | 1M      | 72514-3 | 27.3 M |   180.86 |  0.823 | 151.2 k |
 
 ¹ resources per second
 
@@ -119,18 +119,18 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA58  | 100k    | 8310-5  |  115 k |     1.28 |  0.017 |  89.84 k |
 | LEA58  | 100k    | 55758-7 |  1.0 M |    10.55 |  0.209 |  94.79 k |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    27.15 |  0.749 |  99.45 k |
-| LEA47  | 1M      | 8310-5  |  1.1 M |    13.67 |  0.204 |   84.8 k |          
+| LEA47  | 1M      | 8310-5  |  1.2 M |    13.67 |  0.204 |   84.8 k |          
 | LEA47  | 1M      | 55758-7 | 10.1 M |   338.50 |  7.638 |   30.0 k |          
 | LEA47  | 1M      | 72514-3 | 27.3 M |   546.44 |  7.829 |   50.0 k |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    15.42 |  0.208 |   75.1 k |          
+| LEA58  | 1M      | 8310-5  |  1.2 M |    15.42 |  0.208 |   75.1 k |          
 | LEA58  | 1M      | 55758-7 | 10.1 M |   124.03 |  1.024 |   81.8 k |          
 | LEA58  | 1M      | 72514-3 | 27.3 M |   343.16 |  1.412 |   79.7 k |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     8.80 |  0.051 |  131.7 k |          
-| LEA79  | 1M      | 55758-7 | 10.1 M |    61.08 |  0.428 |  166.0 k |          
-| LEA79  | 1M      | 72514-3 | 27.3 M |   143.01 |  0.529 |  191.2 k |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     5.53 |  0.050 |  209.6 k |          
-| A5N46  | 1M      | 55758-7 | 10.1 M |    55.03 |  0.039 |  184.3 k |          
-| A5N46  | 1M      | 72514-3 | 27.3 M |   121.83 |  0.050 |  224.4 k |          
+| LEA79  | 1M      | 8310-5  |  1.2 M |     3.18 |  0.037 |  364.9 k |
+| LEA79  | 1M      | 55758-7 | 10.1 M |    25.65 |  0.059 |  395.4 k |
+| LEA79  | 1M      | 72514-3 | 27.3 M |    73.66 |  0.039 |  371.2 k |
+| A5N46  | 1M      | 8310-5  |  1.2 M |     2.90 |  0.029 |  399.7 k |
+| A5N46  | 1M      | 55758-7 | 10.1 M |    39.04 |  0.116 |  259.7 k |
+| A5N46  | 1M      | 72514-3 | 27.3 M |   145.83 |  0.135 |  187.5 k |
 
 ¹ resources per second
 
@@ -155,8 +155,8 @@ The script `multiple-codes-search.sh` is used.
 | LEA47  | 1M      | 100   | 36.3 M |    19.32 |  0.067 |   1.9 M |
 | LEA79  | 1M      | 10    | 29.1 M |     6.41 |  0.026 |   4.5 M |
 | LEA79  | 1M      | 100   | 36.3 M |     9.86 |  0.044 |   3.7 M |
-| A5N46  | 1M      | 10    | 29.1 M |     5.90 |  0.117 |   4.9 M |
-| A5N46  | 1M      | 100   | 36.3 M |     9.41 |  0.051 |   3.8 M |
+| A5N46  | 1M      | 10    | 29.1 M |     4.58 |  0.046 |   6.4 M |
+| A5N46  | 1M      | 100   | 36.3 M |     7.61 |  0.157 |   4.8 M |
 
 ¹ resources per second
 
@@ -174,8 +174,8 @@ The script `multiple-codes-search.sh` is used.
 | LEA47  | 1M      | 100   | 36.3 M |  1663.36 |  1.855 |  21.8 k |
 | LEA79  | 1M      | 10    | 29.1 M |   162.51 |  1.068 | 178.9 k |
 | LEA79  | 1M      | 100   | 36.3 M |   276.96 |  0.693 | 131.2 k |
-| A5N46  | 1M      | 10    | 29.1 M |   136.98 |  0.230 | 212.2 k |
-| A5N46  | 1M      | 100   | 36.3 M |   264.83 |  0.417 | 137.2 k |
+| A5N46  | 1M      | 10    | 29.1 M |   187.18 |  0.314 | 155.3 k |
+| A5N46  | 1M      | 100   | 36.3 M |   286.61 |  0.507 | 126.8 k |
 
 ¹ resources per second
 
@@ -196,8 +196,8 @@ The script `multiple-codes-search-vs.sh` is used.
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
-| A5N46  | 1M      | 10    | 29.1 M |     5.89 |  0.071 |   4.9 M |
-| A5N46  | 1M      | 100   | 36.3 M |     8.80 |  0.030 |   4.1 M |
+| A5N46  | 1M      | 10    | 29.1 M |     7.68 |  0.102 |   3.8 M |
+| A5N46  | 1M      | 100   | 36.3 M |    11.07 |  0.206 |   3.3 M |
 
 ¹ resources per second
 
@@ -211,8 +211,8 @@ The script `multiple-codes-search-vs.sh` is used.
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------|-------:|---------:|-------:|--------:|
-| A5N46  | 1M      | 10    | 29.1 M |   133.84 |  0.176 | 217.2 k |
-| A5N46  | 1M      | 100   | 36.3 M |   266.94 |  0.284 | 136.0 k |
+| A5N46  | 1M      | 10    | 29.1 M |   181.58 |  0.086 | 160.1 k |
+| A5N46  | 1M      | 100   | 36.3 M |   289.41 |  0.964 | 125.5 k |
 
 ¹ resources per second
 
@@ -297,6 +297,7 @@ The script `forward-chaining-search.sh` is used.
 | System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |   13 k |     0.81 |  0.004 |  16.0 k |
+| A5N46  | 1M      |   13 k |     0.16 |  0.001 |  79.7 k |
 
 ¹ resources per second
 
@@ -305,6 +306,7 @@ The script `forward-chaining-search.sh` is used.
 | System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |   13 k |     8.15 |  0.029 |   1.6 k |
+| A5N46  | 1M      |   13 k |     1.64 |  0.005 |   8.0 k |
 
 ¹ resources per second
 
@@ -322,7 +324,7 @@ The script `token-forward-chaining-search.sh` is used.
 |--------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |   32 k |     0.30 |  0.010 | 105.2 k |
 | LEA79  | 1M      |   32 k |     0.13 |  0.003 | 236.1 k |
-| A5N46  | 1M      |   32 k |     0.12 |  0.003 | 261.9 k |
+| A5N46  | 1M      |   32 k |     0.09 |  0.002 | 359.2 k |
 
 ¹ resources per second
 
@@ -331,14 +333,14 @@ The script `token-forward-chaining-search.sh` is used.
 <BarChart src="fhir-search/chart-data/token-forward-chaining-search-download-1M.txt"
   title="Token and Forward Chaining Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="30"
+  y-label="Resources/s" :y-col="4" :y-max="40"
   :series="['32 k hits']" />
 
 | System | Dataset | # Hits | Time (s) | StdDev | Res/s ¹ |
 |--------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |   32 k |     3.95 |  0.042 |   8.0 k |
 | LEA79  | 1M      |   32 k |     1.51 |  0.012 |  21.0 k |
-| A5N46  | 1M      |   32 k |     1.22 |  0.005 |  25.9 k |
+| A5N46  | 1M      |   32 k |     0.95 |  0.005 |  33.4 k |
 
 ¹ resources per second
 
@@ -549,9 +551,9 @@ The script `code-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    943 |     0.02 |  0.002 |  59.3 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.06 |  0.002 | 442.0 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.16 |  0.000 | 704.4 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.002 |  79.3 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.05 |  0.001 | 564.6 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.12 |  0.002 | 907.4 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.001 |  99.5 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.02 |  0.004 |   1.5 M |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.04 |  0.007 |   2.9 M |
 
 ¹ resources per second
 
@@ -560,7 +562,7 @@ The script `code-patient-search.sh` is used.
 <BarChart src="fhir-search/chart-data/code-patient-search-download-1M.txt"
   title="Code and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="200"
+  y-label="Resources/s" :y-col="4" :y-max="250"
   :series="['8310-5', '55758-7', '72514-3']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -574,9 +576,9 @@ The script `code-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    943 |     0.03 |  0.000 |  31.4 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.26 |  0.012 | 106.7 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.75 |  0.005 | 151.4 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.02 |  0.000 |  47.2 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.20 |  0.005 | 138.5 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.59 |  0.012 | 192.9 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.03 |  0.002 |  33.7 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.15 |  0.012 | 182.5 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.46 |  0.012 | 245.4 k |
 
 ¹ resources per second
 
@@ -595,9 +597,9 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | 8310-5  |    943 |     0.02 |  0.000 |  47.2 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.24 |  0.000 | 117.1 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.69 |  0.008 | 163.9 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.005 |  70.8 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.19 |  0.005 | 150.9 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.56 |  0.008 | 202.0 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.02 |  0.003 |  55.5 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.12 |  0.003 | 227.7 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.38 |  0.006 | 298.3 k |
 
 ¹ resources per second
 
@@ -632,10 +634,10 @@ The script `multiple-codes-patient-search.sh` is used.
 | LEA79  | 1M      |   100 |  109 k |     0.38 |  0.002 | 288.8 k |
 | LEA79  | 1M      |    1k |    247 |     1.72 |  0.017 |     143 |
 | LEA79  | 1M      |   10k |    1 k |    28.11 |  0.250 |      45 |
-| A5N46  | 1M      |    10 |  121 k |     0.16 |  0.001 | 757.3 k |
-| A5N46  | 1M      |   100 |  109 k |     0.29 |  0.002 | 371.3 k |
-| A5N46  | 1M      |    1k |    247 |     1.35 |  0.005 |     182 |
-| A5N46  | 1M      |   10k |    1 k |    21.69 |  0.020 |      58 |
+| A5N46  | 1M      |    10 |  121 k |     0.07 |  0.008 |   1.7 M |
+| A5N46  | 1M      |   100 |  109 k |     0.21 |  0.003 | 508.3 k |
+| A5N46  | 1M      |    1k |    247 |     1.39 |  0.005 |     178 |
+| A5N46  | 1M      |   10k |    1 k |    22.20 |  0.093 |      57 |
 
 ¹ resources per second
 
@@ -644,7 +646,7 @@ The script `multiple-codes-patient-search.sh` is used.
 <BarChart src="fhir-search/chart-data/multiple-codes-patient-search-download-1M.txt"
   title="Multiple Codes and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="180"
+  y-label="Resources/s" :y-col="4" :y-max="250"
   :series="['10 codes', '100 codes']" />
 
 | System | Dataset | Codes | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -661,10 +663,10 @@ The script `multiple-codes-patient-search.sh` is used.
 | LEA79  | 1M      |   100 |  109 k |     1.13 |  0.005 |  96.0 k |
 | LEA79  | 1M      |    1k |    247 |     1.72 |  0.012 |     144 |
 | LEA79  | 1M      |   10k |    1 k |    28.30 |  0.075 |      45 |
-| A5N46  | 1M      |    10 |  121 k |     0.70 |  0.000 | 173.3 k |
-| A5N46  | 1M      |   100 |  109 k |     0.90 |  0.008 | 120.9 k |
-| A5N46  | 1M      |    1k |    247 |     1.35 |  0.008 |     183 |
-| A5N46  | 1M      |   10k |    1 k |    21.56 |  0.033 |      59 |
+| A5N46  | 1M      |    10 |  121 k |     0.51 |  0.014 | 240.0 k |
+| A5N46  | 1M      |   100 |  109 k |     0.83 |  0.017 | 131.7 k |
+| A5N46  | 1M      |    1k |    247 |     1.39 |  0.005 |     177 |
+| A5N46  | 1M      |   10k |    1 k |    22.20 |  0.031 |      57 |
 
 ¹ resources per second
 
@@ -686,9 +688,9 @@ The script `code-date-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    246 |     0.02 |  0.002 |  12.4 k |
 | LEA79  | 1M      | 55758-7 |    3 k |     0.10 |  0.002 |  27.2 k |
 | LEA79  | 1M      | 72514-3 |   12 k |     0.29 |  0.004 |  41.2 k |
-| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.001 |  16.9 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.08 |  0.002 |  36.2 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.22 |  0.001 |  54.2 k |
+| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.001 |  17.0 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.08 |  0.001 |  35.9 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.21 |  0.003 |  57.3 k |
 
 ¹ resources per second
 
@@ -697,7 +699,7 @@ The script `code-date-patient-search.sh` is used.
 <BarChart src="fhir-search/chart-data/code-date-patient-search-download-1M.txt"
   title="Code, Date, and Patient Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="40"
+  y-label="Resources/s" :y-col="4" :y-max="50"
   :series="['8310-5', '55758-7', '72514-3']" />
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -708,9 +710,9 @@ The script `code-date-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    246 |     0.02 |  0.000 |  12.3 k |
 | LEA79  | 1M      | 55758-7 |    3 k |     0.14 |  0.012 |  19.7 k |
 | LEA79  | 1M      | 72514-3 |   12 k |     0.37 |  0.008 |  32.3 k |
-| A5N46  | 1M      | 8310-5  |    246 |     0.02 |  0.000 |  12.3 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.12 |  0.005 |  22.9 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.30 |  0.005 |  39.4 k |
+| A5N46  | 1M      | 8310-5  |    246 |     0.02 |  0.001 |  10.2 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.12 |  0.007 |  23.6 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.29 |  0.004 |  40.9 k |
 
 ¹ resources per second
 
@@ -726,9 +728,9 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | 8310-5  |    246 |     0.01 |  0.005 |  18.5 k |
 | LEA79  | 1M      | 55758-7 |    3 k |     0.12 |  0.005 |  24.2 k |
 | LEA79  | 1M      | 72514-3 |   12 k |     0.36 |  0.005 |  33.5 k |
-| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.000 |  24.6 k |
-| A5N46  | 1M      | 55758-7 |    3 k |     0.11 |  0.005 |  26.5 k |
-| A5N46  | 1M      | 72514-3 |   12 k |     0.29 |  0.000 |  41.2 k |
+| A5N46  | 1M      | 8310-5  |    246 |     0.02 |  0.000 |  16.0 k |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.11 |  0.002 |  26.8 k |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.28 |  0.004 |  42.6 k |
 
 ¹ resources per second
 
@@ -751,13 +753,13 @@ The script `simple-date-search.sh` is used.
 | LEA58  | 100k    | 2013 |  3.1 M |     2.22 |  0.071 |    0.71 |
 | LEA58  | 100k    | 2019 |  6.0 M |     4.19 |  0.056 |    0.70 |
 | LEA47  | 1M      | 2013 | 31.1 M |   108.65 |  0.558 | 286.0 k |
-| LEA47  | 1M      | 2019 | 60.0 M |   209.27 |  1.670 | 287.0 k |
+| LEA47  | 1M      | 2019 | 60.1 M |   209.27 |  1.670 | 287.0 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   107.81 |  1.260 | 288.2 k |
-| LEA58  | 1M      | 2019 | 60.0 M |   210.81 |  0.364 | 284.9 k |
+| LEA58  | 1M      | 2019 | 60.1 M |   210.81 |  0.364 | 284.9 k |
 | LEA79  | 1M      | 2013 | 31.1 M |    72.72 |  0.721 | 427.3 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   146.16 |  0.772 | 410.9 k |
-| A5N46  | 1M      | 2013 | 31.1 M |    56.16 |  0.412 | 553.3 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   109.51 |  0.276 | 548.4 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   146.16 |  0.772 | 410.9 k |
+| A5N46  | 1M      | 2013 | 31.1 M |    61.20 |  0.176 | 507.8 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   120.82 |  0.064 | 497.1 k |
 
 ¹ resources per second
 
@@ -778,13 +780,13 @@ The script `simple-date-search.sh` is used.
 | LEA58  | 100k    | 2013 |  3.1 M |    53.07 |  0.090 |   16.98 |
 | LEA58  | 100k    | 2019 |  6.0 M |   100.73 |  0.473 |   16.84 |
 | LEA47  | 1M      | 2013 | 31.1 M |   819.06 |  1.965 |  37.9 k |
-| LEA47  | 1M      | 2019 | 60.0 M |  1634.48 | 16.647 |  36.7 k |
+| LEA47  | 1M      | 2019 | 60.1 M |  1634.48 | 16.647 |  36.7 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   596.05 | 18.812 |  52.1 k |
-| LEA58  | 1M      | 2019 | 60.0 M |  1451.13 | 77.328 |  41.4 k |
+| LEA58  | 1M      | 2019 | 60.1 M |  1451.13 | 77.328 |  41.4 k |
 | LEA79  | 1M      | 2013 | 31.1 M |   223.08 |  0.350 | 139.3 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   418.19 |  1.132 | 143.6 k |
-| A5N46  | 1M      | 2013 | 31.1 M |   165.53 |  0.192 | 187.7 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   308.48 |  1.132 | 194.7 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   418.19 |  1.132 | 143.6 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   158.20 |  0.066 | 196.4 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   307.03 |  0.419 | 195.6 k |
 
 ¹ resources per second
 
@@ -801,13 +803,13 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA58  | 100k    | 2013 |  3.1 M |    32.43 |  0.340 |   10.37 |
 | LEA58  | 100k    | 2019 |  6.0 M |    62.14 |  0.488 |   10.39 |
 | LEA47  | 1M      | 2013 | 31.1 M |   627.50 |  9.911 |  49.5 k |
-| LEA47  | 1M      | 2019 | 60.0 M |  1282.05 |  4.997 |  46.8 k |
+| LEA47  | 1M      | 2019 | 60.1 M |  1282.05 |  4.997 |  46.8 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   439.48 |  1.237 |  70.7 k |
-| LEA58  | 1M      | 2019 | 60.0 M |  1238.84 |  3.080 |  48.5 k |
+| LEA58  | 1M      | 2019 | 60.1 M |  1238.84 |  3.080 |  48.5 k |
 | LEA79  | 1M      | 2013 | 31.1 M |   212.76 |  0.298 | 146.0 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   390.01 |  5.077 | 154.0 k |
-| A5N46  | 1M      | 2013 | 31.1 M |   158.33 |  0.079 | 196.2 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   300.27 |  0.685 | 200.0 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   390.01 |  5.077 | 154.0 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   154.09 |  0.066 | 201.6 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   298.95 |  0.234 | 200.9 k |
 
 ¹ resources per second
 
@@ -831,10 +833,10 @@ The script `patient-date-search.sh` is used.
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     0.69 |  0.006 | 330.2 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     2.16 |  0.035 | 357.9 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     2.18 |  0.014 | 353.8 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.51 |  0.003 | 442.9 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.51 |  0.003 | 443.0 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     1.53 |  0.017 | 503.8 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     1.51 |  0.004 | 513.2 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.24 |  0.006 | 943.4 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.24 |  0.017 | 949.7 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     0.64 |  0.023 |   1.2 M |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     0.65 |  0.019 |   1.2 M |
 
 ¹ resources per second
 
@@ -843,7 +845,7 @@ The script `patient-date-search.sh` is used.
 <BarChart src="fhir-search/chart-data/patient-date-search-download-1M.txt"
   title="Patient Date Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="130"
+  y-label="Resources/s" :y-col="4" :y-max="150"
   :series="['gt', 'ge', 'lt', 'le']" />
 
 | System | Dataset | Date         | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -856,10 +858,10 @@ The script `patient-date-search.sh` is used.
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     2.40 |  0.049 |  94.7 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     8.18 |  0.012 |  94.4 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     8.08 |  0.036 |  95.6 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.95 |  0.025 | 116.8 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.95 |  0.029 | 116.8 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     6.60 |  0.012 | 117.0 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     6.52 |  0.012 | 118.4 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.63 |  0.027 | 139.9 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.65 |  0.020 | 137.8 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     5.50 |  0.019 | 140.5 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     5.40 |  0.010 | 143.2 k |
 
 ¹ resources per second
 
@@ -877,10 +879,10 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     1.91 |  0.005 | 118.8 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     6.15 |  0.042 | 125.7 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     6.13 |  0.029 | 126.1 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.41 |  0.008 | 161.2 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.43 |  0.000 | 159.0 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     4.57 |  0.017 | 169.2 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     4.50 |  0.012 | 171.6 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.89 |  0.002 | 256.2 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.87 |  0.002 | 260.0 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     2.60 |  0.027 | 297.3 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     2.65 |  0.021 | 291.5 k |
 
 ¹ resources per second
 
@@ -890,7 +892,9 @@ The dataset was generated with Synthea v3.1.1. The resource generation process i
 
 ## Controlling and Monitoring the Caches
 
-The size of the resource cache can be set with the `DB_RESOURCE_CACHE_SIZE_RATIO` environment variable, which specifies the ratio of JVM heap size that is allocated to the resource cache.
+Blaze uses two caches to speed up FHIR Search. The resource cache holds the contents of resources and the resource handle cache holds the resource handles a search looks up for each of its hits.
+
+The size of the resource cache can be set with the [`DB_RESOURCE_CACHE_SIZE_RATIO`](../deployment/environment-variables.md#db-resource-cache-size-ratio) environment variable and the size of the resource handle cache with the [`DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO`](../deployment/environment-variables.md#db-resource-handle-cache-size-ratio) environment variable. Both specify the ratio of JVM heap size that is allocated to the cache. Together, both caches take at most 0.8 of the JVM heap.
 
 ### Monitoring 
 
@@ -909,17 +913,40 @@ Here, the value `8.325004288E9` is in bytes, and `E9` indicates gigabytes. This 
 
 #### Resource Cache
 
-Resource cache metrics are available under keys starting with `blaze_db_cache`. Among these is the `resource-cache`. These metrics can be difficult to interpret without a Prometheus/Grafana infrastructure because they are counters that accumulate since Blaze was started. Therefore, after a long runtime, it is necessary to calculate relative differences. However, shortly after Blaze starts, the absolute numbers are very useful on their own.
+Cache metrics are available under keys starting with `blaze_cache`. Among these is the `resource-cache`. These metrics can be difficult to interpret without a Prometheus/Grafana infrastructure because they are counters that accumulate since Blaze was started. Therefore, after a long runtime, it is necessary to calculate relative differences. However, shortly after Blaze starts, the absolute numbers are very useful on their own.
 
 ```sh
-curl -s http://localhost:8081/metrics | grep blaze_db_cache | grep resource-cache
-blaze_db_cache_hits_total{name="resource-cache",} 869000.0
-blaze_db_cache_loads_total{name="resource-cache",} 13214.0
-blaze_db_cache_load_failures_total{name="resource-cache",} 0.0
-blaze_db_cache_load_seconds_total{name="resource-cache",} 234.418864426
-blaze_db_cache_evictions_total{name="resource-cache",} 0.0
+curl -s http://localhost:8081/metrics | grep blaze_cache | grep resource-cache
+blaze_cache_hits_total{name="resource-cache",} 869000.0
+blaze_cache_misses_total{name="resource-cache",} 13214.0
+blaze_cache_load_successes_total{name="resource-cache",} 13214.0
+blaze_cache_load_failures_total{name="resource-cache",} 0.0
+blaze_cache_load_seconds_total{name="resource-cache",} 234.418864426
+blaze_cache_evictions_total{name="resource-cache",} 0.0
+blaze_cache_estimated_size{name="resource-cache",} 13214.0
 ```
 
-The number of evictions is a key metric here. As long as the number of evictions is zero, the resource cache has not overflowed. The goal should be for most CQL or FHIR Search queries with exports to fit within the resource cache. If the number of resources in a single query exceeds the cache size, the cache will be evicted and refilled during that query. This is especially problematic for repeated queries, as resources needed at the beginning of the query will no longer be in the cache after it is refilled. Therefore, a cache size smaller than what is required for a single query offers no performance benefit.
+The number of evictions is a key metric here. As long as the number of evictions is zero, the resource cache has not overflowed. FHIR Search inserts only the resources of the first page into the resource cache. The following pages use the resources already in the cache, but don't insert the ones they have to load, so that downloading a large search result doesn't evict the resources other queries need. The pages of the history interactions behave the same. CQL queries, however, insert every resource they load. So the goal should be for most CQL queries to fit within the resource cache. If the number of resources in a single CQL query exceeds the cache size, the cache will be evicted and refilled during that query. This is especially problematic for repeated queries, as resources needed at the beginning of the query will no longer be in the cache after it is refilled. Therefore, a cache size smaller than what is required for a single CQL query offers no performance benefit for it.
+
+#### Resource Handle Cache
+
+The metrics of the resource handle cache have the name `resource-handle-cache`:
+
+```sh
+curl -s http://localhost:8081/metrics | grep blaze_cache | grep resource-handle-cache
+blaze_cache_hits_total{name="resource-handle-cache",} 2.5873046E7
+blaze_cache_misses_total{name="resource-handle-cache",} 2421337.0
+blaze_cache_load_successes_total{name="resource-handle-cache",} 0.0
+blaze_cache_load_failures_total{name="resource-handle-cache",} 0.0
+blaze_cache_load_seconds_total{name="resource-handle-cache",} 0.0
+blaze_cache_evictions_total{name="resource-handle-cache",} 0.0
+blaze_cache_estimated_size{name="resource-handle-cache",} 1176455.0
+```
+
+Every lookup of a resource handle counts as either a hit or a miss. The load metrics stay at zero, because the cache doesn't load handles itself. Instead, a handle is inserted only on its second miss, so that a single scan over more resources than the cache can hold doesn't evict the handles that other queries need. The [Resource Handle Cache](../implementation/database.md#resource-handle-cache) section of the database implementation describes the details.
+
+The estimated size is the number of handles in the cache. A handle takes about 220 bytes with resource ids of 16 chars, or about 280 bytes with a JVM heap size of 32 GiB or more. So with the default ratio of 0.1 and a JVM heap size of 24 GiB, the cache holds about 12 million handles.
+
+As with the resource cache, evictions show that the cache is full. Unlike the resource cache, a full resource handle cache still helps, because it keeps the handles that are looked up repeatedly. If the cache evicts handles and the number of misses grows as fast as the number of hits, the handles that the queries need repeatedly don't fit into the cache. In that case, a higher ratio helps, as long as the JVM heap has room for it.
 
 [1]: <https://www.hl7.org/fhir/search.html#elements>

@@ -111,33 +111,42 @@
       (doseq [op [:create :put]
               if-none-match [nil "*"]]
         (with-system [{:blaze.db/keys [node]} config]
-          (given (verify-tx-cmds
+          (given (verify-tx-cmds*
                   node 1
                   [(cond-> {:op (name op) :type "Patient" :id "0" :hash hash}
                      if-none-match
                      (assoc :if-none-match if-none-match))])
 
-            count := 5
+            [:entries count] := 5
 
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
-            [0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
+            [:entries 0 0] := :resource-as-of-index
+            [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [:entries 0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
 
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
+            [:entries 1 0] := :type-as-of-index
+            [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+            [:entries 1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
 
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
+            [:entries 2 0] := :system-as-of-index
+            [:entries 2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+            [:entries 2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op op}
 
-            [3 0] := :type-stats-index
-            [3 1 ts-tu/decode-key] := {:type "Patient" :t 1}
-            [3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+            [:entries 3 0] := :type-stats-index
+            [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 1}
+            [:entries 3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
 
-            [4 0] := :system-stats-index
-            [4 1 ss-tu/decode-key] := {:t 1}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 1})))))
+            [:entries 4 0] := :system-stats-index
+            [:entries 4 1 ss-tu/decode-key] := {:t 1}
+            [:entries 4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}
+
+            [:resource-handle-updates count] := 1
+            [:resource-handle-updates 0 0 :fhir/type] := :fhir/Patient
+            [:resource-handle-updates 0 0 :id] := "0"
+            [:resource-handle-updates 0 0 :t] := 1
+            [:resource-handle-updates 0 0 :hash] := hash
+            [:resource-handle-updates 0 0 :num-changes] := 1
+            [:resource-handle-updates 0 0 :op] := op
+            [:resource-handle-updates 0 1] := false)))))
 
   (testing "adding a second version of a Patient to a store containing it already"
     (let [hash (hash/generate patient-0-v2)]
@@ -145,33 +154,40 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]]
 
-          (given (verify-tx-cmds
+          (given (verify-tx-cmds*
                   node 2
                   [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
                      if-match
                      (assoc :if-match if-match))])
 
-            count := 5
+            [:entries count] := 5
 
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-            [0 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
+            [:entries 0 0] := :resource-as-of-index
+            [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+            [:entries 0 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
 
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
+            [:entries 1 0] := :type-as-of-index
+            [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+            [:entries 1 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
 
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
+            [:entries 2 0] := :system-as-of-index
+            [:entries 2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+            [:entries 2 2 rts-tu/decode-val] := {:hash hash :num-changes 2 :op :put}
 
-            [3 0] := :type-stats-index
-            [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-            [3 2 ts-tu/decode-val] := {:total 1 :num-changes 2}
+            [:entries 3 0] := :type-stats-index
+            [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+            [:entries 3 2 ts-tu/decode-val] := {:total 1 :num-changes 2}
 
-            [4 0] := :system-stats-index
-            [4 1 ss-tu/decode-key] := {:t 2}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 2})))))
+            [:entries 4 0] := :system-stats-index
+            [:entries 4 1 ss-tu/decode-key] := {:t 2}
+            [:entries 4 2 ss-tu/decode-val] := {:total 1 :num-changes 2}
+
+            [:resource-handle-updates count] := 1
+            [:resource-handle-updates 0 0 :t] := 2
+            [:resource-handle-updates 0 0 :hash] := hash
+            [:resource-handle-updates 0 0 :num-changes] := 2
+            [:resource-handle-updates 0 0 :op] := :put
+            [:resource-handle-updates 0 1] := false)))))
 
   (testing "adding a second version of an already deleted Patient"
     (let [hash (hash/generate patient-0-v2)]
@@ -212,10 +228,12 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
-      (is (empty? (verify-tx-cmds
-                   node 2
-                   [{:op "put" :type "Patient" :id "0"
-                     :hash (hash/generate patient-0)}])))))
+      (given (verify-tx-cmds*
+              node 2
+              [{:op "put" :type "Patient" :id "0"
+                :hash (hash/generate patient-0)}])
+        :entries := []
+        :resource-handle-updates := [])))
 
   (testing "keeping a non-existing Patient fails"
     (with-system [{:blaze.db/keys [node]} config]
@@ -348,29 +366,36 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
-      (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0"}])
+      (given (verify-tx-cmds* node 2 [{:op "delete" :type "Patient" :id "0"}])
 
-        count := 5
+        [:entries count] := 5
 
-        [0 0] := :resource-as-of-index
-        [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-        [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+        [:entries 0 0] := :resource-as-of-index
+        [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+        [:entries 0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
 
-        [1 0] := :type-as-of-index
-        [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-        [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+        [:entries 1 0] := :type-as-of-index
+        [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+        [:entries 1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
 
-        [2 0] := :system-as-of-index
-        [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-        [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+        [:entries 2 0] := :system-as-of-index
+        [:entries 2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+        [:entries 2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
 
-        [3 0] := :type-stats-index
-        [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-        [3 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
+        [:entries 3 0] := :type-stats-index
+        [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+        [:entries 3 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
 
-        [4 0] := :system-stats-index
-        [4 1 ss-tu/decode-key] := {:t 2}
-        [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
+        [:entries 4 0] := :system-stats-index
+        [:entries 4 1 ss-tu/decode-key] := {:t 2}
+        [:entries 4 2 ss-tu/decode-val] := {:total 0 :num-changes 2}
+
+        [:resource-handle-updates count] := 1
+        [:resource-handle-updates 0 0 :t] := 2
+        [:resource-handle-updates 0 0 :hash] := hash/deleted-hash
+        [:resource-handle-updates 0 0 :num-changes] := 2
+        [:resource-handle-updates 0 0 :op] := :delete
+        [:resource-handle-updates 0 1] := false)))
 
   (testing "deleting an existing Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -695,28 +720,31 @@
           [[[:create patient-v1]]
            [[:put patient-v2]]]
 
-          (given (verify-tx-cmds node 3 [{:op "delete-history" :type "Patient" :id "0"}])
-            count := 5
+          (given (verify-tx-cmds* node 3 [{:op "delete-history" :type "Patient" :id "0"}])
+            [:entries count] := 5
 
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
-            [0 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+            [:entries 0 0] := :resource-as-of-index
+            [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [:entries 0 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
 
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+            [:entries 1 0] := :type-as-of-index
+            [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+            [:entries 1 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
 
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+            [:entries 2 0] := :system-as-of-index
+            [:entries 2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+            [:entries 2 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
 
-            [3 0] := :type-stats-index
-            [3 1 ts-tu/decode-key] := {:type "Patient" :t 3}
-            [3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+            [:entries 3 0] := :type-stats-index
+            [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 3}
+            [:entries 3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
 
-            [4 0] := :system-stats-index
-            [4 1 ss-tu/decode-key] := {:t 3}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}))))
+            [:entries 4 0] := :system-stats-index
+            [:entries 4 1 ss-tu/decode-key] := {:t 3}
+            [:entries 4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}
+
+            ;; the current version stays, so there is nothing to update
+            :resource-handle-updates := []))))
 
     (testing "with three versions"
       (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
@@ -729,40 +757,43 @@
            [[:put patient-v2]]
            [[:put patient-v3]]]
 
-          (given (verify-tx-cmds node 4 [{:op "delete-history" :type "Patient" :id "0"}])
-            count := 8
+          (given (verify-tx-cmds* node 4 [{:op "delete-history" :type "Patient" :id "0"}])
+            [:entries count] := 8
 
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-            [0 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+            [:entries 0 0] := :resource-as-of-index
+            [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+            [:entries 0 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
 
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+            [:entries 1 0] := :type-as-of-index
+            [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+            [:entries 1 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
 
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+            [:entries 2 0] := :system-as-of-index
+            [:entries 2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+            [:entries 2 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
 
-            [3 0] := :resource-as-of-index
-            [3 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
-            [3 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+            [:entries 3 0] := :resource-as-of-index
+            [:entries 3 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [:entries 3 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
 
-            [4 0] := :type-as-of-index
-            [4 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
-            [4 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+            [:entries 4 0] := :type-as-of-index
+            [:entries 4 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+            [:entries 4 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
 
-            [5 0] := :system-as-of-index
-            [5 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
-            [5 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+            [:entries 5 0] := :system-as-of-index
+            [:entries 5 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+            [:entries 5 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
 
-            [6 0] := :type-stats-index
-            [6 1 ts-tu/decode-key] := {:type "Patient" :t 4}
-            [6 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+            [:entries 6 0] := :type-stats-index
+            [:entries 6 1 ts-tu/decode-key] := {:type "Patient" :t 4}
+            [:entries 6 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
 
-            [7 0] := :system-stats-index
-            [7 1 ss-tu/decode-key] := {:t 4}
-            [7 2 ss-tu/decode-val] := {:total 1 :num-changes 1}))))))
+            [:entries 7 0] := :system-stats-index
+            [:entries 7 1 ss-tu/decode-key] := {:t 4}
+            [:entries 7 2 ss-tu/decode-val] := {:total 1 :num-changes 1}
+
+            ;; the current version stays, so there is nothing to update
+            :resource-handle-updates := []))))))
 
 (deftest verify-purge-test
   (testing "empty database"
@@ -775,55 +806,87 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:create patient-0]]]
 
-        (given (verify-tx-cmds node 2 [{:op "purge" :type "Patient" :id "0"}])
-          count := 5
+        (given (verify-tx-cmds* node 2 [{:op "purge" :type "Patient" :id "0"}])
+          [:entries count] := 5
 
-          [0 0] := :resource-as-of-index
-          [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
-          [0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
+          [:entries 0 0] := :resource-as-of-index
+          [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+          [:entries 0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
 
-          [1 0] := :type-as-of-index
-          [1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
-          [1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
+          [:entries 1 0] := :type-as-of-index
+          [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+          [:entries 1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
 
-          [2 0] := :system-as-of-index
-          [2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
-          [2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
+          [:entries 2 0] := :system-as-of-index
+          [:entries 2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+          [:entries 2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create :purged-at 2}
 
-          [3 0] := :type-stats-index
-          [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-          [3 2 ts-tu/decode-val] := {:total 0 :num-changes 0}
+          [:entries 3 0] := :type-stats-index
+          [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+          [:entries 3 2 ts-tu/decode-val] := {:total 0 :num-changes 0}
 
-          [4 0] := :system-stats-index
-          [4 1 ss-tu/decode-key] := {:t 2}
-          [4 2 ss-tu/decode-val] := {:total 0 :num-changes 0}))))
+          [:entries 4 0] := :system-stats-index
+          [:entries 4 1 ss-tu/decode-key] := {:t 2}
+          [:entries 4 2 ss-tu/decode-val] := {:total 0 :num-changes 0}
+
+          [:resource-handle-updates count] := 1
+          [:resource-handle-updates 0 0 :t] := 1
+          [:resource-handle-updates 0 0 :hash] := hash
+          [:resource-handle-updates 0 0 :num-changes] := 1
+          [:resource-handle-updates 0 0 :op] := :create
+          [:resource-handle-updates 0 1] := true))))
+
+  (testing "one patient with two versions"
+    (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+          patient-v2 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}
+          hash-v2 (hash/generate patient-v2)]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create patient-v1]]
+         [[:put patient-v2]]]
+
+        (given (verify-tx-cmds* node 3 [{:op "purge" :type "Patient" :id "0"}])
+          [:entries count] := 8
+
+          ;; only the current version can be cached
+          [:resource-handle-updates count] := 1
+          [:resource-handle-updates 0 0 :t] := 2
+          [:resource-handle-updates 0 0 :hash] := hash-v2
+          [:resource-handle-updates 0 0 :num-changes] := 2
+          [:resource-handle-updates 0 0 :op] := :put
+          [:resource-handle-updates 0 1] := true))))
 
   (testing "one deleted patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:delete "Patient" "0"]]]
 
-      (given (verify-tx-cmds node 2 [{:op "purge" :type "Patient" :id "0"}])
-        count := 5
+      (given (verify-tx-cmds* node 2 [{:op "purge" :type "Patient" :id "0"}])
+        [:entries count] := 5
 
-        [0 0] := :resource-as-of-index
-        [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
-        [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
+        [:entries 0 0] := :resource-as-of-index
+        [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+        [:entries 0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
 
-        [1 0] := :type-as-of-index
-        [1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
-        [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
+        [:entries 1 0] := :type-as-of-index
+        [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+        [:entries 1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
 
-        [2 0] := :system-as-of-index
-        [2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
-        [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
+        [:entries 2 0] := :system-as-of-index
+        [:entries 2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+        [:entries 2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 1 :op :delete :purged-at 2}
 
-        [3 0] := :type-stats-index
-        [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-        [3 2 ts-tu/decode-val] := {:total 0 :num-changes 0}
+        [:entries 3 0] := :type-stats-index
+        [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+        [:entries 3 2 ts-tu/decode-val] := {:total 0 :num-changes 0}
 
-        [4 0] := :system-stats-index
-        [4 1 ss-tu/decode-key] := {:t 2}
-        [4 2 ss-tu/decode-val] := {:total 0 :num-changes 0})))
+        [:entries 4 0] := :system-stats-index
+        [:entries 4 1 ss-tu/decode-key] := {:t 2}
+        [:entries 4 2 ss-tu/decode-val] := {:total 0 :num-changes 0}
+
+        [:resource-handle-updates count] := 1
+        [:resource-handle-updates 0 0 :t] := 1
+        [:resource-handle-updates 0 0 :hash] := hash/deleted-hash
+        [:resource-handle-updates 0 0 :op] := :delete
+        [:resource-handle-updates 0 1] := true)))
 
   (testing "purging a patient which is referenced by a still existing observation"
     (with-system-data [{:blaze.db/keys [node]} config]

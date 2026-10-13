@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.async.comp-spec]
+   [blaze.db.impl.cache-spec]
    [blaze.db.resource-cache :as rc]
    [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]

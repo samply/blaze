@@ -62,10 +62,6 @@
   "Creates a special version of a no-op cache."
   (assoc-in config [:blaze.db/resource-cache :max-size-ratio] 0))
 
-(def ^:private one-config
-  "Constraints the max-size-ratio to 0.8."
-  (assoc-in config [:blaze.db/resource-cache :max-size-ratio] 1))
-
 (deftest init-test
   (testing "nil config"
     (given-failed-system {:blaze.db/resource-cache nil}
@@ -95,7 +91,7 @@
 
 (deftest get-test
   (testing "success"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0
                          patient-1-hash patient-1
@@ -110,14 +106,14 @@
           [:fhir/CodeSystem code-system-0-hash :complete] code-system-0))))
 
   (testing "not-found"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache} config]
 
         (is (nil? @(rc/get cache [:fhir/Patient patient-0-hash :complete])))))))
 
 (deftest multi-get-test
   (testing "found both"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0
                          patient-1-hash patient-1})
@@ -129,7 +125,7 @@
                                        [:fhir/Patient patient-1-hash :complete]])))))))
 
   (testing "found one"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0})
 
@@ -156,7 +152,7 @@
 
 (deftest get-skip-cache-insertion-test
   (testing "returns an existing patient from the store"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0})
 
@@ -178,7 +174,7 @@
                  cache [:fhir/Patient patient-0-hash :complete]))))))
 
   (testing "doesn't insert the patient into the cache"
-    (doseq [config [config one-config]]
+    (doseq [config [config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0})
 
@@ -190,7 +186,7 @@
         (is (not (contains-key? cache [:fhir/Patient patient-0-hash :complete]))))))
 
   (testing "returns nil for a not-found patient"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache} config]
         (is (nil? @(st/with-instrument-disabled
                      (rc/get-skip-cache-insertion
@@ -198,7 +194,7 @@
 
 (deftest multi-get-skip-cache-insertion-test
   (testing "just returns two existing patients"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0
                          patient-1-hash patient-1})
@@ -214,7 +210,7 @@
                           [:fhir/Patient patient-1-hash :complete]])))))))
 
   (testing "not inserting both patients"
-    (doseq [config [config zero-config one-config]]
+    (doseq [config [config zero-config]]
       (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
         @(rs/put! store {patient-0-hash patient-0
                          patient-1-hash patient-1})

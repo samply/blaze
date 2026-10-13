@@ -1,5 +1,6 @@
 (ns blaze.db.node.spec
   (:require
+   [blaze.db.resource-handle-cache :as rhc]
    [blaze.db.spec]
    [clojure.spec.alpha :as s]
    [java-time.api :as time]))
@@ -22,3 +23,6 @@
 (s/def :blaze.db.node/index-bounds
   (s/keys :req-un [:blaze.db.node.index-bounds/chunk-size
                    :blaze.db.node.index-bounds/look-ahead]))
+
+(s/def :blaze.db/resource-handle-cache
+  rhc/resource-handle-cache?)
