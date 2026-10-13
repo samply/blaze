@@ -17,6 +17,9 @@ echo "Multiple Codes Search – ValueSet:"
 echo "Multiple Search Parameter Search:"
 "$script_dir/observation-final-category-multiple-codes-search.sh" "$compose_file"
 
+echo "Forward Chaining Search:"
+"$script_dir/forward-chaining-search.sh" "$compose_file"
+
 echo "Token and Forward Chaining Search:"
 "$script_dir/token-forward-chaining-search.sh" "$compose_file"
 

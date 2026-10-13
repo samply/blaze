@@ -1,4 +1,4 @@
-# Blaze as it runs on LEA79 (128 cores, 768 GiB RAM) for the transaction load test.
+# Blaze as it runs on LEA79 (128 cores, 512 GiB RAM) for the transaction load test.
 #
 # The settings follow the production configuration guide: about quarter of the RAM
 # each for the JVM heap and the block cache. Deviating from it, the thread pools

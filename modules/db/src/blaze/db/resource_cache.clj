@@ -7,14 +7,14 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.cache-collector.protocols :as ccp]
+   [blaze.db.impl.cache :as cache]
    [blaze.db.resource-cache.protocol :as p]
    [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.spec]
    [blaze.module :as m]
    [clojure.spec.alpha :as s]
-   [integrant.core :as ig]
-   [taoensso.timbre :as log])
+   [integrant.core :as ig])
   (:import
    [blaze.fhir.spec.type Base]
    [com.github.benmanes.caffeine.cache
@@ -125,15 +125,10 @@
   (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size-ratio]))
 
 (def ^:private ^:const default-max-size-ratio 0.25)
-(def ^:private ^:const max-max-size-ratio 0.8)
 
 (defmethod ig/init-key :blaze.db/resource-cache
   [_ {:keys [resource-store max-size-ratio] :or {max-size-ratio default-max-size-ratio}}]
-  (let [max-memory (.maxMemory (Runtime/getRuntime))
-        max-size-ratio (if (< max-max-size-ratio max-size-ratio) max-max-size-ratio max-size-ratio)
-        max-size-in-bytes (long (* max-memory max-size-ratio))]
-    (log/info (format "Create resource cache with a memory size of %d MiB (%d%% of max memory size)"
-                      (bit-shift-right max-size-in-bytes 20) (long (* 100 max-size-ratio))))
+  (let [max-size-in-bytes (cache/max-size-in-bytes "resource cache" max-size-ratio)]
     (if (zero? max-size-in-bytes)
       (reify
         p/ResourceCache

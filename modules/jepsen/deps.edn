@@ -23,5 +23,8 @@
   :register
   {:main-opts ["-m" "blaze.jepsen.register"]}
 
+  :independent-register
+  {:main-opts ["-m" "blaze.jepsen.independent-register"]}
+
   :resource-history
   {:main-opts ["-m" "blaze.jepsen.resource-history"]}}}

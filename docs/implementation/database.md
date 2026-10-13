@@ -92,6 +92,47 @@ The database value with `t=1` contains one patient with `id=0` and content hash 
 
 In addition to direct resource lookups, the `ResourceAsOf` index is used for listing all versions of a particular resource, all resources of a particular type, and all resources in the database. Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the logical timestamp `t` of the database value.
 
+##### Resource Handle Cache
+
+Resolving a resource handle by `type` and `id`, as `d/resource-handle` does and as every search does for each of its matches, needs a seek in the `ResourceAsOf` index. The resource handle cache (`modules/db/src/blaze/db/resource_handle_cache.clj`) replaces that seek with a hash map lookup. It maps `(tid, id)` to the resource handle of the **newest** version of that resource. The `t` isn't part of the key, so that entries stay valid over transactions. It's a [Caffeine](https://github.com/ben-manes/caffeine) cache bounded by memory, which evicts entries when it's full. It takes 10% of the JVM heap by default, set by [`DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO`](../deployment/environment-variables.md#db-resource-handle-cache-size-ratio), where a ratio of 0 disables it. Together with the resource cache, it takes at most 0.8 of the JVM heap. Only the node of the main database has a resource handle cache, the node of the admin database has none.
+
+The fundamental principle of the cache is that an entry always holds the newest version of its resource. An entry is never outdated: it's either current or absent. So an entry is right for every database value whose `t` isn't older than the `t` of the cached handle, because no newer version exists. A database value with an older `t` can't use the entry and has to seek in the index instead. An absent entry is always safe, because then the reader seeks in the index as it would without the cache. All the rules below exist to keep this principle: the indexer updates present entries before a new `t` becomes visible to readers, and a reader inserts a handle only if it's sure that no newer version was written in the meantime.
+
+**Reading.** A reader with a database value at `t` uses an entry only if the `t` of the cached handle isn't newer than its own `t`. In that case the cached handle is the newest version overall and so also the right one for that database value. Otherwise, on a miss or with an entry newer than its own `t` (older database values, like the ones of paging requests or `as-of` database values), the reader seeks in the index as without the cache. The `since-t` of a database value is applied to the handle after the lookup. Lookups that find nothing aren't cached.
+
+**Updating.** The update of the indexer only changes entries already present. It never inserts the new versions a transaction writes, so that imports don't flood the cache with handles no query asked for. The update covers every new version a transaction writes and every purged resource, whose entry it removes. Deleting the history of a resource doesn't touch its entry, because the cache only holds current versions. It runs as part of step 3 of [applying a transaction](#apply-time-mechanics), after the `TxSuccess` entry was written and before the new `t` becomes visible to readers. The lookups the indexer does itself while expanding and verifying a transaction, like the ones of the referential integrity check, are the ones of a reader at the `t` before the transaction. So they insert like any other reader, as described next. That way a resource referenced by many others, like a Patient referenced by the Observations created over time, ends up in the cache.
+
+**Inserting.** A reader that misses inserts the handle it loaded only if it passes three checks, which the following paragraphs describe.
+
+**Doorkeeper.** The doorkeeper lets a reader insert a key only on its second miss. A Bloom filter records the first miss. Without the doorkeeper, a scan over more resources than the cache holds would insert every resource it misses, and Caffeine would evict nearly all of them again. Caffeine does that eviction work under a single lock, which limits such a scan to the throughput of one core, and the churn evicts entries the scan would hit.
+
+A Bloom filter can't forget a key, because the bits of a key are shared with other keys. With every distinct key it records, more of its bits are set and its false positive rate rises. Once nearly all bits are set, almost every key is a false positive, so the doorkeeper would let every key in on its first miss and wouldn't hold back a scan anymore. So the doorkeeper records only a window of distinct keys that missed. Once the window is full, it starts over with an empty Bloom filter. The Bloom filter is sized for the window, so that its false positive rate is about 1 % when the window is full.
+
+The window is about the number of entries the cache can hold. A key that misses again only after more distinct keys than the cache can hold wouldn't have survived in the cache anyway, so remembering its first miss longer wouldn't help. A smaller window would reject keys that would have been hit. The window is measured in distinct keys and not in time, because how long an entry survives in the cache depends on the number of other keys inserted, not on time.
+
+* The window is a tumbling one, not a sliding one. So a key whose second miss comes after `d` other distinct keys missed is inserted with a probability of about `1 - d/w` for a window of `w` keys, and not at all if `d` is at least `w`.
+* The Bloom filter is a blocked one: it keeps all bits of a key in a single block of 512 bits, the size of a CPU cache line, so that recording or checking a key reads a single CPU cache line. The Bloom filter has 10 bits for each key a full window holds, about 0.6 % of the memory of the cache.
+* The doorkeeper only decides which keys are inserted, not how many. The cache evicts as usual if more keys pass the doorkeeper than it can hold.
+
+**Recent writes.** A reader that loaded a handle from an older database value must not insert it after the indexer skipped the missing entry, because the cache would then hold an outdated handle that looks valid for every later database value. This is prevented by the recent writes:
+
+* The indexer records the `t` of the last write of every key it updates or skips.
+* A reader at `t` may insert a key only if no write of that key newer than `t` is recorded. It checks this inside the per-key atomic operation of the cache, the same one the indexer uses for its update and the recording.
+
+For a single key, the insert of a reader and the update of the indexer are serialized. If the reader comes first, the indexer finds the entry and replaces it. If the indexer comes first, the write is already recorded and the reader on the older `t` doesn't insert. Because the recent writes belong to the transactions of a single node, each node needs its own cache.
+
+**Floor.** The recent writes are bounded to 262,144 writes, about 32 MiB with resource ids of 16 chars. Once there are more, the indexer prunes the oldest transactions. The floor is the `t` up to which writes aren't recorded anymore:
+
+* Pruning first raises the floor to the `t` of the transaction and then removes its records, unless a newer write of the same key replaced them.
+* A reader may only insert if its `t` is at least the floor, because the writes not newer than the floor aren't recorded anymore. The reader reads the record of its key before the floor, so that it sees the raised floor if it misses a record removed by pruning.
+* The floor starts at the maximum, so that no reader inserts until the node sets it to the `t` of the last transaction indexed before its start. The writes before the start aren't recorded, so readers of older database values must not insert.
+
+In summary, a reader that misses inserts the handle it loaded only if the doorkeeper admits the key, no write of the key newer than its own `t` is recorded and its `t` is at least the floor. So readers of older database values still insert all keys no later transaction wrote, and the cache warms up under continuous writes. Only readers whose `t` is below the floor insert nothing. Together with the update of the indexer, the recent writes and the floor ensure that every handle in the cache is the newest version of its resource.
+
+**Statistics.** The cache records its hits and misses itself instead of Caffeine, because Caffeine counts every present entry as a hit, even if it's newer than the `t` of the reader, which has to seek then. So a lookup that finds an entry newer than the `t` of the reader counts as a miss. The hits and misses count the lookups of all readers, the indexer included.
+
+**Memory.** An entry occupies about 205 bytes plus the length of the resource id, or about 260 bytes plus the length of the resource id with a JVM heap size of 32 GiB or more, where references need 8 instead of 4 bytes.
+
 #### TypeAsOf
 
 The `TypeAsOf` index contains the same information as the `ResourceAsOf` index, but with a different key order: `type`, `t`, and `id`. This ordering is optimized for listing the history of all resources of a particular type in reverse chronological order.

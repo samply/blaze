@@ -6,18 +6,17 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 compose_file="$1"
 base="${2:-http://localhost:8080/fhir}"
-start_epoch="$(date +"%s")"
 
 count-resources() {
   echo "Counting Procedures..."
-  count-resources-raw "$base" "Procedure" "reason-reference:Condition.subject:Patient.birthdate=2020" "$start_epoch-count.times"
+  count-resources-raw "$base" "Procedure" "reason-reference:Condition.subject:Patient.birthdate=2020"
 }
 
 download-resources() {
   echo "Downloading Procedures..."
-  download-resources-raw "$base" "Procedure" "reason-reference:Condition.subject:Patient.birthdate=2020" "$start_epoch-download.times"
+  download-resources-raw "$base" "Procedure" "reason-reference:Condition.subject:Patient.birthdate=2020"
 }
 
 restart "$compose_file"
-count-resources
-download-resources
+profile "$compose_file" "count" count-resources
+profile "$compose_file" "download" download-resources

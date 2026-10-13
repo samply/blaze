@@ -29,6 +29,12 @@ register-test-fast: prep
 register-test-slow: prep
 	clojure -M:register test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.1
 
+# needs a Blaze with a tiny resource handle cache of about 17 entries, started
+# with -Xmx2g and DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO=0.000002, so that the cache
+# keeps evicting the entries of the 8 patients worked on concurrently
+independent-register-test: prep
+	clojure -M:independent-register test --concurrency 32 --threads-per-key 4 --time-limit 60 -n localhost:8080 --delta-time 0.002
+
 resource-history-test-fast: prep
 	clojure -J-Xmx8g -M:resource-history test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.04
 

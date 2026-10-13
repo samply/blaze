@@ -14,7 +14,7 @@ The following systems, with increasing resources, were used for the performance 
 | LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 3.2 TB Intel P5600 over vSAN  |
-| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 512 GiB | 12.8 TB Huawei OceanDisk 300P |
 | A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro          |
 
 All systems were configured according to the [Production Configuration](../production-configuration.md) guide.
@@ -123,12 +123,12 @@ The third bar chart shows the results for the 1M dataset. For the two bigger sys
 | 1M      | LEA58  | 17861-6 |   25 k |     0.44 |  0.009 | 2.252 M |
 | 1M      | LEA58  | 8310-5  |  603 k |     0.48 |  0.012 | 2.092 M | 
 | 1M      | LEA58  | 72514-3 |  998 k |     0.57 |  0.014 | 1.741 M |
-| 1M      | LEA79  | 17861-6 |   25 k |     0.29 |  0.006 | 3.473 M |
-| 1M      | LEA79  | 8310-5  |  603 k |     0.40 |  0.005 | 2.499 M | 
-| 1M      | LEA79  | 72514-3 |  998 k |     0.43 |  0.011 | 2.304 M |
-| 1M      | A5N46  | 17861-6 |   25 k |     0.23 |  0.007 | 4.353 M |
-| 1M      | A5N46  | 8310-5  |  603 k |     0.34 |  0.002 | 2.977 M |
-| 1M      | A5N46  | 72514-3 |  998 k |     1.61 |  0.003 | 621.5 k |
+| 1M      | LEA79  | 17861-6 |   25 k |     0.23 |  0.003 | 4.290 M |
+| 1M      | LEA79  | 8310-5  |  603 k |     0.26 |  0.009 | 3.782 M |
+| 1M      | LEA79  | 72514-3 |  998 k |     0.29 |  0.006 | 3.491 M |
+| 1M      | A5N46  | 17861-6 |   25 k |     0.25 |  0.008 | 4.007 M |
+| 1M      | A5N46  | 8310-5  |  603 k |     0.29 |  0.003 | 3.395 M |
+| 1M      | A5N46  | 72514-3 |  998 k |     0.38 |  0.017 | 2.666 M |
 
 ### Example CQL Query
 
@@ -203,12 +203,12 @@ The second chart shows the results for the 1M dataset. Here the performance of t
 | 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     0.42 |  0.008 | 2.371 M |  
 | 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     0.50 |  0.020 | 2.005 M | 
 | 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     0.65 |  0.036 | 1.545 M |
-| 1M      | LEA79  | 29463-7 | 13.6 kg |   99 k |     0.35 |  0.011 | 2.831 M |  
-| 1M      | LEA79  | 29463-7 | 75.3 kg |  500 k |     0.41 |  0.010 | 2.422 M | 
-| 1M      | LEA79  | 29463-7 |  185 kg |  998 k |     0.47 |  0.014 | 2.144 M |
-| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.29 |  0.002 | 3.476 M |
-| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.38 |  0.001 | 2.635 M |
-| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.64 |  0.003 | 610.0 k |
+| 1M      | LEA79  | 29463-7 | 13.6 kg |   99 k |     0.24 |  0.001 | 4.247 M |
+| 1M      | LEA79  | 29463-7 | 75.3 kg |  500 k |     0.23 |  0.003 | 4.306 M |
+| 1M      | LEA79  | 29463-7 |  185 kg |  998 k |     0.28 |  0.017 | 3.559 M |
+| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.27 |  0.010 | 3.709 M |
+| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.30 |  0.003 | 3.302 M |
+| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     0.39 |  0.011 | 2.565 M |
 
 ### CQL Query
 
@@ -290,8 +290,8 @@ The third chart shows the results for the 1M dataset. As with the Code Value Sea
 | 1M      | LEA47  |  954 k |     0.83 |  0.009 | 1.204 M |
 | 1M      | LEA58  |    4 k |     0.41 |  0.006 | 2.420 M |
 | 1M      | LEA58  |  954 k |     0.53 |  0.015 | 1.897 M |
-| 1M      | LEA79  |    4 k |     0.28 |  0.004 | 3.521 M |
-| 1M      | LEA79  |  954 k |     0.41 |  0.016 | 2.419 M |
+| 1M      | LEA79  |    4 k |     0.23 |  0.003 | 4.367 M |
+| 1M      | LEA79  |  954 k |     0.28 |  0.011 | 3.535 M |
 | 1M      | A5N46  |    4 k |     0.23 |  0.003 | 4.291 M |
 | 1M      | A5N46  |  954 k |     0.40 |  0.000 | 2.472 M |
 
@@ -355,12 +355,20 @@ cql/search.sh condition-ten-rare
 
 In this section, CQL queries for selecting patients which have conditions with one of 10 codes are analyzed. The same codes as in section Ten Code Search are used. However, instead of multiple retrieve expressions, a single retrieve expression with a value set is used.
 
+<BarChart src="cql/ten-code-search-vs-1M.txt"
+  title="Ten Code Search – ValueSet - Dataset 1M"
+  x-label="System" :x-col="3"
+  y-label="Patients/s" :y-col="7" :y-max="4700"
+  :series="['0.4 % hits', '95 % hits']" />
+
 ### Data
 
 | Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
 |---------|--------|-------:|---------:|-------:|--------:|
 | 1M      | LEA47  |    4 k |     0.45 |  0.005 | 2.227 M |
 | 1M      | LEA47  |  954 k |     2.53 |  0.007 | 394.9 k |
+| 1M      | LEA79  |    4 k |     0.25 |  0.001 | 4.052 M |
+| 1M      | LEA79  |  954 k |     0.41 |  0.004 | 2.416 M |
 | 1M      | A5N46  |    4 k |     0.22 |  0.009 | 4.565 M |
 | 1M      | A5N46  |  954 k |     1.40 |  0.002 | 714.6 k |
 
@@ -407,7 +415,7 @@ cql/search.sh condition-ten-rare-vs
 <BarChart src="cql/all-code-search-1M.txt"
   title="All Code Search - Dataset 1M"
   x-label="System" :x-col="3"
-  y-label="Patients/s" :y-col="7" :y-max="2800"
+  y-label="Patients/s" :y-col="7" :y-max="3600"
   :series="['100 % hits']" />
 
 ### Data
@@ -426,7 +434,7 @@ cql/search.sh condition-ten-rare-vs
 | 1M      | LEA36  |  995 k |     5.96 |  0.015 | 167.7 k |
 | 1M      | LEA47  |  995 k |     0.89 |  0.011 | 1.120 M |
 | 1M      | LEA58  |  995 k |     0.60 |  0.018 | 1.674 M |
-| 1M      | LEA79  |  995 k |     0.38 |  0.003 | 2.667 M |
+| 1M      | LEA79  |  995 k |     0.29 |  0.016 | 3.411 M |
 | 1M      | A5N46  |  995 k |     0.46 |  0.002 | 2.188 M |
 
 ### CQL Query
@@ -454,7 +462,7 @@ cql/search.sh condition-all
 <BarChart src="cql/inpatient-stress-search-1M.txt"
   title="Inpatient Stress Search - Dataset 1M"
   x-label="System" :x-col="3"
-  y-label="Patients/s" :y-col="7" :y-max="2400"
+  y-label="Patients/s" :y-col="7" :y-max="3600"
   :series="['1.6 % hits']" />
 
 ### Data
@@ -473,7 +481,7 @@ cql/search.sh condition-all
 | 1M      | LEA36  |   16 k |     3.90 |  0.041 | 256.7 k |
 | 1M      | LEA47  |   16 k |     1.24 |  0.008 | 805.0 k |
 | 1M      | LEA58  |   16 k |     0.68 |  0.018 | 1.478 M |
-| 1M      | LEA79  |   16 k |     0.45 |  0.002 | 2.206 M |
+| 1M      | LEA79  |   16 k |     0.29 |  0.001 | 3.508 M |
 | 1M      | A5N46  |   16 k |     0.62 |  0.006 | 1.613 M |
 
 ### CQL Query
@@ -561,13 +569,19 @@ Because every criterion relates to the same diagnosis, all conditions, observati
 
 The measurement was done with the [CQL expression cache](../deployment/environment-variables.md#cql-expr-cache-size) disabled. With the cache enabled, the duration drops to 0.21 seconds on A5N46, as soon as the Bloom filter of the `exists` expression is built, because only the patients in the Bloom filter have to be evaluated.
 
+<BarChart src="cql/cardiometabolic-risk-1M.txt"
+  title="Cardiometabolic Risk - Dataset 1M"
+  x-label="System" :x-col="3"
+  y-label="Patients/s" :y-col="7" :y-max="1300"
+  :series="['0.1 % hits']" />
+
 ### Data
 
 | Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
 |---------|--------|-------:|---------:|-------:|--------:|
 | 1M      | LEA47  |    1 k |   196.60 | 54.510 |   5.1 k |
-| 1M      | LEA79  |    1 k |     0.95 |  0.011 | 1.048 M |
-| 1M      | A5N46  |    1 k |    49.83 |  0.096 |  20.1 k |
+| 1M      | LEA79  |    1 k |     0.84 |  0.019 | 1.194 M |
+| 1M      | A5N46  |    1 k |    47.63 |  0.798 |  21.0 k |
 
 ### CQL Query
 

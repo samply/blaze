@@ -104,6 +104,7 @@
    [blaze.db.node.waiters :as waiters]
    [blaze.db.resource-cache :as rc]
    [blaze.db.resource-cache.spec]
+   [blaze.db.resource-handle-cache :as rhc]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.tx-log :as tx-log]
@@ -748,10 +749,19 @@
           (ac/complete! publish-finished true)
           (log/trace "exit changed resources publisher"))))))
 
-(defn- commit-success! [{:keys [node-name kv-store state]} t instant]
+(defn- commit-success!
+  "Commits the success of the transaction with `t`.
+
+  Updates the resource handle cache with the `resource-handle-updates` of that
+  transaction before advancing to `t`, so that no reader sees `t` before the
+  cache reflects it."
+  [{:keys [node-name kv-store resource-handle-cache state]} t instant
+   resource-handle-updates]
   (log/trace "commit transaction success with t =" t)
   (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
     (kv/put! kv-store (tx-success-entries t instant)))
+  (when resource-handle-cache
+    (rhc/update! resource-handle-cache t resource-handle-updates))
   (advance-t! state t))
 
 (defn- observe-index-resources!
@@ -779,13 +789,15 @@
 
   Returns `tx-chunk-state` marked as verified, carrying the anomaly of a
   rejected transaction, so that `commit-tx!` commits the error instead of the
-  success.
+  success. Carries the updates of the resource handle cache of an accepted
+  transaction, if the node has one, so that `commit-tx!` can apply them.
 
   Drops the chunks of a rejected transaction that aren't dispatched yet, because
   a transaction that produces no version references none of the index entries
   they would write. The ones already dispatched are still awaited, so that no
   task outlives the loop."
-  [{:keys [node-name kv-store read-only-matcher stats] :as node}
+  [{:keys [node-name kv-store resource-handle-cache read-only-matcher stats]
+    :as node}
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
@@ -805,7 +817,9 @@
         ;; in sync with the indexes, so that a transaction that wasn't stored
         ;; leaves them untouched
         (vreset! stats (:stats result))
-        (assoc tx-chunk-state :verified? true)))))
+        (cond-> (assoc tx-chunk-state :verified? true)
+          resource-handle-cache
+          (assoc :resource-handle-updates (:resource-handle-updates result)))))))
 
 (defn- commit-tx!
   "Commits either the success or the error of the transaction of
@@ -813,10 +827,10 @@
 
   Runs after the resources of that transaction were indexed, because the success
   marker is what makes them reachable."
-  [node {{:keys [t instant]} :tx-data :keys [anomaly]}]
+  [node {{:keys [t instant]} :tx-data :keys [anomaly resource-handle-updates]}]
   (if anomaly
     (commit-error! node t anomaly)
-    (commit-success! node t instant)))
+    (commit-success! node t instant resource-handle-updates)))
 
 (defn- cmd-rs-keys
   "Returns the resource store keys of all resources of `tx-cmds` that have to be
@@ -1227,7 +1241,7 @@
       (ac/then-apply (fn [clauses] (batch-db/->Matcher (:search-clauses clauses))))))
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
-                 resource-store sync-fn search-param-registry resource-indexer
+                 resource-handle-cache resource-store sync-fn search-param-registry resource-indexer
                  index-bounds read-only-matcher acquire-in-flight! state stats
                  poll-timeout queue-capacity index-finished publish-finished]
   np/Node
@@ -1490,12 +1504,14 @@
    [:blaze.db/enforce-referential-integrity
     :blaze.db/allow-multiple-delete
     :blaze.db/max-in-flight-transactions
+    :blaze.db/resource-handle-cache
     ::poll-timeout
     ::queue-capacity]))
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache kv-store resource-indexer resource-cache
-               resource-store search-param-registry scheduler poll-timeout
+               resource-handle-cache resource-store search-param-registry
+               scheduler poll-timeout
                queue-capacity max-in-flight-transactions]
         :or {poll-timeout (time/seconds 1)
              queue-capacity 16
@@ -1509,7 +1525,8 @@
         ;; and writes the stats, so they need visibility but no atomicity
         stats (volatile! (node-stats/init kv-store (:t @state)))
         node (->Node node-name (ctx config) tx-log tx-cache
-                     kv-store resource-cache resource-store (sync-fn storage)
+                     kv-store resource-cache resource-handle-cache
+                     resource-store (sync-fn storage)
                      search-param-registry resource-indexer
                      (node-util/index-bounds
                       (resource-indexer/pool-size resource-indexer))
@@ -1522,6 +1539,10 @@
                      queue-capacity
                      (ac/future)
                      (ac/future))]
+    ;; no reader may insert a handle older than the last transaction indexed
+    ;; before the start
+    (when resource-handle-cache
+      (rhc/set-floor! resource-handle-cache (:t @state)))
     (when (= :building (:type (plc/state kv-store)))
       (sched/submit scheduler #(build-patient-last-change-index key node)))
     (thread/start-thread! #(index-loop node)

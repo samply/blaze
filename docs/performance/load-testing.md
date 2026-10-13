@@ -8,7 +8,7 @@ The following system was used for the performance evaluation:
 |--------|----------|-------------|------:|--------:|-------------------------------|
 | A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro          |
 | LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
-| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 512 GiB | 12.8 TB Huawei OceanDisk 300P |
 
 All systems were configured according to the [Production Configuration](../production-configuration.md) guide. Deviating from it, all runs on all systems use a `DB_RESOURCE_STORE_KV_THREADS` of 128 instead of the default of 4, matching the highest concurrency level of the sweep. That variable sizes the thread pool the resource store uses to read and write resources. Every transaction hands all its resources to that pool as one unit, so the pool size caps how many transactions can write to the resource database at the same time. RocksDB merges concurrent writers into [group commits][3]: the writers waiting at any moment are batched into a single write-ahead log write followed by a single fsync, so the cost of that fsync — which dominates a write on systems with slow syncs — is shared by the whole group. With only four threads, at most four transactions can join a group, whereas 128 threads allow much larger groups and so a considerably higher write throughput. Sizing the pool to the concurrency also keeps it from becoming a queue of its own; see [Resource Store Write Concurrency](../production-configuration.md#resource-store-write-concurrency).
 

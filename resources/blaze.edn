@@ -432,10 +432,11 @@
   ;; The env var DB_RESOURCE_CACHE_SIZE_RATIO can be used to specify the maximum
   ;; ratio of JVM heap size that is allocated to the resource cache. Please
   ;; choose a ratio depending on your use case while monitoring JVM heap size.
+  ;; Together with the resource handle cache, it takes at most 0.8 of the heap.
   ;;
   :blaze.db/resource-cache
   {:resource-store #blaze/ref :blaze.db/resource-store
-   :max-size-ratio #blaze/cfg ["DB_RESOURCE_CACHE_SIZE_RATIO" double? 0.25]}
+   :max-size-ratio #blaze/var resource-cache-size-ratio}
 
   ;;
   ;; Search Param Registry
@@ -1443,6 +1444,34 @@
     [:blaze/http-client :blaze.openid-auth/http-client]
     {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]
      :trust-store-pass #blaze/cfg ["OPENID_CLIENT_TRUST_STORE_PASS" string?]}}}
+
+  ;;
+  ;; Resource Handle Cache
+  ;;
+  ;; The resource handle cache holds the resource handles of the newest version
+  ;; of resources keyed by their type and id. It speeds up resolving resource
+  ;; handles, which otherwise needs a seek in the ResourceAsOf index, in FHIR
+  ;; searches, reads and CQL evaluation. Only the main database node uses it.
+  ;;
+  ;; The cache is enabled by default. The env var
+  ;; DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO specifies the maximum ratio of JVM heap
+  ;; size that is allocated to it and a ratio of zero disables it. Together with
+  ;; the resource cache, it takes at most 0.8 of the heap.
+  ;;
+  {:key :resource-handle-cache
+   :name "Resource Handle Cache"
+   :toggle "DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO"
+   :enabled-if-pos resource-handle-cache-size-ratio
+   :config
+   {[:blaze.db/node :blaze.db.main/node]
+    {:resource-handle-cache #blaze/ref :blaze.db.main/resource-handle-cache}
+
+    [:blaze.db/resource-handle-cache :blaze.db.main/resource-handle-cache]
+    {:max-size-ratio #blaze/var resource-handle-cache-size-ratio}
+
+    :blaze/cache-collector
+    {:caches
+     {"resource-handle-cache" #blaze/ref :blaze.db.main/resource-handle-cache}}}}
 
   {:key :cql-expression-cache
    :name "CQL Expression Cache"
