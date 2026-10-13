@@ -1,5 +1,12 @@
 FROM eclipse-temurin:25.0.4_7-jre-noble@sha256:b573af9e331196fbc42e246da4df24df9b6c556c73e7efddfde0511f1c9508c5
 
+LABEL org.opencontainers.image.title="Blaze"
+LABEL org.opencontainers.image.description="A FHIR® Server with internal, fast CQL Evaluation Engine"
+LABEL org.opencontainers.image.url="https://blaze-server.org"
+LABEL org.opencontainers.image.documentation="https://blaze-server.org"
+LABEL org.opencontainers.image.source="https://github.com/samply/blaze"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+
 RUN set -eux; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl libjemalloc2 wget; \
