@@ -638,6 +638,10 @@ jobs:
       contents: read
       packages: write
 
+    outputs:
+      digest: ${{ steps.build-push.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+
     steps:
     - name: Setup Java
       uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
@@ -711,13 +715,29 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
 
+    - name: Generate Image Metadata
+      id: meta
+      uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+      with:
+        tags: |
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
     - name: Build and Push Image
+      id: build-push
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }}
+        # the static labels are defined in the Dockerfile
+        labels: |
+          org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          org.opencontainers.image.revision=${{ github.sha }}
 
   build-frontend:
     needs: prep-deps
@@ -789,6 +809,10 @@ jobs:
       contents: read
       packages: write
 
+    outputs:
+      digest: ${{ steps.build-push.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+
     steps:
     - name: Check out Git repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -812,13 +836,29 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
 
+    - name: Generate Image Metadata
+      id: meta
+      uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+      with:
+        tags: |
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
     - name: Build and Push Image
+      id: build-push
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
       with:
         context: modules/frontend
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/blaze-frontend:${{ github.sha }}
+        # the static labels are defined in the Dockerfile
+        labels: |
+          org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          org.opencontainers.image.revision=${{ github.sha }}
 
   image-scan:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -861,6 +901,48 @@ jobs:
       uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4
       with:
         sarif_file: trivy-results.sarif
+
+  image-labels-test:
+    name: image-labels-test (${{ matrix.image.name }})
+    if: github.event_name != 'push' || github.ref_type == 'tag'
+    needs: [ build, build-frontend-image ]
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image:
+        - name: blaze
+          digest: ${{ needs.build.outputs.digest }}
+          version: ${{ needs.build.outputs.version }}
+          title: Blaze
+          description: A FHIR® Server with internal, fast CQL Evaluation Engine
+        - name: blaze-frontend
+          digest: ${{ needs.build-frontend-image.outputs.digest }}
+          version: ${{ needs.build-frontend-image.outputs.version }}
+          title: Blaze Frontend
+          description: Frontend of the Blaze FHIR® Server
+      fail-fast: false
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Login to GHCR
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check Image Labels
+      env:
+        IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ matrix.image.digest }}
+        TITLE: ${{ matrix.image.title }}
+        DESCRIPTION: ${{ matrix.image.description }}
+        META_VERSION: ${{ matrix.image.version }}
+      run: |
+        # on release tags, the version has to be the tag without the leading v
+        if [ "$GITHUB_REF_TYPE" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$META_VERSION"; fi
+        .github/scripts/check-image-labels.sh "$IMAGE" "$TITLE" "$DESCRIPTION" "$VERSION" "$GITHUB_SHA"
 
   cql-expr-cache-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -3540,6 +3622,7 @@ jobs:
     - test-mem-size
     - test-root
     - image-scan
+    - image-labels-test
     - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
@@ -3579,8 +3662,11 @@ jobs:
         fi
 
   push-image:
+    name: push-image (${{ matrix.image.name }})
     if: ${{ !cancelled() && needs.pre-push-image.result == 'success' }}
     needs:
+    - build
+    - build-frontend-image
     - pre-push-image
     runs-on: ubuntu-24.04
     permissions:
@@ -3588,11 +3674,14 @@ jobs:
       id-token: write
     strategy:
       matrix:
+        # the digests ensure that exactly the images built and tested in this
+        # workflow run are pushed, even if a concurrent run of the same commit
+        # overwrote the commit tag with an image carrying different labels
         image:
         - name: ${{ github.event.repository.name }}
-          context: .
+          digest: ${{ needs.build.outputs.digest }}
         - name: ${{ github.event.repository.name }}-frontend
-          context: modules/frontend
+          digest: ${{ needs.build-frontend-image.outputs.digest }}
       fail-fast: false
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -3636,9 +3725,8 @@ jobs:
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
     - name: Retag Images
-      id: retag
       run: |
-        SOURCE_IMG="ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:${{ github.sha }}"
+        SOURCE_IMG="ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ matrix.image.digest }}"
         
         # Create an array for tags to avoid word splitting issues
         TAG_ARGS=()
@@ -3650,17 +3738,13 @@ jobs:
         
         echo "Copying to ${TAG_ARGS[*]}"
         docker buildx imagetools create "${TAG_ARGS[@]}" "$SOURCE_IMG"
-        
-        # Get the digest for signing
-        DIGEST="sha256:$(docker buildx imagetools inspect --raw "$SOURCE_IMG" | sha256sum | awk '{print $1}')"
-        echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
     - name: Sign GHCR Image
-      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.retag.outputs.digest }}"
+      run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}@${{ matrix.image.digest }}"
 
     - name: Sign DockerHub Image
       if: env.dockerhub_username != ''
-      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ steps.retag.outputs.digest }}"
+      run: cosign sign --yes "${{ github.repository_owner }}/${{ matrix.image.name }}@${{ matrix.image.digest }}"
 
   release:
     if: github.ref_type == 'tag'
