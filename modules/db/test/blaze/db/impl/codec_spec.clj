@@ -30,7 +30,7 @@
 
 (s/fdef codec/tid->type
   :args (s/cat :tid :blaze.db/tid)
-  :ret :fhir.resource/type)
+  :ret (s/nilable :fhir.resource/type))
 
 (s/fdef codec/c-hash
   :args (s/cat :code string?)

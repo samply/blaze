@@ -41,7 +41,17 @@
          (apply codec/descending-long [(apply codec/descending-long [t])])))))
 
 (deftest tid-test
-  (check `codec/tid))
+  (check `codec/tid)
+
+  (testing "tids are stable because they are stored in indices"
+    (are [type tid] (= tid (codec/tid type))
+      "ClinicalImpression" -2146857976
+      "Patient" -1508652135
+      "Observation" 1543762679
+      "TestReport" 2081142363))
+
+  (testing "returns the same boxed instance, so callers don't allocate"
+    (is (identical? (codec/tid "Patient") (codec/tid (String. (.toCharArray "Patient")))))))
 
 (deftest all-types-test
   (testing "contains types without own search parameters"

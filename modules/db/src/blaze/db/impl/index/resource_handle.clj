@@ -7,7 +7,7 @@
   the `resource-handle!` function. The access of its data is performed via
   keyword lookup. The relevant properties are:
 
-  * :fhir/type - the FHIR type like :fhir/Patient
+  * :fhir/type - the FHIR type like :fhir/Patient determined by :tid
   * :tid - the internal type ID as integer
   * :id - the logical FHIR ID
   * :t - logical timestamp `t` of the transaction the version of the resource
@@ -41,7 +41,8 @@
   "Creates a new resource handle when not purged at `base-t`.
 
   The :fhir/type of that handle will be the keyword `:fhir/<resource-type>`
-  taken from `tid`."
+  determined by `tid` on lookup. That lookup throws an IllegalStateException if
+  `tid` is unknown."
   [tid id t base-t vb]
   (let [h0 (bb/get-long! vb)
         h1 (bb/get-long! vb)
@@ -50,7 +51,6 @@
         state (bb/get-long! vb)]
     (when (or (no-purged-at? vb) (not-purged?! base-t vb))
       (ResourceHandle.
-       (keyword "fhir" (codec/tid->type tid))
        tid
        id
        t
