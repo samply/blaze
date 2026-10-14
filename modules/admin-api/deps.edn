@@ -48,7 +48,7 @@
     io.opentelemetry.instrumentation/opentelemetry-instrumentation-annotations]}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.10.4"
+  {:mvn/version "7.0.0"
    :exclusions
    [ca.uhn.hapi.fhir/hapi-fhir-base
     ca.uhn.hapi.fhir/org.hl7.fhir.dstu2
@@ -56,6 +56,7 @@
     ca.uhn.hapi.fhir/org.hl7.fhir.dstu3
     ca.uhn.hapi.fhir/org.hl7.fhir.dstu3.support
     ca.uhn.hapi.fhir/org.hl7.fhir.r4b
+    ca.uhn.hapi.fhir/org.hl7.fhir.r5
     com.google.errorprone/error_prone_annotations
     com.nimbusds/nimbus-jose-jwt
     commons-beanutils/commons-beanutils
@@ -72,8 +73,13 @@
     ognl/ognl
     org.apache.commons/commons-compress
     org.apache.httpcomponents/httpclient
+    org.apache.httpcomponents/httpcore
+    org.apache.poi/poi
+    org.apache.poi/poi-ooxml
+    org.apache.poi/poi-ooxml-full
     org.apache.santuario/xmlsec
     org.attoparser/attoparser
+    org.codelibs/xpp3
     org.commonmark/commonmark
     org.commonmark/commonmark-ext-gfm-tables
     org.eclipse.jgit/org.eclipse.jgit
