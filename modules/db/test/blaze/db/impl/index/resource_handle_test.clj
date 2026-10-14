@@ -28,6 +28,21 @@
     256 1
     512 2))
 
+(deftest fhir-type-test
+  (testing "the type is the interned keyword of the type of the tid"
+    (satisfies-prop 100
+      (prop/for-all [type (sg/elements ["Patient" "Observation" "Condition"])]
+        (let [rh (resource-handle type "0" 1)]
+          (and (identical? (keyword "fhir" type) (:fhir/type rh))
+               (identical? (keyword "fhir" type) (get rh :fhir/type)))))))
+
+  (testing "the type lookup fails on unknown tid"
+    (let [rh (rh/resource-handle! 0 "0" 1 0 (bb/allocate 40))]
+      (is (thrown-with-msg? IllegalStateException #"Unknown tid 0\."
+                            (:fhir/type rh)))
+      (is (thrown-with-msg? IllegalStateException #"Unknown tid 0\."
+                            (get rh :fhir/type))))))
+
 (deftest not-found-key-test
   (is (nil? (:foo (resource-handle "Patient" "foo" 0))))
   (is (= ::not-found (:foo (resource-handle "Patient" "foo" 0) ::not-found))))

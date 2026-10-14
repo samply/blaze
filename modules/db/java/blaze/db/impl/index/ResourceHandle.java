@@ -1,6 +1,7 @@
 package blaze.db.impl.index;
 
 import blaze.ByteString;
+import blaze.db.impl.codec.ResourceTypes;
 import blaze.fhir.Hash;
 import clojure.lang.*;
 
@@ -29,7 +30,7 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
     private static final ILookupThunk FHIR_TYPE_LOOKUP_THUNK = new ILookupThunk() {
         @Override
         public Object get(Object target) {
-            return target instanceof ResourceHandle rh ? rh.fhirType : this;
+            return target instanceof ResourceHandle rh ? rh.fhirType() : this;
         }
     };
 
@@ -90,7 +91,6 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
         return (state & 2) != 0 ? OP_CREATE : (state & 1) != 0 ? OP_DELETE : OP_PUT;
     }
 
-    private final Keyword fhirType;
     private final int tid;
     private final String id;
     private final long t;
@@ -104,9 +104,7 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
      * Creates a resource handle with the hash given by its four longs
      * {@code h0} to {@code h3}.
      */
-    public ResourceHandle(Keyword fhirType, int tid, String id, long t, long h0, long h1, long h2, long h3,
-                          long state) {
-        this.fhirType = requireNonNull(fhirType);
+    public ResourceHandle(int tid, String id, long t, long h0, long h1, long h2, long h3, long state) {
         this.tid = tid;
         this.id = requireNonNull(id);
         this.t = t;
@@ -115,6 +113,23 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
         this.h2 = h2;
         this.h3 = h3;
         this.state = state;
+    }
+
+    /**
+     * Returns the keyword {@code :fhir/<type>} of the type of this handle,
+     * determined by its {@code tid}.
+     * <p>
+     * The tid isn't checked on construction to keep it cheap. Tids come from
+     * indices which contain only known tids.
+     *
+     * @throws IllegalStateException if the tid is unknown
+     */
+    private Keyword fhirType() {
+        Keyword keyword = ResourceTypes.keyword(tid);
+        if (keyword == null) {
+            throw new IllegalStateException("Unknown tid " + tid + ".");
+        }
+        return keyword;
     }
 
     /**
@@ -164,7 +179,7 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
 
     @Override
     public Object valAt(Object key, Object notFound) {
-        if (key == FHIR_TYPE) return fhirType;
+        if (key == FHIR_TYPE) return fhirType();
         if (key == TID) return tid;
         if (key == ID) return id;
         if (key == T) return t;
@@ -204,6 +219,6 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
 
     @Override
     public String toString() {
-        return fhirType.getName() + "[id = " + id + ", t = " + t + ']';
+        return ResourceTypes.name(tid) + "[id = " + id + ", t = " + t + ']';
     }
 }
