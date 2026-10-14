@@ -9336,6 +9336,120 @@
                     node "Patient" [[:sort "_lastUpdated" :asc]])]
         (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query)))))))
 
+(def ^:private location-distance-url
+  "http://hl7.org/fhir/StructureDefinition/location-distance")
+
+(defn- match-extensions [db query]
+  (mapv (d/match-extension-fn query) (pull-query db query)))
+
+(deftest match-extension-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri "system-104521"
+                  :code #fhir/code "code-104525"}]}}]
+      [:put {:fhir/type :fhir/Location :id "0"
+             :name #fhir/string "London"
+             :status #fhir/code "active"
+             :position
+             {:fhir/type :fhir.Location/position
+              :latitude #fhir/decimal 51.50722M
+              :longitude #fhir/decimal -0.12750M}}]
+      [:put {:fhir/type :fhir/Location :id "1"
+             :name #fhir/string "Leipzig"
+             :status #fhir/code "active"
+             :position
+             {:fhir/type :fhir.Location/position
+              :latitude #fhir/decimal 51.3397M
+              :longitude #fhir/decimal 12.3731M}}]]]
+
+    (with-open-db [db node]
+      (testing "type query with near"
+        (let [query @(d/compile-type-query db "Location" [["near" "51.50722|-0.12750|900"]])]
+          (given (match-extensions db query)
+            count := 2
+            [0 count] := 1
+            [0 0 :fhir/type] := :fhir/Extension
+            [0 0 :url] := location-distance-url
+            [0 0 :value :fhir/type] := :fhir/Distance
+            [0 0 :value :value :value] :? zero?
+            [0 0 :value :unit] := #fhir/string "m"
+            [0 0 :value :system] := #fhir/uri "http://unitsofmeasure.org"
+            [0 0 :value :code] := #fhir/code "m"
+            [1 count] := 1
+            [1 0 :url] := location-distance-url
+            [1 0 :value :value :value] :? #(< 860000M % 870000M))))
+
+      (testing "type query with near with more than one value uses the minimal distance"
+        (let [query @(d/compile-type-query db "Location" [["near" "51.50722|-0.12750|900" "51.3397|12.3731|900"]])]
+          (given (match-extensions db query)
+            count := 2
+            [0 count] := 1
+            [0 0 :value :value :value] :? zero?
+            [1 count] := 1
+            [1 0 :value :value :value] :? zero?)))
+
+      (testing "type query with two near clauses"
+        (let [query @(d/compile-type-query db "Location" [["near" "51.50722|-0.12750|900"]
+                                                          ["near" "51.3397|12.3731|900"]])]
+          (given (match-extensions db query)
+            count := 2
+            [0 count] := 2
+            [0 0 :value :value :value] :? zero?
+            [0 1 :value :value :value] :? #(< 860000M % 870000M)
+            [1 count] := 2
+            [1 0 :value :value :value] :? #(< 860000M % 870000M)
+            [1 1 :value :value :value] :? zero?)))
+
+      (testing "type query with status and near"
+        (let [query @(d/compile-type-query db "Location" [["status" "active"]
+                                                          ["near" "51.3397|12.3731|1"]])]
+          (given (match-extensions db query)
+            count := 1
+            [0 count] := 1
+            [0 0 :value :value :value] :? zero?)))
+
+      (testing "type query without near"
+        (let [query @(d/compile-type-query db "Location" [["status" "active"]])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "empty type query"
+        (let [query @(d/compile-type-query db "Location" [])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "patient type query"
+        (let [query @(d/compile-type-query db "Observation" [["patient" "0"]
+                                                             ["code" "system-104521|code-104525"]])]
+          (is (patient-type-query? query))
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "system query"
+        (let [query @(d/compile-system-query db [["_id" "0"]])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "empty system query"
+        (let [query @(d/compile-system-query db [])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "compartment query"
+        (let [query @(d/compile-compartment-query db "Patient" "Observation"
+                                                  [["code" "system-104521|code-104525"]])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "compartment seek query"
+        (let [query @(d/compile-compartment-query db "Patient" "Observation"
+                                                  [["code" "code-104525"]])]
+          (is (nil? (d/match-extension-fn query)))))
+
+      (testing "compartment list query"
+        (let [query @(d/compile-compartment-query db "Patient" "Observation")]
+          (is (nil? (d/match-extension-fn query))))))))
+
 (deftest ^:slow count-query-test
   (log/set-min-level! :warn)
 

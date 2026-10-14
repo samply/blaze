@@ -231,6 +231,31 @@
         (given-failed-future f'
           ::anom/category := ::anom/incorrect)))))
 
+(deftest then-combine-test
+  (let [f1 (ac/future)
+        f2 (ac/future)
+        f' (ac/then-combine f1 f2 vector)]
+    (ac/complete! f2 2)
+    (is (not (ac/done? f')))
+    (ac/complete! f1 1)
+    (is (= [1 2] @f')))
+
+  (testing "returning an anomaly fails the future"
+    (let [f' (ac/then-combine (ac/completed-future 1) (ac/completed-future 2)
+                              (fn [_ _] (ba/incorrect)))]
+      (given-failed-future f'
+        ::anom/category := ::anom/incorrect)))
+
+  (testing "failing the first stage fails the future"
+    (given-failed-future (ac/then-combine (ac/completed-future (ba/fault))
+                                          (ac/completed-future 2) vector)
+      ::anom/category := ::anom/fault))
+
+  (testing "failing the other stage fails the future"
+    (given-failed-future (ac/then-combine (ac/completed-future 1)
+                                          (ac/completed-future (ba/fault)) vector)
+      ::anom/category := ::anom/fault)))
+
 (deftest handle-test
   (testing "with success"
     (let [f (ac/future)

@@ -8,9 +8,14 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
-(s/fdef page/match-pull-opts
-  :args (s/cat :params map?)
-  :ret map?)
+(s/fdef page/match-entry-fn
+  :args (s/cat :context map? :query (s/nilable :blaze.db/query))
+  :ret fn?)
+
+(s/fdef page/match-pull-fn
+  :args (s/cat :context map? :db :blaze.db/db :query (s/nilable :blaze.db/query)
+               :params map?)
+  :ret fn?)
 
 (s/fdef page/include-pull-opts
   :args (s/cat :params map?)

@@ -90,7 +90,12 @@
 
   (-query-clauses [query])
 
-  (-query-plan [query batch-db]))
+  (-query-plan [query batch-db])
+
+  (-query-match-extension-fn [query]
+    "Returns a function of a resource matched by `query` that returns its match
+    extensions or nil if there are none. Returns nil if no clause of `query`
+    produces match extensions."))
 
 (defprotocol Matcher
   (-transducer [matcher batch-db])
@@ -154,6 +159,16 @@
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
+
+(defprotocol MatchExtension
+  (-match-extension-fn [search-param modifier compiled-values]
+    "Returns a function of a matching resource that returns the extension that
+    will be added to its search entry or nil if there is none. Returns nil if
+    `search-param` never produces match extensions."))
+
+(extend-protocol MatchExtension
+  Object
+  (-match-extension-fn [_ _ _]))
 
 (defprotocol SearchParamRegistry
   (-parse [_ type s])

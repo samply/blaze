@@ -10,10 +10,8 @@
    [blaze.db.impl.search-param.near.geo :as spng]
    [blaze.db.impl.search-param.special :as special]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.search-param :as-alias sp]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
-   [blaze.util :refer [conj-vec]]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]))
 
@@ -113,15 +111,6 @@
                            :system #fhir/uri "http://unitsofmeasure.org"
                            :code #fhir/code "m"})}))
 
-(defn- add-match-extension [meta distance]
-  (update meta ::sp/match-extension conj-vec (distance-extension distance)))
-
-(defn- postprocess-matches-xf [batch-db compiled-values]
-  (map
-   (fn [resource-handle]
-     (let [distance (min-distance @(d/pull batch-db resource-handle) compiled-values)]
-       (vary-meta resource-handle add-match-extension distance)))))
-
 (defrecord SearchParamNear [name type code]
   p/SearchParam
   (-validate-modifier [_ modifier]
@@ -182,11 +171,15 @@
   (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
     (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
 
-  (-postprocess-matches [_ batch-db _ _ compiled-values]
-    (postprocess-matches-xf batch-db compiled-values))
+  (-postprocess-matches [_ _ _ _ _])
 
   (-index-values [_ _ _]
-    []))
+    [])
+
+  p/MatchExtension
+  (-match-extension-fn [_ _ compiled-values]
+    (fn [resource]
+      (some-> (min-distance resource compiled-values) distance-extension))))
 
 (defmethod special/special-search-param "near"
   [_ _]

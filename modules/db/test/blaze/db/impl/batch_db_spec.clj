@@ -13,6 +13,7 @@
    [blaze.db.impl.query.compartment-spec]
    [blaze.db.impl.query.system-spec]
    [blaze.db.impl.query.type-spec]
+   [blaze.db.impl.query.util-spec]
    [blaze.db.impl.search-param.chained-spec]
    [blaze.db.index.query :as-alias query]
    [clojure.spec.alpha :as s]))

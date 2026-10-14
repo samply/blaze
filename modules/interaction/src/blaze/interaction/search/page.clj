@@ -1,6 +1,7 @@
 (ns blaze.interaction.search.page
   "Common functions for building search result pages and their paging links,
-  shared between the search-type and the search-system interaction."
+  shared between the search-type and the search-system interaction. The match
+  entries are also shared with the search-compartment interaction."
   (:require
    [blaze.anomaly :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -18,7 +19,7 @@
 (defn- wrap-cache-handling [opts {:keys [page-id]}]
   (cond-> opts page-id (assoc :skip-cache-insertion? true)))
 
-(defn match-pull-opts
+(defn- match-pull-opts
   "Returns the options for pulling the resource contents of the matches
   according to `params`."
   [{:keys [summary elements] :as params}]
@@ -27,6 +28,57 @@
         (= "true" summary) {:variant :summary}
         :else {})
       (wrap-cache-handling params)))
+
+(defn- subsetting? [{:keys [elements variant]}]
+  (or elements variant))
+
+(defn match-entry-fn
+  "Returns a function of a resource matched by `query` that returns its match
+  entry, including the match extensions `query` produces.
+
+  The resource content has to be complete if `query` produces match extensions.
+  The query is nil if all resources are returned."
+  [context query]
+  (if-let [match-extension-fn (some-> query d/match-extension-fn)]
+    #(search-util/match-entry context % (match-extension-fn %))
+    (partial search-util/match-entry context)))
+
+(defn- match-entry-pull-fn [pull match-entry]
+  (fn [handle]
+    (do-sync [resource (pull handle)]
+      (match-entry resource))))
+
+(defn- complete-match-extension-entry-pull-fn
+  "Returns a function of a resource handle that pulls the resource content via
+  `pull` and computes its match extension from the complete resource content
+  pulled by `pull-complete`, because `pull` pulls only a subset of the resource
+  content."
+  [context pull pull-complete match-extension-fn]
+  (fn [handle]
+    (-> (pull handle)
+        (ac/then-combine
+         (pull-complete handle)
+         (fn [resource complete-resource]
+           (search-util/match-entry
+            context resource (match-extension-fn complete-resource)))))))
+
+(defn match-pull-fn
+  "Returns a function that takes a resource handle matched by `query` and
+  returns a CompletableFuture that will complete with its match entry.
+
+  The resource content is pulled according to `params`. If `query` produces
+  match extensions, they are computed from the complete resource content, also
+  pulling it if `params` request only a subset like with `_elements` or
+  `_summary`. The query is nil if all resources are returned."
+  [context db query params]
+  (let [opts (match-pull-opts params)
+        pull (d/pull-fn db opts)]
+    (if-let [match-extension-fn (when (subsetting? opts)
+                                  (some-> query d/match-extension-fn))]
+      (complete-match-extension-entry-pull-fn
+       context pull (d/pull-fn db (wrap-cache-handling {} params))
+       match-extension-fn)
+      (match-entry-pull-fn pull (match-entry-fn context query)))))
 
 (defn include-pull-opts
   "Returns the options for pulling the resource contents of the includes
@@ -39,9 +91,9 @@
   resource content of the matches.
 
   Pulls are triggered during the scan via `pull` (a function of a resource
-  handle returning a CompletableFuture), so the resource I/O overlaps with the
-  single-threaded scan. The next-match handle, which only seeds the next page's
-  paging link, is not pulled."
+  handle returning a CompletableFuture, see `match-pull-fn`), so the resource
+  I/O overlaps with the single-threaded scan. The next-match handle, which only
+  seeds the next page's paging link, is not pulled."
   [duration-histogram pull page-size handles]
   ;; start the pull timer before reducing the handles, because the pulls are
   ;; triggered during the reduction and run concurrently with the rest of the
@@ -101,7 +153,7 @@
 
 (defn pull-matches
   "Awaits the `match-futures` already pulled during the scan and returns a
-  CompletableFuture of all match resources in order.
+  CompletableFuture of all match entries in order.
 
   Observes `pull-timer` (started in `build-page` before the scan reduction)
   once all pulls complete, so the `pull-matches` metric captures the full pull
@@ -213,9 +265,6 @@
     :type #fhir/code "searchset"
     :total (type/unsignedInt total)
     :link [(self-link context clauses)]}))
-
-(defn match-xf [context]
-  (map (partial search-util/match-entry context)))
 
 (defn include-xf [context]
   (map (partial search-util/include-entry context)))

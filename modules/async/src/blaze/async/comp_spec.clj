@@ -91,6 +91,10 @@
                :executor (s/? ex/executor?))
   :ret ac/completion-stage?)
 
+(s/fdef ac/then-combine
+  :args (s/cat :stage ac/completion-stage? :other ac/completion-stage? :f ifn?)
+  :ret ac/completion-stage?)
+
 (s/fdef ac/handle
   :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)

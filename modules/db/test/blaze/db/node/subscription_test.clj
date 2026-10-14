@@ -38,7 +38,7 @@
 
 (defn- resource-handle [id t]
   (ResourceHandle. :fhir/Task (codec/tid "Task") id t
-                   (hash/generate {:fhir/type :fhir/Task :id id}) 0 nil))
+                   (hash/generate {:fhir/type :fhir/Task :id id}) 0))
 
 (defn- handles
   "Returns the resource handles of the transaction with `t`, one per `id`."

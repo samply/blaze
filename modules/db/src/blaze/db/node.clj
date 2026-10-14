@@ -1070,11 +1070,10 @@
       (assoc :lastUpdated (node-util/instant instant))))
 
 (defn- mk-meta [handle tx]
-  (assoc (meta handle)
-         :blaze.resource/hash (:hash handle)
-         :blaze.db/num-changes (:num-changes handle)
-         :blaze.db/op (:op handle)
-         :blaze.db/tx tx))
+  {:blaze.resource/hash (:hash handle)
+   :blaze.db/num-changes (:num-changes handle)
+   :blaze.db/op (:op handle)
+   :blaze.db/tx tx})
 
 (defn- enhance-resource [tx-cache handle resource]
   (let [t (:t handle)
@@ -1317,8 +1316,7 @@
 
   (-pull-content [_ resource-handle variant]
     (do-sync [resource (get-resource resource-cache rc/get resource-handle variant)]
-      (or (some-> resource (with-meta (meta resource-handle)))
-          (resource-content-not-found-anom resource-handle))))
+      (or resource (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles opts]
     (let [{:keys [variant elements skip-cache-insertion?]

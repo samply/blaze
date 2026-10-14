@@ -422,6 +422,19 @@
   [query]
   (p/-query-clauses query))
 
+(defn match-extension-fn
+  "Returns a function of a resource matched by `query` that returns the
+  extensions that should be added to its search entry or nil if there are none.
+
+  Returns nil if no clause of `query` produces match extensions. An example of
+  a match extension is the distance of a Location resource matched by the
+  `near` search parameter.
+
+  The returned function needs the complete resource content, because a subset
+  of it might miss the elements the match extensions are computed from."
+  [query]
+  (p/-query-match-extension-fn query))
+
 ;; ---- Common Matcher Functions ----------------------------------------------
 
 (defn matches?

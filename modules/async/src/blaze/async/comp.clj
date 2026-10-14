@@ -191,6 +191,13 @@
   ([stage f executor]
    (.thenComposeAsync ^CompletionStage stage (comp ba/throw-when f) executor)))
 
+(defn then-combine
+  "Returns a CompletionStage that, when both `stage` and `other` complete
+  normally, is executed with the two results as arguments to the function `f`."
+  [stage other f]
+  (.thenCombine ^CompletionStage stage ^CompletionStage other
+                (comp ba/throw-when f)))
+
 (defprotocol CompletionCause
   (-completion-cause [e]))
 
