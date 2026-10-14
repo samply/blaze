@@ -43,6 +43,9 @@
 (s/def :fhir/Coding
   #(s2/valid? :fhir/Coding %))
 
+(s/def :fhir/Extension
+  #(s2/valid? :fhir/Extension %))
+
 (s/def :fhir/Expression
   #(s2/valid? :fhir/Expression %))
 

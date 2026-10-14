@@ -8,6 +8,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.search.nav :as nav]
+   [blaze.interaction.search.page :as page]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util.spec]
@@ -30,30 +31,33 @@
     (do-sync [query (d/compile-compartment-query db code type)]
       (with-open [batch-db (d/new-batch-db db)]
         (when-ok [handles (d/execute-query batch-db query id)]
-          {:handles (vec handles)})))
+          {:query query
+           :handles (vec handles)})))
 
     (identical? :blaze.preference.handling/strict handling)
     (do-sync [query (d/compile-compartment-query db code type clauses)]
       (with-open [batch-db (d/new-batch-db db)]
         (when-ok [handles (d/execute-query batch-db query id)]
-          {:handles (vec handles)
+          {:query query
+           :handles (vec handles)
            :clauses clauses})))
 
     :else
     (do-sync [query (d/compile-compartment-query-lenient db code type clauses)]
       (with-open [batch-db (d/new-batch-db db)]
         (when-ok [handles (d/execute-query batch-db query id)]
-          {:handles (vec handles)
+          {:query query
+           :handles (vec handles)
            :clauses (d/query-clauses query)})))))
 
-(defn- entries-xf [{{:keys [page-offset page-size]} :params :as context}]
+(defn- entries-xf [{{:keys [page-offset page-size]} :params :as context} query]
   (comp
    (drop page-offset)
    (take (inc page-size))
-   (map (partial search-util/match-entry context))))
+   (map (page/match-entry-fn context query))))
 
-(defn- entries [context resources]
-  (into [] (entries-xf context) resources))
+(defn- entries [context query resources]
+  (into [] (entries-xf context query) resources))
 
 (defn- self-link
   [{::search-util/keys [link] :keys [match params] :blaze/keys [base-url]}
@@ -91,13 +95,13 @@
 (defn- search-normal [{:blaze/keys [db] :as context}]
   (-> (handles-and-clauses context)
       (ac/then-compose
-       (fn [{:keys [handles clauses]}]
+       (fn [{:keys [query handles clauses]}]
          (-> (d/pull-many db handles)
              (ac/exceptionally
               #(assoc %
                       ::anom/category ::anom/fault
                       :fhir/issue "incomplete"))
-             (ac/then-apply (partial entries context))
+             (ac/then-apply (partial entries context query))
              (ac/then-compose (partial bundle context handles clauses)))))))
 
 (defn- search-summary [context]

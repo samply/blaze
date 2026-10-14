@@ -7,7 +7,9 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef search-util/match-entry
-  :args (s/cat :context ::search-util/context :resource :fhir/Resource))
+  :args (s/cat :context ::search-util/context :resource :fhir/Resource
+               :match-extension (s/? (s/nilable (s/coll-of :fhir/Extension :kind vector?))))
+  :ret :fhir.Bundle/entry)
 
 (s/fdef search-util/include-entry
   :args (s/cat :context ::search-util/context :resource :fhir/Resource))

@@ -38,7 +38,8 @@
                                     nil (codec/id-byte-string arg2)))
   (-query-clauses [_])
   (-query-plan [_ batch-db]
-    (index/type-query-plan batch-db tid {:search-clauses clauses})))
+    (index/type-query-plan batch-db tid {:search-clauses clauses}))
+  (-query-match-extension-fn [_]))
 
 (defn- seek-clauses [clauses code id other-clauses]
   {:search-clauses (into (inject-values clauses [(str code "/" id)]) other-clauses)})
@@ -53,7 +54,9 @@
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses other-clauses}))
   (-query-plan [_ batch-db]
-    (index/type-query-plan batch-db tid {:search-clauses (into clauses other-clauses)})))
+    (index/type-query-plan batch-db tid {:search-clauses (into clauses other-clauses)}))
+  (-query-match-extension-fn [_]
+    (qu/match-extension-fn other-clauses)))
 
 (defrecord CompartmentQuery [c-hash tid scan-clauses other-clauses]
   p/Query
@@ -67,4 +70,6 @@
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses (into scan-clauses other-clauses)}))
   (-query-plan [_ _]
-    (index/compartment-query-plan scan-clauses other-clauses)))
+    (index/compartment-query-plan scan-clauses other-clauses))
+  (-query-match-extension-fn [_]
+    (qu/match-extension-fn (into scan-clauses other-clauses))))

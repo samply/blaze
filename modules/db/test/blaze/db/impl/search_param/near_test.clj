@@ -131,6 +131,39 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Unsupported unit `mi_us` in search parameter `near`. Supported are 'km', 'm'."))))
 
+(deftest match-extension-test
+  (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
+    (let [search-param (near-param search-param-registry)
+          compiled-values @(search-param/compile-values
+                            search-param nil
+                            ["51.50722|-0.12750|900" "51.3397|12.3731|900"])]
+
+      (testing "a location with position gets its minimal distance"
+        (given ((p/-match-extension-fn search-param nil compiled-values)
+                {:fhir/type :fhir/Location :id "0"
+                 :position
+                 {:fhir/type :fhir.Location/position
+                  :latitude #fhir/decimal 51.3398M
+                  :longitude #fhir/decimal 12.3731M}})
+          :fhir/type := :fhir/Extension
+          :url := "http://hl7.org/fhir/StructureDefinition/location-distance"
+          [:value :fhir/type] := :fhir/Distance
+          [:value :value :value] :? #(< 11M % 12M)
+          [:value :unit] := #fhir/string "m"
+          [:value :system] := #fhir/uri "http://unitsofmeasure.org"
+          [:value :code] := #fhir/code "m"))
+
+      (testing "a location without position has no match extension"
+        (is (nil? ((p/-match-extension-fn search-param nil compiled-values)
+                   {:fhir/type :fhir/Location :id "0"}))))
+
+      (testing "a location with incomplete position has no match extension"
+        (is (nil? ((p/-match-extension-fn search-param nil compiled-values)
+                   {:fhir/type :fhir/Location :id "0"
+                    :position
+                    {:fhir/type :fhir.Location/position
+                     :latitude #fhir/decimal 51.3398M}})))))))
+
 (deftest ordered-compartment-index-handles-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (near-param search-param-registry)]

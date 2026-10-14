@@ -49,7 +49,9 @@
   (-query-clauses [_]
     (qu/decode-clauses clauses))
   (-query-plan [_ _]
-    {:query-type :system}))
+    {:query-type :system})
+  (-query-match-extension-fn [_]
+    (qu/match-extension-fn (:search-clauses clauses))))
 
 (defrecord EmptySystemQuery []
   p/Query
@@ -62,7 +64,8 @@
                      (codec/id-byte-string start-id)))
   (-query-clauses [_])
   (-query-plan [_ _]
-    {:query-type :system}))
+    {:query-type :system})
+  (-query-match-extension-fn [_]))
 
 (defn- unsigned-tid-comparator [tid-1 tid-2]
   (Integer/compareUnsigned (int tid-1) (int tid-2)))

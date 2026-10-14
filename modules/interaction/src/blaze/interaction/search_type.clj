@@ -83,7 +83,7 @@
   [{:blaze/keys [db]
     {:keys [include-defs page-size page-id] :as params} :params :as context}]
   (do-sync [query (compile-query context db)]
-    (let [pull (d/pull-fn db (page/match-pull-opts params))]
+    (let [pull (page/match-pull-fn context db query params)]
       (with-open [_ (prom/timer search-duration-seconds "scan")
                   batch-db (d/new-batch-db db)]
         (when-ok [handles (if query
@@ -108,7 +108,7 @@
 (defn- entries
   [{{:keys [explain?]} :params :as context} query match-future include-future]
   (-> (cond-> [] (and explain? query) (conj (query-plan-entry context query)))
-      (into (page/match-xf context) (ac/join match-future))
+      (into (ac/join match-future))
       (into (page/include-xf context) (ac/join include-future))))
 
 (defn- page-data

@@ -204,6 +204,10 @@
   :args (s/cat :query :blaze.db/query)
   :ret (s/nilable :blaze.db.query/clauses))
 
+(s/fdef d/match-extension-fn
+  :args (s/cat :query :blaze.db/query)
+  :ret (s/nilable fn?))
+
 ;; ---- Common Matcher Functions ----------------------------------------------
 
 (s/fdef d/matches?

@@ -801,7 +801,31 @@
             [:value :unit] := #fhir/string "m"
             [:value :code] := #fhir/code "m"
             [:value :system] := #fhir/uri "http://unitsofmeasure.org"
-            [:value :value :value] :? #(< 27520M % 27530M)))))))
+            [:value :value :value] :? #(< 27520M % 27530M)))))
+
+    (testing "near search with subsetted resources"
+      (doseq [params [{"_elements" "name"} {"_summary" "true"}]]
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler {::reitit/match (match-of "Location")
+                         :params (assoc params "near" "51.4746|0.2666|50")})]
+
+          (is (= 200 status))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the resource is subsetted"
+            (given (-> first-entry :resource :meta :tag (coding v3-ObservationValue) first)
+              :code := #fhir/code "SUBSETTED"))
+
+          (testing "the resource has no position"
+            (is (nil? (-> first-entry :resource :position))))
+
+          (testing "the entry has distance search extension"
+            (given (-> first-entry :search :extension location-distance)
+              :fhir/type := :fhir/Extension
+              [:value :fhir/type] := :fhir/Distance
+              [:value :value :value] :? #(< 27520M % 27530M))))))))
 
 (deftest handler-one-patient-test
   (with-handler [handler]

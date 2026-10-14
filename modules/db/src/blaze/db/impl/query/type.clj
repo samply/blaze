@@ -22,7 +22,9 @@
   (-query-clauses [_]
     (qu/decode-clauses clauses))
   (-query-plan [_ batch-db]
-    (index/type-query-plan batch-db tid clauses)))
+    (index/type-query-plan batch-db tid clauses))
+  (-query-match-extension-fn [_]
+    (qu/match-extension-fn (:search-clauses clauses))))
 
 (def ^:private ^:const ^long patient-compartment-hash (codec/c-hash "Patient"))
 (def ^:private ^:const ^long patient-code-hash (codec/c-hash "patient"))
@@ -77,7 +79,9 @@
                                             (into scan-clauses)
                                             (into other-clauses))}))
   (-query-plan [_ _]
-    (index/compartment-query-plan scan-clauses other-clauses)))
+    (index/compartment-query-plan scan-clauses other-clauses))
+  (-query-match-extension-fn [_]
+    (qu/match-extension-fn (into scan-clauses other-clauses))))
 
 (defn patient-type-query
   [tid patient-ids compartment-clause scan-clauses other-clauses]
@@ -101,4 +105,5 @@
     (rao/type-list batch-db tid (codec/id-byte-string start-id)))
   (-query-clauses [_])
   (-query-plan [_ _]
-    {:query-type :type}))
+    {:query-type :type})
+  (-query-match-extension-fn [_]))

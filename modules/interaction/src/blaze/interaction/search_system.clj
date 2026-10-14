@@ -80,7 +80,7 @@
     {:keys [include-defs page-size page-type page-id] :as params} :params
     :as context}]
   (do-sync [query (compile-query context db)]
-    (let [pull (d/pull-fn db (page/match-pull-opts params))]
+    (let [pull (page/match-pull-fn context db query params)]
       (with-open [_ (prom/timer search-duration-seconds "scan")
                   batch-db (d/new-batch-db db)]
         (when-ok [handles (if query
@@ -91,7 +91,7 @@
           (assoc page :query query))))))
 
 (defn- entries [context match-future include-future]
-  (-> (into [] (page/match-xf context) (ac/join match-future))
+  (-> (ac/join match-future)
       (into (page/include-xf context) (ac/join include-future))))
 
 (defn- page-data
