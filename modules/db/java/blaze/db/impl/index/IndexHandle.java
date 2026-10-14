@@ -1,7 +1,6 @@
 package blaze.db.impl.index;
 
 import blaze.ByteString;
-import blaze.fhir.Hash;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,8 +19,8 @@ public final class IndexHandle {
         this.hashPrefixes = requireNonNull(hashPrefixes);
     }
 
-    public static IndexHandle fromIdAndHash(ByteString id, Hash hash) {
-        return new IndexHandle(id, new int[]{hash.prefix()});
+    public static IndexHandle fromResourceHandle(ResourceHandle resourceHandle) {
+        return new IndexHandle(resourceHandle.idByteString(), new int[]{resourceHandle.hashPrefix()});
     }
 
     public static IndexHandle fromSingleVersionId(SingleVersionId singleVersionId) {
@@ -40,8 +39,8 @@ public final class IndexHandle {
         return Arrays.stream(hashPrefixes).mapToObj(p -> new SingleVersionId(id, p)).toList();
     }
 
-    public boolean matchesHash(Hash hash) {
-        return Arrays.binarySearch(hashPrefixes, hash.prefix()) >= 0;
+    public boolean matchesHashPrefix(ResourceHandle resourceHandle) {
+        return Arrays.binarySearch(hashPrefixes, resourceHandle.hashPrefix()) >= 0;
     }
 
     public IndexHandle conj(SingleVersionId singleVersionId) {

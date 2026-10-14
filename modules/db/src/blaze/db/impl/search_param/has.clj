@@ -60,9 +60,9 @@
   (coll/eduction
    (u/reference-resource-handle-mapper batch-db)
    (let [tid-byte-string (codec/tid-byte-string tid)
-         {:keys [tid id hash]} resource-handle]
-     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
-                         (bs/size tid-byte-string) tid-byte-string))))
+         {:keys [tid id hash-prefix]} resource-handle]
+     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+                         c-hash (bs/size tid-byte-string) tid-byte-string))))
 
 (defn- drop-lesser-ids [start-id]
   (drop-while #(neg? (let [^String id (:id %)] (.compareTo id start-id)))))

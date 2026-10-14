@@ -1,9 +1,7 @@
 (ns blaze.db.impl.index.index-handle
   (:refer-clojure :exclude [conj])
-  (:require
-   [blaze.db.impl.codec :as codec])
   (:import
-   [blaze.db.impl.index IndexHandle SingleVersionId]))
+   [blaze.db.impl.index IndexHandle ResourceHandle SingleVersionId]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,8 +13,7 @@
 (defn from-resource-handle
   "Creates an index handle from `resource-handle`."
   [resource-handle]
-  (IndexHandle/fromIdAndHash (codec/id-byte-string (:id resource-handle))
-                             (:hash resource-handle)))
+  (IndexHandle/fromResourceHandle ^ResourceHandle resource-handle))
 
 (defn id
   "Returns the id of `index-handle`."
@@ -32,9 +29,10 @@
   (.toSingleVersionIds ^IndexHandle index-handle))
 
 (defn matches-hash?
-  "Tests whether `index-handle` contains the prefix of `hash`."
-  [index-handle hash]
-  (.matchesHash ^IndexHandle index-handle hash))
+  "Tests whether `index-handle` contains the hash prefix of `resource-handle`."
+  [index-handle resource-handle]
+  (.matchesHashPrefix ^IndexHandle index-handle
+                      ^ResourceHandle resource-handle))
 
 (defn conj
   "Returns a new index-handle with the hash of `single-version-id` added to the

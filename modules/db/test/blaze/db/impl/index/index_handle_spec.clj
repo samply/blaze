@@ -25,7 +25,8 @@
   :ret (s/coll-of int?))
 
 (s/fdef ih/matches-hash?
-  :args (s/cat :index-handle ::index/handle :hash :blaze.resource/hash)
+  :args (s/cat :index-handle ::index/handle
+               :resource-handle :blaze.db/resource-handle)
   :ret boolean?)
 
 (s/fdef ih/conj

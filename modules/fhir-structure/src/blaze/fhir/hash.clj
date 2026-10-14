@@ -34,10 +34,6 @@
   (.copyTo ^Hash hash ^ByteString$Builder builder)
   builder)
 
-(defn prefix-into-byte-buffer!
-  [byte-buffer hash]
-  (bb/put-int! byte-buffer (.prefix ^Hash hash)))
-
 (defn prefix-into-byte-string-builder!
   [builder hash]
   (bsb/put-int! builder (.prefix ^Hash hash)))

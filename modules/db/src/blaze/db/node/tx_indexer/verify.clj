@@ -238,7 +238,7 @@
    :fhir/issue "too-costly"))
 
 (defn- purge-entry [tid id t rh]
-  (rts/index-entries tid id (:t rh) (:hash rh) (:num-changes rh) (:op rh) t))
+  (rts/purge-index-entries tid id rh t))
 
 (defn- add-purge-entries [res tid id t resource-handles]
   (-> (update res :entries into (mapcat (partial purge-entry tid (codec/id-byte-string id) t)) resource-handles)

@@ -5,6 +5,7 @@
    [blaze.db.impl.index-spec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle-spec]
+   [blaze.db.impl.index.resource-handle-test-util :refer [resource-handle]]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.kv.mem]
@@ -33,6 +34,20 @@
    (ih 0 hp))
   ([id hp]
    (ih/from-single-version-id (svi id hp))))
+
+(deftest from-resource-handle-test
+  (let [ih (ih/from-resource-handle (resource-handle "Patient" "0" 1 (hash 1)))]
+    (is (= #blaze/byte-string"30" (ih/id ih)))
+    (is (= [1] (ih/hash-prefixes ih)))))
+
+(deftest matches-hash-test
+  (testing "matches"
+    (is (true? (ih/matches-hash? (ih/conj (ih 1) (svi 2))
+                                 (resource-handle "Patient" "0" 1 (hash 2))))))
+
+  (testing "doesn't match"
+    (is (false? (ih/matches-hash? (ih/conj (ih 1) (svi 2))
+                                  (resource-handle "Patient" "0" 1 (hash 3)))))))
 
 (deftest conj-hash-prefix-from-test
   (let [ih (ih/conj (ih 1) (svi 2))]

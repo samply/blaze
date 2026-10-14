@@ -1070,8 +1070,7 @@
       (assoc :lastUpdated (node-util/instant instant))))
 
 (defn- mk-meta [handle tx]
-  {:blaze.resource/hash (:hash handle)
-   :blaze.db/num-changes (:num-changes handle)
+  {:blaze.db/num-changes (:num-changes handle)
    :blaze.db/op (:op handle)
    :blaze.db/tx tx})
 

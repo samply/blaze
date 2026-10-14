@@ -25,6 +25,10 @@ public final class Hash {
         this.l3 = l3;
     }
 
+    public static Hash fromLongs(long l0, long l1, long l2, long l3) {
+        return new Hash(l0, l1, l2, l3);
+    }
+
     public static Hash fromHex(String s) {
         return new Hash(
                 HexFormat.fromHexDigitsToLong(s, 0, 16),
@@ -38,6 +42,13 @@ public final class Hash {
     }
 
     public int prefix() {
+        return prefix(l0);
+    }
+
+    /**
+     * Returns the prefix of a hash with {@code l0} as its first eight bytes.
+     */
+    public static int prefix(long l0) {
         return (int) (l0 >>> 32);
     }
 

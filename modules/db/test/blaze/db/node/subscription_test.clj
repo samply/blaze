@@ -4,18 +4,17 @@
    [blaze.async.comp :as ac]
    [blaze.async.flow :as flow]
    [blaze.async.flow-spec]
-   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle-spec]
+   [blaze.db.impl.index.resource-handle-test-util :refer [resource-handle]]
    [blaze.db.node.subscription :as sub]
    [blaze.db.node.subscription-spec]
    [blaze.db.test-util :refer [wait-for]]
-   [blaze.fhir.hash :as hash]
    [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
-   [blaze.db.impl.index ResourceHandle]
    [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 (set! *warn-on-reflection* true)
@@ -36,14 +35,10 @@
    :remove! (fn [subscription] (some-> removed (swap! conj subscription)))
    :wake-node-publish-loop! (fn [] (some-> wake-ups (swap! inc)))})
 
-(defn- resource-handle [id t]
-  (ResourceHandle. :fhir/Task (codec/tid "Task") id t
-                   (hash/generate {:fhir/type :fhir/Task :id id}) 0))
-
 (defn- handles
   "Returns the resource handles of the transaction with `t`, one per `id`."
   [t & ids]
-  (mapv #(resource-handle % t) ids))
+  (mapv #(resource-handle "Task" % t) ids))
 
 (defn- changed-handles
   "Returns the `handles` in descending transaction order, like the publishing

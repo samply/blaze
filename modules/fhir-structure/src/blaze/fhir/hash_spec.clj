@@ -26,10 +26,6 @@
                :hash :blaze.resource/hash)
   :ret #(instance? ByteString$Builder %))
 
-(s/fdef hash/prefix-into-byte-buffer!
-  :args (s/cat :byte-buffer bb/byte-buffer? :hash :blaze.resource/hash)
-  :ret bb/byte-buffer?)
-
 (s/fdef hash/prefix-into-byte-string-builder!
   :args (s/cat :builder #(instance? ByteString$Builder %)
                :hash :blaze.resource/hash)

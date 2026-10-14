@@ -1,7 +1,6 @@
 package blaze.db.impl.index;
 
 import blaze.ByteString;
-import blaze.fhir.Hash;
 
 import static java.util.Objects.requireNonNull;
 
@@ -11,8 +10,12 @@ public record SingleVersionId(ByteString id, int hashPrefix) {
         requireNonNull(id);
     }
 
-    public boolean matchesHash(Hash hash) {
-        return hashPrefix == hash.prefix();
+    public static SingleVersionId fromResourceHandle(ResourceHandle resourceHandle) {
+        return new SingleVersionId(resourceHandle.idByteString(), resourceHandle.hashPrefix());
+    }
+
+    public boolean matchesHashPrefix(ResourceHandle resourceHandle) {
+        return hashPrefix == resourceHandle.hashPrefix();
     }
 
     @Override
