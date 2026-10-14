@@ -6,6 +6,7 @@
    [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
@@ -23,38 +24,45 @@
                              codec/c-hash-size))
     (bs/from-byte-buffer! buf)))
 
+(defn- key-size* ^long [^long id-size]
+  (+ codec/tid-size 1 id-size hash/prefix-size codec/c-hash-size))
+
 (defn key-size ^long [id]
-  (+ codec/tid-size 1 (bs/size id) hash/prefix-size codec/c-hash-size))
+  (key-size* (bs/size id)))
 
-(defn- encode-key-buf-1! [buf tid id hash c-hash]
-  (-> buf
-      (bb/put-int! tid)
-      (bb/put-null-terminated-byte-string! id)
-      (hash/prefix-into-byte-buffer! hash)
-      (bb/put-int! c-hash)))
-
-(defn- hash-prefix-encode-key-buf-1! [buf tid id hash-prefix c-hash]
+(defn- encode-key-buf-1! [buf tid id hash-prefix c-hash]
   (-> buf
       (bb/put-int! tid)
       (bb/put-null-terminated-byte-string! id)
       (bb/put-int! hash-prefix)
       (bb/put-int! c-hash)))
 
-(defn- encode-key-builder-1! [builder tid id hash c-hash]
+(defn- encode-resource-handle-key-buf-1!
+  "Like `encode-key-buf-1!` but copies tid, id and hash prefix directly from
+  `resource-handle` without allocating."
+  [buf resource-handle c-hash]
+  (-> buf
+      (rh/tid-into-byte-buffer! resource-handle)
+      (rh/id-into-byte-buffer! resource-handle)
+      (bb/put-byte! 0)
+      (rh/hash-prefix-into-byte-buffer! resource-handle)
+      (bb/put-int! c-hash)))
+
+(defn- encode-key-builder-1! [builder tid id hash-prefix c-hash]
   (-> builder
       (bsb/put-int! tid)
       (bsb/put-null-terminated-byte-string! id)
-      (hash/prefix-into-byte-string-builder! hash)
+      (bsb/put-int! hash-prefix)
       (bsb/put-int! c-hash)))
 
 (defn- encode-key
-  ([tid id hash c-hash]
+  ([tid id hash-prefix c-hash]
    (-> (bsb/allocate (key-size id))
-       (encode-key-builder-1! tid id hash c-hash)
+       (encode-key-builder-1! tid id hash-prefix c-hash)
        bsb/build))
-  ([tid id hash c-hash value]
+  ([tid id hash-prefix c-hash value]
    (-> (bsb/allocate (+ (key-size id) (bs/size value)))
-       (encode-key-builder-1! tid id hash c-hash)
+       (encode-key-builder-1! tid id hash-prefix c-hash)
        (bsb/put-byte-string! value)
        bsb/build)))
 
@@ -65,14 +73,14 @@
   {:arglists
    '([snapshot resource-handle c-hash]
      [snapshot resource-handle c-hash value-prefix-length value])}
-  ([snapshot {:keys [tid id hash]} c-hash]
+  ([snapshot {:keys [tid id hash-prefix]} c-hash]
    (let [id (codec/id-byte-string id)
-         target (encode-key tid id hash c-hash)]
+         target (encode-key tid id hash-prefix c-hash)]
      (i/seek-key snapshot :resource-value-index decode-value
                  (bs/size target) target)))
-  ([snapshot {:keys [tid id hash]} c-hash value-prefix-length value]
+  ([snapshot {:keys [tid id hash-prefix]} c-hash value-prefix-length value]
    (let [id (codec/id-byte-string id)
-         target (encode-key tid id hash c-hash value)]
+         target (encode-key tid id hash-prefix c-hash value)]
      (i/seek-key snapshot :resource-value-index decode-value
                  (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
                  target))))
@@ -117,10 +125,9 @@
   "Returns an encoder that can be used with `value-filter` that will encode the
   resource handle and search param with `c-hash`."
   [c-hash]
-  (fn [target-buf {:keys [tid id hash]} _]
-    (let [id (codec/id-byte-string id)
-          target-buf (ensure-size target-buf (key-size id))]
-      (encode-key-buf-1! target-buf tid id hash c-hash))))
+  (fn [target-buf resource-handle _]
+    (-> (ensure-size target-buf (key-size* (count (:id resource-handle))))
+        (encode-resource-handle-key-buf-1! resource-handle c-hash))))
 
 (defn single-version-id-search-param-encoder
   "Returns an encoder that can be used with `value-filter` that will encode the
@@ -130,17 +137,17 @@
     (let [id (svi/id single-version-id)
           hash-prefix (svi/hash-prefix single-version-id)
           target-buf (ensure-size target-buf (key-size id))]
-      (hash-prefix-encode-key-buf-1! target-buf tid id hash-prefix c-hash))))
+      (encode-key-buf-1! target-buf tid id hash-prefix c-hash))))
 
 (defn resource-handle-search-param-value-encoder
   "Returns an encoder that can be used with `value-filter` that will encode the
   resource handle, search param with `c-hash` and value it gets."
   [c-hash]
-  (fn [target-buf {:keys [tid id hash]} value]
-    (let [id (codec/id-byte-string id)
-          target-buf (ensure-size target-buf (+ (key-size id) (bs/size value)))]
-      (encode-key-buf-1! target-buf tid id hash c-hash)
-      (bb/put-byte-string! target-buf value))))
+  (fn [target-buf resource-handle value]
+    (-> (ensure-size target-buf (+ (key-size* (count (:id resource-handle)))
+                                   (bs/size value)))
+        (encode-resource-handle-key-buf-1! resource-handle c-hash)
+        (bb/put-byte-string! value))))
 
 (defn single-version-id-search-param-value-encoder
   "Returns an encoder that can be used with `value-filter` that will encode the
@@ -150,7 +157,7 @@
     (let [id (svi/id single-version-id)
           hash-prefix (svi/hash-prefix single-version-id)
           target-buf (ensure-size target-buf (+ (key-size id) (bs/size value)))]
-      (hash-prefix-encode-key-buf-1! target-buf tid id hash-prefix c-hash)
+      (encode-key-buf-1! target-buf tid id hash-prefix c-hash)
       (bb/put-byte-string! target-buf value))))
 
 (defn value-prefix-filter
@@ -183,39 +190,21 @@
 
 (defn prefix-keys
   "Returns a reducible collection of decoded values from keys starting at
-  `tid`, `id`, `hash`, `c-hash` and `start-value` (optional) and ending when the
-  prefix of `tid`, `id`, `hash`, `c-hash` and `prefix-length` bytes of
-  `start-value` (optional) is no longer a prefix of the keys processed."
-  ([snapshot tid id hash c-hash]
-   (let [key (encode-key tid id hash c-hash)]
+  `tid`, `id`, `hash-prefix`, `c-hash` and `start-value` (optional) and ending
+  when the prefix of `tid`, `id`, `hash-prefix`, `c-hash` and `prefix-length`
+  bytes of `start-value` (optional) is no longer a prefix of the keys
+  processed."
+  ([snapshot tid id hash-prefix c-hash]
+   (let [key (encode-key tid id hash-prefix c-hash)]
      (prefix-keys* snapshot (bs/size key) key)))
-  ([snapshot tid id hash c-hash prefix-length start-value]
+  ([snapshot tid id hash-prefix c-hash prefix-length start-value]
    (prefix-keys* snapshot (+ (key-size id) (long prefix-length))
-                 (encode-key tid id hash c-hash start-value))))
-
-(defn- hash-prefix-encode-key
-  [tid id hash-prefix c-hash value]
-  (-> (bsb/allocate (+ (key-size id) (bs/size value)))
-      (bsb/put-int! tid)
-      (bsb/put-null-terminated-byte-string! id)
-      (bsb/put-int! hash-prefix)
-      (bsb/put-int! c-hash)
-      (bsb/put-byte-string! value)
-      bsb/build))
-
-(defn hash-prefix-prefix-keys
-  "Returns a reducible collection of decoded values from keys starting at
-  `tid`, `id`, `hash-prefix`, `c-hash` and `start-value` and ending when the
-  prefix of `tid`, `id`, `hash-prefix`, `c-hash` and `prefix-length` bytes of
-  `start-value` is no longer a prefix of the keys processed."
-  [snapshot tid id hash-prefix c-hash prefix-length start-value]
-  (prefix-keys* snapshot (+ (key-size id) (long prefix-length))
-                (hash-prefix-encode-key tid id hash-prefix c-hash start-value)))
+                 (encode-key tid id hash-prefix c-hash start-value))))
 
 (defn index-entry [tid id hash c-hash value]
   [:resource-value-index
    (-> (bsb/allocate (+ (key-size id) (bs/size value)))
-       (encode-key-builder-1! tid id hash c-hash)
+       (encode-key-builder-1! tid id (hash/prefix hash) c-hash)
        (bsb/put-byte-string! value)
        bsb/to-bytes)
    bytes/empty])

@@ -2790,7 +2790,8 @@
           :id := "0"
           [:meta :versionId] := #fhir/id "1"
           [meta :blaze.db/tx :blaze.db/t] := 1
-          [meta :blaze.db/num-changes] := 1))
+          [meta :blaze.db/num-changes] := 1
+          [meta :blaze.resource/hash] := nil))
 
       (testing "pull-content"
         (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))

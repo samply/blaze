@@ -20,27 +20,27 @@
 (defn- list-handle [batch-db list-id]
   (u/non-deleted-resource-handle batch-db list-tid list-id))
 
-(defn- list-hash [batch-db list-id]
-  (:hash (list-handle batch-db list-id)))
+(defn- list-hash-prefix [batch-db list-id]
+  (:hash-prefix (list-handle batch-db list-id)))
 
 (defn- referenced-index-handles
   "Returns a reducible collection of index handles of type `tid` that are
-  referenced by the list with `list-id` and `list-hash`, starting with
+  referenced by the list with `list-id` and `list-hash-prefix`, starting with
   `start-id` (optional)."
   {:arglists
-   '([batch-db list-id list-hash tid]
-     [batch-db list-id list-hash tid start-id])}
-  ([{:keys [snapshot] :as batch-db} list-id list-hash tid]
+   '([batch-db list-id list-hash-prefix tid]
+     [batch-db list-id list-hash-prefix tid start-id])}
+  ([{:keys [snapshot] :as batch-db} list-id list-hash-prefix tid]
    (coll/eduction
     (comp (u/reference-resource-handle-mapper batch-db)
           (map ih/from-resource-handle))
-    (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
+    (r-sp-v/prefix-keys snapshot list-tid list-id list-hash-prefix item-c-hash
                         codec/tid-size (codec/tid-byte-string tid))))
-  ([{:keys [snapshot] :as batch-db} list-id list-hash tid start-id]
+  ([{:keys [snapshot] :as batch-db} list-id list-hash-prefix tid start-id]
    (coll/eduction
     (comp (u/reference-resource-handle-mapper batch-db)
           (map ih/from-resource-handle))
-    (r-sp-v/prefix-keys snapshot list-tid list-id list-hash item-c-hash
+    (r-sp-v/prefix-keys snapshot list-tid list-id list-hash-prefix item-c-hash
                         codec/tid-size (codec/tid-id tid start-id)))))
 
 (defrecord SearchParamList [name type code]
@@ -72,13 +72,13 @@
         (u/union-index-handles (map index-handles compiled-values)))))
 
   (-index-handles [_ batch-db tid _ list-id]
-    (if-let [hash (list-hash batch-db list-id)]
-      (referenced-index-handles batch-db list-id hash tid)
+    (if-let [hash-prefix (list-hash-prefix batch-db list-id)]
+      (referenced-index-handles batch-db list-id hash-prefix tid)
       []))
 
   (-index-handles [_ batch-db tid _ list-id start-id]
-    (if-let [hash (list-hash batch-db list-id)]
-      (referenced-index-handles batch-db list-id hash tid start-id)
+    (if-let [hash-prefix (list-hash-prefix batch-db list-id)]
+      (referenced-index-handles batch-db list-id hash-prefix tid start-id)
       []))
 
   (-supports-ordered-compartment-index-handles [_ _ _]

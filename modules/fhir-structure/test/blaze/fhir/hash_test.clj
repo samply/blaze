@@ -58,14 +58,6 @@
         (hash/into-byte-string-builder! builder hash)
         (= hash (hash/from-byte-buffer! (bb/wrap (bsb/to-bytes builder))))))))
 
-(deftest prefix-into-byte-buffer-test
-  (satisfies-prop 10000
-    (prop/for-all [hash (s/gen :blaze.resource/hash)]
-      (let [bb (bb/allocate hash/prefix-size)]
-        (hash/prefix-into-byte-buffer! bb hash)
-        (bb/flip! bb)
-        (= (hash/prefix hash) (apply hash/prefix-from-byte-buffer! [bb]))))))
-
 (deftest prefix-into-byte-string-builder-test
   (satisfies-prop 10000
     (prop/for-all [hash (s/gen :blaze.resource/hash)]

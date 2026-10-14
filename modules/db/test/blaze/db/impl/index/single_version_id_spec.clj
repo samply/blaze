@@ -25,5 +25,6 @@
   :ret int?)
 
 (s/fdef svi/matches-hash?
-  :args (s/cat :single-version-id ::index/single-version-id :hash :blaze.resource/hash)
+  :args (s/cat :single-version-id ::index/single-version-id
+               :resource-handle :blaze.db/resource-handle)
   :ret boolean?)

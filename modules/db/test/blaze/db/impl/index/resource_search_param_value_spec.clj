@@ -43,7 +43,7 @@
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :tid :blaze.db/tid
                       :id :blaze.db/id-byte-string
-                      :hash :blaze.resource/hash
+                      :hash-prefix int?
                       :c-hash :blaze.db/c-hash
                       :start-value (s/? (s/cat :prefix-length nat-int?
                                                :value byte-string?)))

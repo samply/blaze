@@ -78,7 +78,7 @@
   [batch-db tid]
   (rao/resource-handle-type-xf
    batch-db tid ih/id
-   (fn [ih handle] (ih/matches-hash? ih (:hash handle)))))
+   ih/matches-hash?))
 
 (defn- svi-resource-handle-xf
   "Returns a stateful transducer that receives single version ids and emits
@@ -86,7 +86,7 @@
   [batch-db tid]
   (rao/resource-handle-type-xf
    batch-db tid svi/id
-   (fn [svi handle] (svi/matches-hash? svi (:hash handle)))))
+   svi/matches-hash?))
 
 (defn single-version-id-matcher
   [search-param batch-db tid modifier compiled-values]

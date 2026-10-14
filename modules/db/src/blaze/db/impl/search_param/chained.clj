@@ -24,16 +24,18 @@
   {:arglists
    '([batch-db resource-handle c-hash]
      [batch-db resource-handle c-hash target-tid])}
-  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash]} c-hash]
+  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash]
    (coll/eduction
     (u/reference-resource-handle-mapper batch-db)
-    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash)))
-  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash]} c-hash target-tid]
+    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+                        c-hash)))
+  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash
+    target-tid]
    (coll/eduction
     (u/reference-resource-handle-mapper batch-db)
     (let [start-value (codec/tid-byte-string target-tid)]
-      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
-                          (bs/size start-value) start-value)))))
+      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+                          c-hash (bs/size start-value) start-value)))))
 
 (defn target-ids
   "Returns a reducible collection of resource ids as byte string that are
@@ -44,12 +46,12 @@
   param."
   {:arglists
    '([batch-db resource-handle c-hash target-tid])}
-  [{:keys [snapshot]} {:keys [tid id hash]} c-hash target-tid]
+  [{:keys [snapshot]} {:keys [tid id hash-prefix]} c-hash target-tid]
   (coll/eduction
    u/reference-id-mapper
    (let [start-value (codec/tid-byte-string target-tid)]
-     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
-                         (bs/size start-value) start-value))))
+     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+                         c-hash (bs/size start-value) start-value))))
 
 (defn single-version-id-targets
   "Returns a reducible collection of single-version-ids that are referenced by
@@ -61,9 +63,9 @@
    (comp (u/reference-resource-handle-mapper batch-db)
          (map svi/from-resource-handle))
    (let [start-value (codec/tid-byte-string target-tid)]
-     (r-sp-v/hash-prefix-prefix-keys snapshot tid (svi/id single-version-id)
-                                     (svi/hash-prefix single-version-id) c-hash
-                                     (bs/size start-value) start-value))))
+     (r-sp-v/prefix-keys snapshot tid (svi/id single-version-id)
+                         (svi/hash-prefix single-version-id) c-hash
+                         (bs/size start-value) start-value))))
 
 (defn- reference [rh]
   (str (name (:fhir/type rh)) "/" (:id rh)))
