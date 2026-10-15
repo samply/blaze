@@ -151,7 +151,18 @@
            (ctu/dynamic-compile #elm/interval [#elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2020"]
                                                #elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2021"]])
             '(interval (call "ToDateTime" (param-ref "fhir-dateTime-2020"))
-                       (call "ToDateTime" (param-ref "fhir-dateTime-2021"))))))))
+                       (call "ToDateTime" (param-ref "fhir-dateTime-2021")))))))
+
+    (testing "point type from result type specifier"
+      ;; the translator emits no result type names on arithmetic bounds like
+      ;; those of `within 1 year of`, so only the interval knows its point type
+      (let [date-time #elm/function-ref ["ToDateTime" #elm/parameter-ref "fhir-dateTime-2020"]
+            elm (assoc-in (elm/interval [(elm/subtract [date-time #elm/quantity [1 "year"]])
+                                         (elm/add [date-time #elm/quantity [1 "year"]])])
+                          [:resultTypeSpecifier :pointType :name]
+                          "{urn:hl7-org:elm-types:r1}DateTime")]
+        (is (= (interval #system/date-time"2019" #system/date-time"2021")
+               (ctu/dynamic-compile-eval elm))))))
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))

@@ -17,11 +17,18 @@
   {"ToDate" "{urn:hl7-org:elm-types:r1}Date"
    "ToDateTime" "{urn:hl7-org:elm-types:r1}DateTime"})
 
-(defn- determine-type [{:keys [resultTypeName asType type] fn-name :name}]
+(defn- determine-bound-type [{:keys [resultTypeName asType type] fn-name :name}]
   (or resultTypeName
       asType
       (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")
       (when (= "FunctionRef" type) (function-ref-point-types fn-name))))
+
+(defn- determine-type
+  "Prefers the point type of the interval itself, because the translator doesn't
+  emit result type names on all bounds, e.g. not on the date arithmetic of
+  timing phrases like `within 1 year of`."
+  [{{{point-type :name} :pointType} :resultTypeSpecifier :keys [low]}]
+  (or point-type (determine-bound-type low)))
 
 (defn- interval-expr [type low high low-closed-expression
                       high-closed-expression low-closed high-closed]
@@ -73,8 +80,9 @@
             high-closed-expression :highClosedExpression
             low-closed :lowClosed
             high-closed :highClosed
-            :or {low-closed true high-closed true}}]
-  (let [type (determine-type low)
+            :or {low-closed true high-closed true}
+            :as expression}]
+  (let [type (determine-type expression)
         low (some->> low (core/compile* context))
         high (some->> high (core/compile* context))
         low-closed-expression (some->> low-closed-expression
