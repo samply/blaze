@@ -712,6 +712,22 @@
           (testing "there are no optimizations available"
             (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
+  (testing "query with semi-join using an expression that has to be normalized"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+            exists [Observation] O
+              with [Encounter] E
+              such that (O.effective as dateTime) during E.period")]
+      (with-system [system api-stub/mem-node-config]
+        (given (:expression-defs (library/compile-library (compile-context system) library {}))
+          ["InInitialPopulation" :context] := "Patient"
+          ["InInitialPopulation" expr-form first] := 'exists))))
+
   (testing "with related context"
     (let [library (t/translate "library test
         using FHIR version '4.0.0'

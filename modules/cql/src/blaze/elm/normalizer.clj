@@ -88,21 +88,28 @@
 
 ;; 10. Queries
 
+(defn- normalize-relationship-clause [clause]
+  (-> (normalize-expression clause)
+      (update :suchThat normalize)))
+
 ;; 10.1. Query
 (defmethod normalize :elm.normalizer.type/query
-  [{:keys [source relationship where return] let' :let :as expression}]
+  [{:keys [source relationship where return] let' :let sort' :sort :as expression}]
   (cond-> (assoc expression :source (mapv normalize-expression source))
     let'
     (assoc :let (mapv normalize-expression let'))
 
     relationship
-    (assoc :relationship (mapv normalize-expression relationship))
+    (assoc :relationship (mapv normalize-relationship-clause relationship))
 
     where
     (assoc :where (normalize where))
 
     return
-    (assoc :return (update return :expression normalize))))
+    (assoc :return (update return :expression normalize))
+
+    sort'
+    (assoc :sort (update sort' :by (partial mapv normalize-sort-by-item)))))
 
 ;; 11. External Data
 
