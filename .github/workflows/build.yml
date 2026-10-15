@@ -295,7 +295,7 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources
@@ -380,7 +380,7 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources
@@ -502,7 +502,7 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources
@@ -582,7 +582,7 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources
@@ -618,7 +618,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Download Coverage Reports
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         pattern: coverage-report-*
 
@@ -676,7 +676,7 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download Blaze IG Profiles
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources
@@ -818,7 +818,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Download Frontend Build Directory
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: blaze-frontend-build-dir
         path: modules/frontend/build
@@ -1896,7 +1896,7 @@ jobs:
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Download Blaze Dashboard
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: blaze-dashboard
         path: modules/monitoring/target
@@ -3759,7 +3759,7 @@ jobs:
 
     steps:
     - name: Download Blaze Dashboard
-      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
       with:
         name: blaze-dashboard
 
