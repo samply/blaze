@@ -63,7 +63,7 @@
 
 ;; 21.12. PopulationStdDev
 (defaggop population-std-dev [source]
-  (p/power (transduce identity aggregates/population-variance-reducer source) 0.5M))
+  (transduce identity aggregates/population-std-dev-reducer source))
 
 ;; 21.13. Sum
 (defaggop sum [source]
@@ -71,7 +71,7 @@
 
 ;; 21.14. StdDev
 (defaggop std-dev [source]
-  (p/power (transduce identity aggregates/variance-reducer source) 0.5M))
+  (transduce identity aggregates/std-dev-reducer source))
 
 ;; 21.15. Variance
 (defaggop variance [source]

@@ -11,6 +11,8 @@
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :refer [quantity]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest testing]]))
 
@@ -84,14 +86,22 @@
 ;; If the source is null, the result is null.
 (deftest compile-avg-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/avg source)) {} nil nil))
-      #elm/list [#elm/decimal "1" #elm/decimal "2"] 1.5M
-      #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
-      #elm/list [#elm/integer "1"] 1M
+    (testing "Decimal/Integer"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/avg source)) {} nil nil))
+        #elm/list [#elm/decimal "1" #elm/decimal "2"] 1.5M
+        #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
+        #elm/list [#elm/integer "1"] 1M
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/avg source)) {} nil nil))
+        #elm/list [#elm/quantity [5.5M "cm"] #elm/quantity [4.7M "cm"] #elm/quantity [4.8M "cm"]] (quantity 5M "cm")
+        #elm/list [#elm/quantity [1 "m"] #elm/quantity [2 "m"]] (quantity 1.5M "m")
+        #elm/list [#elm/quantity [1 "m"] #elm/quantity [200 "cm"]] (quantity 1.5M "m")
+        #elm/list [#elm/quantity [1 "m"] {:type "Null"}] (quantity 1M "m"))))
 
   (ctu/testing-unary-op elm/avg))
 
@@ -205,15 +215,21 @@
 ;; If the source is null, the result is null.
 (deftest compile-median-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/median source)) {} nil nil))
-      #elm/list [#elm/decimal "2" #elm/decimal "10" #elm/decimal "8"] 8M
-      #elm/list [#elm/integer "2" #elm/integer "10" #elm/integer "8"] 8
-      #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
-      #elm/list [#elm/integer "1"] 1
+    (testing "Decimal/Integer"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/median source)) {} nil nil))
+        #elm/list [#elm/decimal "2" #elm/decimal "10" #elm/decimal "8"] 8M
+        #elm/list [#elm/integer "2" #elm/integer "10" #elm/integer "8"] 8
+        #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
+        #elm/list [#elm/integer "1"] 1
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/median source)) {} nil nil))
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"] #elm/quantity [3M "mg"]] (quantity 2M "mg")
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"]] (quantity 1.5M "mg"))))
 
   (ctu/testing-unary-op elm/median))
 
@@ -279,12 +295,18 @@
 ;; If the source is null, the result is null.
 (deftest compile-population-variance-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/population-variance source)) {} nil nil))
-      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2M
+    (testing "Decimal"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/population-variance source)) {} nil nil))
+        #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2M
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/population-variance source)) {} nil nil))
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"] #elm/quantity [3M "mg"] #elm/quantity [4M "mg"] #elm/quantity [5M "mg"]] (quantity 2M "mg")
+        #elm/list [#elm/quantity [1 "g"] #elm/quantity [2000 "mg"] #elm/quantity [3 "g"] #elm/quantity [4 "g"] #elm/quantity [5 "g"]] (quantity 2M "g"))))
 
   (ctu/testing-unary-op elm/population-variance))
 
@@ -301,12 +323,17 @@
 ;; If the source is null, the result is null.
 (deftest compile-population-std-dev-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/population-std-dev source)) {} nil nil))
-      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.41421356M
+    (testing "Decimal"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/population-std-dev source)) {} nil nil))
+        #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.41421356M
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/population-std-dev source)) {} nil nil))
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"] #elm/quantity [3M "mg"] #elm/quantity [4M "mg"] #elm/quantity [5M "mg"]] (quantity 1.41421356M "mg"))))
 
   (ctu/testing-unary-op elm/population-std-dev))
 
@@ -322,14 +349,19 @@
 ;; If the list is null, the result is null.
 (deftest compile-sum-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/sum source)) {} nil nil))
-      #elm/list [#elm/decimal "2" #elm/decimal "8"] 10M
-      #elm/list [#elm/integer "2" #elm/integer "8"] 10
-      #elm/list [#elm/integer "1"] 1
+    (testing "Decimal"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/sum source)) {} nil nil))
+        #elm/list [#elm/decimal "2" #elm/decimal "8"] 10M
+        #elm/list [#elm/integer "2" #elm/integer "8"] 10
+        #elm/list [#elm/integer "1"] 1
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/sum source)) {} nil nil))
+        #elm/list [#elm/quantity [1 "ml"] #elm/quantity [2 "ml"] #elm/quantity [3 "ml"]] (quantity 6 "ml"))))
 
   (ctu/testing-unary-op elm/sum))
 
@@ -346,12 +378,18 @@
 ;; If the list is null, the result is null.
 (deftest compile-std-dev-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/std-dev source)) {} nil nil))
-      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.58113883M
+    (testing "Decimal"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/std-dev source)) {} nil nil))
+        #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.58113883M
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        #elm/list [#elm/quantity [1M "mg"]] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/std-dev source)) {} nil nil))
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"] #elm/quantity [3M "mg"] #elm/quantity [4M "mg"] #elm/quantity [5M "mg"]] (quantity 1.58113883M "mg"))))
 
   (ctu/testing-unary-op elm/std-dev))
 
@@ -368,11 +406,18 @@
 ;; If the source is null, the result is null.
 (deftest compile-variance-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/variance source)) {} nil nil))
-      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2.5M
+    (testing "Decimal"
+      (are [source res] (= res (core/-eval (c/compile {} (elm/variance source)) {} nil nil))
+        #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2.5M
 
-      #elm/list [{:type "Null"}] nil
-      #elm/list [] nil
-      {:type "Null"} nil))
+        #elm/list [#elm/decimal "1"] nil
+        #elm/list [{:type "Null"}] nil
+        #elm/list [] nil
+        {:type "Null"} nil))
+
+    (testing "Quantity"
+      (are [source res] (p/equal res (core/-eval (c/compile {} (elm/variance source)) {} nil nil))
+        #elm/list [#elm/quantity [1M "mg"] #elm/quantity [2M "mg"] #elm/quantity [3M "mg"] #elm/quantity [4M "mg"] #elm/quantity [5M "mg"]] (quantity 2.5M "mg")
+        #elm/list [#elm/quantity [1 "g"] #elm/quantity [2000 "mg"] #elm/quantity [3 "g"] #elm/quantity [4 "g"] #elm/quantity [5 "g"]] (quantity 2.5M "g"))))
 
   (ctu/testing-unary-op elm/variance))
