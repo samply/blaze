@@ -87,9 +87,16 @@
     (given (normalize {:type "Query" :let [{:type "LetClause" :expression expression-1}]})
       :let := [{:type "LetClause" :expression (normalize expression-1)}]))
 
-  (testing "Normalizes the expression of a RelationshipClause in a Query expression"
-    (given (normalize {:type "Query" :relationship [{:type "With" :expression expression-1 :suchThat expression-2}]})
-      :relationship := [{:type "With" :expression (normalize expression-1) :suchThat (normalize expression-2)}]))
+  (testing "Normalizes the expression and such-that of a RelationshipClause in a Query expression"
+    (doseq [type ["With" "Without"]]
+      (given (normalize {:type "Query"
+                         :relationship
+                         [{:type type
+                           :expression expression-1
+                           :suchThat expression-3}]})
+        :relationship := [{:type type
+                           :expression (normalize expression-1)
+                           :suchThat (normalize expression-3)}])))
 
   (testing "Normalizes the where expression of a Query expression"
     (given (normalize {:type "Query" :where expression-1})
@@ -102,7 +109,23 @@
       :let := nil
       :relationship := nil
       :where := nil
+      :sort := nil
       :return := nil))
+
+  (testing "Normalizes the ByExpression items of the SortClause in a Query expression"
+    (given (normalize {:type "Query"
+                       :sort {:type "SortClause"
+                              :by [{:type "ByExpression"
+                                    :direction "asc"
+                                    :expression expression-1}
+                                   {:type "ByDirection"
+                                    :direction "desc"}]}})
+      :sort := {:type "SortClause"
+                :by [{:type "ByExpression"
+                      :direction "asc"
+                      :expression (normalize expression-1)}
+                     {:type "ByDirection"
+                      :direction "desc"}]}))
 
   (testing "Normalizes the expression of the ReturnClause in a Query expression"
     (given (normalize {:type "Query" :return {:type "ReturnClause" :expression expression-1}})
