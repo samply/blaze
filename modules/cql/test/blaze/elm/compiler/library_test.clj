@@ -9,6 +9,7 @@
    [blaze.elm.compiler.function-spec]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
+   [blaze.elm.date-time :as date-time]
    [blaze.elm.expression.cache :as ec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system]
@@ -19,6 +20,7 @@
    [blaze.time :as bt]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [clojure.walk :as walk]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -727,6 +729,40 @@
         (given (:expression-defs (library/compile-library (compile-context system) library {}))
           ["InInitialPopulation" :context] := "Patient"
           ["InInitialPopulation" expr-form first] := 'exists))))
+
+  (testing "timing phrase with quantity offset"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation] O
+            where (O.effective as dateTime) within 1 year of (Patient.deceased as dateTime)")]
+      (with-system [system api-stub/mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            (walk/postwalk-replace
+             {'one-year (date-time/period 1 0 0)}
+             '(exists
+               (eduction-query
+                (filter
+                 (fn [O]
+                   (and
+                    (contains
+                     (interval
+                      (subtract
+                       (call "ToDateTime" (as fhir/dateTime (:deceased (singleton-from (retrieve-resource)))))
+                       one-year)
+                      (add
+                       (call "ToDateTime" (as fhir/dateTime (:deceased (singleton-from (retrieve-resource)))))
+                       one-year))
+                     (call "ToDateTime" (as fhir/dateTime (:effective O))))
+                    (not (is-null (as fhir/dateTime (:deceased (singleton-from (retrieve-resource)))))))))
+                (retrieve "Observation")))))))))
 
   (testing "with related context"
     (let [library (t/translate "library test
