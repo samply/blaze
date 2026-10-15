@@ -53,22 +53,28 @@
      acc)))
 
 (defn max-reducer
-  "Reducing fn to compute the maximum of all non-nil elements of a list."
-  ([] nil)
-  ([acc] acc)
-  ([acc x]
-   (if acc
-     (if (p/greater x acc) x acc)
-     x)))
+  "Returns a reducing fn to compute the maximum of all non-nil elements of a
+  list relative to the evaluation request at `now`."
+  [now]
+  (fn
+    ([] nil)
+    ([acc] acc)
+    ([acc x]
+     (if acc
+       (if (p/greater x acc now) x acc)
+       x))))
 
 (defn min-reducer
-  "Reducing fn to compute the minimum of all non-nil elements of a list."
-  ([] nil)
-  ([acc] acc)
-  ([acc x]
-   (if acc
-     (if (p/less x acc) x acc)
-     x)))
+  "Returns a reducing fn to compute the minimum of all non-nil elements of a
+  list relative to the evaluation request at `now`."
+  [now]
+  (fn
+    ([] nil)
+    ([acc] acc)
+    ([acc x]
+     (if acc
+       (if (p/less x acc now) x acc)
+       x))))
 
 (defn max-freq-reducer
   "Reducing fn to compute the key with the maximum frequency of a map of keys

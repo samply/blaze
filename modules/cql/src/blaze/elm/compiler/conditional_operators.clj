@@ -64,7 +64,8 @@
     (-eval [_ context resource scope]
       (let [comparand (core/-eval comparand context resource scope)]
         (loop [[[when then] & next-items] items]
-          (if (p/equal comparand (core/-eval when context resource scope))
+          (if (p/equal comparand (core/-eval when context resource scope)
+                       (:now context))
             (core/-eval then context resource scope)
             (if (empty? next-items)
               (core/-eval else context resource scope)

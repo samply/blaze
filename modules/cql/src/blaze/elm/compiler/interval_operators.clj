@@ -7,6 +7,7 @@
    [blaze.elm.compiler.arithmetic-operators :as ao]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [defbinop defbinopp defunop reify-expr]]
+   [blaze.elm.compiler.queries :as queries]
    [blaze.elm.interval :refer [interval]]
    [blaze.elm.protocols :as p]))
 
@@ -63,7 +64,8 @@
            (if (nil? high)
              (ao/max-value type)
              high)
-           (p/predecessor high)))))
+           (p/predecessor high))
+         (:now context))))
     (-form [_]
       (list 'interval (core/-form low) (core/-form high)))))
 
@@ -103,23 +105,23 @@
                      high-closed-expression low-closed high-closed))))
 
 ;; 19.2. After
-(defbinopp after [operand-1 operand-2 precision]
-  (p/after operand-1 operand-2 precision))
+(defbinopp after [operand-1 operand-2 precision ^:now now]
+  (p/after operand-1 operand-2 precision now))
 
 ;; 19.3. Before
-(defbinopp before [operand-1 operand-2 precision]
-  (p/before operand-1 operand-2 precision))
+(defbinopp before [operand-1 operand-2 precision ^:now now]
+  (p/before operand-1 operand-2 precision now))
 
 ;; 19.4. Collapse
-(defbinop collapse [source _]
+(defbinop collapse [source _ ^:now now]
   (when source
-    (let [source (sort-by :low (remove nil? source))]
+    (let [source (sort-by :low (queries/comparator "asc" now) (remove nil? source))]
       (reverse
        (reduce
         (fn [r right]
           (let [[left & others] r]
-            (if (p/greater-or-equal (:high left) (p/predecessor (:low right)))
-              (cons (interval (:low left) (:high right)) others)
+            (if (p/greater-or-equal (:high left) (p/predecessor (:low right)) now)
+              (cons (interval (:low left) (:high right) now) others)
               (cons right r))))
         (cond-> (list) (first source) (conj (first source)))
         (rest source))))))
@@ -127,21 +129,21 @@
 ;; 19.5. Contains
 (defbinopp contains
   {:optimizations #{:first :non-distinct}}
-  [list-or-interval x precision]
-  (p/contains list-or-interval x precision))
+  [list-or-interval x precision ^:now now]
+  (p/contains list-or-interval x precision now))
 
 ;; 19.6. End
 (defunop end [{:keys [high]}]
   high)
 
 ;; 19.7. Ends
-(defbinopp ends [x y _]
-  (and (p/greater-or-equal (:low x) (:low y))
-       (p/equal (:high x) (:high y))))
+(defbinopp ends [x y _ ^:now now]
+  (and (p/greater-or-equal (:low x) (:low y) now)
+       (p/equal (:high x) (:high y) now)))
 
 ;; 19.10. Except
-(defbinop except [x y]
-  (p/except x y))
+(defbinop except [x y ^:now now]
+  (p/except x y now))
 
 ;; TODO 19.11. Expand
 
@@ -151,8 +153,8 @@
   (throw (Exception. "Unsupported In expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.13. Includes
-(defbinopp includes [x y precision]
-  (p/includes x y precision))
+(defbinopp includes [x y precision ^:now now]
+  (p/includes x y precision now))
 
 ;; 19.14. IncludedIn
 (defmethod core/compile* :elm.compiler.type/included-in
@@ -160,8 +162,8 @@
   (throw (Exception. "Unsupported IncludedIn expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.15. Intersect
-(defbinop intersect [a b]
-  (p/intersect a b))
+(defbinop intersect [a b ^:now now]
+  (p/intersect a b now))
 
 ;; 19.16. Meets
 (defmethod core/compile* :elm.compiler.type/meets
@@ -169,17 +171,17 @@
   (throw (Exception. "Unsupported Meets expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.17. MeetsBefore
-(defbinopp meets-before [x y _]
-  (p/equal (:high x) (p/predecessor (:low y))))
+(defbinopp meets-before [x y _ ^:now now]
+  (p/equal (:high x) (p/predecessor (:low y)) now))
 
 ;; 19.18. MeetsAfter
-(defbinopp meets-after [x y _]
-  (p/equal (:low x) (p/successor (:high y))))
+(defbinopp meets-after [x y _ ^:now now]
+  (p/equal (:low x) (p/successor (:high y)) now))
 
 ;; 19.20. Overlaps
-(defbinopp overlaps [x y _]
-  (and (p/greater-or-equal (:high x) (:low y))
-       (p/less-or-equal (:low x) (:high y))))
+(defbinopp overlaps [x y _ ^:now now]
+  (and (p/greater-or-equal (:high x) (:low y) now)
+       (p/less-or-equal (:low x) (:high y) now)))
 
 ;; 19.21. OverlapsBefore
 (defmethod core/compile* :elm.compiler.type/overlaps-before
@@ -192,16 +194,17 @@
   (throw (Exception. "Unsupported OverlapsAfter expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.23. PointFrom
-(defunop point-from [interval {{:keys [locator]} :operand :as expression}]
+(defunop point-from
+  [interval {{:keys [locator]} :operand :as expression} ^:now now]
   (when interval
-    (if (p/equal (:low interval) (:high interval))
+    (if (p/equal (:low interval) (:high interval) now)
       (:low interval)
       (throw (ex-info (core/append-locator "Invalid non-unit interval in `PointFrom` expression at" locator)
                       {:expression expression})))))
 
 ;; 19.24. ProperContains
-(defbinopp proper-contains [list-or-interval x precision]
-  (p/proper-contains list-or-interval x precision))
+(defbinopp proper-contains [list-or-interval x precision ^:now now]
+  (p/proper-contains list-or-interval x precision now))
 
 ;; 19.25. ProperIn
 (defmethod core/compile* :elm.compiler.type/proper-in
@@ -209,8 +212,8 @@
   (throw (Exception. "Unsupported ProperIn expression. Please normalize the ELM tree before compiling.")))
 
 ;; 19.26. ProperIncludes
-(defbinopp proper-includes [x y precision]
-  (p/proper-includes x y precision))
+(defbinopp proper-includes [x y precision ^:now now]
+  (p/proper-includes x y precision now))
 
 ;; 19.27. ProperIncludedIn
 (defmethod core/compile* :elm.compiler.type/proper-included-in
@@ -222,13 +225,13 @@
   low)
 
 ;; 19.30. Starts
-(defbinopp starts [x y _]
-  (and (p/equal (:low x) (:low y))
-       (p/less-or-equal (:high x) (:high y))))
+(defbinopp starts [x y _ ^:now now]
+  (and (p/equal (:low x) (:low y) now)
+       (p/less-or-equal (:high x) (:high y) now)))
 
 ;; 19.31. Union
-(defbinop union [a b]
-  (p/union a b))
+(defbinop union [a b ^:now now]
+  (p/union a b now))
 
 ;; 19.32. Width
 (defunop width [{:keys [low high]}]

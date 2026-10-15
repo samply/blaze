@@ -12,7 +12,7 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -191,6 +191,20 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
+  (testing "DateTime with offset is compared in the offset of now"
+    (doseq [list [[#system/date-time "2025-02-18T00:42:00+01:00"
+                   #system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-17T23:40:00"]
+                  [#system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-18T00:42:00+01:00"
+                   #system/date-time "2025-02-17T23:40:00"]
+                  [#system/date-time "2025-02-17T23:40:00"
+                   #system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-18T00:42:00+01:00"]]]
+      (is (= #system/date-time "2025-02-17T23:45:00"
+             (ctu/eval-with-now (elm/max #elm/parameter-ref "x") ctu/now
+                                list nil)))))
+
   (ctu/testing-unary-op elm/max))
 
 ;; 21.8. Median
@@ -239,6 +253,20 @@
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
       {:type "Null"} nil))
+
+  (testing "DateTime with offset is compared in the offset of now"
+    (doseq [list [[#system/date-time "2025-02-18T00:42:00+01:00"
+                   #system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-17T23:40:00"]
+                  [#system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-18T00:42:00+01:00"
+                   #system/date-time "2025-02-17T23:40:00"]
+                  [#system/date-time "2025-02-17T23:40:00"
+                   #system/date-time "2025-02-17T23:45:00"
+                   #system/date-time "2025-02-18T00:42:00+01:00"]]]
+      (is (= #system/date-time "2025-02-17T23:40:00"
+             (ctu/eval-with-now (elm/min #elm/parameter-ref "x") ctu/now
+                                list nil)))))
 
   (ctu/testing-unary-op elm/min))
 

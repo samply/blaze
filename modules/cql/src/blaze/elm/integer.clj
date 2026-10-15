@@ -14,13 +14,14 @@
 ;; 12.1. Equal
 (extend-protocol p/Equal
   Number
-  (equal [x y]
-    (some->> y (p/equivalent x))))
+  (equal [x y now]
+    (when (some? y)
+      (p/equivalent x y now))))
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
   Number
-  (equivalent [x y]
+  (equivalent [x y _]
     (if (number? y)
       (== x y)
       false)))
