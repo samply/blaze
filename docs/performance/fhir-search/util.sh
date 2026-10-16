@@ -26,36 +26,33 @@ calc-print-stats() {
   stats="$(calc-avg "$times_file")"
   local avg
   avg=$(echo "$stats" | jq .avg)
+  local stddev
+  stddev=$(echo "$stats" | jq .stddev)
 
-  # resources per second
-  local res_s
-  res_s=$(echo "scale=2; $count / $avg" | bc)
+  awk -v count="$count" -v avg="$avg" -v stddev="$stddev" 'BEGIN {
+    # resources per second
+    res_s = count / avg
 
-  # shorten the count
-  local count_format
-  if (( $(echo "$count > 1000000" | bc) )); then
-    count=$(echo "scale=2; $count / 1000000" | bc)
-    count_format="%4.1f M"
-  elif (( $(echo "$count > 1000" | bc) )); then
-    count=$(echo "scale=2; $count / 1000" | bc)
-    count_format="%4.0f k"
-  else
-    count_format="%6.0f"
-  fi
+    # shorten the count
+    if (count > 1000000) {
+      human_count = sprintf("%4.1f M", count / 1000000)
+    } else if (count > 1000) {
+      human_count = sprintf("%4.0f k", count / 1000)
+    } else {
+      human_count = sprintf("%6.0f", count)
+    }
 
-  # shorten the resources per second
-  local res_s_format
-  if (( $(echo "$res_s > 1000000" | bc) )); then
-    res_s=$(echo "scale=2; $res_s / 1000000" | bc)
-    res_s_format="%4.1f M"
-  elif (( $(echo "$res_s > 1000" | bc) )); then
-    res_s=$(echo "scale=2; $res_s / 1000" | bc)
-    res_s_format="%4.1f k"
-  else
-    res_s_format="%6.0f"
-  fi
+    # shorten the resources per second
+    if (res_s > 1000000) {
+      human_res_s = sprintf("%4.1f M", res_s / 1000000)
+    } else if (res_s > 1000) {
+      human_res_s = sprintf("%4.1f k", res_s / 1000)
+    } else {
+      human_res_s = sprintf("%6.0f", res_s)
+    }
 
-  printf "| $count_format | %8.2f | %6.3f | $res_s_format |\n" "$count" "$avg" "$(echo "$stats" | jq .stddev)" "$res_s"
+    printf "| %s | %8.2f | %6.3f | %s |\n", human_count, avg, stddev, human_res_s
+  }'
 }
 
 count-resources-raw() {
