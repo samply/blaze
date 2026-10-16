@@ -13,6 +13,8 @@ POST [base]/$compact
 | database      | 1..1        | code | One of three possible databases: `index`, `transaction` and `resource` |
 | column-family | 1..1        | code | Name of the column family depending on the database. See below.        |
 
+The parameters are bound to the [Database][3] and [ColumnFamily][4] value sets, and the job the operation creates conforms to the [CompactJob][5] profile.
+
 ### Column Families
 
 | Database    | Column Family                        |
@@ -52,3 +54,6 @@ blazectl --server http://localhost:8080/fhir compact index resource-as-of-index
 
 [1]: <https://github.com/samply/blazectl>
 [2]: <http://hl7.org/fhir/R5/async-bundle.html>
+[3]: <https://blaze-server.org/fhir/ValueSet/Database>
+[4]: <https://blaze-server.org/fhir/ValueSet/ColumnFamily>
+[5]: <https://blaze-server.org/fhir/StructureDefinition/CompactJob>
