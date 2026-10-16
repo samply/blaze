@@ -1,0 +1,5 @@
+library: cql/cardiometabolic-risk.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
