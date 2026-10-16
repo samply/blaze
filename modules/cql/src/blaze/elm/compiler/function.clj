@@ -18,10 +18,15 @@
     (-form [_]
       `(~'call ~name))))
 
+;; The cache is only attached to the operands of functions with operands and not
+;; to the function body, because expressions in the body may depend on the
+;; operands. Bloom filters are calculated per patient only, so they can't
+;; reflect the operand values.
+
 (defn arity-1 [name fn-expr op-name op]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
-      (core/attach-cache-helper #(arity-1 name %1 op-name %2) cache fn-expr op))
+      (core/attach-cache-helper #(arity-1 name fn-expr op-name %) cache op))
     (-resolve-refs [_ expression-defs]
       (arity-1 name (core/-resolve-refs fn-expr expression-defs) op-name
                (core/-resolve-refs op expression-defs)))
@@ -39,8 +44,8 @@
 (defn arity-2 [name fn-expr op-name-1 op-name-2 op-1 op-2]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
-      (core/attach-cache-helper #(arity-2 name %1 op-name-1 op-name-2 %2 %3)
-                                cache fn-expr op-1 op-2))
+      (core/attach-cache-helper #(arity-2 name fn-expr op-name-1 op-name-2 %1 %2)
+                                cache op-1 op-2))
     (-resolve-refs [_ expression-defs]
       (arity-2 name (core/-resolve-refs fn-expr expression-defs)
                op-name-1 op-name-2
@@ -66,10 +71,9 @@
 (defn arity-n [name fn-expr op-names & ops]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
-      (apply core/attach-cache-helper
-             (fn [fn-expr & ops]
-               (apply arity-n name fn-expr op-names ops))
-             cache fn-expr ops))
+      (core/attach-cache-helper-list
+       #(apply arity-n name fn-expr op-names %)
+       cache ops))
     (-resolve-refs [_ expression-defs]
       (apply arity-n name (core/-resolve-refs fn-expr expression-defs) op-names
              (map #(core/-resolve-refs % expression-defs) ops)))

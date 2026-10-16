@@ -179,7 +179,17 @@
                 count := 2
                 [0] := expr
                 [1 count] := 1
-                [1 0] := '(exists (retrieve "Observation"))))))
+                [1 0] := '(exists (retrieve "Observation")))))
+
+          (testing "doesn't attach the cache to the function body because it depends on the operand"
+            (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+              (let [fn-expr (c/compile {:node node :eval-context "Patient"}
+                                       #elm/exists #elm/list [#elm/operand-ref "x"])
+                    compile-ctx (assoc-in compile-ctx [:function-defs 0 :function]
+                                          (partial function/arity-1 function-name fn-expr "x"))
+                    expr (c/compile compile-ctx (elm/function-ref [function-name #elm/string "a"]))]
+                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                  [1] :? empty?)))))
 
         (ctu/testing-constant-patient-count expr)
 
@@ -241,7 +251,17 @@
                 [0] := expr
                 [1 count] := 2
                 [1 0] := '(exists (retrieve "Observation"))
-                [1 1] := '(exists (retrieve "Condition"))))))
+                [1 1] := '(exists (retrieve "Condition")))))
+
+          (testing "doesn't attach the cache to the function body because it depends on the operands"
+            (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+              (let [fn-expr (c/compile {:node node :eval-context "Patient"}
+                                       #elm/exists #elm/list [#elm/operand-ref "x" #elm/operand-ref "y"])
+                    compile-ctx (assoc-in compile-ctx [:function-defs 0 :function]
+                                          (partial function/arity-2 function-name fn-expr "x" "y"))
+                    expr (c/compile compile-ctx (elm/function-ref [function-name #elm/string "a" #elm/string "b"]))]
+                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                  [1] :? empty?)))))
 
         (ctu/testing-constant-patient-count expr)
 
@@ -317,7 +337,17 @@
                 [1 count] := 3
                 [1 0] := '(exists (retrieve "Observation"))
                 [1 1] := '(exists (retrieve "Condition"))
-                [1 2] := '(exists (retrieve "Encounter"))))))
+                [1 2] := '(exists (retrieve "Encounter")))))
+
+          (testing "doesn't attach the cache to the function body because it depends on the operands"
+            (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+              (let [fn-expr (c/compile {:node node :eval-context "Patient"}
+                                       #elm/exists #elm/list [#elm/operand-ref "x" #elm/operand-ref "y" #elm/operand-ref "z"])
+                    compile-ctx (assoc-in compile-ctx [:function-defs 0 :function]
+                                          (partial function/arity-n function-name fn-expr ["x" "y" "z"]))
+                    expr (c/compile compile-ctx (elm/function-ref [function-name #elm/string "a" #elm/string "b" #elm/string "c"]))]
+                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                  [1] :? empty?)))))
 
         (ctu/testing-constant-patient-count expr)
 
