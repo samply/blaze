@@ -1,6 +1,7 @@
 import type { Bundle, StructureDefinition } from 'fhir/r4';
 import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchFhir } from '$lib/fetch.js';
+import { error } from '@sveltejs/kit';
 
 const structureDefinitionStore = new Map<string, Promise<StructureDefinition>>();
 
@@ -8,36 +9,20 @@ function structureDefinitionUrl(type: string) {
   return backendUrl('/StructureDefinition', `url=http://hl7.org/fhir/StructureDefinition/${type}`);
 }
 
-/**
- * Builds the error body of a failed StructureDefinition load.
- *
- * The status is carried in the body as well, because StructureDefinitions are
- * loaded while transforming a streamed bundle: a rejected streamed promise
- * reaches the `{:catch}` block as the jsonified body alone, without the
- * `HttpError` that holds the status.
- */
-function appError(status: NumericRange<400, 599>, message: string): App.Error {
-  return { status, short: undefined, message };
-}
-
 async function loadStructureDefinition(fetch: typeof window.fetch, type: string) {
-  const res = await fetch(structureDefinitionUrl(type), {
-    headers: { Accept: 'application/fhir+json' }
+  const bundle = await fetchFhir<Bundle>(fetch, structureDefinitionUrl(type), {
+    error: `error while loading the ${type} StructureDefinition`
   });
 
-  if (!res.ok) {
-    const status = res.status as NumericRange<400, 599>;
-    error(status, appError(status, `error while loading the ${type} StructureDefinition`));
-  }
-
-  const bundle = (await res.json()) as Bundle;
-
   if (bundle.entry === undefined) {
-    error(404, appError(404, `expected one bundle entry but found none`));
+    error(404, { status: 404, message: `expected one bundle entry but found none` });
   }
 
   if (bundle.entry?.length != 1) {
-    error(404, appError(404, `expected one bundle entry but found ${bundle.entry?.length}`));
+    error(404, {
+      status: 404,
+      message: `expected one bundle entry but found ${bundle.entry?.length}`
+    });
   }
 
   return bundle.entry[0].resource as StructureDefinition;
