@@ -182,6 +182,21 @@
           (testing "there are no optimizations available"
             (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
+  (testing "function referencing an expression definition"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+        context Patient
+        define One: 1
+        define function Inc(i System.Integer): i + One
+        define InInitialPopulation: Inc(1)")]
+      (with-system [system api-stub/mem-node-config]
+        (let [{:keys [expression-defs]}
+              (library/compile-library (compile-context system) library default-opts)]
+
+          (testing "the reference inside the function body is resolved"
+            (given (library/resolve-all-refs expression-defs)
+              ["InInitialPopulation" :expression #(core/-eval % {} nil nil)] := 2))))))
+
   (testing "functions of different arities"
     (let [library (t/translate "library Test
         using FHIR version '4.0.0'
