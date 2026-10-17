@@ -67,6 +67,16 @@
                (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
+(defn compile-id
+  "Compiles `id`, a value of the search param with `code`, into its byte string
+  representation.
+
+  Returns an anomaly if `id` isn't a valid resource id."
+  [code id]
+  (if (codec/valid-id? id)
+    (codec/id-byte-string id)
+    (ba/incorrect (format "Invalid resource id `%s` in search parameter `%s`." id code))))
+
 (defn non-deleted-resource-handle [batch-db tid id]
   (when-let [handle (p/-resource-handle batch-db tid id)]
     (when-not (rh/deleted? handle)

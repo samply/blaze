@@ -41,6 +41,11 @@
 
 ;; ---- Identifier Functions --------------------------------------------------
 
+(defn valid-id?
+  "Returns true if `s` is a valid resource id."
+  [s]
+  (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" s)))
+
 (defn id-byte-string
   {:inline (fn [id] `(bs/from-iso-8859-1-string ~id))}
   [id]

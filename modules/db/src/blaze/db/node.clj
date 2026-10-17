@@ -1133,7 +1133,7 @@
          (if-let [[type id] (fsr/split-literal-ref value)]
            (when (= "Patient" type)
              id)
-           (when (re-matches #"[A-Za-z0-9\-\.]{1,64}" value)
+           (when (codec/valid-id? value)
              value)))
        (fn [value]
          (when-let [[type id] (fsr/split-literal-ref value)]
