@@ -96,40 +96,40 @@
     (testing "With invalid latitude"
       (given-failed-future (compile-near-value search-param-registry "")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing argument `latitude` in search parameter `near`.")
+        ::anom/message := "Error in search parameter `near`: Missing argument `latitude`.")
       (given-failed-future (compile-near-value search-param-registry "invalid")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Error parsing argument `latitude` in search parameter `near`. Invalid decimal value `invalid`.")
+        ::anom/message := "Error in search parameter `near`: Error parsing argument `latitude`. Invalid decimal value `invalid`.")
       (given-failed-future (compile-near-value search-param-registry "90.1|0")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid argument `90.1` for latitude in search parameter `near`, must be between -90.0 and 90.0."))
+        ::anom/message := "Error in search parameter `near`: Invalid argument `90.1` for latitude, must be between -90.0 and 90.0."))
 
     (testing "With invalid longitude"
       (given-failed-future (compile-near-value search-param-registry "0")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing argument `longitude` in search parameter `near`.")
+        ::anom/message := "Error in search parameter `near`: Missing argument `longitude`.")
       (given-failed-future (compile-near-value search-param-registry "0|")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing argument `longitude` in search parameter `near`.")
+        ::anom/message := "Error in search parameter `near`: Missing argument `longitude`.")
       (given-failed-future (compile-near-value search-param-registry "0|invalid")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Error parsing argument `longitude` in search parameter `near`. Invalid decimal value `invalid`.")
+        ::anom/message := "Error in search parameter `near`: Error parsing argument `longitude`. Invalid decimal value `invalid`.")
       (given-failed-future (compile-near-value search-param-registry "0|180.1")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid argument `180.1` for longitude in search parameter `near`, must be between -180.0 and 180.0."))
+        ::anom/message := "Error in search parameter `near`: Invalid argument `180.1` for longitude, must be between -180.0 and 180.0."))
 
     (testing "With invalid distance"
       (given-failed-future (compile-near-value search-param-registry "0|0|a")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Error parsing argument `distance` in search parameter `near`. Invalid decimal value `a`."))
+        ::anom/message := "Error in search parameter `near`: Error parsing argument `distance`. Invalid decimal value `a`."))
 
     (testing "With invalid unit"
       (given-failed-future (compile-near-value search-param-registry "0|0|1||")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Unsupported unit `|` in search parameter `near`. Supported are 'km', 'm'.")
+        ::anom/message := "Error in search parameter `near`: Unsupported unit `|`. Supported are 'km', 'm'.")
       (given-failed-future (compile-near-value search-param-registry "0|0|1|mi_us")
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Unsupported unit `mi_us` in search parameter `near`. Supported are 'km', 'm'."))))
+        ::anom/message := "Error in search parameter `near`: Unsupported unit `mi_us`. Supported are 'km', 'm'."))))
 
 (deftest match-extension-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]

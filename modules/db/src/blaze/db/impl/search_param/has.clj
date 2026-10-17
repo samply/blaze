@@ -25,17 +25,17 @@
     (let [[type chain-code code] (str/split modifier #":")]
       (cond
         (str/blank? type)
-        (ba/incorrect (format "Missing type in _has search param `_has:%s`." modifier))
+        (ba/incorrect "Missing type.")
 
         (str/blank? chain-code)
-        (ba/incorrect (format "Missing chaining search param in _has search param `_has:%s`." modifier))
+        (ba/incorrect "Missing chaining search param.")
 
         (str/blank? code)
-        (ba/incorrect (format "Missing search param in _has search param `_has:%s`." modifier))
+        (ba/incorrect "Missing search param.")
 
         :else
         [type chain-code code]))
-    (ba/incorrect "Missing modifier of _has search param.")))
+    (ba/incorrect "Missing modifier.")))
 
 (defn- search-param-not-found-msg [code type]
   (format "The search-param with code `%s` and type `%s` was not found."

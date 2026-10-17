@@ -647,7 +647,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "invalid"
-            [:issue 0 :diagnostics] := #fhir/string "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`.")))
+            [:issue 0 :diagnostics] := #fhir/string "Error in search parameter `date`: Invalid date-time value `2021-12-09T00:00:00 01:00`.")))
 
       (testing "summary result"
         (let [{:keys [status body]}
@@ -662,7 +662,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "invalid"
-            [:issue 0 :diagnostics] := #fhir/string "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."))))))
+            [:issue 0 :diagnostics] := #fhir/string "Error in search parameter `date`: Invalid date-time value `2021-12-09T00:00:00 01:00`."))))))
 
 (deftest handler-invalid-token-test
   (testing "returns error"

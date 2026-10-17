@@ -79,13 +79,13 @@
       (given-failed-future (search-param/compile-values
                             (code-value-quantity-param search-param-registry) nil ["a$a"])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid decimal value `a` in search parameter `code-value-quantity`."))
+        ::anom/message := "Error in search parameter `code-value-quantity`: Invalid decimal value `a`."))
 
     (testing "unsupported quantity prefix"
       (given-failed-future (search-param/compile-values
                             (code-value-quantity-param search-param-registry) nil ["a$ne1"])
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported prefix `ne` in search parameter `code-value-quantity`."))))
+        ::anom/message := "Error in search parameter `code-value-quantity`: Unsupported prefix `ne`."))))
 
 (def ^:private observation-code
   (codec/v-hash "8480-6"))

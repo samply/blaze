@@ -33,69 +33,69 @@
   (let [{:keys [position]} @(d/pull batch-db resource-handle)]
     (some #(near? position %) compiled-values)))
 
-(defn- missing-param-msg [arg code]
-  (format "Missing argument `%s` in search parameter `%s`." arg code))
+(defn- missing-param-msg [arg]
+  (format "Missing argument `%s`." arg))
 
-(defn- parsing-err-msg [arg code]
-  (format "Error parsing argument `%s` in search parameter `%s`." arg code))
+(defn- parsing-err-msg [arg]
+  (format "Error parsing argument `%s`." arg))
 
 (defn- update-msg [msg]
   (fn [anomaly]
     (update anomaly ::anom/message #(str msg " " %))))
 
-(defn- parse-decimal-arg [coord name code]
+(defn- parse-decimal-arg [coord name]
   (if (str/blank? coord)
-    (ba/incorrect (missing-param-msg name code))
+    (ba/incorrect (missing-param-msg name))
     (-> (system/parse-decimal coord)
-        (ba/exceptionally (update-msg (parsing-err-msg name code))))))
+        (ba/exceptionally (update-msg (parsing-err-msg name))))))
 
-(defn- unsupported-unit-msg [unit code]
-  (format "Unsupported unit `%s` in search parameter `%s`. Supported are 'km', 'm'." unit code))
+(defn- unsupported-unit-msg [unit]
+  (format "Unsupported unit `%s`. Supported are 'km', 'm'." unit))
 
-(defn- parse-distance [dist-str unit code]
+(defn- parse-distance [dist-str unit]
   (cond
     (str/blank? dist-str)
     1000M
 
     (or (nil? unit) (= unit "km"))
-    (when-ok [dist (parse-decimal-arg dist-str "distance" code)]
+    (when-ok [dist (parse-decimal-arg dist-str "distance")]
       (* dist 1000))
 
     (= unit "m")
-    (parse-decimal-arg dist-str "distance" code)
+    (parse-decimal-arg dist-str "distance")
 
     :else
-    (ba/incorrect (unsupported-unit-msg unit code))))
+    (ba/incorrect (unsupported-unit-msg unit))))
 
 (def ^:private ^:const min-latitude -90.0)
 
 (def ^:private ^:const max-latitude 90.0)
 
-(defn invalid-latitude-msg [arg code]
+(defn invalid-latitude-msg [arg]
   (format
-   "Invalid argument `%s` for latitude in search parameter `%s`, must be between %s and %s."
-   arg code min-latitude max-latitude))
+   "Invalid argument `%s` for latitude, must be between %s and %s."
+   arg min-latitude max-latitude))
 
-(defn- parse-latitude [val code]
-  (when-ok [latitude (parse-decimal-arg val "latitude" code)]
+(defn- parse-latitude [val]
+  (when-ok [latitude (parse-decimal-arg val "latitude")]
     (if (<= min-latitude latitude max-latitude)
       latitude
-      (ba/incorrect (invalid-latitude-msg val code)))))
+      (ba/incorrect (invalid-latitude-msg val)))))
 
 (def ^:private ^:const min-longitude -180.0M)
 
 (def ^:private ^:const max-longitude 180.0M)
 
-(defn invalid-longitude-msg [val code]
+(defn invalid-longitude-msg [val]
   (format
-   "Invalid argument `%s` for longitude in search parameter `%s`, must be between %s and %s."
-   val code min-longitude max-longitude))
+   "Invalid argument `%s` for longitude, must be between %s and %s."
+   val min-longitude max-longitude))
 
-(defn- parse-longitude [val code]
-  (when-ok [longitude (parse-decimal-arg val "longitude" code)]
+(defn- parse-longitude [val]
+  (when-ok [longitude (parse-decimal-arg val "longitude")]
     (if (<= min-longitude longitude max-longitude)
       longitude
-      (ba/incorrect (invalid-longitude-msg val code)))))
+      (ba/incorrect (invalid-longitude-msg val)))))
 
 (defn- min-distance [{:keys [position]} compiled-values]
   (when-let [coords (position->coords position)]
@@ -119,9 +119,9 @@
   (-compile-value [_ _ value]
     (let [[lat long dist unit] (str/split value #"\|" 4)]
       (ac/completed-future
-       (when-ok [parsed-lat (parse-latitude lat code)
-                 parsed-long (parse-longitude long code)
-                 parsed-dist (parse-distance dist unit code)]
+       (when-ok [parsed-lat (parse-latitude lat)
+                 parsed-long (parse-longitude long)
+                 parsed-dist (parse-distance dist unit)]
          {:latitude parsed-lat
           :longitude parsed-long
           :distance parsed-dist}))))

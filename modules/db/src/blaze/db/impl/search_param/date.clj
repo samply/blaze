@@ -366,8 +366,8 @@
        :ap (approximately? value param-lb param-ub)))
    compiled-values))
 
-(defn- invalid-date-time-value-msg [code value]
-  (format "Invalid date-time value `%s` in search parameter `%s`." value code))
+(defn- invalid-date-time-value-msg [value]
+  (format "Invalid date-time value `%s`." value))
 
 (defn- dual-bound-value [op date-time]
   {:op op
@@ -398,7 +398,7 @@
            (:lt :eb)
            {:op op
             :lower-bound (codec-date/encode-lower-bound date-time)})
-         #(assoc % ::anom/message (invalid-date-time-value-msg code value))))))
+         #(assoc % ::anom/message (invalid-date-time-value-msg value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -635,7 +635,7 @@
            {:op op
             :lower-bound (codec-date/encode-lower-bound date-time)
             :lower-bound-dt (system/date-time-lower-bound date-time)})
-         #(assoc % ::anom/message (invalid-date-time-value-msg code value))))))
+         #(assoc % ::anom/message (invalid-date-time-value-msg value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

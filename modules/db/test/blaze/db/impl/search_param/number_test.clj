@@ -90,13 +90,13 @@
       (given-failed-future (search-param/compile-values
                             (probability-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid decimal value `a` in search parameter `probability`."))
+        ::anom/message := "Error in search parameter `probability`: Invalid decimal value `a`."))
 
     (testing "unsupported prefix"
       (given-failed-future (search-param/compile-values
                             (probability-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported prefix `ne` in search parameter `probability`."))))
+        ::anom/message := "Error in search parameter `probability`: Unsupported prefix `ne`."))))
 
 (deftest estimated-scan-size-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]

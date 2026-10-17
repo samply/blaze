@@ -13,6 +13,8 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
 (st/instrument)
@@ -31,6 +33,16 @@
     "ne1" [:ne "1"]
     "fo1" [:eq "fo1"]
     "1ne" [:eq "1ne"]))
+
+(deftest compile-id-test
+  (testing "valid"
+    (is (= (codec/id-byte-string "id-1") (u/compile-id "id-1"))))
+
+  (testing "invalid"
+    (doseq [id ["" (apply str (repeat 65 "a")) "a b" "Ł"]]
+      (given (u/compile-id id)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Invalid resource id `%s`." id)))))
 
 (deftest format-skip-indexing-msg-test
   (is (= (u/format-skip-indexing-msg #fhir/string "value-132537" "url-132522" "type-132528")

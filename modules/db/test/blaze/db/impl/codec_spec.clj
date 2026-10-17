@@ -14,6 +14,10 @@
 
 ;; ---- Identifier Functions --------------------------------------------------
 
+(s/fdef codec/valid-id?
+  :args (s/cat :s string?)
+  :ret boolean?)
+
 (s/fdef codec/id-byte-string
   :args (s/cat :id :blaze.resource/id)
   :ret :blaze.db/id-byte-string)

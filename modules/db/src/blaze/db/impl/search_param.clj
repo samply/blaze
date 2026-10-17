@@ -20,7 +20,8 @@
    [blaze.db.impl.search-param.token]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
-   [blaze.util :refer [str]]))
+   [blaze.util :refer [str]]
+   [cognitect.anomalies :as anom]))
 
 (defn validate-modifier
   "Validate that `modifier` is known and implemented for `search-param`.
@@ -29,15 +30,24 @@
   [search-param modifier]
   (p/-validate-modifier search-param modifier))
 
+(defn- compile-error-msg [msg {:keys [code]} modifier]
+  (format "Error in search parameter `%s`: %s" (cond-> code modifier (str ":" modifier)) msg))
+
 (defn compile-values
   "Compiles `values` according to `search-param`.
 
   Returns a CompletableFuture that completes with a vector of compiled values
-  or completes exceptionally with an anomaly."
+  or completes exceptionally with an anomaly. The message of the anomaly names
+  the search param as sent by the client, including its modifier."
   [search-param modifier values]
   (let [futures (mapv #(p/-compile-value search-param modifier %) values)]
     (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv ac/join futures))))))
+        (ac/then-apply (fn [_] (mapv ac/join futures)))
+        (ac/exceptionally
+         (fn [anomaly]
+           (cond-> anomaly
+             (::anom/message anomaly)
+             (update ::anom/message compile-error-msg search-param modifier)))))))
 
 (defn estimated-scan-size
   "Returns a relative estimation of the amount of work to do while scanning the
