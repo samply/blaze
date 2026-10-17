@@ -292,7 +292,7 @@
       (ac/completed-future
        (if-let [[type id] (fsr/split-literal-ref value)]
          (codec/tid-id (codec/tid type) (codec/id-byte-string id))
-         (if (and (= 1 (count target)) (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" value)))
+         (if (and (= 1 (count target)) (codec/valid-id? value))
            (codec/tid-id (codec/tid (first target)) (codec/id-byte-string value))
            (codec/v-hash value))))
       (= "in" modifier)
@@ -492,7 +492,7 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (ac/completed-future (codec/id-byte-string value)))
+    (ac/completed-future (u/compile-id code value)))
 
   (-estimated-scan-size [_ _ _ _ _]
     1)

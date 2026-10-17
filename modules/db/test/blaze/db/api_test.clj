@@ -4351,6 +4351,22 @@
       (given-type-query node "Patient" [["_id" "xb"]]
         count := 1)))
 
+  (testing "invalid IDs"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+      (doseq [id [(apply str (repeat 65 "a")) "Ł" "a b" ""]
+              clauses [[["_id" id]]
+                       [["_id" "0" id]]
+                       [["active" "true"] ["_id" id]]]]
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid resource id `%s` in search parameter `_id`." id))
+
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses "0")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid resource id `%s` in search parameter `_id`." id)))))
+
   (testing "as seek clause"
     (with-system-data [{:blaze.db/keys [node]} config]
       [(forv [id (range 100)]
@@ -4748,7 +4764,26 @@
 
       (given-type-query node "Patient" [["_list" "1"]]
         count := 1
-        [0 :id] := "xb"))))
+        [0 :id] := "xb")))
+
+  (testing "invalid list IDs"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/0"}}]}]]]
+
+      (doseq [id [(apply str (repeat 65 "a")) "Ł" "a b" "" "$current-problems"]
+              clauses [[["_list" id]]
+                       [["_list" "0" id]]]]
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid resource id `%s` in search parameter `_list`." id))
+
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses "0")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid resource id `%s` in search parameter `_list`." id))))))
 
 (deftest type-query-has-test
   (testing "Special Search Parameter _has"

@@ -29,6 +29,20 @@
          (codec/id-string (codec/id-byte-string s))
          (apply codec/id-string [(apply codec/id-byte-string [s])])))))
 
+(deftest valid-id-test
+  (testing "valid"
+    (satisfies-prop 1000
+      (prop/for-all [s (s/gen :blaze.resource/id)]
+        (true? (codec/valid-id? s)))))
+
+  (testing "invalid"
+    (are [s] (false? (codec/valid-id? s))
+      ""
+      (apply str (repeat 65 "a"))
+      "a b"
+      "a/b"
+      "Ł")))
+
 (deftest descending-long-test
   (are [t dt] (= dt (codec/descending-long t))
     1 0xFFFFFFFFFFFFFE
