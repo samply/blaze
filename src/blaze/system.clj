@@ -172,12 +172,18 @@
 
   Each feature has an environment variable name specified under :toggle. The
   value of the environment variable is read here and checked to be truthy or
-  not. It is truthy if it is not blank and is not the word `false`."
-  {:arglists '([env feature])}
-  [env {:keys [toggle inverse?]}]
-  (let [value (get env toggle)
-        res (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))]
-    (if inverse? (not res) res)))
+  not. It is truthy if it is not blank and is not the word `false`.
+
+  A feature with :enabled-if-pos is enabled if the value of the var in
+  `bind-map` named by it is positive, like a ratio greater than zero. The
+  environment variable under :toggle is already coerced into that var."
+  {:arglists '([env bind-map feature])}
+  [env bind-map {:keys [toggle inverse? enabled-if-pos]}]
+  (if enabled-if-pos
+    (pos? (bind-map enabled-if-pos))
+    (let [value (get env toggle)
+          res (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))]
+      (if inverse? (not res) res))))
 
 (defn- merge-storage
   [{:keys [storage] :as config} env]
@@ -192,12 +198,14 @@
               :enabled enabled?}))
 
 (defn merge-features
-  "Merges feature config portions of enabled features into `base-config`."
-  {:arglists '([blaze-edn env])}
-  [{:keys [base-config features]} env]
+  "Merges feature config portions of enabled features into `base-config`.
+
+  The `bind-map` holds the coerced environment variables."
+  {:arglists '([blaze-edn env bind-map])}
+  [{:keys [base-config features]} env bind-map]
   (reduce
    (fn [res {:keys [name config] :as feature}]
-     (let [enabled? (feature-enabled? env feature)
+     (let [enabled? (feature-enabled? env bind-map feature)
            res (conj-feature res feature enabled?)]
        (log/info "Feature" name (if enabled? "enabled" "disabled"))
        (if enabled?
@@ -229,16 +237,18 @@
            'jvm-metrics-logger-warn-threshold ["JVM_METRICS_LOGGER_WARN_THRESHOLD" ce/jvm-metrics-logger-warn-threshold "80"]
            'db-scale-factor ["DB_SCALE_FACTOR" ce/coerce-db-scale-factor "1"]
            'db-block-size ["DB_BLOCK_SIZE" ce/coerce-db-block-size "16384"]
-           'validator-failure-mode ["VALIDATOR_FAILURE_MODE" ce/coerce-validator-failure-mode "tag-outcome"])]
+           'validator-failure-mode ["VALIDATOR_FAILURE_MODE" ce/coerce-validator-failure-mode "tag-outcome"]
+           'resource-cache-size-ratio ["DB_RESOURCE_CACHE_SIZE_RATIO" ce/coerce-cache-size-ratio "0.25"]
+           'resource-handle-cache-size-ratio ["DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO" ce/coerce-cache-size-ratio "0.1"])]
 
     (let [config (-> (read-blaze-edn)
                      (merge-storage env)
-                     (merge-features env))
+                     (merge-features env bind-map))
           root-config (merge root-config (read-blaze-version-edn))
           config (-> (merge-with merge root-config config)
                      (resolve-config env settings))]
       (load-namespaces config)
-      (let [system (-> (ig/bind config bind-map)
+      (let [system (-> (ig/bind config (ce/limit-cache-size-ratios bind-map))
                        (ig/expand)
                        (ig/init))]
         (if-ok [_ (post-init! system)]

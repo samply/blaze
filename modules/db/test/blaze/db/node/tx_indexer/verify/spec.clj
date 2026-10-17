@@ -22,6 +22,9 @@
 (s/def ::verify/entries
   (s/coll-of :blaze.db.kv/put-entry))
 
+(s/def ::verify/resource-handle-updates
+  (s/coll-of (s/tuple :blaze.db/resource-handle boolean?) :kind vector?))
+
 (s/def ::verify/context
   (s/keys :req-un [::verify/db-before ::verify/read-only-matcher
                    ::verify/stats]))

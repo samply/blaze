@@ -4,6 +4,7 @@
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.node :as node]
+   [blaze.db.resource-handle-cache]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
@@ -133,6 +134,12 @@
    ::parsing-context {}
 
    ::writing-context {}})
+
+(def resource-handle-cache-config
+  "Config of a node with a resource handle cache."
+  (-> (assoc-in config [:blaze.db/node :resource-handle-cache]
+                (ig/ref :blaze.db/resource-handle-cache))
+      (assoc :blaze.db/resource-handle-cache {:max-size-ratio 0.01})))
 
 (def non-referential-integrity-config
   (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))

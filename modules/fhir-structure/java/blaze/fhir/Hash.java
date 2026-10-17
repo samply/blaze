@@ -29,6 +29,34 @@ public final class Hash {
         return new Hash(l0, l1, l2, l3);
     }
 
+    /**
+     * Returns the first of the four longs of this hash.
+     */
+    public long l0() {
+        return l0;
+    }
+
+    /**
+     * Returns the second of the four longs of this hash.
+     */
+    public long l1() {
+        return l1;
+    }
+
+    /**
+     * Returns the third of the four longs of this hash.
+     */
+    public long l2() {
+        return l2;
+    }
+
+    /**
+     * Returns the fourth of the four longs of this hash.
+     */
+    public long l3() {
+        return l3;
+    }
+
     public static Hash fromHex(String s) {
         return new Hash(
                 HexFormat.fromHexDigitsToLong(s, 0, 16),
