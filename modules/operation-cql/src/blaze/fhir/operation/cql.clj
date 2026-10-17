@@ -127,33 +127,6 @@
     (when-ok [expression-defs (compile-library* context params)]
       (library/optimize db expression-defs))))
 
-(defn- evaluate-expression-error-msg [e]
-  (format "Error while evaluating the expression: %s" (ex-message e)))
-
-(defn- evaluate-expression** [context expression resource]
-  (try
-    (expr/eval context expression resource)
-    (catch Exception e
-      (let [ex-data (ex-data e)]
-        ;; only log if the exception hasn't ex-data because exception with
-        ;; ex-data are controlled by us and so are not unexpected
-        (when-not ex-data
-          (log/error (evaluate-expression-error-msg e))
-          (log/error e))
-        (-> (ba/fault
-             (evaluate-expression-error-msg e)
-             :fhir/issue "exception")
-            (merge ex-data))))))
-
-(defn- evaluate-expression* [context expression resource]
-  (when-ok [result (evaluate-expression** context expression resource)]
-    (u/to-seq result)))
-
-(defn- evaluate-expression [context db expression resource]
-  (with-open [_ (prom/timer evaluate-duration-seconds)
-              db (d/new-batch-db db)]
-    (evaluate-expression* (assoc context :db db) expression resource)))
-
 (defn- cql->fhir [value]
   (condp instance? value
     Integer (type/integer value)
@@ -193,6 +166,35 @@
   {:fhir/type :fhir/Parameters
    :parameter (into [] parameter-xf values)})
 
+(defn- evaluate-expression-error-msg [e]
+  (format "Error while evaluating the expression: %s" (ex-message e)))
+
+(defn- evaluate-expression* [context expression resource]
+  (try
+    (create-parameters (u/to-seq (expr/eval context expression resource)))
+    (catch Exception e
+      (let [ex-data (ex-data e)]
+        ;; only log if the exception hasn't ex-data because exception with
+        ;; ex-data are controlled by us and so are not unexpected
+        (when-not ex-data
+          (log/error (evaluate-expression-error-msg e))
+          (log/error e))
+        (-> (ba/fault
+             (evaluate-expression-error-msg e)
+             :fhir/issue "exception")
+            (merge ex-data))))))
+
+(defn- evaluate-expression
+  "Evaluates `expression` and returns the result as Parameters resource.
+
+  The Parameters resource is created while the batch DB is still open, because
+  the result of the expression can contain lazy collections like eductions over
+  that batch DB."
+  [context db expression resource]
+  (with-open [_ (prom/timer evaluate-duration-seconds)
+              db (d/new-batch-db db)]
+    (evaluate-expression* (assoc context :db db) expression resource)))
+
 (defn- eval-context [{:keys [clock] :as context}]
   (assoc context :now (bt/offset-date-time clock)))
 
@@ -220,10 +222,9 @@
               subject-resource (subject-resource db params)
               expression-defs (compile-library context db params)]
         (let [{:keys [expression]} (get expression-defs "Expression")]
-          (if-ok [values (evaluate-expression (eval-context context) db
-                                              expression subject-resource)]
-            (-> (create-parameters values)
-                (ring/response)
+          (if-ok [parameters (evaluate-expression (eval-context context) db
+                                                  expression subject-resource)]
+            (-> (ring/response parameters)
                 (ac/completed-future))
             ac/completed-future))
         ac/completed-future))))
