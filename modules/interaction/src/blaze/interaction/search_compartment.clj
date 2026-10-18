@@ -125,12 +125,6 @@
     :blaze/keys [base-url db paging-params]
     ::reitit/keys [router]}]
   (cond
-    (not (s/valid? :blaze.resource/id id))
-    (ac/completed-future
-     (ba/incorrect
-      (format "The identifier `%s` is invalid." id)
-      :fhir/issue "value"))
-
     (not (s/valid? :fhir.resource/type type))
     (ac/completed-future
      (ba/incorrect

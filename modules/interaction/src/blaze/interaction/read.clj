@@ -19,4 +19,4 @@
 
 (defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
-  (iu/wrap-invalid-id handler))
+  handler)

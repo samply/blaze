@@ -1,7 +1,6 @@
 (ns blaze.interaction.util
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
@@ -80,19 +79,6 @@
   {:arglists '([tx-op])}
   [[op]]
   (identical? :keep op))
-
-(defn wrap-invalid-id [handler]
-  (fn [{{:keys [id]} :path-params :as request}]
-    (cond
-      (not (re-matches #"[A-Za-z0-9\-\.]{1,64}" id))
-      (ac/completed-future
-       (ba/incorrect
-        (format "Resource id `%s` is invalid." id)
-        :fhir/issue "value"
-        :fhir/operation-outcome "MSG_ID_INVALID"))
-
-      :else
-      (handler request))))
 
 (defn response [resource]
   (let [{:blaze.db/keys [tx]} (meta resource)]

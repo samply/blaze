@@ -26,6 +26,7 @@
    [blaze.job.canonical :as jc]
    [blaze.job.re-index]
    [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.id :as id]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.link-headers :as link-headers]
@@ -172,6 +173,10 @@
 (def ^:private wrap-db
   {:name :db
    :wrap db/wrap-db})
+
+(def ^:private wrap-invalid-id
+  {:name :invalid-id
+   :wrap id/wrap-invalid-id})
 
 (def ^:private wrap-resource
   {:name :resource
@@ -397,6 +402,7 @@
                      [wrap-validate-job validator writing-context]]
         :handler create-job-handler}}]
      ["/{id}"
+      {:middleware [wrap-invalid-id]}
       [""
        {:get
         {:middleware [[wrap-db admin-node db-sync-timeout]]
