@@ -13,11 +13,11 @@
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.22.3"}
+  {:mvn/version "2.22.4"}
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.22.3"}}
+  {:mvn/version "2.22.4"}}
 
  :aliases
  {:test
