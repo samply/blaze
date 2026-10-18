@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.util-spec
   (:require
+   [blaze.byte-string :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
@@ -10,6 +11,10 @@
    [blaze.db.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
+
+(s/fdef u/compile-id
+  :args (s/cat :id string?)
+  :ret (s/or :value byte-string? :anomaly ::anom/anomaly))
 
 (s/fdef u/separate-op
   :args (s/cat :value string?)

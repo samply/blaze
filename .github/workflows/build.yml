@@ -1784,6 +1784,9 @@ jobs:
     - name: Search Patient _id
       run: .github/scripts/search-patient-id.sh
 
+    - name: Search Patient Invalid _id
+      run: .github/scripts/search-patient-invalid-id.sh
+
     - name: Search System _id
       run: .github/scripts/search-system-id.sh
 

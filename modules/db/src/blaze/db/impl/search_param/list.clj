@@ -49,7 +49,7 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (ac/completed-future (codec/id-byte-string value)))
+    (ac/completed-future (u/compile-id value)))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

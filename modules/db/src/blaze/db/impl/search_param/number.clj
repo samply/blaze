@@ -58,13 +58,8 @@
            (u/eq-value codec/number decimal-value)
            (:gt :lt :ge :le)
            {:op op :exact-value (codec/number decimal-value)}
-           (ba/unsupported
-            (u/unsupported-prefix-msg code op)
-            ::category ::unsupported-prefix
-            ::unsupported-prefix op))
-         #(assoc %
-                 ::category ::invalid-decimal-value
-                 ::anom/message (u/invalid-decimal-value-msg code value))))))
+           (ba/unsupported (u/unsupported-prefix-msg op)))
+         #(assoc % ::anom/message (u/invalid-decimal-value-msg value))))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

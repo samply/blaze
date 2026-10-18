@@ -67,6 +67,15 @@
                (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
                ret))))))))
 
+(defn compile-id
+  "Compiles `id` into its byte string representation.
+
+  Returns an anomaly if `id` isn't a valid resource id."
+  [id]
+  (if (codec/valid-id? id)
+    (codec/id-byte-string id)
+    (ba/incorrect (format "Invalid resource id `%s`." id))))
+
 (defn non-deleted-resource-handle [batch-db tid id]
   (when-let [handle (p/-resource-handle batch-db tid id)]
     (when-not (rh/deleted? handle)
@@ -121,11 +130,11 @@
    (map bs/as-read-only-byte-buffer)
    (map (fn [buf] (bb/get-int! buf) (bs/from-byte-buffer! buf)))))
 
-(defn invalid-decimal-value-msg [code value]
-  (format "Invalid decimal value `%s` in search parameter `%s`." value code))
+(defn invalid-decimal-value-msg [value]
+  (format "Invalid decimal value `%s`." value))
 
-(defn unsupported-prefix-msg [code op]
-  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
+(defn unsupported-prefix-msg [op]
+  (format "Unsupported prefix `%s`." (name op)))
 
 (defn eq-value [f ^BigDecimal decimal-value]
   (let [delta (.movePointLeft 0.5M (.scale decimal-value))]

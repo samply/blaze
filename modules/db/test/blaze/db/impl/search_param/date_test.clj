@@ -67,7 +67,7 @@
       (given-failed-future (search-param/compile-values
                             (birth-date-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid date-time value `a` in search parameter `birthdate`."))
+        ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `a`."))
 
     (testing "less than"
       (given @(search-param/compile-values

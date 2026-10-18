@@ -9,8 +9,7 @@
    [blaze.db.impl.search-param.composite.common :as cc]
    [blaze.db.impl.search-param.quantity :as spq]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.fhir-path :as fhir-path]
-   [cognitect.anomalies :as anom]))
+   [blaze.fhir-path :as fhir-path]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,16 +35,7 @@
   (-compile-value [_ _ value]
     (if-ok [[v1 v2] (cc/split-value value)]
       (let [f1 (cc/compile-component-value c1 v1)
-            f2 (-> (cc/compile-component-value c2 v2)
-                   (ac/exceptionally
-                    (fn [{::spq/keys [category] :as anom}]
-                      (case category
-                        ::spq/invalid-decimal-value
-                        (assoc anom ::anom/message (u/invalid-decimal-value-msg code v2))
-                        ::spq/unsupported-prefix
-                        (assoc anom ::anom/message
-                               (u/unsupported-prefix-msg code (::spq/unsupported-prefix anom)))
-                        anom))))]
+            f2 (cc/compile-component-value c2 v2)]
         (-> (ac/all-of [f1 f2])
             (ac/then-apply (fn [_] (prefix-with (ac/join f2) (ac/join f1))))))
       ac/completed-future))

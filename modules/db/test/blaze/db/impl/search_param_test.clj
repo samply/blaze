@@ -8,6 +8,7 @@
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-spec]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.core :as sc]
@@ -18,7 +19,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.test-util :as tu :refer [given-failed-future given-thrown]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -96,7 +97,28 @@
       (given @(compile-birthdate search-param-registry "2020-10-30")
         :op := :eq
         :lower-bound := (codec-date/encode-lower-bound #system/date-time"2020-10-30")
-        :upper-bound := (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))
+        :upper-bound := (codec-date/encode-upper-bound #system/date-time"2020-10-30")))
+
+    (testing "error message names the search param"
+      (given-failed-future (search-param/compile-values
+                            (birthdate search-param-registry) nil ["a"])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `a`."))
+
+    (testing "error message names the search param with modifier"
+      (given-failed-future (search-param/compile-values
+                            (birthdate search-param-registry) "missing" ["a"])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Error in search parameter `birthdate:missing`: Invalid date-time value `a`."))
+
+    (testing "error without message stays without message"
+      (given-failed-future (search-param/compile-values
+                            (reify p/SearchParam
+                              (-compile-value [_ _ _]
+                                (ac/completed-future (ba/fault))))
+                            nil ["a"])
+        ::anom/category := ::anom/fault
+        ::anom/message := nil))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))

@@ -4351,6 +4351,22 @@
       (given-type-query node "Patient" [["_id" "xb"]]
         count := 1)))
 
+  (testing "invalid IDs"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+      (doseq [id [(apply str (repeat 65 "a")) "Ł" "a b" ""]
+              clauses [[["_id" id]]
+                       [["_id" "0" id]]
+                       [["active" "true"] ["_id" id]]]]
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error in search parameter `_id`: Invalid resource id `%s`." id))
+
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses "0")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error in search parameter `_id`: Invalid resource id `%s`." id)))))
+
   (testing "as seek clause"
     (with-system-data [{:blaze.db/keys [node]} config]
       [(forv [id (range 100)]
@@ -4748,7 +4764,26 @@
 
       (given-type-query node "Patient" [["_list" "1"]]
         count := 1
-        [0 :id] := "xb"))))
+        [0 :id] := "xb")))
+
+  (testing "invalid list IDs"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/0"}}]}]]]
+
+      (doseq [id [(apply str (repeat 65 "a")) "Ł" "a b" "" "$current-problems"]
+              clauses [[["_list" id]]
+                       [["_list" "0" id]]]]
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error in search parameter `_list`: Invalid resource id `%s`." id))
+
+        (given-failed-future (d/type-query (d/db node) "Patient" clauses "0")
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error in search parameter `_list`: Invalid resource id `%s`." id))))))
 
 (deftest type-query-has-test
   (testing "Special Search Parameter _has"
@@ -4851,37 +4886,43 @@
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has" ""]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing modifier of _has search param.")))
+            ::anom/message := "Error in search parameter `_has`: Missing modifier.")))
 
       (testing "missing type"
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has:" ""]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing type in _has search param `_has:`.")))
+            ::anom/message := "Error in search parameter `_has:`: Missing type.")))
 
       (testing "missing chaining search param"
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
+            ::anom/message := "Error in search parameter `_has:foo`: Missing chaining search param.")))
 
       (testing "missing search param"
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
+            ::anom/message := "Error in search parameter `_has:foo:bar`: Missing search param.")))
 
       (testing "main search param not found"
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
+            ::anom/message := "Error in search parameter `_has:Observation:patient:foo`: The search-param with code `foo` and type `Observation` was not found.")))
 
       (testing "chain search param not found"
         (with-system [{:blaze.db/keys [node]} config]
           (given-failed-future (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))))
+            ::anom/message := "Error in search parameter `_has:Observation:foo:code`: The search-param with code `foo` and type `Observation` was not found.")))
+
+      (testing "invalid value"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given-failed-future (d/type-query (d/db node) "Patient" [["_has:Observation:patient:date" "invalid"]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Error in search parameter `_has:Observation:patient:date`: Invalid date-time value `invalid`."))))))
 
 (deftest type-query-condition-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -5206,7 +5247,7 @@
         (testing "not equal"
           (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
             ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
+            ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `ne`."))
 
         (testing "greater than"
           (let [clauses [["value-quantity" "gt2.11"]]]
@@ -5320,17 +5361,17 @@
         (testing "starts after"
           (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
             ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
+            ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `sa`."))
 
         (testing "ends before"
           (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
             ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
+            ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `eb`."))
 
         (testing "approximately"
           (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
             ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
+            ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `ap`.")))
 
       (testing "with more than one value"
         (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
@@ -5342,7 +5383,7 @@
       (testing "with invalid decimal value"
         (given-failed-future (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
           ::anom/category := ::anom/incorrect
-          ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`.")))
+          ::anom/message := "Error in search parameter `value-quantity`: Invalid decimal value `a`.")))
 
     (testing "status and value-quantity"
       (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
@@ -5368,7 +5409,7 @@
           (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
             (given-failed-future (d/type-query (d/db node) "Observation" clauses)
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`.")))
+              ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `ne`.")))
 
         (testing "greater than"
           (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
@@ -5416,19 +5457,19 @@
           (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
             (given-failed-future (d/type-query (d/db node) "Observation" clauses)
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`.")))
+              ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `sa`.")))
 
         (testing "ends before"
           (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
             (given-failed-future (d/type-query (d/db node) "Observation" clauses)
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`.")))
+              ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `eb`.")))
 
         (testing "approximately"
           (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
             (given-failed-future (d/type-query (d/db node) "Observation" clauses)
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`."))))
+              ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `ap`."))))
 
       (testing "with more than one value"
         (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
@@ -5605,7 +5646,7 @@
     (testing "missing second value part"
       (given-failed-future (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Miss the second part is composite search value `8480-6`."))
+        ::anom/message := "Error in search parameter `code-value-quantity`: Miss the second part is composite search value `8480-6`."))
 
     (testing "as first clause"
       (given-type-query node "Observation" [["code-value-quantity" "8480-6$ge140"]]
@@ -5863,7 +5904,7 @@
     (testing "missing second value part"
       (given-failed-future (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Miss the second part is composite search value `http://loinc.org|94564-2`."))
+        ::anom/message := "Error in search parameter `code-value-concept`: Miss the second part is composite search value `http://loinc.org|94564-2`."))
 
     (testing "as first clause"
       (testing "code as system|code"
@@ -8810,7 +8851,16 @@
                                                     ["author:Organization.identifier" "system-105539|value-105542"]]
           count := 1
           [0 :fhir/type] := :fhir/DocumentReference
-          [0 :id] := "105551")))))
+          [0 :id] := "105551"))))
+
+  (testing "invalid IDs"
+    (with-system [{:blaze.db/keys [node]} config]
+      (doseq [id [(apply str (repeat 65 "a")) "Ł" "a b" ""]
+              [type code] [["Observation" "subject:Patient._id"]
+                           ["Encounter" "diagnosis:Condition.subject:Patient._id"]]]
+        (given-failed-future (d/type-query (d/db node) type [[code id]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Error in search parameter `%s`: Invalid resource id `%s`." code id))))))
 
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
@@ -9276,7 +9326,7 @@
         (doseq [target [node (d/db node)]]
           (given-failed-future (d/compile-type-query target "Patient" [["birthdate" "invalid"]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
+            ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `invalid`."))))))
 
 (deftest compile-type-query-lenient-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -9330,7 +9380,7 @@
     (testing "invalid date"
       (given-failed-future (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
+        ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `invalid`."))
 
     (testing "sort parameter"
       (let [query @(d/compile-type-query-lenient
@@ -9541,7 +9591,7 @@
           (doseq [target [node db]]
             (given-failed-future (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
               ::anom/category := ::anom/incorrect
-              ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
+              ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `invalid`."))))))
 
   (testing "token identifier search param"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -9858,12 +9908,12 @@
         (testing "missing modifier"
           (given-failed-future (d/system-query (d/db node) [["_has" ""]])
             ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing modifier of _has search param."))
+            ::anom/message := "Error in search parameter `_has`: Missing modifier."))
 
         (testing "main search param not found"
           (given-failed-future (d/system-query (d/db node) [["_has:Observation:subject:foo" ""]])
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
+            ::anom/message := "Error in search parameter `_has:Observation:subject:foo`: The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "_id"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -10933,7 +10983,7 @@
         (testing "type query"
           (given (pull-type-query node "Condition" [["code:in" "utl-161924"]])
             ::anom/category := ::anom/fault
-            ::anom/message := "Error while expanding the ValueSet `utl-161924`. Cause: msg-125400"))))))
+            ::anom/message := "Error in search parameter `code:in`: Error while expanding the ValueSet `utl-161924`. Cause: msg-125400"))))))
 
 (deftest patient-compartment-last-change-t-test
   (testing "non-existing patient"
