@@ -1,7 +1,5 @@
 package blaze.db.impl.index;
 
-import blaze.ByteString;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,23 +9,23 @@ import static java.util.Objects.requireNonNull;
 
 public final class IndexHandle {
 
-    private final ByteString id;
+    private final String id;
     private final int[] hashPrefixes;
 
-    private IndexHandle(ByteString id, int[] hashPrefixes) {
+    private IndexHandle(String id, int[] hashPrefixes) {
         this.id = requireNonNull(id);
         this.hashPrefixes = requireNonNull(hashPrefixes);
     }
 
     public static IndexHandle fromResourceHandle(ResourceHandle resourceHandle) {
-        return new IndexHandle(resourceHandle.idByteString(), new int[]{resourceHandle.hashPrefix()});
+        return new IndexHandle(resourceHandle.id(), new int[]{resourceHandle.hashPrefix()});
     }
 
     public static IndexHandle fromSingleVersionId(SingleVersionId singleVersionId) {
         return new IndexHandle(singleVersionId.id(), new int[]{singleVersionId.hashPrefix()});
     }
 
-    public ByteString id() {
+    public String id() {
         return id;
     }
 

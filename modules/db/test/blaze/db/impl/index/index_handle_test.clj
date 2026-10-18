@@ -1,7 +1,6 @@
 (ns blaze.db.impl.index.index-handle-test
   (:refer-clojure :exclude [hash])
   (:require
-   [blaze.byte-string :as bs]
    [blaze.db.impl.index-spec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle-spec]
@@ -27,7 +26,7 @@
   ([hp]
    (svi 0 hp))
   ([id hp]
-   (svi/single-version-id (bs/from-hex (format "%02d" id)) (hash hp))))
+   (svi/single-version-id (str id) (hash hp))))
 
 (defn- ih
   ([hp]
@@ -37,7 +36,7 @@
 
 (deftest from-resource-handle-test
   (let [ih (ih/from-resource-handle (resource-handle "Patient" "0" 1 (hash 1)))]
-    (is (= #blaze/byte-string"30" (ih/id ih)))
+    (is (= "0" (ih/id ih)))
     (is (= [1] (ih/hash-prefixes ih)))))
 
 (deftest matches-hash-test
@@ -51,15 +50,15 @@
 
 (deftest conj-hash-prefix-from-test
   (let [ih (ih/conj (ih 1) (svi 2))]
-    (is (= #blaze/byte-string"00" (ih/id ih)))
+    (is (= "0" (ih/id ih)))
     (is (= [1 2] (ih/hash-prefixes ih))))
 
   (let [ih (ih/conj (ih 2) (svi 1))]
-    (is (= #blaze/byte-string"00" (ih/id ih)))
+    (is (= "0" (ih/id ih)))
     (is (= [1 2] (ih/hash-prefixes ih))))
 
   (let [ih (ih/conj (ih/conj (ih 1) (svi 3)) (svi 2))]
-    (is (= #blaze/byte-string"00" (ih/id ih)))
+    (is (= "0" (ih/id ih)))
     (is (= [1 2 3] (ih/hash-prefixes ih)))))
 
 (deftest intersection-test
@@ -70,7 +69,7 @@
 
   (testing "fails on unequal ids"
     (given-thrown (ih/intersection (ih 0 0) (ih 1 0))
-      :message := "ids 0x00 and 0x01 differ")))
+      :message := "ids 0 and 1 differ")))
 
 (deftest union-test
   (are [ih-1 ih-2 hps] (= hps (ih/hash-prefixes (ih/union ih-1 ih-2)))
@@ -80,4 +79,4 @@
 
   (testing "fails on unequal ids"
     (given-thrown (ih/union (ih 0 0) (ih 1 0))
-      :message := "ids 0x00 and 0x01 differ")))
+      :message := "ids 0 and 1 differ")))

@@ -2,7 +2,6 @@
   "Functions for accessing the PatientLastChange index."
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.byte-string :as bs]
    [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
@@ -15,8 +14,8 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn- encode-key [patient-id t]
-  (-> (bsb/allocate (unchecked-add-int (bs/size patient-id) codec/t-size))
-      (bsb/put-byte-string! patient-id)
+  (-> (bsb/allocate (unchecked-add-int (codec/id-size patient-id) codec/t-size))
+      (bsb/put-iso-8859-1-string! patient-id)
       (bsb/put-long! (codec/descending-long ^long t))
       bsb/to-bytes))
 
@@ -30,9 +29,9 @@
   (kv/seek! plci (encode-key patient-id t))
   (when (kv/valid? plci)
     (let [bb (bb/wrap (kv/key plci))
-          patient-id-size (bs/size patient-id)]
+          patient-id-size (codec/id-size patient-id)]
       (when (and (< patient-id-size (bb/remaining bb))
-                 (= patient-id (bs/from-byte-buffer! bb patient-id-size)))
+                 (= patient-id (bb/get-iso-8859-1-string! bb patient-id-size)))
         (read-t! bb)))))
 
 (def ^:private state-key

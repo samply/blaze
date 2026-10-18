@@ -1,11 +1,11 @@
 (ns blaze.db.impl.index.index-handle-spec
   (:require
-   [blaze.byte-string :as bs]
    [blaze.db.impl.index :as-alias index]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle.spec]
    [blaze.db.impl.index.single-version-id.spec]
    [blaze.fhir.hash.spec]
+   [blaze.fhir.spec.spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef ih/from-single-version-id
@@ -18,7 +18,7 @@
 
 (s/fdef ih/id
   :args (s/cat :index-handle ::index/handle)
-  :ret bs/byte-string?)
+  :ret :blaze.resource/id)
 
 (s/fdef ih/hash-prefixes
   :args (s/cat :index-handle ::index/handle)

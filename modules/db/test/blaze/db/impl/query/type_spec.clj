@@ -11,7 +11,7 @@
 
 (s/fdef qt/patient-type-query
   :args (s/cat :tid :blaze.db/tid
-               :patient-ids (s/coll-of :blaze.db/id-byte-string :kind vector? :min-count 1)
+               :patient-ids (s/coll-of :blaze.resource/id :kind vector? :min-count 1)
                :compartment-clause ::query/search-clause
                :scan-clauses ::query/search-clauses
                :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))))

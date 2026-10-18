@@ -272,7 +272,7 @@
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-145552"))]
+                            "id-145552")]
                 ["patient" (codec/v-hash "id-145552")]
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
@@ -282,7 +282,7 @@
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-145552"))]
+                            "id-145552")]
                 ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
@@ -295,7 +295,7 @@
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-145552"))]
+                            "id-145552")]
                 ["patient" (codec/v-hash "id-145552")]
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
@@ -305,7 +305,7 @@
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-145552"))]
+                            "id-145552")]
                 ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
@@ -384,7 +384,7 @@
                 ["patient" (codec/v-hash "id-180857")]
                 ["patient" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-180857"))]
+                            "id-180857")]
                 ["patient" (codec/v-hash "Patient/id-180857")]
                 ["code" (codec/v-hash "system-193821|")]
                 ["code" (codec/v-hash "system-193821|code-193824")]
@@ -424,7 +424,7 @@
                 ["subject" (codec/v-hash "id-180857")]
                 ["subject" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-180857"))]
+                            "id-180857")]
                 ["subject" (codec/v-hash "Patient/id-180857")]
                 ["status" (codec/v-hash "status-193613")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
@@ -464,12 +464,12 @@
                [["patient" (codec/v-hash "id-151354")]
                 ["patient" (codec/tid-id
                             (codec/tid "Patient")
-                            (codec/id-byte-string "id-151354"))]
+                            "id-151354")]
                 ["patient" (codec/v-hash "Patient/id-151354")]
                 ["actor" (codec/v-hash "id-151354")]
                 ["actor" (codec/tid-id
                           (codec/tid "Patient")
-                          (codec/id-byte-string "id-151354"))]
+                          "id-151354")]
                 ["actor" (codec/v-hash "Patient/id-151354")]
                 ["status" (codec/v-hash "status-151938")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))

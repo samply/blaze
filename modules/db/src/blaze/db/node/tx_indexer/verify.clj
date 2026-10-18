@@ -73,13 +73,12 @@
   `refs` are used to update the PatientLastChange index in case a Patient is
   referenced."
   [tid id t hash num-changes op refs]
-  (let [id (codec/id-byte-string id)]
-    (into
-     (rts/index-entries tid id t hash num-changes op)
-     (keep (fn [[ref-type ref-id]]
-             (when (= "Patient" ref-type)
-               (plc/index-entry (codec/id-byte-string ref-id) t))))
-     refs)))
+  (into
+   (rts/index-entries tid id t hash num-changes op)
+   (keep (fn [[ref-type ref-id]]
+           (when (= "Patient" ref-type)
+             (plc/index-entry ref-id t))))
+   refs))
 
 (def ^:private inc-0 (fnil inc 0))
 (def ^:private dec-0 (fnil dec 0))
@@ -241,7 +240,7 @@
   (rts/purge-index-entries tid id rh t))
 
 (defn- add-purge-entries [res tid id t resource-handles]
-  (-> (update res :entries into (mapcat (partial purge-entry tid (codec/id-byte-string id) t)) resource-handles)
+  (-> (update res :entries into (mapcat (partial purge-entry tid id t)) resource-handles)
       (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"

@@ -21,10 +21,6 @@
   :args (s/cat :byte-buffer byte-buffer? :x int?)
   :ret byte-buffer?)
 
-(s/fdef bb/put-short!
-  :args (s/cat :byte-buffer byte-buffer? :x int?)
-  :ret byte-buffer?)
-
 (s/fdef bb/put-int!
   :args (s/cat :byte-buffer byte-buffer? :x int?)
   :ret byte-buffer?)
@@ -46,8 +42,12 @@
   :args (s/cat :byte-buffer byte-buffer? :byte-string #(instance? ByteString %))
   :ret byte-buffer?)
 
-(s/fdef bb/put-null-terminated-byte-string!
-  :args (s/cat :byte-buffer byte-buffer? :byte-string #(instance? ByteString %))
+(s/fdef bb/put-iso-8859-1-string!
+  :args (s/cat :byte-buffer byte-buffer? :s string?)
+  :ret byte-buffer?)
+
+(s/fdef bb/put-null-terminated-iso-8859-1-string!
+  :args (s/cat :byte-buffer byte-buffer? :s string?)
   :ret byte-buffer?)
 
 (s/fdef bb/limit
@@ -61,6 +61,10 @@
 (s/fdef bb/set-position!
   :args (s/cat :byte-buffer byte-buffer? :position nat-int?)
   :ret byte-buffer?)
+
+(s/fdef bb/get-iso-8859-1-string!
+  :args (s/cat :byte-buffer byte-buffer? :length nat-int?)
+  :ret string?)
 
 (s/fdef bb/size-up-to-null
   :args (s/cat :byte-buffer byte-buffer?)

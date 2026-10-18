@@ -1,12 +1,12 @@
 package blaze.db.impl.index;
 
+import blaze.ByteBufferUtil;
 import blaze.ByteString;
 import blaze.db.impl.codec.ResourceTypes;
 import blaze.fhir.Hash;
 import clojure.lang.*;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 
 import static java.util.Objects.requireNonNull;
@@ -139,37 +139,35 @@ public final class ResourceHandle implements ILookup, IKeywordLookup {
         return Hash.fromLongs(h0, h1, h2, h3);
     }
 
-    ByteString idByteString() {
-        return ByteString.copyFrom(id, StandardCharsets.ISO_8859_1);
+    String id() {
+        return id;
     }
 
     int hashPrefix() {
         return Hash.prefix(h0);
     }
 
-    public void copyTidTo(ByteBuffer target) {
-        target.putInt(tid);
+    public ByteBuffer copyTidTo(ByteBuffer target) {
+        return target.putInt(tid);
     }
 
     /**
      * Copies the ISO-8859-1 encoded bytes of the id into {@code target}
      * without creating an intermediate byte array.
      */
-    public void copyIdTo(ByteBuffer target) {
-        for (int i = 0; i < id.length(); i++) {
-            target.put((byte) id.charAt(i));
-        }
+    public ByteBuffer copyIdTo(ByteBuffer target) {
+        return ByteBufferUtil.putIso88591String(target, id);
     }
 
-    public void copyHashPrefixTo(ByteBuffer target) {
-        target.putInt(hashPrefix());
+    public ByteBuffer copyHashPrefixTo(ByteBuffer target) {
+        return target.putInt(hashPrefix());
     }
 
-    public void copyHashTo(ByteString.Builder target) {
+    public ByteString.Builder copyHashTo(ByteString.Builder target) {
         target.putLong(h0);
         target.putLong(h1);
         target.putLong(h2);
-        target.putLong(h3);
+        return target.putLong(h3);
     }
 
     @Override

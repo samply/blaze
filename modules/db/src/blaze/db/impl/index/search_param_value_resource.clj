@@ -39,7 +39,7 @@
   (^long [value]
    (+ base-key-size (bs/size value)))
   (^long [value id]
-   (+ (key-size value) (bs/size id) 2)))
+   (+ (key-size value) (codec/id-size id) 2)))
 
 (defn encode-seek-key
   ([c-hash tid]
@@ -58,8 +58,8 @@
        (bsb/put-int! c-hash)
        (bsb/put-int! tid)
        (bsb/put-null-terminated-byte-string! value)
-       (bsb/put-byte-string! id)
-       (bsb/put-byte! (bs/size id))
+       (bsb/put-iso-8859-1-string! id)
+       (bsb/put-byte! (codec/id-size id))
        bsb/build)))
 
 (defn- encode-seek-key-full-value [c-hash tid value]
@@ -240,8 +240,8 @@
       (bsb/put-int! c-hash)
       (bsb/put-int! tid)
       (bsb/put-null-terminated-byte-string! value)
-      (bsb/put-byte-string! id)
-      (bsb/put-byte! (bs/size id))
+      (bsb/put-iso-8859-1-string! id)
+      (bsb/put-byte! (codec/id-size id))
       (hash/prefix-into-byte-string-builder! hash)
       bsb/to-bytes))
 

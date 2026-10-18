@@ -18,12 +18,12 @@
         tid (bb/get-int! buf)
         value (bs/from-byte-buffer! buf value-size)
         _ (bb/get-byte! buf)
-        id (bs/from-byte-buffer! buf id-size)
+        id (bb/get-iso-8859-1-string! buf id-size)
         _ (bb/get-byte! buf)]
     {:code (codec/c-hash->code c-hash (Integer/toHexString c-hash))
      :type (codec/tid->type tid)
      :v-hash value
-     :id (codec/id-string id)
+     :id id
      :hash-prefix (hash/prefix-from-byte-buffer! buf)}))
 
 (defn decode-index-entries [kv-store & keys]

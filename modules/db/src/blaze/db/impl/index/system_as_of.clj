@@ -28,25 +28,24 @@
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   [base-t since-t]
-  (let [read-id! (u/id-reader)]
-    (fn [rf]
-      (fn
-        ([result] (rf result))
-        ([result [kb vb]]
-         (let [resource-t (read-t! kb)]
-           (if (< (long since-t) resource-t)
-             (let [handle (rh/resource-handle! (bb/get-int! kb) (read-id! kb)
-                                               resource-t base-t vb)]
-               (cond-> result handle (rf handle)))
-             (reduced result))))))))
+  (fn [rf]
+    (fn
+      ([result] (rf result))
+      ([result [kb vb]]
+       (let [resource-t (read-t! kb)]
+         (if (< (long since-t) resource-t)
+           (let [handle (rh/resource-handle! (bb/get-int! kb) (u/read-id! kb)
+                                             resource-t base-t vb)]
+             (cond-> result handle (rf handle)))
+           (reduced result)))))))
 
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
   [t tid id]
-  (-> (bsb/allocate (unchecked-add-int t-tid-size (bs/size id)))
+  (-> (bsb/allocate (unchecked-add-int t-tid-size (codec/id-size id)))
       (bsb/put-long! (codec/descending-long ^long t))
       (bsb/put-int! tid)
-      (bsb/put-byte-string! id)
+      (bsb/put-iso-8859-1-string! id)
       bsb/to-bytes))
 
 (defn- encode-t-tid [start-t start-tid]

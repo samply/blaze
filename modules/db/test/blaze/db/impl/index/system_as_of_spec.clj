@@ -18,5 +18,5 @@
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :start-t :blaze.db/t
                :start-tid (s/nilable :blaze.db/tid)
-               :start-id (s/nilable :blaze.db/id-byte-string))
+               :start-id (s/nilable :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))

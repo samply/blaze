@@ -1,7 +1,6 @@
 (ns blaze.db.impl.index.resource-as-of-test-util
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.util :refer [read-t!]]))
 
@@ -12,5 +11,5 @@
         tid (bb/get-int! buf)
         id-size (- (bb/remaining buf) codec/t-size)]
     {:type (codec/tid->type tid)
-     :id (codec/id-string (bs/from-byte-buffer! buf id-size))
+     :id (bb/get-iso-8859-1-string! buf id-size)
      :t (read-t! buf)}))

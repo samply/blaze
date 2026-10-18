@@ -11,31 +11,32 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir.hash :as hash]))
 
+(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn- key-size
   ^long [co-res-id value]
-  (+ codec/c-hash-size (bs/size co-res-id) 1
+  (+ codec/c-hash-size (codec/id-size co-res-id) 1
      codec/c-hash-size codec/tid-size (bs/size value)))
 
 (defn- encode-seek-key
   ([co-c-hash co-res-id sp-c-hash tid value]
    (-> (bsb/allocate (key-size co-res-id value))
        (bsb/put-int! co-c-hash)
-       (bsb/put-null-terminated-byte-string! co-res-id)
+       (bsb/put-null-terminated-iso-8859-1-string! co-res-id)
        (bsb/put-int! sp-c-hash)
        (bsb/put-int! tid)
        (bsb/put-byte-string! value)
        bsb/build))
   ([co-c-hash co-res-id sp-c-hash tid value prefix-length id]
-   (-> (bsb/allocate (+ (long prefix-length) 2 (bs/size id)))
+   (-> (bsb/allocate (+ (long prefix-length) 2 (codec/id-size id)))
        (bsb/put-int! co-c-hash)
-       (bsb/put-null-terminated-byte-string! co-res-id)
+       (bsb/put-null-terminated-iso-8859-1-string! co-res-id)
        (bsb/put-int! sp-c-hash)
        (bsb/put-int! tid)
        (bsb/put-null-terminated-byte-string! value)
-       (bsb/put-byte-string! id)
-       (bsb/put-byte! (bs/size id))
+       (bsb/put-iso-8859-1-string! id)
+       (bsb/put-byte! (codec/id-size id))
        bsb/build)))
 
 (defn- index-handles* [snapshot prefix-length start-key]
@@ -65,14 +66,14 @@
   (let [co-c-hash (coll/nth compartment 0)
         co-res-id (coll/nth compartment 1)]
     (-> (bsb/allocate (+ (key-size co-res-id value)
-                         (bs/size id) 2 hash/prefix-size))
+                         (codec/id-size id) 2 hash/prefix-size))
         (bsb/put-int! co-c-hash)
-        (bsb/put-null-terminated-byte-string! co-res-id)
+        (bsb/put-null-terminated-iso-8859-1-string! co-res-id)
         (bsb/put-int! sp-c-hash)
         (bsb/put-int! tid)
         (bsb/put-null-terminated-byte-string! value)
-        (bsb/put-byte-string! id)
-        (bsb/put-byte! (bs/size id))
+        (bsb/put-iso-8859-1-string! id)
+        (bsb/put-byte! (codec/id-size id))
         (hash/prefix-into-byte-string-builder! hash)
         bsb/to-bytes)))
 

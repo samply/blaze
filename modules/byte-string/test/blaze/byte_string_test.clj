@@ -24,13 +24,6 @@
     "ab" #blaze/byte-string"6162"
     "👍" #blaze/byte-string"F09F918D"))
 
-(deftest from-iso-8859-1-string-test
-  (are [s bs] (= bs (bs/from-iso-8859-1-string s)
-                 (apply bs/from-iso-8859-1-string s []))
-    "" #blaze/byte-string""
-    "a" #blaze/byte-string"61"
-    "ab" #blaze/byte-string"6162"))
-
 (deftest from-byte-buffer-test
   (testing "without size"
     (are [bb bs] (= bs (bs/from-byte-buffer! bb)
@@ -59,6 +52,12 @@
   (are [bs index b] (= b (apply bs/nth bs index []))
     #blaze/byte-string"01" 0 1
     #blaze/byte-string"0102" 1 2))
+
+(deftest get-int-test
+  (are [bs index x] (= x (bs/get-int bs index) (apply bs/get-int bs index []))
+    #blaze/byte-string"00000001" 0 1
+    #blaze/byte-string"0102030405" 1 0x02030405
+    #blaze/byte-string"FFFFFFFF" 0 -1))
 
 (deftest size-test
   (are [bs size] (= size (apply bs/size bs []))
@@ -165,18 +164,15 @@
     #blaze/byte-string"00" (ba 0x00)
     #blaze/byte-string"01" (ba 0x01)))
 
-(deftest to-string-utf8-test
-  (are [bs res] (= res (apply bs/to-string-utf8 bs []))
-    #blaze/byte-string"" ""
-    #blaze/byte-string"61" "a"
-    #blaze/byte-string"6162" "ab"
-    #blaze/byte-string"F09F918D" "👍"))
-
 (deftest to-string-iso-8859-1-test
-  (are [bs res] (= res (apply bs/to-string-iso-8859-1 bs []))
-    #blaze/byte-string"" ""
-    #blaze/byte-string"61" "a"
-    #blaze/byte-string"6162" "ab"))
+  (are [bs start res] (= res (bs/to-string-iso-8859-1 bs start)
+                         (apply bs/to-string-iso-8859-1 bs start []))
+    #blaze/byte-string"" 0 ""
+    #blaze/byte-string"61" 0 "a"
+    #blaze/byte-string"6162" 0 "ab"
+    #blaze/byte-string"61" 1 ""
+    #blaze/byte-string"6162" 1 "b"
+    #blaze/byte-string"616263" 1 "bc"))
 
 (deftest as-read-only-byte-buffer-test
   (are [bs res] (= res (bs/as-read-only-byte-buffer bs))

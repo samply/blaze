@@ -4,4 +4,4 @@
    [clojure.spec.alpha :as s]))
 
 (s/def :blaze.db/compartment
-  (s/tuple :blaze.db/c-hash :blaze.db/id-byte-string))
+  (s/tuple :blaze.db/c-hash :blaze.resource/id))

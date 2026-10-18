@@ -13,12 +13,12 @@
 (defn decode-key-human [buf]
   (let [tid (bb/get-int! buf)
         id-size (bb/size-up-to-null buf)
-        id (bs/from-byte-buffer! buf id-size)
+        id (bb/get-iso-8859-1-string! buf id-size)
         _ (bb/get-byte! buf)
         hash-prefix (hash/prefix-from-byte-buffer! buf)
         c-hash (bb/get-int! buf)]
     {:type (codec/tid->type tid)
-     :id (codec/id-string id)
+     :id id
      :hash-prefix hash-prefix
      :code (codec/c-hash->code c-hash (Integer/toHexString c-hash))
      :v-hash (bs/from-byte-buffer! buf)}))

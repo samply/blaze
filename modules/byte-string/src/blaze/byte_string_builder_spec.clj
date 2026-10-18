@@ -40,6 +40,14 @@
   :args (s/cat :builder builder? :byte-string byte-string?)
   :ret builder?)
 
+(s/fdef bsb/put-iso-8859-1-string!
+  :args (s/cat :builder builder? :s string?)
+  :ret builder?)
+
+(s/fdef bsb/put-null-terminated-iso-8859-1-string!
+  :args (s/cat :builder builder? :s string?)
+  :ret builder?)
+
 (s/fdef bsb/build
   :args (s/cat :builder builder?)
   :ret byte-string?)

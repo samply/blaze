@@ -41,7 +41,7 @@
         (= start-tid tid)
         (coll/eduction
          cat
-         [(index/type-query batch-db tid clauses (codec/id-byte-string start-id))
+         [(index/type-query batch-db tid clauses start-id)
           (coll/eduction (type-queries batch-db clauses) tids)])
 
         :else
@@ -61,7 +61,7 @@
     (rao/system-list batch-db))
   (-execute [_ batch-db start-type start-id]
     (rao/system-list batch-db (codec/tid start-type)
-                     (codec/id-byte-string start-id)))
+                     start-id))
   (-query-clauses [_])
   (-query-plan [_ _]
     {:query-type :system})

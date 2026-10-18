@@ -3,7 +3,6 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
-   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
@@ -125,8 +124,7 @@
     (if-let [[type id] (fsr/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
-       [nil (codec/tid-id (codec/tid type)
-                          (codec/id-byte-string id))]]
+       [nil (codec/tid-id (codec/tid type) id)]]
       [[nil (codec/v-hash value)]])))
 
 (defmethod index-entries :fhir/Reference
@@ -291,9 +289,9 @@
       (= "reference" type)
       (ac/completed-future
        (if-let [[type id] (fsr/split-literal-ref value)]
-         (codec/tid-id (codec/tid type) (codec/id-byte-string id))
+         (codec/tid-id (codec/tid type) id)
          (if (and (= 1 (count target)) (codec/valid-id? value))
-           (codec/tid-id (codec/tid (first target)) (codec/id-byte-string value))
+           (codec/tid-id (codec/tid (first target)) value)
            (codec/v-hash value))))
       (= "in" modifier)
       (-> (.get ^AsyncLoadingCache compile-value-set-cache value)
@@ -524,7 +522,7 @@
         []))
 
   (-index-handles [sp batch-db tid modifier compiled-value start-id]
-    (if (bs/<= start-id compiled-value)
+    (if (<= (compare start-id compiled-value) 0)
       (p/-index-handles sp batch-db tid modifier compiled-value)
       []))
 
@@ -548,7 +546,7 @@
     (ba/unsupported))
 
   (-matcher [_ _ _ compiled-values]
-    (let [ids (into #{} (map codec/id-string) compiled-values)
+    (let [ids (set compiled-values)
           pred (comp ids :id)]
       (filter pred)))
 

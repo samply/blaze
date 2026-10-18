@@ -159,12 +159,10 @@
   (when-ok [triples (p/-index-values search-param stub-resolver resource)]
     (let [{:fhir/keys [type] :keys [id]} resource
           tid (codec/tid (name type))
-          id (codec/id-byte-string id)
           linked-compartments
           (mapv
            (fn [[code comp-id]]
-             [(codec/c-hash code)
-              (codec/id-byte-string comp-id)])
+             [(codec/c-hash code) comp-id])
            linked-compartments)]
       (coll/eduction
        (mapcat

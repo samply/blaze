@@ -1,7 +1,7 @@
 (ns blaze.byte-buffer
   (:refer-clojure :exclude [reset!])
   (:import
-   [blaze ByteString]
+   [blaze ByteBufferUtil ByteString]
    [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
@@ -45,14 +45,6 @@
      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (byte ~x)))}
   [byte-buffer x]
   (.put ^ByteBuffer byte-buffer (byte x)))
-
-(defn put-short!
-  "Puts the short `x` into `byte-buffer` at the current position."
-  {:inline
-   (fn [byte-buffer x]
-     `(.putShort ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~x))}
-  [byte-buffer x]
-  (.putShort ^ByteBuffer byte-buffer x))
 
 (defn put-int!
   "Puts the int `x` into `byte-buffer` at the current position."
@@ -102,11 +94,30 @@
   (.copyTo ^ByteString byte-string byte-buffer)
   byte-buffer)
 
-(defn put-null-terminated-byte-string!
-  "Copies all bytes of `byte-string` into `byte-buffer` and adds a null byte
-  after them."
-  [byte-buffer byte-string]
-  (.copyTo ^ByteString byte-string byte-buffer)
+(defn put-iso-8859-1-string!
+  "Puts the ISO-8859-1 encoded bytes of the string `s` into `byte-buffer`
+  without creating an intermediate byte array.
+
+  The `byte-buffer` has to have an accessible backing array.
+
+  Throws an IllegalArgumentException if `s` contains chars outside of
+  ISO-8859-1 and a BufferOverflowException if `s` doesn't fit into the
+  remaining bytes of `byte-buffer`. In both cases nothing is written and the
+  position isn't changed."
+  {:inline
+   (fn [byte-buffer s]
+     `(ByteBufferUtil/putIso88591String
+       ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~s))}
+  [byte-buffer s]
+  (ByteBufferUtil/putIso88591String byte-buffer s))
+
+(defn put-null-terminated-iso-8859-1-string!
+  "Like `put-iso-8859-1-string!` but adds a null byte after the bytes of `s`."
+  {:inline
+   (fn [byte-buffer s]
+     `(put-byte! (put-iso-8859-1-string! ~byte-buffer ~s) 0))}
+  [byte-buffer s]
+  (put-iso-8859-1-string! byte-buffer s)
   (put-byte! byte-buffer 0))
 
 (defn limit
@@ -253,6 +264,22 @@
    (.get ^ByteBuffer byte-buffer ^bytes byte-array))
   ([byte-buffer byte-array offset length]
    (.get ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
+
+(defn get-iso-8859-1-string!
+  "Reads the next `length` bytes of `byte-buffer` at its current position,
+  decoding them as ISO-8859-1 string, and then increments the position of
+  `byte-buffer` by `length`.
+
+  The `byte-buffer` has to have an accessible backing array.
+
+  Throws a BufferUnderflowException if there are fewer than `length` bytes
+  remaining."
+  {:inline
+   (fn [byte-buffer length]
+     `(ByteBufferUtil/getIso88591String
+       ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~length)))}
+  [byte-buffer length]
+  (ByteBufferUtil/getIso88591String ^ByteBuffer byte-buffer length))
 
 (defn size-up-to-null
   "Returns the number of bytes up to the next null byte (0x00) in `byte-buffer`

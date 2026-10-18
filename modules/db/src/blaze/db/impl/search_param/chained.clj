@@ -14,6 +14,8 @@
    [blaze.db.node.spec]
    [blaze.db.search-param-registry.spec]))
 
+(set! *warn-on-reflection* true)
+
 (defn targets
   "Returns a reducible collection of non-deleted resource handles that are
   referenced by `resource-handle` via a search-param with `c-hash` having a type
@@ -27,20 +29,19 @@
   ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash]
    (coll/eduction
     (u/reference-resource-handle-mapper batch-db)
-    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
-                        c-hash)))
+    (r-sp-v/prefix-keys snapshot tid id hash-prefix c-hash)))
   ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash
     target-tid]
    (coll/eduction
     (u/reference-resource-handle-mapper batch-db)
     (let [start-value (codec/tid-byte-string target-tid)]
-      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
-                          c-hash (bs/size start-value) start-value)))))
+      (r-sp-v/prefix-keys snapshot tid id hash-prefix c-hash
+                          (bs/size start-value) start-value)))))
 
 (defn target-ids
-  "Returns a reducible collection of resource ids as byte string that are
-  referenced by `resource-handle` via a search-param with `c-hash` having a type
-  with `target-tid`.
+  "Returns a reducible collection of resource ids that are referenced by
+  `resource-handle` via a search-param with `c-hash` having a type with
+  `target-tid`.
 
   Example: a patient that is referenced by an observation via the subject search
   param."
@@ -50,7 +51,7 @@
   (coll/eduction
    u/reference-id-mapper
    (let [start-value (codec/tid-byte-string target-tid)]
-     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+     (r-sp-v/prefix-keys snapshot tid id hash-prefix
                          c-hash (bs/size start-value) start-value))))
 
 (defn single-version-id-targets

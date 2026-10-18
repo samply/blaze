@@ -15,19 +15,19 @@
    [cognitect.anomalies :as anom]))
 
 (s/fdef rao/encode-key
-  :args (s/cat :tid :blaze.db/tid :id :blaze.db/id-byte-string :t :blaze.db/t)
+  :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id :t :blaze.db/t)
   :ret bytes?)
 
 (s/fdef rao/type-list
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/system-list
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :start (s/? (s/cat :start-tid :blaze.db/tid
-                                  :start-id :blaze.db/id-byte-string)))
+                                  :start-id :blaze.resource/id)))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/instance-history
@@ -35,7 +35,7 @@
                :t :blaze.db/t
                :since-t :blaze.db/t
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
+               :id :blaze.resource/id
                :start-t :blaze.db/t)
   :ret (cs/coll-of :blaze.db/resource-handle))
 
@@ -44,7 +44,7 @@
                :t :blaze.db/t
                :since-t :blaze.db/t
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string)
+               :id :blaze.resource/id)
   :ret (s/nilable :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle-xf

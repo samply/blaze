@@ -34,7 +34,7 @@
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   id (s/gen :blaze.resource/id)
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             [prefix single-version-id] (sp-vr/decode-key buf)]
@@ -47,7 +47,7 @@
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   id (s/gen :blaze.resource/id)
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             [act-value single-version-id] (sp-vr/decode-value-single-version-id buf)]
@@ -60,7 +60,7 @@
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   id (s/gen :blaze.resource/id)
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             single-version-id (sp-vr/decode-single-version-id buf)]
@@ -72,7 +72,7 @@
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   id (s/gen :blaze.resource/id)
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))]
-        (= (bs/size id) (SearchParamValueResource/idSize buf))))))
+        (= (codec/id-size id) (SearchParamValueResource/idSize buf))))))

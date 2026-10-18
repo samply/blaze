@@ -18,13 +18,13 @@
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :start-id (s/? :blaze.db/id-byte-string)))
+               :start-id (s/? :blaze.resource/id)))
 
 (s/fdef c-sp-vr/index-entry
   :args (s/cat :compartment :blaze.db/compartment
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :id :blaze.db/id-byte-string
+               :id :blaze.resource/id
                :hash :blaze.resource/hash)
   :ret :blaze.db.kv/put-entry)

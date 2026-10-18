@@ -88,4 +88,4 @@
           (is (thrown-with-msg?
                AssertionError #"start-t 1 must not be smaller than since-t 2"
                (tao/type-list-asc batch-db (codec/tid "Patient") 1
-                                  (codec/id-byte-string "0")))))))))
+                                  "0"))))))))

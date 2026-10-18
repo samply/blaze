@@ -1,6 +1,5 @@
 (ns blaze.db.impl.index.single-version-id-test
   (:require
-   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle-test-util :refer [resource-handle]]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.index.single-version-id-spec]
@@ -20,7 +19,7 @@
     (prop/for-all [id (s/gen :blaze.resource/id)
                    hash (s/gen :blaze.resource/hash)]
       (let [svi (svi/from-resource-handle (resource-handle "Patient" id 1 hash))]
-        (and (= (codec/id-byte-string id) (svi/id svi))
+        (and (= id (svi/id svi))
              (= (hash/prefix hash) (svi/hash-prefix svi)))))))
 
 (deftest matches-hash-test

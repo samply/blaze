@@ -19,7 +19,7 @@
                :since-t :blaze.db/t
                :tid :blaze.db/tid
                :start-t :blaze.db/t
-               :start-id (s/nilable :blaze.db/id-byte-string))
+               :start-id (s/nilable :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef tao/type-list-desc
@@ -27,12 +27,12 @@
                :tid :blaze.db/tid
                :since-t :blaze.db/t
                :start-t :blaze.db/t
-               :start-id (s/nilable :blaze.db/id-byte-string))
+               :start-id (s/nilable :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef tao/type-list-asc
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :start (s/? (s/cat :start-t :blaze.db/t
-                                  :start-id :blaze.db/id-byte-string)))
+                                  :start-id :blaze.resource/id)))
   :ret (cs/coll-of :blaze.db/resource-handle))

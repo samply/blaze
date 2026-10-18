@@ -236,7 +236,7 @@
               :code := "item"
               :type := "List"
               :v-hash := (codec/tid-id (codec/tid "Patient")
-                                       (codec/id-byte-string "0"))
+                                       "0")
               :id := "id-121825"
               :hash-prefix := (hash/prefix hash)))
 
@@ -247,7 +247,7 @@
               :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/tid-id (codec/tid "Patient")
-                                       (codec/id-byte-string "0"))))))
+                                       "0")))))
 
       (testing "with identifier reference"
         (let [resource {:fhir/type :fhir/List :id "id-123058"

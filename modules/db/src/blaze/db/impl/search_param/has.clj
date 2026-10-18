@@ -61,7 +61,7 @@
    (u/reference-resource-handle-mapper batch-db)
    (let [tid-byte-string (codec/tid-byte-string tid)
          {:keys [tid id hash-prefix]} resource-handle]
-     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash-prefix
+     (r-sp-v/prefix-keys snapshot tid id hash-prefix
                          c-hash (bs/size tid-byte-string) tid-byte-string))))
 
 (defn- drop-lesser-ids [start-id]
@@ -129,7 +129,7 @@
 
   (-index-handles [_ batch-db tid _ compiled-value start-id]
     (coll/eduction
-     (comp (drop-lesser-ids (codec/id-string start-id))
+     (comp (drop-lesser-ids start-id)
            (map ih/from-resource-handle))
      (resource-handles batch-db tid compiled-value)))
 

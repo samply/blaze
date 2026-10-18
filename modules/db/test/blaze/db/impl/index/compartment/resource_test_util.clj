@@ -15,9 +15,9 @@
    [(let [c-hash (bb/get-int! buf)]
       (tu/co-c-hash->code c-hash (Integer/toHexString c-hash)))
     (let [id-size (bb/size-up-to-null buf)]
-      (codec/id-string (bs/from-byte-buffer! buf id-size)))]
+      (bb/get-iso-8859-1-string! buf id-size))]
    :type (do (bb/get-byte! buf) (codec/tid->type (bb/get-int! buf)))
-   :id (codec/id-string (bs/from-byte-buffer! buf))})
+   :id (bb/get-iso-8859-1-string! buf (bb/remaining buf))})
 
 (defn decode-index-entries [kv-store & keys]
   (with-open [snapshot (kv/new-snapshot kv-store)]

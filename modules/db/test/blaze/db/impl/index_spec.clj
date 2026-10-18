@@ -52,14 +52,14 @@
                :tid :blaze.db/tid
                :scan-clauses ::query/search-clauses
                :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/type-query
   :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :clauses ::query/clauses
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/type-query-plan
@@ -80,7 +80,7 @@
                :tid :blaze.db/tid
                :scan-clauses ::query/search-clauses
                :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/compartment-query-plan

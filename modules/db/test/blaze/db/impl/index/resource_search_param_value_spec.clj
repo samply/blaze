@@ -33,7 +33,7 @@
 
 (s/fdef r-sp-v/index-entry
   :args (s/cat :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
+               :id :blaze.resource/id
                :hash :blaze.resource/hash
                :c-hash :blaze.db/c-hash
                :value byte-string?)
@@ -42,7 +42,7 @@
 (s/fdef r-sp-v/prefix-keys
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :tid :blaze.db/tid
-                      :id :blaze.db/id-byte-string
+                      :id :blaze.resource/id
                       :hash-prefix int?
                       :c-hash :blaze.db/c-hash
                       :start-value (s/? (s/cat :prefix-length nat-int?

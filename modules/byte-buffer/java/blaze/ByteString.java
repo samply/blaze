@@ -45,6 +45,14 @@ public final class ByteString implements Comparable<ByteString> {
         return bytes[index];
     }
 
+    /**
+     * Returns the int composed of the four bytes starting at {@code index} in
+     * big-endian byte order.
+     */
+    public int intAt(int index) {
+        return (int) Builder.INT_VH.get(bytes, index);
+    }
+
     public int size() {
         return bytes.length;
     }
@@ -92,8 +100,11 @@ public final class ByteString implements Comparable<ByteString> {
         return Arrays.hashCode(bytes);
     }
 
-    public String toString(Charset charset) {
-        return new String(bytes, charset);
+    /**
+     * Decodes the bytes from {@code start} to the end using {@code charset}.
+     */
+    public String toString(int start, Charset charset) {
+        return new String(bytes, start, bytes.length - start, charset);
     }
 
     public String hex() {
@@ -171,6 +182,29 @@ public final class ByteString implements Comparable<ByteString> {
         public Builder putNullTerminatedByteString(ByteString bs) {
             System.arraycopy(bs.bytes, 0, array, position, bs.bytes.length);
             position += bs.bytes.length;
+            array[position++] = 0;
+            return this;
+        }
+
+        /**
+         * Puts the ISO-8859-1 encoded bytes of {@code s} without creating an
+         * intermediate byte array.
+         *
+         * @throws IllegalArgumentException if {@code s} contains chars outside
+         *                                  of ISO-8859-1, in which case the
+         *                                  position isn't changed
+         */
+        public Builder putIso88591String(String s) {
+            ByteBufferUtil.putIso88591String(array, position, s);
+            position += s.length();
+            return this;
+        }
+
+        /**
+         * Like {@link #putIso88591String(String)} but appends a null byte.
+         */
+        public Builder putNullTerminatedIso88591String(String s) {
+            putIso88591String(s);
             array[position++] = 0;
             return this;
         }

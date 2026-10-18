@@ -44,10 +44,7 @@
   is linked to `compartment`."
   {:arglists '([compartment resource])}
   [[comp-code comp-id] {:fhir/keys [type] :keys [id]}]
-  (cr/index-entry
-   [(codec/c-hash comp-code) (codec/id-byte-string comp-id)]
-   (codec/tid (name type))
-   (codec/id-byte-string id)))
+  (cr/index-entry [(codec/c-hash comp-code) comp-id] (codec/tid (name type)) id))
 
 (defn- compartment-resource-type-entries [resource compartments]
   (mapv #(compartment-resource-type-entry % resource) compartments))

@@ -10,12 +10,12 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef plc/index-entry
-  :args (s/cat :patient-id :blaze.db/id-byte-string :t :blaze.db/t)
+  :args (s/cat :patient-id :blaze.resource/id :t :blaze.db/t)
   :ret :blaze.db.kv/put-entry)
 
 (s/fdef plc/last-change-t
   :args (s/cat :plci :blaze.db.kv/iterator
-               :patient-id :blaze.db/id-byte-string
+               :patient-id :blaze.resource/id
                :t :blaze.db/t)
   :ret (s/nilable :blaze.db/t))
 

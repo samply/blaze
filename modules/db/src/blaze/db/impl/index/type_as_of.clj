@@ -27,26 +27,25 @@
   Both buffers are changed during decoding and have to be reset accordingly
   after decoding."
   [tid base-t since-t]
-  (let [read-id! (u/id-reader)]
-    (fn [rf]
-      (fn
-        ([result] (rf result))
-        ([result [kb vb]]
-         (bb/set-position! kb codec/tid-size)
-         (let [resource-t (read-t! kb)]
-           (if (< (long since-t) resource-t)
-             (let [handle (rh/resource-handle! tid (read-id! kb) resource-t
-                                               base-t vb)]
-               (cond-> result handle (rf handle)))
-             (reduced result))))))))
+  (fn [rf]
+    (fn
+      ([result] (rf result))
+      ([result [kb vb]]
+       (bb/set-position! kb codec/tid-size)
+       (let [resource-t (read-t! kb)]
+         (if (< (long since-t) resource-t)
+           (let [handle (rh/resource-handle! tid (u/read-id! kb) resource-t
+                                             base-t vb)]
+             (cond-> result handle (rf handle)))
+           (reduced result)))))))
 
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
   [tid t id]
-  (-> (bsb/allocate (unchecked-add-int tid-t-size (bs/size id)))
+  (-> (bsb/allocate (unchecked-add-int tid-t-size (codec/id-size id)))
       (bsb/put-int! tid)
       (bsb/put-long! (codec/descending-long ^long t))
-      (bsb/put-byte-string! id)
+      (bsb/put-iso-8859-1-string! id)
       bsb/to-bytes))
 
 (defn- start-key [tid start-t start-id]
@@ -78,7 +77,7 @@
   after decoding."
   [kb]
   (bb/set-position! kb codec/tid-size)
-  [(read-t! kb) (bs/from-byte-buffer! kb)])
+  [(read-t! kb) (u/read-id! kb)])
 
 (def ^:private asc-decoder
   "Transducer decoding key and value buffers from the TypeAsOf index into
