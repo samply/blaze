@@ -32,9 +32,6 @@
 (def ^:private match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
-(def operation-outcome
-  #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome")
-
 (defn wrap-defaults [handler]
   (fn [request]
     (handler (assoc request ::reitit/match match))))
@@ -61,21 +58,6 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` was not found."))))
-
-  (testing "returns Bad-Request on invalid id"
-    (with-handler [handler]
-      (let [{:keys [status body]}
-            @(handler {:path-params {:id "A_B"}})]
-
-        (is (= 400 status))
-
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code "error"
-          [:issue 0 :code] := #fhir/code "value"
-          [:issue 0 :details :coding 0 :system] := operation-outcome
-          [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_ID_INVALID"
-          [:issue 0 :diagnostics] := #fhir/string "Resource id `A_B` is invalid."))))
 
   (testing "returns Gone on deleted resource"
     (with-handler [handler]

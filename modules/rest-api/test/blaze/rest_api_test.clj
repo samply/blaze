@@ -5,6 +5,7 @@
    [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -22,6 +23,7 @@
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -63,6 +65,10 @@
     :search-system-handler success-handler
     :transaction-handler success-handler
     :resource-patterns (ig/ref ::rest-api/resource-patterns)
+    :compartments
+    [#:blaze.rest-api.compartment
+      {:code "Patient"
+       :search-handler success-handler}]
     :operations
     [#:blaze.rest-api.operation
       {:code "totals"
@@ -332,6 +338,31 @@
         "/Measure/0/%24evaluate-measure"
         "/Patient/0/$everything"
         "/Patient/0/%24everything"))))
+
+(def ^:private too-long-id
+  (str/join (repeat 65 "a")))
+
+(deftest invalid-id-test
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+    (doseq [[request-method uri id]
+            [[:get "/Patient/A_B" "A_B"]
+             [:delete (str "/Patient/" too-long-id) too-long-id]
+             [:delete "/Patient/A_B" "A_B"]
+             [:get (str "/Patient/" too-long-id "/$everything") too-long-id]
+             [:get "/Measure/A_B/$evaluate-measure" "A_B"]
+             [:get "/Patient/A_B/Observation" "A_B"]
+             [:get (str "/Patient/" too-long-id "/Observation") too-long-id]
+             [:get (str "/__async-status/" too-long-id) too-long-id]
+             [:delete "/__async-status/A_B" "A_B"]]]
+      (testing (format "%s %s" (name request-method) uri)
+        (given (call rest-api {:request-method request-method :uri uri})
+          :status := 400
+          [:body json-parser :fhir/type] := :fhir/OperationOutcome
+          [:body json-parser :issue 0 :severity] := #fhir/code "error"
+          [:body json-parser :issue 0 :code] := #fhir/code "value"
+          [:body json-parser :issue 0 :details :coding 0 :system] := #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
+          [:body json-parser :issue 0 :details :coding 0 :code] := #fhir/code "MSG_ID_INVALID"
+          [:body json-parser :issue 0 :diagnostics] := (type/string (format "Resource id `%s` is invalid." id)))))))
 
 (deftest method-not-allowed-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]

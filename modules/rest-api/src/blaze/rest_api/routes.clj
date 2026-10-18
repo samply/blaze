@@ -4,6 +4,7 @@
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.error :as error]
+   [blaze.middleware.fhir.id :as id]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.page-id :as page-id]
    [blaze.middleware.fhir.resource :as resource]
@@ -36,6 +37,10 @@
 (def ^:private wrap-auth-guard
   {:name :auth-guard
    :wrap auth-guard/wrap-auth-guard})
+
+(def ^:private wrap-invalid-id
+  {:name :invalid-id
+   :wrap id/wrap-invalid-id})
 
 (def ^:private wrap-resource
   {:name :resource
@@ -175,6 +180,7 @@
       (conj
        (cond->
         ["/{id}"
+         {:middleware [wrap-invalid-id]}
          [""
           (cond->
            {:name (keyword name "instance")
@@ -241,7 +247,8 @@
    {:blaze.rest-api.compartment/keys [code search-handler]}]
   (cond->
    [(format "/%s/{id}/{type}" code)
-    {:fhir.compartment/code code}
+    {:fhir.compartment/code code
+     :middleware [wrap-invalid-id]}
     [""
      {:name (keyword code "compartment")
       :fhir.compartment/code code
@@ -307,7 +314,8 @@
      (fn [resource-type]
        (cond->
         [(str "/" resource-type "/{id}")
-         {:interaction (str "operation-instance-" code)}
+         {:interaction (str "operation-instance-" code)
+          :middleware [wrap-invalid-id]}
          [(str "/$" code)
           (cond->
            {:name (keyword (str resource-type ".operation") code)
@@ -435,6 +443,7 @@
     (conj
      ["/__async-status/{id}"
       {:name :async-status
+       :middleware [wrap-invalid-id]
        :get
        {:middleware [[wrap-db admin-node db-sync-timeout]]
         :handler async-status-handler}

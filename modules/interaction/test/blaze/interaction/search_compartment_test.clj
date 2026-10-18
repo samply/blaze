@@ -192,20 +192,6 @@
   {:id "0" :type "Observation" :page-id (page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
-  (testing "Returns an Error on Invalid Id"
-    (with-handler [handler]
-      (let [{:keys [status body]}
-            @(handler
-              {:path-params {:id "<invalid>" :type "Observation"}})]
-
-        (is (= 400 status))
-
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code "error"
-          [:issue 0 :code] := #fhir/code "value"
-          [:issue 0 :diagnostics] := #fhir/string "The identifier `<invalid>` is invalid."))))
-
   (testing "Returns an Error on Invalid Type"
     (with-handler [handler]
       (let [{:keys [status body]}

@@ -44,15 +44,17 @@
       [4] := ["/_search" {:name :Patient/search :conflicting true}]
       [5] := ["/__page/{page-id}" {:name :Patient/page :conflicting true}]
       [6] := ["/__history-page/{page-id}" {:name :Patient/history-page :conflicting true}]
-      [7 1 1 :name] := :Patient/instance
-      [7 1 1 :conflicting] := true
-      [7 1 1 :get :middleware count] := 1
-      [7 1 1 :get :middleware 0 0 :name] := :db
-      [7 1 1 :get :middleware 0 1] := ::node
-      [7 1 1 :get :middleware 0 2] := 1000
-      [7 1 1 :get :handler #(% {})] := ::read
-      [7 2 0] := "/_history"
-      [7 2 1] := ["" {:name :Patient/history-instance, :conflicting true}])
+      [7 0] := "/{id}"
+      [7 1 :middleware 0 :name] := :invalid-id
+      [7 2 1 :name] := :Patient/instance
+      [7 2 1 :conflicting] := true
+      [7 2 1 :get :middleware count] := 1
+      [7 2 1 :get :middleware 0 0 :name] := :db
+      [7 2 1 :get :middleware 0 1] := ::node
+      [7 2 1 :get :middleware 0 2] := 1000
+      [7 2 1 :get :handler #(% {})] := ::read
+      [7 3 0] := "/_history"
+      [7 3 1] := ["" {:name :Patient/history-instance, :conflicting true}])
 
     (testing "as batch"
       (given (routes/resource-route
@@ -69,15 +71,17 @@
         [2] := ["" {:name :Patient/type}]
         [3] := ["/_history" {:name :Patient/history :conflicting true}]
         [4] := ["/_search" {:name :Patient/search :conflicting true}]
-        [5 1 1 :name] := :Patient/instance
-        [5 1 1 :conflicting] := true
-        [5 1 1 :get :middleware count] := 1
-        [5 1 1 :get :middleware 0 0 :name] := :db
-        [5 1 1 :get :middleware 0 1] := nil
-        [5 1 1 :get :middleware 0 2] := nil
-        [5 1 1 :get :handler #(% {})] := ::read
-        [5 2 0] := "/_history"
-        [5 2 1] := ["" {:name :Patient/history-instance, :conflicting true}]))))
+        [5 0] := "/{id}"
+        [5 1 :middleware 0 :name] := :invalid-id
+        [5 2 1 :name] := :Patient/instance
+        [5 2 1 :conflicting] := true
+        [5 2 1 :get :middleware count] := 1
+        [5 2 1 :get :middleware 0 0 :name] := :db
+        [5 2 1 :get :middleware 0 1] := nil
+        [5 2 1 :get :middleware 0 2] := nil
+        [5 2 1 :get :handler #(% {})] := ::read
+        [5 3 0] := "/_history"
+        [5 3 1] := ["" {:name :Patient/history-instance, :conflicting true}]))))
 
 (defn- handler [key]
   (fn [_] key))
@@ -100,6 +104,7 @@
    :transaction-handler (handler ::transaction)
    :history-system-handler (handler ::history-system)
    :async-status-handler (handler ::async-status)
+   :async-status-cancel-handler (handler ::async-status-cancel)
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
      {:type :default
@@ -171,6 +176,7 @@
    :capabilities-handler (handler ::capabilities)
    :admin-handler (handler ::admin)
    :node ::node
+   :admin-node ::admin-node
    :db-sync-timeout 1000})
 
 (defn- router
@@ -324,19 +330,20 @@
         "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
         "/Patient/__page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/__page/0" :post [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
-        "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-        "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
-        "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
-        "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync]
-        "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
-        "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-        "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-        "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-        "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db]
-        "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-        "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+        "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :resource]
+        "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
+        "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
+        "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
+        "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :decrypt-page-id :snapshot-db :link-headers]
+        "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+        "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :decrypt-page-id :snapshot-db]
+        "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+        "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
+        "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
+        "/Patient/0/Observation/__page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :decrypt-page-id :snapshot-db :link-headers]
         "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/$graphql" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/$graphql" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
@@ -344,9 +351,11 @@
         "/$totals" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-        "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-        "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-        "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]))
+        "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+        "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/__async-status/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/__async-status/0" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]))
 
     (testing "as batch"
       (let [router (router (assoc config :batch? true) system)]
@@ -364,17 +373,17 @@
           "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
           "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
-          "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-          "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
-          "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
-          "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-          "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync]
-          "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-          "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-          "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-          "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-          "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-          "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+          "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+          "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :resource]
+          "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
+          "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
+          "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
+          "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+          "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+          "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+          "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+          "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
+          "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
           "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/$graphql" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/$graphql" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
@@ -382,9 +391,9 @@
           "/$totals" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-          "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-          "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
-          "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db])))))
+          "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+          "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
+          "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db])))))
 
 (deftest middleware-with-auth-backends-test
   (with-system [system system-config]
@@ -400,5 +409,5 @@
         "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
         "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
         "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
-        "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
-        "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]))))
+        "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :invalid-id :db]
+        "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :invalid-id :db :resource]))))

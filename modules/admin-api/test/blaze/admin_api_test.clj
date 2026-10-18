@@ -39,6 +39,7 @@
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -1238,6 +1239,31 @@
           ["issue" 0 "severity"] := "error"
           ["issue" 0 "code"] := "not-found"
           ["issue" 0 "diagnostics"] := "Resource `Task/AAAAAAAAAAAAAAAA` was not found.")))))
+
+(def ^:private too-long-id
+  (str/join (repeat 65 "a")))
+
+(deftest invalid-job-id-test
+  (with-handler [handler] (config!) []
+    (doseq [[request-method uri id]
+            [[:get (str "/fhir/__admin/Task/" too-long-id) too-long-id]
+             [:get (str "/fhir/__admin/Task/" too-long-id "/_history") too-long-id]
+             [:get "/fhir/__admin/Task/A_B/_history" "A_B"]
+             [:post (str "/fhir/__admin/Task/" too-long-id "/$pause") too-long-id]
+             [:post "/fhir/__admin/Task/A_B/$resume" "A_B"]
+             [:post "/fhir/__admin/Task/A_B/$cancel" "A_B"]]]
+      (testing (format "%s %s" (name request-method) uri)
+        (let [{:keys [status body]}
+              @(handler {:request-method request-method :uri uri})]
+
+          (is (= 400 status))
+
+          (given body
+            "resourceType" := "OperationOutcome"
+            ["issue" 0 "severity"] := "error"
+            ["issue" 0 "code"] := "value"
+            ["issue" 0 "details" "coding" 0 "code"] := "MSG_ID_INVALID"
+            ["issue" 0 "diagnostics"] := (format "Resource id `%s` is invalid." id)))))))
 
 (deftest search-jobs-test
   (with-handler [handler {:blaze.test/keys [json-writer]}] (config!) []
