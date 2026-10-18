@@ -1,6 +1,5 @@
 (ns blaze.dev
   (:require
-   [blaze.byte-string :as bs]
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
@@ -86,7 +85,7 @@
 (comment
   (def resource-store (::rs/cassandra system))
 
-  (rs/get resource-store ["Resource" (bs/from-iso-8859-1-string "072e074677eae7a5cfa4408e870bf32d839d58bb2c59470c0a7f1eced74eb6d8") :complete]))
+  (rs/get resource-store ["Resource" #blaze/hash"072E074677EAE7A5CFA4408E870BF32D839D58BB2C59470C0A7F1ECED74EB6D8" :complete]))
 
 (comment
   (def terminology-service (:blaze.terminology-service/extern system))

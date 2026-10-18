@@ -3,13 +3,14 @@
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.byte-string-builder :as bsb]
-   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop])
   (:import
-   [blaze ByteString]))
+   [blaze ByteString ByteString$Builder]
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -140,6 +141,63 @@
       (is (= 1 (aget (bsb/to-bytes b) 0)))
       (is (= 0 (aget (bsb/to-bytes b) 1))))))
 
+(deftest put-iso-8859-1-string-test
+  (testing "zero length"
+    (let [b (bsb/allocate 0)]
+      (bsb/put-iso-8859-1-string! b "")
+      (is (= #blaze/byte-string"" (bsb/build b)))))
+
+  (testing "length two"
+    (let [b (bsb/allocate 2)]
+      (bsb/put-iso-8859-1-string! b "ab")
+      (is (= #blaze/byte-string"6162" (bsb/build b)))))
+
+  (testing "function"
+    (let [b (bsb/allocate 1)]
+      (apply bsb/put-iso-8859-1-string! b "a" [])
+      (is (= #blaze/byte-string"61" (bsb/build b)))))
+
+  (testing "chars of the upper half of ISO-8859-1"
+    (let [b (bsb/allocate 2)]
+      (bsb/put-iso-8859-1-string! b "éÿ")
+      (is (= #blaze/byte-string"E9FF" (bsb/build b)))))
+
+  (testing "fails on chars outside of ISO-8859-1 without moving the position"
+    (doseq [s ["Ł" "aŁ" "a€b"]]
+      (let [b (bsb/allocate 3)]
+        (is (thrown? IllegalArgumentException (bsb/put-iso-8859-1-string! b s)))
+        (given-thrown (bsb/put-iso-8859-1-string! b s)
+          :message := (format "The string `%s` contains chars outside of ISO-8859-1." s))
+        (is (zero? (.position ^ByteString$Builder b))))))
+
+  (testing "matches String.getBytes with ISO-8859-1"
+    (satisfies-prop 100
+      (prop/for-all [s gen/string-alphanumeric]
+        (= (bs/from-byte-array (.getBytes ^String s StandardCharsets/ISO_8859_1))
+           (-> (bsb/allocate (count s))
+               (bsb/put-iso-8859-1-string! s)
+               bsb/build))))))
+
+(deftest put-null-terminated-iso-8859-1-string-test
+  (testing "zero length adds only the null byte"
+    (let [b (bsb/allocate 1)]
+      (bsb/put-null-terminated-iso-8859-1-string! b "")
+      (is (= #blaze/byte-string"00" (bsb/build b)))))
+
+  (testing "fails on chars outside of ISO-8859-1"
+    (given-thrown (bsb/put-null-terminated-iso-8859-1-string! (bsb/allocate 2) "Ł")
+      :message := "The string `Ł` contains chars outside of ISO-8859-1."))
+
+  (testing "length one followed by null"
+    (let [b (bsb/allocate 2)]
+      (bsb/put-null-terminated-iso-8859-1-string! b "a")
+      (is (= #blaze/byte-string"6100" (bsb/build b)))))
+
+  (testing "function"
+    (let [b (bsb/allocate 2)]
+      (apply bsb/put-null-terminated-iso-8859-1-string! b "a" [])
+      (is (= #blaze/byte-string"6100" (bsb/build b))))))
+
 (deftest build-test
   (testing "returns a ByteString with the written bytes"
     (let [bs (-> (bsb/allocate 6)
@@ -217,7 +275,8 @@
                           bsb/build)
           via-buffer (-> (bb/allocate (+ 4 (.size value) 1 1))
                          (bb/put-int! 0x12345678)
-                         (bb/put-null-terminated-byte-string! value)
+                         (bb/put-byte-string! value)
+                         (bb/put-byte! 0)
                          (bb/put-byte! 42)
                          (bb/flip!)
                          (ByteString/copyFrom))]

@@ -9,7 +9,9 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
-   [clojure.test.check.properties :as prop]))
+   [clojure.test.check.properties :as prop])
+  (:import
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -22,12 +24,12 @@
   ([sym opts]
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
-(deftest id-string-id-byte-string-test
+(deftest id-size-test
   (satisfies-prop 1000
-    (prop/for-all [s (s/gen :blaze.resource/id)]
-      (= s
-         (codec/id-string (codec/id-byte-string s))
-         (apply codec/id-string [(apply codec/id-byte-string [s])])))))
+    (prop/for-all [id (s/gen :blaze.resource/id)]
+      (= (alength (.getBytes ^String id StandardCharsets/ISO_8859_1))
+         (codec/id-size id)
+         (apply codec/id-size [id])))))
 
 (deftest valid-id-test
   (testing "valid"
@@ -78,8 +80,8 @@
   (satisfies-prop 100
     (prop/for-all [s (s/gen string?)]
       (= s
-         (bs/to-string-utf8 (codec/string s))
-         (bs/to-string-utf8 (apply codec/string [s]))))))
+         (String. (bs/to-byte-array (codec/string s)) StandardCharsets/UTF_8)
+         (String. (bs/to-byte-array (apply codec/string [s])) StandardCharsets/UTF_8)))))
 
 (deftest number-test
   (testing "encode/decode"

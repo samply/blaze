@@ -1,7 +1,6 @@
 (ns blaze.db.impl.index.resource-handle-test
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.byte-string :as bs]
    [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
@@ -82,11 +81,11 @@
 (deftest id-into-byte-buffer-test
   (satisfies-prop 100
     (prop/for-all [id (s/gen :blaze.resource/id)]
-      (= (codec/id-byte-string id)
+      (= id
          (-> (bb/allocate (count id))
              (rh/id-into-byte-buffer! (resource-handle "Patient" id 1))
              bb/flip!
-             bs/from-byte-buffer!)))))
+             (bb/get-iso-8859-1-string! (count id)))))))
 
 (deftest hash-prefix-into-byte-buffer-test
   (satisfies-prop 100

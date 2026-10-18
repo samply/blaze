@@ -155,7 +155,7 @@
   Please use `pull` to obtain the full resource."
   [db type id]
   (log/trace "fetch resource handle of" (str type "/" id))
-  (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
+  (p/-resource-handle db (codec/tid type) id))
 
 (defn resource-handle?
   "Returns `true` if `x` is a resource handle."
@@ -181,7 +181,7 @@
   ([db type]
    (p/-type-list db (codec/tid type)))
   ([db type start-id]
-   (p/-type-list db (codec/tid type) (codec/id-byte-string start-id))))
+   (p/-type-list db (codec/tid type) start-id)))
 
 (defn type-total
   "Returns the number of all resources of `type` in `db`.
@@ -256,7 +256,7 @@
   ([db]
    (p/-system-list db))
   ([db start-type start-id]
-   (p/-system-list db (codec/tid start-type) (codec/id-byte-string start-id))))
+   (p/-system-list db (codec/tid start-type) start-id)))
 
 (defn system-total
   "Returns the number of all resources in `db`.
@@ -379,7 +379,7 @@
   "Returns the `t` of last change of any resource in the patient compartment or
   nil if the patient has no resources."
   [db patient-id]
-  (p/-patient-compartment-last-change-t db (codec/id-byte-string patient-id)))
+  (p/-patient-compartment-last-change-t db patient-id))
 
 ;; ---- Common Query Functions ------------------------------------------------
 
@@ -468,9 +468,9 @@
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
   ([db type id]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) nil))
+   (p/-instance-history db (codec/tid type) id nil))
   ([db type id start-t]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t)))
+   (p/-instance-history db (codec/tid type) id start-t)))
 
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
@@ -478,7 +478,7 @@
 
   Only changes after the `since-t` of `db` are counted."
   [db type id]
-  (p/-total-num-of-instance-changes db (codec/tid type) (codec/id-byte-string id)))
+  (p/-total-num-of-instance-changes db (codec/tid type) id))
 
 ;; ---- Type-Level History Functions ------------------------------------------
 
@@ -496,8 +496,7 @@
   ([db type start-t]
    (p/-type-history db (codec/tid type) start-t nil))
   ([db type start-t start-id]
-   (p/-type-history db (codec/tid type) start-t
-                    (some-> start-id codec/id-byte-string))))
+   (p/-type-history db (codec/tid type) start-t start-id)))
 
 (defn total-num-of-type-changes
   "Returns the total number of changes (versions) of resources with the given
@@ -525,8 +524,7 @@
   ([db start-t start-type]
    (p/-system-history db start-t (some-> start-type codec/tid) nil))
   ([db start-t start-type start-id]
-   (p/-system-history db start-t (some-> start-type codec/tid)
-                      (some-> start-id codec/id-byte-string))))
+   (p/-system-history db start-t (some-> start-type codec/tid) start-id)))
 
 (defn total-num-of-system-changes
   "Returns the total number of changes (versions) of resources starting as-of

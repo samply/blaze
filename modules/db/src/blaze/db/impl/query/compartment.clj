@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.query.util :as qu]
@@ -35,7 +34,7 @@
                                     nil))
   (-execute [_ batch-db arg1 arg2]
     (index/ordered-resource-handles batch-db tid (list-clauses clauses code arg1)
-                                    nil (codec/id-byte-string arg2)))
+                                    nil arg2))
   (-query-clauses [_])
   (-query-plan [_ batch-db]
     (index/type-query-plan batch-db tid {:search-clauses clauses}))
@@ -50,7 +49,7 @@
     (index/type-query batch-db tid (seek-clauses clauses code arg1 other-clauses)))
   (-execute [_ batch-db arg1 arg2]
     (index/type-query batch-db tid (seek-clauses clauses code arg1 other-clauses)
-                      (codec/id-byte-string arg2)))
+                      arg2))
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses other-clauses}))
   (-query-plan [_ batch-db]
@@ -61,12 +60,12 @@
 (defrecord CompartmentQuery [c-hash tid scan-clauses other-clauses]
   p/Query
   (-execute [_ batch-db arg1]
-    (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
+    (index/compartment-query batch-db [c-hash arg1]
                              tid scan-clauses other-clauses))
   (-execute [_ batch-db arg1 arg2]
-    (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
+    (index/compartment-query batch-db [c-hash arg1]
                              tid scan-clauses other-clauses
-                             (codec/id-byte-string arg2)))
+                             arg2))
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses (into scan-clauses other-clauses)}))
   (-query-plan [_ _]

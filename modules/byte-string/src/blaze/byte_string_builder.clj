@@ -1,9 +1,16 @@
 (ns blaze.byte-string-builder
   (:import
-   [blaze ByteString ByteString$Builder]))
+   [blaze ByteString ByteString$Builder]
+   [clojure.lang IObj]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
+
+(defn- tag-string
+  "Tags `x` as String if it can hold metadata. String literals can't, but are
+  known to be Strings by the compiler anyway."
+  [x]
+  (cond-> x (instance? IObj x) (vary-meta assoc :tag `String)))
 
 (defn allocate
   "Allocates a new ByteString builder with the given fixed `capacity`.
@@ -74,6 +81,29 @@
        ~(vary-meta byte-string assoc :tag `ByteString)))}
   [builder byte-string]
   (.putNullTerminatedByteString ^ByteString$Builder builder ^ByteString byte-string))
+
+(defn put-iso-8859-1-string!
+  "Puts the ISO-8859-1 encoded bytes of the string `s` into `builder` at the
+  current position.
+
+  Throws an IllegalArgumentException if `s` contains chars outside of
+  ISO-8859-1, leaving the position unchanged."
+  {:inline
+   (fn [builder s]
+     `(.putIso88591String ~(vary-meta builder assoc :tag `ByteString$Builder)
+                          ~(tag-string s)))}
+  [builder s]
+  (.putIso88591String ^ByteString$Builder builder ^String s))
+
+(defn put-null-terminated-iso-8859-1-string!
+  "Like `put-iso-8859-1-string!` but appends a null byte."
+  {:inline
+   (fn [builder s]
+     `(.putNullTerminatedIso88591String
+       ~(vary-meta builder assoc :tag `ByteString$Builder)
+       ~(tag-string s)))}
+  [builder s]
+  (.putNullTerminatedIso88591String ^ByteString$Builder builder ^String s))
 
 (defn build
   "Returns a ByteString backed by `builder`'s underlying array.

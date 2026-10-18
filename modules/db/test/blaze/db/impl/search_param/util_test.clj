@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.util-test
   (:refer-clojure :exclude [hash])
   (:require
-   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle-spec]
    [blaze.db.impl.index.single-version-id :as svi]
@@ -36,7 +35,7 @@
 
 (deftest compile-id-test
   (testing "valid"
-    (is (= (codec/id-byte-string "id-1") (u/compile-id "id-1"))))
+    (is (= "id-1" (u/compile-id "id-1"))))
 
   (testing "invalid"
     (doseq [id ["" (apply str (repeat 65 "a")) "a b" "Ł"]]
@@ -95,7 +94,7 @@
 (deftest by-id-grouper-test
   (testing "works with reduced values"
     (testing "on single id"
-      (let [id (codec/id-byte-string "0")]
+      (let [id "0"]
         (is (= (transduce
                 u/by-id-grouper
                 (completing (fn [_ x] (reduced (ih/id x))))
@@ -104,8 +103,8 @@
                id))))
 
     (testing "on subsequent different id"
-      (let [id-0 (codec/id-byte-string "0")
-            id-1 (codec/id-byte-string "1")]
+      (let [id-0 "0"
+            id-1 "1"]
         (is (= (transduce
                 u/by-id-grouper
                 (completing (fn [_ x] (reduced (ih/id x))))

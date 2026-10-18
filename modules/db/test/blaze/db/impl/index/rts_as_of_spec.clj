@@ -11,7 +11,7 @@
 
 (s/fdef rts/index-entries
   :args (s/cat :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
+               :id :blaze.resource/id
                :t :blaze.db/t
                :hash :blaze.resource/hash
                :num-changes nat-int?
@@ -21,7 +21,7 @@
 (s/fdef rts/purge-index-entries
   :args (s/and
          (s/cat :tid :blaze.db/tid
-                :id :blaze.db/id-byte-string
+                :id :blaze.resource/id
                 :resource-handle :blaze.db/resource-handle
                 :purged-at :blaze.db/t)
          #(< (:t (:resource-handle %)) (:purged-at %)))

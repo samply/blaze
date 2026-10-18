@@ -1,5 +1,6 @@
 package blaze.db.impl.index;
 
+import blaze.ByteBufferUtil;
 import blaze.ByteString;
 import blaze.fhir.Hash;
 import clojure.lang.IPersistentVector;
@@ -28,7 +29,7 @@ public interface SearchParamValueResource {
         int prefixSize = allSize - 2 - idSize - HASH_PREFIX_SIZE;
         var prefix = ByteString.copyFrom(buffer, prefixSize);
         buffer.position(buffer.position() + 1);
-        var id = ByteString.copyFrom(buffer, idSize);
+        var id = ByteBufferUtil.getIso88591String(buffer, idSize);
         return Tuple.create(prefix, new SingleVersionId(id, hashPrefix(buffer)));
     }
 
@@ -41,7 +42,7 @@ public interface SearchParamValueResource {
         int idSize = idSize(buffer);
         int allSize = idSize + HASH_PREFIX_SIZE + 1;
         buffer.position(buffer.limit() - allSize);
-        var id = ByteString.copyFrom(buffer, idSize);
+        var id = ByteBufferUtil.getIso88591String(buffer, idSize);
         return new SingleVersionId(id, hashPrefix(buffer));
     }
 }

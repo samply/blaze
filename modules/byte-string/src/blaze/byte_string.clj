@@ -39,13 +39,6 @@
   [s]
   (ByteString/copyFrom ^String s StandardCharsets/UTF_8))
 
-(defn from-iso-8859-1-string
-  {:inline
-   (fn [s]
-     `(ByteString/copyFrom ~(tag s `String) StandardCharsets/ISO_8859_1))}
-  [s]
-  (ByteString/copyFrom ^String s StandardCharsets/ISO_8859_1))
-
 (defn from-byte-buffer!
   "Returns the remaining or `size` bytes from `byte-buffer` as byte string.
 
@@ -73,6 +66,15 @@
      `(.byteAt ~(tag bs `ByteString) (int ~index)))}
   [bs index]
   (.byteAt ^ByteString bs index))
+
+(defn get-int
+  "Returns the int composed of the four bytes starting at `index` of `bs` in
+  big-endian byte order."
+  {:inline
+   (fn [bs index]
+     `(.intAt ~(tag bs `ByteString) (int ~index)))}
+  [bs index]
+  (.intAt ^ByteString bs index))
 
 (defn size
   {:inline (fn [bs] `(.size ~(tag bs `ByteString)))}
@@ -116,16 +118,13 @@
   [bs]
   (.toByteArray ^ByteString bs))
 
-(defn to-string-utf8
-  {:inline (fn [bs] `(.toString ~(tag bs `ByteString) StandardCharsets/UTF_8))}
-  [bs]
-  (.toString ^ByteString bs StandardCharsets/UTF_8))
-
 (defn to-string-iso-8859-1
+  "Decodes the bytes of `bs` from `start` to the end as ISO-8859-1 string."
   {:inline
-   (fn [bs] `(.toString ~(tag bs `ByteString) StandardCharsets/ISO_8859_1))}
-  [bs]
-  (.toString ^ByteString bs StandardCharsets/ISO_8859_1))
+   (fn [bs start]
+     `(.toString ~(tag bs `ByteString) (int ~start) StandardCharsets/ISO_8859_1))}
+  [bs start]
+  (.toString ^ByteString bs (int start) StandardCharsets/ISO_8859_1))
 
 (defn as-read-only-byte-buffer [bs]
   (.asReadOnlyByteBuffer ^ByteString bs))

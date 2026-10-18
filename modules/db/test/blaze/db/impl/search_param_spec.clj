@@ -47,7 +47,7 @@
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/estimated-scan-size
@@ -63,7 +63,7 @@
                :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/ordered-index-handles
@@ -72,7 +72,7 @@
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/ordered-compartment-index-handles
@@ -82,7 +82,7 @@
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of ::index/handle))
 
 (s/fdef search-param/matcher

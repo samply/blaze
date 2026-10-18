@@ -6,7 +6,7 @@
    [blaze.byte-string-builder :as bsb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.index.util :refer [read-t!]]
+   [blaze.db.impl.index.util :as u :refer [read-t!]]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash])
@@ -96,11 +96,15 @@
           (id-marker kb)
           true)))))
 
+(defn- read-id! [ib]
+  (let [id (u/read-id! ib)]
+    (bb/rewind! ib)
+    id))
+
 (defn- new-entry!
   "Creates a new resource handle entry if not purged at `base-t`."
   [tid ib vb t base-t]
-  (rh/resource-handle! tid (codec/id (bb/array ib) 0 (bb/remaining ib)) t
-                       base-t vb))
+  (rh/resource-handle! tid (read-id! ib) t base-t vb))
 
 (defn- type-entry-creator
   "Returns a function which creates a new resource handle entry if the `t` in
@@ -154,9 +158,9 @@
                result))))))))
 
 (defn- encode-key-builder [tid id t]
-  (-> (bsb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
+  (-> (bsb/allocate (unchecked-add-int except-id-key-size (codec/id-size id)))
       (bsb/put-int! tid)
-      (bsb/put-byte-string! id)
+      (bsb/put-iso-8859-1-string! id)
       (bsb/put-long! (codec/descending-long t))))
 
 (defn encode-key
@@ -316,18 +320,18 @@
   resource with `tid` and `id` of the database with the point in time `t`,
   between `start-t` (inclusive) and `since-t` (exclusive)."
   [snapshot t since-t tid id start-t]
-  (let [tid-id-size (+ codec/tid-size (bs/size id))]
+  (let [tid-id-size (+ codec/tid-size (codec/id-size id))]
     (i/prefix-entries
      snapshot :resource-as-of-index
-     (decoder tid (codec/id-string id) tid-id-size t since-t)
+     (decoder tid id tid-id-size t since-t)
      (inc tid-id-size) (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
-  (let [tid-id-size (+ codec/tid-size (bs/size id))
+  (let [tid-id-size (+ codec/tid-size (codec/id-size id))
         key-size (+ tid-id-size codec/t-size)]
     (bb/clear! target-buf)
     (bb/put-int! target-buf tid)
-    (bb/put-byte-string! target-buf id)
+    (bb/put-iso-8859-1-string! target-buf id)
     (bb/put-long! target-buf (codec/descending-long base-t))
     (bb/flip! target-buf)
     (kv/seek-buffer! iter target-buf)
@@ -356,7 +360,7 @@
             (when (< (long since-t) resource-t)
               (rh/resource-handle!
                tid
-               (codec/id-string id)
+               id
                resource-t
                base-t
                value-buf))))))))
@@ -397,9 +401,9 @@
   "Returns a stateful transducer that receives input and emits resource handles
   when found in `batch-db` and changed after its `since-t`.
 
-  The `id-extractor` is used to extract the resource id as byte-string from the
-  input. The `matcher` is given the input and the resource handle to decide
-  whether to emit the resource handle or not."
+  The `id-extractor` is used to extract the resource id from the input. The
+  `matcher` is given the input and the resource handle to decide whether to
+  emit the resource handle or not."
   {:arglists '([batch-db tid] [batch-db tid id-extractor matcher])}
   ([batch-db tid]
    (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))

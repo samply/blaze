@@ -214,7 +214,7 @@
        :lt (bs/< value exact-value)
        true))
    (fn [resource-handle]
-     (+ (r-sp-v/key-size (codec/id-byte-string (:id resource-handle)))
+     (+ (r-sp-v/key-size (:id resource-handle))
         (long prefix-length)))
    values))
 

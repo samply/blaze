@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
-   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -68,12 +67,10 @@
                ret))))))))
 
 (defn compile-id
-  "Compiles `id` into its byte string representation.
-
-  Returns an anomaly if `id` isn't a valid resource id."
+  "Returns `id` if it's a valid resource id or an anomaly otherwise."
   [id]
   (if (codec/valid-id? id)
-    (codec/id-byte-string id)
+    id
     (ba/incorrect (format "Invalid resource id `%s`." id))))
 
 (defn non-deleted-resource-handle [batch-db tid id]
@@ -107,28 +104,30 @@
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."
           url))
 
+(def ^:private tid-id-filter
+  ;; there has to be at least some bytes for the id
+  (filter #(< codec/tid-size (bs/size %))))
+
+(defn- tid-id->id [tid-id]
+  (bs/to-string-iso-8859-1 tid-id codec/tid-size))
+
 (defn reference-resource-handle-mapper
   "Returns a transducer that filters all upstream byte-string values for
   reference tid-id values, returning the non-deleted resource handles of the
   referenced resources."
   [batch-db]
   (comp
-   ;; there has to be at least some bytes for the id
-   (filter #(< codec/tid-size (bs/size %)))
-   (map bs/as-read-only-byte-buffer)
-   (map (fn [buf] [(bb/get-int! buf) (bs/from-byte-buffer! buf)]))
+   tid-id-filter
+   (map (fn [tid-id] [(bs/get-int tid-id 0) (tid-id->id tid-id)]))
    (rao/resource-handle-xf batch-db)
    (remove rh/deleted?)))
 
 (def reference-id-mapper
   "Returns a transducer that filters all upstream byte-string values for
-  reference tid-id values, returning the ids of the referenced resources as
-  byte string."
+  reference tid-id values, returning the ids of the referenced resources."
   (comp
-   ;; there has to be at least some bytes for the id
-   (filter #(< codec/tid-size (bs/size %)))
-   (map bs/as-read-only-byte-buffer)
-   (map (fn [buf] (bb/get-int! buf) (bs/from-byte-buffer! buf)))))
+   tid-id-filter
+   (map tid-id->id)))
 
 (defn invalid-decimal-value-msg [value]
   (format "Invalid decimal value `%s`." value))
@@ -189,5 +188,4 @@
     (unknown-modifier-anom code modifier)))
 
 (defn drop-while-not-start-id [start-id]
-  (let [start-id (codec/id-string start-id)]
-    (drop-while #(not= start-id (:id %)))))
+  (drop-while #(not= start-id (:id %))))

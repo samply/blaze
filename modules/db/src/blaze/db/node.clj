@@ -1139,8 +1139,7 @@
          (when-let [[type id] (fsr/split-literal-ref value)]
            (when (= "Patient" type)
              id)))))
-    (halt-when nil?)
-    (map codec/id-byte-string))
+    (halt-when nil?))
    conj
    []
    values))
@@ -1459,7 +1458,7 @@
 (defn- initial-plc-index-entries [{:keys [state] :as node}]
   (into
    [(plc/state-index-entry {:type :current})]
-   (map (fn [{:keys [id]}] (plc/index-entry (codec/id-byte-string id) (:t @state))))
+   (map (fn [{:keys [id]}] (plc/index-entry id (:t @state))))
    (d/type-list (d/db node) "Patient")))
 
 (defn build-patient-last-change-index

@@ -16,7 +16,7 @@
     {:compartment
      [(let [c-hash (bb/get-int! buf)]
         (tu/co-c-hash->code c-hash (Integer/toHexString c-hash)))
-      (-> (bs/from-byte-buffer! buf (bb/size-up-to-null buf)) codec/id-string)]
+      (bb/get-iso-8859-1-string! buf (bb/size-up-to-null buf))]
      :code (let [_ (bb/get-byte! buf)
                  c-hash (bb/get-int! buf)]
              (codec/c-hash->code c-hash (Integer/toHexString c-hash)))
@@ -24,7 +24,7 @@
      :v-hash (let [size (- (bb/remaining buf) hash/prefix-size id-size 2)]
                (bs/from-byte-buffer! buf size))
      :id (do (bb/get-byte! buf)
-             (codec/id-string (bs/from-byte-buffer! buf id-size)))
+             (bb/get-iso-8859-1-string! buf id-size))
      :hash-prefix (do (bb/get-byte! buf)
                       (hash/prefix-from-byte-buffer! buf))}))
 

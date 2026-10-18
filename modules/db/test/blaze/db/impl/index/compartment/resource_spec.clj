@@ -14,5 +14,5 @@
 (s/fdef cr/index-entry
   :args (s/cat :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string)
+               :id :blaze.resource/id)
   :ret :blaze.db.kv/put-entry)

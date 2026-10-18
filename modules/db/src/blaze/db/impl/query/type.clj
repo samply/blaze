@@ -18,7 +18,7 @@
   (-execute [_ batch-db]
     (index/type-query batch-db tid clauses))
   (-execute [_ batch-db start-id]
-    (index/type-query batch-db tid clauses (codec/id-byte-string start-id)))
+    (index/type-query batch-db tid clauses start-id))
   (-query-clauses [_]
     (qu/decode-clauses clauses))
   (-query-plan [_ batch-db]
@@ -32,7 +32,7 @@
 
 (defn- resource-handle-not-found-msg [{:keys [t since-t]} tid id]
   (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
-          (codec/tid->type tid) (codec/id-string id) t since-t))
+          (codec/tid->type tid) id t since-t))
 
 (defn- non-deleted-resource-handle* [batch-db tid id]
   (when-let [handle (p/-resource-handle batch-db tid id)]
@@ -64,16 +64,15 @@
   (-execute [_ batch-db]
     (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
   (-execute [_ batch-db start-id]
-    (let [start-id (codec/id-byte-string start-id)]
-      (when-ok [start-patient-id (start-patient-id batch-db tid start-id)]
+    (when-ok [start-patient-id (start-patient-id batch-db tid start-id)]
+      (coll/eduction
+       cat
+       [(compartment-query batch-db start-patient-id start-id)
         (coll/eduction
-         cat
-         [(compartment-query batch-db start-patient-id start-id)
-          (coll/eduction
-           (comp (drop-while #(not= start-patient-id %))
-                 (drop 1)
-                 (mapcat #(compartment-query batch-db %)))
-           patient-ids)]))))
+         (comp (drop-while #(not= start-patient-id %))
+               (drop 1)
+               (mapcat #(compartment-query batch-db %)))
+         patient-ids)])))
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses (-> [[compartment-clause]]
                                             (into scan-clauses)
@@ -102,7 +101,7 @@
   (-execute [_ batch-db]
     (rao/type-list batch-db tid))
   (-execute [_ batch-db start-id]
-    (rao/type-list batch-db tid (codec/id-byte-string start-id)))
+    (rao/type-list batch-db tid start-id))
   (-query-clauses [_])
   (-query-plan [_ _]
     {:query-type :type})

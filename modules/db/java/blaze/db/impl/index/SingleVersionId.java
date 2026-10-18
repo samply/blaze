@@ -1,17 +1,15 @@
 package blaze.db.impl.index;
 
-import blaze.ByteString;
-
 import static java.util.Objects.requireNonNull;
 
-public record SingleVersionId(ByteString id, int hashPrefix) {
+public record SingleVersionId(String id, int hashPrefix) {
 
     public SingleVersionId {
         requireNonNull(id);
     }
 
     public static SingleVersionId fromResourceHandle(ResourceHandle resourceHandle) {
-        return new SingleVersionId(resourceHandle.idByteString(), resourceHandle.hashPrefix());
+        return new SingleVersionId(resourceHandle.id(), resourceHandle.hashPrefix());
     }
 
     public boolean matchesHashPrefix(ResourceHandle resourceHandle) {

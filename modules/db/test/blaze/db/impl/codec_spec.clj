@@ -18,13 +18,9 @@
   :args (s/cat :s string?)
   :ret boolean?)
 
-(s/fdef codec/id-byte-string
+(s/fdef codec/id-size
   :args (s/cat :id :blaze.resource/id)
-  :ret :blaze.db/id-byte-string)
-
-(s/fdef codec/id-string
-  :args (s/cat :id-byte-string :blaze.db/id-byte-string)
-  :ret :blaze.resource/id)
+  :ret pos-int?)
 
 ;; ---- Other Functions -------------------------------------------------------
 
@@ -45,7 +41,7 @@
   :ret byte-string?)
 
 (s/fdef codec/tid-id
-  :args (s/cat :type :blaze.db/tid :id :blaze.db/id-byte-string)
+  :args (s/cat :type :blaze.db/tid :id :blaze.resource/id)
   :ret byte-string?)
 
 (s/fdef codec/string

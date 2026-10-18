@@ -6,6 +6,7 @@
    [blaze.fhir.spec.type.system])
   (:import
    [blaze.db.impl.codec ResourceTypes]
+   [clojure.lang IObj]
    [com.google.common.hash HashFunction Hashing]
    [java.nio.charset StandardCharsets]))
 
@@ -46,27 +47,15 @@
   [s]
   (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" s)))
 
-(defn id-byte-string
-  {:inline (fn [id] `(bs/from-iso-8859-1-string ~id))}
+(defn id-size
+  "Returns the number of bytes of the encoded resource `id`.
+
+  Resource ids are ISO-8859-1 encoded, so each char is one byte."
+  {:inline
+   (fn [id]
+     `(.length ~(cond-> id (instance? IObj id) (vary-meta assoc :tag `String))))}
   [id]
-  (bs/from-iso-8859-1-string id))
-
-(defn id-string
-  "Converts the byte-string representation of a resource id into it's string
-  representation."
-  {:inline
-   (fn [id-byte-string]
-     `(bs/to-string-iso-8859-1 ~id-byte-string))}
-  [id-byte-string]
-  (bs/to-string-iso-8859-1 id-byte-string))
-
-(defn id
-  "Creates an resource id as String from the byte array `id-bytes`."
-  {:inline
-   (fn [id-bytes offset length]
-     `(String. ~id-bytes ~offset ~length StandardCharsets/ISO_8859_1))}
-  [^bytes id-bytes ^long offset ^long length]
-  (String. id-bytes offset length StandardCharsets/ISO_8859_1))
+  (.length ^String id))
 
 ;; ---- Key Functions ---------------------------------------------------------
 
@@ -143,11 +132,11 @@
       bs/from-byte-array))
 
 (defn tid-id
-  "Returns a byte string with `tid` followed by `id`."
+  "Returns a byte string with `tid` followed by the resource `id`."
   [tid id]
-  (-> (bsb/allocate (unchecked-add-int tid-size (bs/size id)))
+  (-> (bsb/allocate (unchecked-add-int tid-size (id-size id)))
       (bsb/put-int! tid)
-      (bsb/put-byte-string! id)
+      (bsb/put-iso-8859-1-string! id)
       bsb/build))
 
 (defn tid-byte-string

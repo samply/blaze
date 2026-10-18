@@ -28,12 +28,12 @@
   (+ codec/tid-size 1 id-size hash/prefix-size codec/c-hash-size))
 
 (defn key-size ^long [id]
-  (key-size* (bs/size id)))
+  (key-size* (codec/id-size id)))
 
 (defn- encode-key-buf-1! [buf tid id hash-prefix c-hash]
   (-> buf
       (bb/put-int! tid)
-      (bb/put-null-terminated-byte-string! id)
+      (bb/put-null-terminated-iso-8859-1-string! id)
       (bb/put-int! hash-prefix)
       (bb/put-int! c-hash)))
 
@@ -51,7 +51,7 @@
 (defn- encode-key-builder-1! [builder tid id hash-prefix c-hash]
   (-> builder
       (bsb/put-int! tid)
-      (bsb/put-null-terminated-byte-string! id)
+      (bsb/put-null-terminated-iso-8859-1-string! id)
       (bsb/put-int! hash-prefix)
       (bsb/put-int! c-hash)))
 
@@ -74,13 +74,11 @@
    '([snapshot resource-handle c-hash]
      [snapshot resource-handle c-hash value-prefix-length value])}
   ([snapshot {:keys [tid id hash-prefix]} c-hash]
-   (let [id (codec/id-byte-string id)
-         target (encode-key tid id hash-prefix c-hash)]
+   (let [target (encode-key tid id hash-prefix c-hash)]
      (i/seek-key snapshot :resource-value-index decode-value
                  (bs/size target) target)))
   ([snapshot {:keys [tid id hash-prefix]} c-hash value-prefix-length value]
-   (let [id (codec/id-byte-string id)
-         target (encode-key tid id hash-prefix c-hash value)]
+   (let [target (encode-key tid id hash-prefix c-hash value)]
      (i/seek-key snapshot :resource-value-index decode-value
                  (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
                  target))))
@@ -126,7 +124,7 @@
   resource handle and search param with `c-hash`."
   [c-hash]
   (fn [target-buf resource-handle _]
-    (-> (ensure-size target-buf (key-size* (count (:id resource-handle))))
+    (-> (ensure-size target-buf (key-size* (codec/id-size (:id resource-handle))))
         (encode-resource-handle-key-buf-1! resource-handle c-hash))))
 
 (defn single-version-id-search-param-encoder
@@ -144,7 +142,7 @@
   resource handle, search param with `c-hash` and value it gets."
   [c-hash]
   (fn [target-buf resource-handle value]
-    (-> (ensure-size target-buf (+ (key-size* (count (:id resource-handle)))
+    (-> (ensure-size target-buf (+ (key-size* (codec/id-size (:id resource-handle)))
                                    (bs/size value)))
         (encode-resource-handle-key-buf-1! resource-handle c-hash)
         (bb/put-byte-string! value))))

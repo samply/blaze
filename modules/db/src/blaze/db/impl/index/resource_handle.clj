@@ -24,9 +24,7 @@
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec])
   (:import
-   [blaze ByteString$Builder]
-   [blaze.db.impl.index ResourceHandle]
-   [java.nio ByteBuffer]))
+   [blaze.db.impl.index ResourceHandle]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -50,12 +48,7 @@
         h3 (bb/get-long! vb)
         state (bb/get-long! vb)]
     (when (or (no-purged-at? vb) (not-purged?! base-t vb))
-      (ResourceHandle.
-       tid
-       id
-       t
-       h0 h1 h2 h3
-       state))))
+      (ResourceHandle. tid id t h0 h1 h2 h3 state))))
 
 (defn resource-handle?
   "Returns `true` if `x` is a resource handle."
@@ -67,33 +60,28 @@
 
   Doesn't create a hash instance like `(:hash resource-handle)` does."
   [builder resource-handle]
-  (.copyHashTo ^ResourceHandle resource-handle ^ByteString$Builder builder)
-  builder)
+  (.copyHashTo ^ResourceHandle resource-handle builder))
 
 (defn tid-into-byte-buffer!
   "Puts the tid of `resource-handle` into `byte-buffer`.
 
   Doesn't box the tid like `(:tid resource-handle)` does."
   [byte-buffer resource-handle]
-  (.copyTidTo ^ResourceHandle resource-handle ^ByteBuffer byte-buffer)
-  byte-buffer)
+  (.copyTidTo ^ResourceHandle resource-handle byte-buffer))
 
 (defn id-into-byte-buffer!
   "Puts the id of `resource-handle` into `byte-buffer`.
 
-  Doesn't create a byte string like `(codec/id-byte-string (:id
-  resource-handle))` does."
+  Doesn't look up the id via keyword like `(:id resource-handle)` does."
   [byte-buffer resource-handle]
-  (.copyIdTo ^ResourceHandle resource-handle ^ByteBuffer byte-buffer)
-  byte-buffer)
+  (.copyIdTo ^ResourceHandle resource-handle byte-buffer))
 
 (defn hash-prefix-into-byte-buffer!
   "Puts the hash prefix of `resource-handle` into `byte-buffer`.
 
   Doesn't box the hash prefix like `(:hash-prefix resource-handle)` does."
   [byte-buffer resource-handle]
-  (.copyHashPrefixTo ^ResourceHandle resource-handle ^ByteBuffer byte-buffer)
-  byte-buffer)
+  (.copyHashPrefixTo ^ResourceHandle resource-handle byte-buffer))
 
 (defn deleted?
   "Returns `true` if `resource-handle` is deleted."
@@ -101,4 +89,4 @@
   (identical? :delete (:op resource-handle)))
 
 (defn tid-id [resource-handle]
-  (codec/tid-id (:tid resource-handle) (codec/id-byte-string (:id resource-handle))))
+  (codec/tid-id (:tid resource-handle) (:id resource-handle)))
