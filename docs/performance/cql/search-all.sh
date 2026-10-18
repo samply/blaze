@@ -110,3 +110,9 @@ cql/search.sh medication-ten
 cql/search.sh medication-ten false
 cql/search.sh medication-ten false
 cql/search.sh medication-ten false
+
+restart "$compose_file"
+cql/search.sh cardiometabolic-risk
+cql/search.sh cardiometabolic-risk false
+cql/search.sh cardiometabolic-risk false
+cql/search.sh cardiometabolic-risk false

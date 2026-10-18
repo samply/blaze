@@ -543,6 +543,93 @@ cql/search.sh medication-7
 | 1M      | LEA47  |  149 k |     0.72 |  0.006 | 1.393 M |
 | 1M      | LEA58  |  149 k |     0.64 |  0.003 | 1.574 M |
 
+## Cardiometabolic Risk
+
+In this section, a CQL query combining multiple criteria with time dependencies is analyzed. Unlike the queries above, which test a single criterion, it selects patients with a diabetes or prediabetes diagnosis at an age between 18 and 75 that has all of the following around it:
+
+* a BMI of at least 30 kg/m² within one year of the diagnosis,
+* an HbA1c above 6.0 % within two years after the diagnosis,
+* a hypertension diagnosis before or within one year after the diagnosis,
+* a systolic blood pressure above 130 mmHg within one year of the diagnosis, and
+* an inpatient or emergency encounter within five years after the diagnosis.
+
+Because every criterion relates to the same diagnosis, all conditions, observations and encounters involved have to be loaded and compared to its onset for every patient that has such a diagnosis.
+
+The measurement was done with the [CQL expression cache](../deployment/environment-variables.md#cql-expr-cache-size) disabled. With the cache enabled, the duration drops to 0.21 seconds on A5N46, as soon as the Bloom filter of the `exists` expression is built, because only the patients in the Bloom filter have to be evaluated.
+
+### Data
+
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 1M      | LEA47  |    1 k |   196.60 | 54.510 |   5.1 k |
+| 1M      | LEA79  |    1 k |     0.95 |  0.011 | 1.048 M |
+| 1M      | A5N46  |    1 k |    44.65 |  0.513 |  22.4 k |
+
+### CQL Query
+
+```text
+library "cardiometabolic-risk"
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
+
+codesystem sct: 'http://snomed.info/sct'
+codesystem loinc: 'http://loinc.org'
+codesystem act: 'http://terminology.hl7.org/CodeSystem/v3-ActCode'
+
+valueset "Diabetes or Prediabetes": 'http://fhir.org/VCL?v1=(http://snomed.info/sct)(44054006;15777000)'
+
+code "Hypertension": '59621000' from sct
+code "HbA1c": '4548-4' from loinc
+code "BMI": '39156-5' from loinc
+code "Blood Pressure": '85354-9' from loinc
+code "Systolic Blood Pressure": '8480-6' from loinc
+code "Inpatient": 'IMP' from act
+code "Emergency": 'EMER' from act
+
+context Patient
+
+define "Metabolic Diagnosis":
+  [Condition: "Diabetes or Prediabetes"] D
+    where AgeInYearsAt(D.onset as dateTime) between 18 and 75
+
+define "Obesity":
+  [Observation: "BMI"] O
+    where O.value >= 30 'kg/m2'
+
+define "Elevated HbA1c":
+  [Observation: "HbA1c"] O
+    where O.value > 6.0 '%'
+
+define "Elevated Systolic Blood Pressure":
+  [Observation: "Blood Pressure"] O
+    where exists (O.component C
+      where C.code ~ ToConcept("Systolic Blood Pressure")
+        and C.value > 130 'mm[Hg]')
+
+define "Hospitalization":
+  [Encounter] E
+    where E.class ~ "Inpatient" or E.class ~ "Emergency"
+
+define "Index Diagnosis":
+  "Metabolic Diagnosis" D
+    with "Obesity" O
+      such that (O.effective as dateTime) within 1 year of (D.onset as dateTime)
+    with "Elevated HbA1c" A
+      such that (A.effective as dateTime) 2 years or less after (D.onset as dateTime)
+    with [Condition: "Hypertension"] H
+      such that (H.onset as dateTime) on or before (D.onset as dateTime) + 1 year
+    with "Elevated Systolic Blood Pressure" P
+      such that (P.effective as dateTime) within 1 year of (D.onset as dateTime)
+    with "Hospitalization" E
+      such that E.period.start 5 years or less after (D.onset as dateTime)
+
+define InInitialPopulation:
+  exists "Index Diagnosis"
+```
+
+```sh
+cql/search.sh cardiometabolic-risk
+```
 
 ## Condition Code Stratification
 
