@@ -19,6 +19,10 @@
                :t :blaze.db/t)
   :ret (s/nilable :blaze.db/t))
 
+(s/fdef plc/last-change-t-xf
+  :args (s/cat :snapshot :blaze.db.kv/snapshot :t :blaze.db/t :f ifn?)
+  :ret fn?)
+
 (s/fdef plc/state
   :args (s/cat :kv-store :blaze.db/kv-store)
   :ret ::plc/state)

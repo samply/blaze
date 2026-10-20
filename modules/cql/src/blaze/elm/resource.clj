@@ -69,16 +69,39 @@
 (defn pull [resource]
   (d/pull (.-db ^Resource resource) (handle resource)))
 
-(defn- patient-last-change-t [db handle]
-  (or (d/patient-compartment-last-change-t db (:id handle)) (:t handle)))
+(defn- resource [db handle last-change-t]
+  (->Resource db handle last-change-t (volatile! nil)))
 
-(defn- last-change-t [db handle]
-  (if (identical? :fhir/Patient (:fhir/type handle))
-    (patient-last-change-t db handle)
-    (d/t db)))
+(defn- non-patient-last-change-t
+  "Returns a last change t that is newer than any Bloom filter usable with `db`,
+  because Bloom filters contain only Patient ids and so can't be used for other
+  resources."
+  [db]
+  (inc (d/t db)))
 
 (defn mk-resource [db handle]
-  (->Resource db handle (last-change-t db handle) (volatile! nil)))
+  (resource
+   db handle
+   (if (identical? :fhir/Patient (:fhir/type handle))
+     (or (d/patient-compartment-last-change-t db (:id handle)) (:t handle))
+     (non-patient-last-change-t db))))
 
-(defn resource-mapper [db]
-  (map (partial mk-resource db)))
+(defn resource-mapper
+  "Returns a transducer that maps resource handles to resources with a last
+  change t newer than `db`, so that Bloom filters are never used for them.
+
+  Use `patient-mapper` for Patients evaluated as subjects, because Bloom filter
+  checks need the last change t of their patient compartment."
+  [db]
+  (let [last-change-t (non-patient-last-change-t db)]
+    (map #(resource db % last-change-t))))
+
+(defn patient-mapper
+  "Returns a transducer that maps Patient resource handles to resources.
+
+  Prefer this transducer over mapping `mk-resource`, because with a batch
+  database, it opens only one iterator to look up the patient compartment last
+  change t of all handles."
+  [db]
+  (d/patient-compartment-last-change-t-xf
+   db (fn [handle t] (resource db handle (or t (:t handle))))))

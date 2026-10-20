@@ -185,6 +185,10 @@
   :args (s/cat :db :blaze.db/db :patient-id :blaze.resource/id)
   :ret (s/nilable :blaze.db/t))
 
+(s/fdef d/patient-compartment-last-change-t-xf
+  :args (s/cat :db :blaze.db/db :f ifn?)
+  :ret fn?)
+
 ;; ---- Common Query Functions ------------------------------------------------
 
 (s/fdef d/count-query

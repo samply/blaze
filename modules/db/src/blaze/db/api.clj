@@ -381,6 +381,17 @@
   [db patient-id]
   (p/-patient-compartment-last-change-t db patient-id))
 
+(defn patient-compartment-last-change-t-xf
+  "Returns a transducer that receives Patient resource handles and emits
+  `(f resource-handle t)` where `t` is the `t` of last change of any resource in
+  the patient compartment or nil if the patient has no resources.
+
+  Use this transducer instead of calling `patient-compartment-last-change-t` for
+  many patients, because batch databases keep only one iterator open for all
+  resource handles processed."
+  [db f]
+  (p/-patient-compartment-last-change-t-xf db f))
+
 ;; ---- Common Query Functions ------------------------------------------------
 
 (defn count-query

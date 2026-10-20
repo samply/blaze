@@ -11033,6 +11033,41 @@
       (with-open-db [db node]
         (is (nil? (d/patient-compartment-last-change-t db "0")))))))
 
+(defn- patient-compartment-last-change-ts [db]
+  (into
+   #{}
+   (d/patient-compartment-last-change-t-xf
+    db (fn [handle t] [(:id handle) t]))
+   (d/type-list db "Patient")))
+
+(deftest patient-compartment-last-change-t-xf-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]]
+     [[:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+    (testing "the last change of patient 0 comes from the second transaction and patient 1 has no resources"
+      (with-open-db [db node]
+        (is (= #{["0" 2] ["1" nil]} (patient-compartment-last-change-ts db)))))
+
+    (testing "at t=1 there was no change"
+      (let [db (d/as-of (d/db node) 1)]
+        (is (= #{["0" nil] ["1" nil]} (patient-compartment-last-change-ts db)))
+
+        (testing "using a batch db"
+          (with-open [batch-db (d/new-batch-db db)]
+            (is (= #{["0" nil] ["1" nil]} (patient-compartment-last-change-ts batch-db)))))))
+
+    (testing "early termination"
+      (with-open-db [db node]
+        (is (= 1 (count (into [] (comp (d/patient-compartment-last-change-t-xf db vector) (take 1))
+                              (d/type-list db "Patient")))))))
+
+    (testing "without input"
+      (with-open-db [db node]
+        (is (empty? (into [] (d/patient-compartment-last-change-t-xf db vector) [])))))))
+
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
   (let [store (atom {})]
     (reify rs/ResourceStore

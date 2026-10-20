@@ -81,6 +81,9 @@
                 plci (kv/new-iterator snapshot :patient-last-change-index)]
       (plc/last-change-t plci patient-id t)))
 
+  (-patient-compartment-last-change-t-xf [db f]
+    (map #(f % (p/-patient-compartment-last-change-t db (:id %)))))
+
   ;; ---- Common Query Functions ----------------------------------------------
 
   (-count-query [_ query]

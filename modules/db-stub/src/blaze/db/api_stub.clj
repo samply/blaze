@@ -147,6 +147,15 @@
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
 
+(defmacro with-open-db
+  "Runs `body` once in a normal database and then again in a batch database."
+  [[db node] & body]
+  `(do
+     (let [~db (d/db ~node)]
+       ~@body)
+     (with-open [~db (d/new-batch-db (d/db ~node))]
+       ~@body)))
+
 (defn extract-txs-body [more]
   (if (vector? (first more))
     [(first more) (next more)]

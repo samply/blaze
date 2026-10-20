@@ -15,7 +15,7 @@
   {:population-handle subject-handle :subject-handle subject-handle})
 
 (defn handle-mapper [db]
-  (comp (cr/resource-mapper db) (map handle)))
+  (comp (cr/patient-mapper db) (map handle)))
 
 (defn resource [db type id]
   (cr/mk-resource db (d/resource-handle db type id)))
