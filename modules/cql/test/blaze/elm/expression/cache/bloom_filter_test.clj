@@ -3,11 +3,13 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.expression.cache.bloom-filter-spec]
    [blaze.elm.expression.cache.codec-spec]
    [blaze.elm.expression.cache.codec.by-t-spec]
+   [blaze.elm.expression.cache.codec.form :as form]
    [blaze.elm.expression.cache.codec.form-spec]
    [blaze.elm.literal]
    [blaze.elm.resource :as cr]
@@ -148,7 +150,28 @@
           ::bloom-filter/t := 1
           ::bloom-filter/expr-form := "(exists (retrieve \"Observation\"))"
           ::bloom-filter/patient-count := 1
-          ::bloom-filter/mem-size := 11981)))))
+          ::bloom-filter/mem-size := 11981))))
+
+  (testing "with a function call"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
+
+      (let [ctx {:node node :eval-context "Patient"}
+            fn-expr (c/compile ctx #elm/retrieve{:type "Observation"})
+            ctx (assoc ctx :function-defs [{:name "F" :context "Patient"
+                                            :function (partial function/arity-0 "F" fn-expr)}])
+            expr (c/compile ctx #elm/exists #elm/function-ref ["F"])]
+
+        (testing "the hash is calculated from the form containing the function body"
+          (given (bloom-filter/create node expr)
+            ::bloom-filter/hash := (form/hash "(exists ((fn [] (retrieve \"Observation\"))))")))
+
+        (testing "the expression form contains the function name for display"
+          (given (bloom-filter/create node expr)
+            ::bloom-filter/expr-form := "(exists (call \"F\"))"
+            ::bloom-filter/patient-count := 1))))))
 
 (deftest recreate-test
   (testing "with empty database"

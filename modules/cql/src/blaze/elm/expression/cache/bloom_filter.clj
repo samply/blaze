@@ -56,10 +56,11 @@
         p (double 0.01)
         filter (BloomFilter/create codec/id-funnel (int (max 10000 n)) p)
         mem-size (calc-mem-size (max 10000 n) p)
-        expr-form (pr-str (core/-form expression))]
+        expr-hash (form/hash (pr-str (core/-form expression)))]
     (prom/observe! bloom-filter-bytes mem-size)
     (run! #(.put filter %) resource-ids)
-    (BloomFilterContainer. (form/hash expr-form) t expr-form n filter mem-size)))
+    (BloomFilterContainer. expr-hash t (pr-str (core/display-form expression)) n
+                           filter mem-size)))
 
 (defn- calc-bloom-filter [db xform expression]
   (with-open [batch-db (d/new-batch-db db)
@@ -77,7 +78,7 @@
 
 (defn- create-bloom-filter-msg [expression db]
   (format "Create Bloom filter for expression `%s` evaluating it for %d patients."
-          (core/-form expression) (d/type-total db "Patient")))
+          (core/display-form expression) (d/type-total db "Patient")))
 
 (defn create [node expression]
   (let [db (d/db node)]

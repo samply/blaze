@@ -166,6 +166,7 @@
   (testing "Custom function with arity 0"
     (let [function-name "name-210650"
           fn-expr (c/compile {} #elm/integer "1")
+          fn-form '(fn [] 1)
           compile-ctx {:function-defs
                        [{:name function-name
                          :context "Patient"
@@ -186,23 +187,36 @@
 
       (testing "resolve expression references"
         (let [expr (c/resolve-refs expr {})]
-          (has-form expr (list 'call function-name))))
+          (has-form expr (list fn-form))))
 
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
-          (list 'call function-name)))
+          (list fn-form)))
 
       (testing "optimize"
         (has-form (core/-optimize expr nil)
-          (list 'call function-name)))
+          (list fn-form)))
 
       (testing "form"
-        (has-form expr (list 'call function-name)))))
+        (has-form expr (list fn-form)))
+
+      (testing "display form"
+        (is (= (list 'call function-name) (c/display-form expr))))
+
+      (testing "equals"
+        (is (= expr (function/arity-0 function-name fn-expr)))
+
+        (testing "a function with a different name but the same body is equal"
+          (is (= expr (function/arity-0 "other-name" fn-expr))))
+
+        (testing "a function with the same name but a different body is different"
+          (is (not= expr (function/arity-0 function-name (c/compile {} #elm/integer "2"))))))))
 
   (testing "Custom function with arity 1"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [function-name "name-180815"
             fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
+            fn-form '(fn ["x"] (negate (operand-ref "x")))
             compile-ctx {:library {:parameters {:def [{:name "a"}]}}
                          :node node
                          :eval-context "Patient"
@@ -241,27 +255,45 @@
                           :context "Unfiltered"}
                 ctx (assoc compile-ctx :library {:statements {:def [expr-def]}})
                 expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
-            (has-form expr (list 'call function-name "a"))))
+            (has-form expr (list fn-form "a"))))
 
         (testing "resolve parameters"
           (has-form (core/-resolve-params expr {"a" 1})
-            (list 'call function-name 1))
+            (list fn-form 1))
 
           (has-form (core/-resolve-params expr {})
-            (list 'call function-name '(param-ref "a"))))
+            (list fn-form '(param-ref "a"))))
 
         (testing "optimize"
           (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"])
                 expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
-            (has-form expr (list 'call function-name '(optimized "x")))))
+            (has-form expr (list fn-form '(optimized "x")))))
 
         (testing "form"
-          (has-form expr (list 'call function-name '(param-ref "a")))))))
+          (has-form expr (list fn-form '(param-ref "a"))))
+
+        (testing "display form"
+          (is (= (list 'call function-name '(param-ref "a")) (c/display-form expr))))
+
+        (testing "equals"
+          (let [op (c/compile compile-ctx #elm/parameter-ref "a")]
+            (is (= expr (function/arity-1 function-name fn-expr "x" op)))
+
+            (testing "a function with a different name but the same body is equal"
+              (is (= expr (function/arity-1 "other-name" fn-expr "x" op))))
+
+            (testing "a function with the same name but a different body is different"
+              (let [fn-expr (c/compile {} #elm/operand-ref"x")]
+                (is (not= expr (function/arity-1 function-name fn-expr "x" op)))))
+
+            (testing "a function with the same name and body but a different operand name is different"
+              (is (not= expr (function/arity-1 function-name fn-expr "y" op)))))))))
 
   (testing "Custom function with arity 2"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [function-name "name-184652"
             fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
+            fn-form '(fn ["x" "y"] (add (operand-ref "x") (operand-ref "y")))
             compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
                          :node node
                          :eval-context "Patient"
@@ -307,34 +339,54 @@
                             :context "Unfiltered"}]
                 ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
                 expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y"] expr-defs))]
-            (has-form expr (list 'call function-name "a" "b"))))
+            (has-form expr (list fn-form "a" "b"))))
 
         (testing "resolve parameters"
           (has-form (core/-resolve-params expr {"a" 1 "b" 2})
-            (list 'call function-name 1 2))
+            (list fn-form 1 2))
 
           (has-form (core/-resolve-params expr {"a" 1})
-            (list 'call function-name 1 '(param-ref "b")))
+            (list fn-form 1 '(param-ref "b")))
 
           (has-form (core/-resolve-params expr {"b" 1})
-            (list 'call function-name '(param-ref "a") 1))
+            (list fn-form '(param-ref "a") 1))
 
           (has-form (core/-resolve-params expr {})
-            (list 'call function-name '(param-ref "a") '(param-ref "b"))))
+            (list fn-form '(param-ref "a") '(param-ref "b"))))
 
         (testing "optimize"
           (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
                                        #ctu/optimizeable "y"])
                 expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
-            (has-form expr (list 'call function-name '(optimized "x") '(optimized "y")))))
+            (has-form expr (list fn-form '(optimized "x") '(optimized "y")))))
 
         (testing "form"
-          (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b")))))))
+          (has-form expr (list fn-form '(param-ref "a") '(param-ref "b"))))
+
+        (testing "display form"
+          (is (= (list 'call function-name '(param-ref "a") '(param-ref "b"))
+                 (c/display-form expr))))
+
+        (testing "equals"
+          (let [op-1 (c/compile compile-ctx #elm/parameter-ref "a")
+                op-2 (c/compile compile-ctx #elm/parameter-ref "b")]
+            (is (= expr (function/arity-2 function-name fn-expr "x" "y" op-1 op-2)))
+
+            (testing "a function with a different name but the same body is equal"
+              (is (= expr (function/arity-2 "other-name" fn-expr "x" "y" op-1 op-2))))
+
+            (testing "a function with the same name but a different body is different"
+              (let [fn-expr (c/compile {} #elm/subtract [#elm/operand-ref"x" #elm/operand-ref"y"])]
+                (is (not= expr (function/arity-2 function-name fn-expr "x" "y" op-1 op-2)))))
+
+            (testing "a function with the same name and body but swapped operand names is different"
+              (is (not= expr (function/arity-2 function-name fn-expr "y" "x" op-1 op-2)))))))))
 
   (testing "Custom function with arity 3"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
       (let [function-name "name-184652"
             fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/add [#elm/operand-ref"y" #elm/operand-ref"z"]])
+            fn-form '(fn ["x" "y" "z"] (add (operand-ref "x") (add (operand-ref "y") (operand-ref "z"))))
             compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"} {:name "c"}]}}
                          :node node
                          :eval-context "Patient"
@@ -386,26 +438,44 @@
                             :context "Unfiltered"}]
                 ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
                 expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y" "z"] expr-defs))]
-            (has-form expr (list 'call function-name "a" "b" "c"))))
+            (has-form expr (list fn-form "a" "b" "c"))))
 
         (testing "resolve parameters"
           (has-form (core/-resolve-params expr {"a" 1 "b" 2 "c" 3})
-            (list 'call function-name 1 2 3))
+            (list fn-form 1 2 3))
 
           (has-form (core/-resolve-params expr {"a" 1 "c" 3})
-            (list 'call function-name 1 '(param-ref "b") 3))
+            (list fn-form 1 '(param-ref "b") 3))
 
           (has-form (core/-resolve-params expr {})
-            (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))))
+            (list fn-form '(param-ref "a") '(param-ref "b") '(param-ref "c"))))
 
         (testing "optimize"
           (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
                                        #ctu/optimizeable "y" #ctu/optimizeable "z"])
                 expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
-            (has-form expr (list 'call function-name '(optimized "x") '(optimized "y") '(optimized "z")))))
+            (has-form expr (list fn-form '(optimized "x") '(optimized "y") '(optimized "z")))))
 
         (testing "form"
-          (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c")))))))
+          (has-form expr (list fn-form '(param-ref "a") '(param-ref "b") '(param-ref "c"))))
+
+        (testing "display form"
+          (is (= (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))
+                 (c/display-form expr))))
+
+        (testing "equals"
+          (let [ops (map #(c/compile compile-ctx (elm/parameter-ref %)) ["a" "b" "c"])]
+            (is (= expr (apply function/arity-n function-name fn-expr ["x" "y" "z"] ops)))
+
+            (testing "a function with a different name but the same body is equal"
+              (is (= expr (apply function/arity-n "other-name" fn-expr ["x" "y" "z"] ops))))
+
+            (testing "a function with the same name but a different body is different"
+              (let [fn-expr (c/compile {} #elm/list [#elm/operand-ref"x" #elm/operand-ref"y" #elm/operand-ref"z"])]
+                (is (not= expr (apply function/arity-n function-name fn-expr ["x" "y" "z"] ops)))))
+
+            (testing "a function with the same name and body but swapped operand names is different"
+              (is (not= expr (apply function/arity-n function-name fn-expr ["z" "y" "x"] ops)))))))))
 
   (testing "ToQuantity"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}

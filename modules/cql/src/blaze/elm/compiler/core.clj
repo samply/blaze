@@ -8,7 +8,7 @@
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
-   [clojure.lang IReduceInit]
+   [clojure.lang APersistentMap IReduceInit]
    [java.time.temporal ChronoUnit]))
 
 (set! *warn-on-reflection* true)
@@ -44,6 +44,42 @@
 
 (defn expr? [x]
   (satisfies? Expression x))
+
+(defn function-call-form
+  "Returns the form of a call of the function named `name` with `op-names` and
+  `body-form` applied to `op-forms`.
+
+  The form is the anonymous function applied to the operands, so that it only
+  depends on what the function computes and not on its name. That's important,
+  because the form is used for equality and as Bloom filter key. The name is
+  attached as metadata, so that `display-form` can show it."
+  [name op-names body-form op-forms]
+  (with-meta (apply list (list 'fn (vec op-names) body-form) op-forms)
+    {::function-name name}))
+
+(defn- display-form* [form]
+  (cond
+    (seq? form)
+    (if-let [name (::function-name (meta form))]
+      (apply list 'call name (map display-form* (rest form)))
+      (apply list (map display-form* form)))
+
+    (vector? form)
+    (mapv display-form* form)
+
+    (instance? APersistentMap form)
+    (update-vals form display-form*)
+
+    :else
+    form))
+
+(defn display-form
+  "Returns the form of `expression` for display in logs.
+
+  In contrast to `-form`, function calls are shown as `(call name operands...)`
+  instead of the applied anonymous function."
+  [expression]
+  (display-form* (-form expression)))
 
 (defn static? [x]
   (-static x))

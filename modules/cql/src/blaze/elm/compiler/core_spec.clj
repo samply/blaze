@@ -15,6 +15,15 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef core/function-call-form
+  :args (s/cat :name string? :op-names (s/coll-of string?) :body-form any?
+               :op-forms (s/coll-of any?))
+  :ret list?)
+
+(s/fdef core/display-form
+  :args (s/cat :expression core/expr?)
+  :ret any?)
+
 (s/fdef core/resolve-function-def
   :args (s/cat :context ::core/resolve-function-def-context :name string?
                :arity nat-int?)

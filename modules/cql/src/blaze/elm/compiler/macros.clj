@@ -98,7 +98,7 @@
              (defn ~cache-op
                ~(str "Creates a " name " operator with attached Bloom filter that will be used to increase performance of evaluation.")
                ~(cond-> [operand bloom-filter] elm-expr-binding (conj elm-expr))
-               (log/trace (format "Create expression `%s` with attached Bloom filter." (list (quote ~name) (core/-form ~operand))))
+               (log/trace (format "Create expression `%s` with attached Bloom filter." (list (quote ~name) (core/display-form ~operand))))
                (reify-expr core/Expression
                  (~'-attach-cache [~expr ~'cache]
                    (if-let [~bloom-filter (ec/get ~'cache ~expr)]

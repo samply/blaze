@@ -69,3 +69,8 @@
 
 (defn form [expression]
   (core/-form expression))
+
+(defn display-form
+  "Returns the form of `expression` for display in logs."
+  [expression]
+  (core/display-form expression))
