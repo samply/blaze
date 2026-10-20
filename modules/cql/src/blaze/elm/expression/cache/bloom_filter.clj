@@ -69,7 +69,7 @@
      (d/t batch-db)
      (into
       []
-      (comp (map (partial cr/mk-resource batch-db))
+      (comp (cr/patient-mapper batch-db)
             xform
             (filter (partial expr/eval {:db batch-db :now (bt/offset-date-time)} expression))
             (map :id))

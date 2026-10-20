@@ -1325,7 +1325,7 @@
 
   (given (first-stratifier-strata (evaluate "q52-sort-with-missing-values"))
     count := 1
-    [0 :value :text] := #fhir/string "Condition[id = 0, t = 1, last-change-t = 1]"
+    [0 :value :text] := #fhir/string "Condition[id = 0, t = 1, last-change-t = 2]"
     [0 :population 0 :count] := #fhir/integer 1)
 
   (given (first-stratifier-strata (evaluate "q54-stratifier-condition-code"))

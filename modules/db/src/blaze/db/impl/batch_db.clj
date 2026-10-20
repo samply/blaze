@@ -123,6 +123,9 @@
     (with-open [plci (kv/new-iterator snapshot :patient-last-change-index)]
       (plc/last-change-t plci patient-id t)))
 
+  (-patient-compartment-last-change-t-xf [_ f]
+    (plc/last-change-t-xf snapshot t f))
+
   ;; ---- Common Query Functions ----------------------------------------------
 
   (-count-query [db query]

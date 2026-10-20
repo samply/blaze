@@ -22,4 +22,9 @@
   :ret cr/resource?)
 
 (s/fdef cr/resource-mapper
-  :args (s/cat :db :blaze.db/db))
+  :args (s/cat :db :blaze.db/db)
+  :ret fn?)
+
+(s/fdef cr/patient-mapper
+  :args (s/cat :db :blaze.db/db)
+  :ret fn?)

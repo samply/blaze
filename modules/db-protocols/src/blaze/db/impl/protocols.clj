@@ -25,6 +25,8 @@
 
   (-patient-compartment-last-change-t [db patient-id])
 
+  (-patient-compartment-last-change-t-xf [db f])
+
   (-count-query [db query]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")

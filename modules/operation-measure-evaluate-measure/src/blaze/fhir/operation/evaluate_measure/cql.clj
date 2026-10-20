@@ -74,22 +74,24 @@
        vector))))
 
 (defn- evaluate-expression***
-  [{:keys [db] :as context} {:keys [name expression]} subject-handles]
+  [{:keys [db] :as context} {:keys [name expression]} mapper subject-handles]
   (with-open [db (d/new-batch-db db)]
     (transduce
-     (comp (map (partial cr/mk-resource db))
+     (comp (mapper db)
            (result-xf (assoc context :db db) name expression)
            (halt-when ba/anomaly?))
-     ((:reduce-op context) db) subject-handles)))
+     ((:reduce-op context) db)
+     subject-handles)))
 
 (defn- evaluate-expression**
   "Returns a CompletableFuture that will complete with the result of evaluating
-  the expression of `expression-def` over `subject-handles`.
+  the expression of `expression-def` over `subject-handles` which are mapped
+  to resources using `mapper`.
 
   The future will be executed on :executor of `context`."
-  [{:keys [executor] :as context} expression-def subject-handles]
+  [{:keys [executor] :as context} expression-def mapper subject-handles]
   (ac/supply-async
-   #(evaluate-expression*** context expression-def subject-handles)
+   #(evaluate-expression*** context expression-def mapper subject-handles)
    executor))
 
 (defn- evaluate-expression-futures
@@ -98,7 +100,10 @@
    []
    (comp
     (partition-all eval-sequential-chunk-size)
-    (map (partial evaluate-expression** context expression-def)))
+    (map (partial evaluate-expression** context expression-def
+                  (if (= "Patient" subject-type)
+                    cr/patient-mapper
+                    cr/resource-mapper))))
    (d/type-list db subject-type)))
 
 (defn- evaluate-expression* [context expression-def subject-type]

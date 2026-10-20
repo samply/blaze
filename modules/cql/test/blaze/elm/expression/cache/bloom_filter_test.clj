@@ -53,6 +53,27 @@
           (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "1"))]
             (is (false? (bloom-filter/might-contain? bloom-filter resource))))))))
 
+  (testing "Bloom filter can't be used for resources other than Patients"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Specimen :id "1"}]]]
+
+      (let [elm #elm/exists #elm/retrieve{:type "Observation"}
+            expr (c/compile {:node node :eval-context "Patient"} elm)
+            db (d/db node)
+            bloom-filter (bloom-filter/create node expr)
+            handle (d/resource-handle db "Specimen" "1")]
+
+        (testing "with resource created by mk-resource"
+          (let [resource (cr/mk-resource db handle)]
+            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
+
+        (testing "with resource created by resource-mapper"
+          (let [[resource] (into [] (cr/resource-mapper db) [handle])]
+            (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))
+
   (testing "Bloom filter older than the last change in the patient's compartment"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
