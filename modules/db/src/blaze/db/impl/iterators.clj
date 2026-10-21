@@ -277,12 +277,29 @@
        (let [mismatch (bb/mismatch buf prefix-buf)]
          (or (<= (long prefix-length) mismatch) (neg? mismatch)))))))
 
-(defn- prefix-xf [start-key prefix-length decode]
+(defn- prefix-xf [start-key prefix-length xform]
   (comp
    (key-reader)
-   (comp
-    (take-while-prefix-matches prefix-length start-key)
-    (map decode))))
+   (take-while-prefix-matches prefix-length start-key)
+   xform))
+
+(defn prefix-keys-xf
+  "Returns a reducible collection of values created by the transducer `xform`
+  from keys of `column-family` starting with `start-key` and ending when
+  `prefix-length` bytes of `start-key` no longer match.
+
+  The transducer `xform` will receive the key byte buffer and has to emit
+  immutable values. The key byte buffer is reused for the next key."
+  [snapshot column-family xform prefix-length start-key]
+  (coll snapshot column-family (prefix-xf start-key prefix-length xform)
+        start-key))
+
+(defn prefix-keys-prev-xf
+  "Like `prefix-keys-xf` but iterates in reverse, starting with `start-key` and
+  ending when `prefix-length` bytes of `start-key` no longer match."
+  [snapshot column-family xform prefix-length start-key]
+  (coll-prev snapshot column-family (prefix-xf start-key prefix-length xform)
+             start-key))
 
 (defn prefix-keys
   "Returns a reducible collection of decoded keys of `column-family` starting
@@ -292,8 +309,7 @@
   The `decode` function has to accept a byte buffer and decode it into an
   immutable value which will end up in the collection."
   [snapshot column-family decode prefix-length start-key]
-  (coll snapshot column-family (prefix-xf start-key prefix-length decode)
-        start-key))
+  (prefix-keys-xf snapshot column-family (map decode) prefix-length start-key))
 
 (defn prefix-keys-prev
   "Returns a reducible collection of decoded keys of `column-family` starting
@@ -303,8 +319,8 @@
   The `decode` function has to accept a byte buffer and decode it into an
   immutable value which will end up in the collection."
   [snapshot column-family decode prefix-length start-key]
-  (coll-prev snapshot column-family (prefix-xf start-key prefix-length decode)
-             start-key))
+  (prefix-keys-prev-xf snapshot column-family (map decode) prefix-length
+                       start-key))
 
 (defn- read-value! [buf iter]
   (read! kv/value! buf iter))

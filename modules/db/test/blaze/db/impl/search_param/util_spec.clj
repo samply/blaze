@@ -19,6 +19,10 @@
   :args (s/cat :value string?)
   :ret (s/tuple keyword? string?))
 
+(s/fdef u/by-id-grouper
+  :args (s/cat :rf ifn?)
+  :ret ifn?)
+
 (s/fdef u/reference-resource-handle-mapper
   :args (s/cat :batch-db :blaze.db.impl/batch-db))
 

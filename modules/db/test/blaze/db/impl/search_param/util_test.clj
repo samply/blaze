@@ -91,7 +91,42 @@
 (def ^:private hash
   #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
 
+(def ^:private hash-2
+  #blaze/hash"2D2BE7B10F1DEE3B4F3C5E4B5C8A9E0D1F2A3B4C5D6E7F8091A2B3C4D5E6F708")
+
+(defn- svi [id hash]
+  (svi/single-version-id id hash))
+
+(defn- index-handle [svi & more]
+  (reduce ih/conj (ih/from-single-version-id svi) more))
+
 (deftest by-id-grouper-test
+  (testing "empty input"
+    (is (empty? (into [] u/by-id-grouper []))))
+
+  (testing "single version id"
+    (is (= [(index-handle (svi "0" hash))]
+           (into [] u/by-id-grouper [(svi "0" hash)]))))
+
+  (testing "consecutive single version ids with the same id are grouped"
+    (is (= [(index-handle (svi "0" hash) (svi "0" hash-2))
+            (index-handle (svi "1" hash))]
+           (into [] u/by-id-grouper [(svi "0" hash)
+                                     (svi "0" hash-2)
+                                     (svi "1" hash)]))))
+
+  (testing "the same hash is only added once"
+    (is (= [(index-handle (svi "0" hash))]
+           (into [] u/by-id-grouper [(svi "0" hash) (svi "0" hash)]))))
+
+  (testing "non-consecutive single version ids with the same id aren't grouped"
+    (is (= [(index-handle (svi "0" hash))
+            (index-handle (svi "1" hash))
+            (index-handle (svi "0" hash-2))]
+           (into [] u/by-id-grouper [(svi "0" hash)
+                                     (svi "1" hash)
+                                     (svi "0" hash-2)]))))
+
   (testing "works with reduced values"
     (testing "on single id"
       (let [id "0"]

@@ -14,6 +14,7 @@
    [blaze.util :refer [str]]
    [clojure.string :as str])
   (:import
+   [blaze.db.impl.index ByIdGrouper]
    [org.apache.commons.codec.language Soundex]))
 
 (set! *warn-on-reflection* true)
@@ -37,34 +38,7 @@
 (def by-id-grouper
   "Returns a stateful transducer which partitions multiple consecutive
   single-version-ids by id, emitting one index handle instance per partition."
-  (fn [rf]
-    (let [acc (volatile! nil)]
-      (fn
-        ([result]
-         (let [ih @acc
-               result (if (nil? ih)
-                        result
-                        (do (vreset! acc nil)
-                            (unreduced (rf result ih))))]
-           (rf result)))
-        ([result svi]
-         (let [ih @acc
-               id (svi/id svi)]
-           (cond
-             (nil? ih)
-             (do
-               (vreset! acc (ih/from-single-version-id svi))
-               result)
-
-             (= id (ih/id ih))
-             (do
-               (vreset! acc (ih/conj ih svi))
-               result)
-
-             :else
-             (let [ret (rf result ih)]
-               (vreset! acc (if (reduced? ret) nil (ih/from-single-version-id svi)))
-               ret))))))))
+  (fn [rf] (ByIdGrouper/ofSingleVersionIds rf)))
 
 (defn compile-id
   "Returns `id` if it's a valid resource id or an anomaly otherwise."

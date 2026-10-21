@@ -4,15 +4,13 @@
   (:require
    [blaze.byte-string :as bs]
    [blaze.byte-string-builder :as bsb]
-   [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash])
   (:import
-   [blaze.db.impl.index SearchParamValueResource]))
+   [blaze.db.impl.index ByIdGrouper SearchParamValueResource]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -152,15 +150,30 @@
   [buf]
   (SearchParamValueResource/decodeSingleVersionId buf))
 
+(def by-id-grouper
+  "Returns a stateful transducer which receives key byte buffers, partitions
+  multiple consecutive single-version-ids by id, emitting one index handle
+  instance per partition.
+
+  Works for all keys ending in id, id size and hash prefix like the keys of
+  the SearchParamValueResource index."
+  (fn [rf] (ByIdGrouper/ofSearchParamValueResourceKeys rf)))
+
 (defn- index-handles* [snapshot prefix-length seek-key]
-  (coll/eduction
-   u/by-id-grouper
-   (i/prefix-keys
-    snapshot
-    :search-param-value-index
-    decode-single-version-id
-    (+ base-key-size (long prefix-length))
-    seek-key)))
+  (i/prefix-keys-xf
+   snapshot
+   :search-param-value-index
+   by-id-grouper
+   (+ base-key-size (long prefix-length))
+   seek-key))
+
+(defn- index-handles-prev* [snapshot prefix-length seek-key]
+  (i/prefix-keys-prev-xf
+   snapshot
+   :search-param-value-index
+   by-id-grouper
+   (+ base-key-size (long prefix-length))
+   seek-key))
 
 (defn index-handles
   "Returns a reducible collection of index handles from keys starting at
@@ -188,14 +201,8 @@
   `start-value` and ending when `prefix-length` bytes of `start-value` is no
   longer a prefix of the values processed."
   [snapshot c-hash tid prefix-length start-value]
-  (coll/eduction
-   u/by-id-grouper
-   (i/prefix-keys
-    snapshot
-    :search-param-value-index
-    decode-single-version-id
-    (+ base-key-size (long prefix-length))
-    (encode-seek-key-for-prev c-hash tid start-value))))
+  (index-handles* snapshot prefix-length
+                  (encode-seek-key-for-prev c-hash tid start-value)))
 
 (defn index-handles-prev
   "Returns a reducible collection of index handles from keys starting at
@@ -203,37 +210,20 @@
   of `start-value` is no longer a prefix of the values processed, iterating in
   reverse."
   ([snapshot c-hash tid prefix-length start-value]
-   (coll/eduction
-    u/by-id-grouper
-    (i/prefix-keys-prev
-     snapshot
-     :search-param-value-index
-     decode-single-version-id
-     (+ base-key-size (long prefix-length))
-     (encode-seek-key-for-prev c-hash tid start-value))))
+   (index-handles-prev* snapshot prefix-length
+                        (encode-seek-key-for-prev c-hash tid start-value)))
   ([snapshot c-hash tid prefix-length start-value start-id]
-   (coll/eduction
-    u/by-id-grouper
-    (i/prefix-keys-prev
-     snapshot
-     :search-param-value-index
-     decode-single-version-id
-     (+ base-key-size (long prefix-length))
-     (encode-seek-key-for-prev c-hash tid start-value start-id)))))
+   (index-handles-prev* snapshot prefix-length
+                        (encode-seek-key-for-prev c-hash tid start-value
+                                                  start-id))))
 
 (defn index-handles-prev'
   "Returns a reducible collection of index handles from keys starting at
   `start-value` and ending when `prefix-length` bytes of `start-value` is no
   longer a prefix of the values processed, iterating in reverse."
   [snapshot c-hash tid prefix-length start-value]
-  (coll/eduction
-   u/by-id-grouper
-   (i/prefix-keys-prev
-    snapshot
-    :search-param-value-index
-    decode-single-version-id
-    (+ base-key-size (long prefix-length))
-    (encode-seek-key c-hash tid start-value))))
+  (index-handles-prev* snapshot prefix-length
+                       (encode-seek-key c-hash tid start-value)))
 
 (defn encode-key [c-hash tid value id hash]
   (-> (bsb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))

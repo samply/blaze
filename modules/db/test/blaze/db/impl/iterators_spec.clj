@@ -50,6 +50,22 @@
                :start-key byte-string?)
   :ret (cs/coll-of some?))
 
+(s/fdef i/prefix-keys-xf
+  :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
+                      :column-family simple-keyword? :xform fn?
+                      :prefix-length nat-int? :start-key byte-string?)
+               (fn [{:keys [prefix-length start-key]}]
+                 (<= prefix-length (bs/size start-key))))
+  :ret (cs/coll-of some?))
+
+(s/fdef i/prefix-keys-prev-xf
+  :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
+                      :column-family simple-keyword? :xform fn?
+                      :prefix-length nat-int? :start-key byte-string?)
+               (fn [{:keys [prefix-length start-key]}]
+                 (<= prefix-length (bs/size start-key))))
+  :ret (cs/coll-of some?))
+
 (s/fdef i/prefix-keys
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :column-family simple-keyword? :decode fn?
