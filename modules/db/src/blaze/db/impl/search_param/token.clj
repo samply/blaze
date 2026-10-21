@@ -11,7 +11,6 @@
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-   [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
@@ -516,8 +515,7 @@
 
   (-index-handles [_ batch-db tid _ compiled-value]
     (or (some-> (u/non-deleted-resource-handle batch-db tid compiled-value)
-                (svi/from-resource-handle)
-                (ih/from-single-version-id)
+                (ih/from-resource-handle)
                 (vector))
         []))
 

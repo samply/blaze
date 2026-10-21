@@ -15,6 +15,10 @@
 (s/fdef sp-vr/keys
   :args (s/cat :snapshot :blaze.db.kv/snapshot :start-key byte-string?))
 
+(s/fdef sp-vr/by-id-grouper
+  :args (s/cat :rf ifn?)
+  :ret ifn?)
+
 (s/fdef sp-vr/index-handles
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :c-hash :blaze.db/c-hash

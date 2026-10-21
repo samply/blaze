@@ -8,7 +8,6 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.search-param.util :as u]
    [blaze.fhir.hash :as hash]))
 
 (set! *warn-on-reflection* true)
@@ -40,14 +39,12 @@
        bsb/build)))
 
 (defn- index-handles* [snapshot prefix-length start-key]
-  (coll/eduction
-   u/by-id-grouper
-   (i/prefix-keys
-    snapshot
-    :compartment-search-param-value-index
-    sp-vr/decode-single-version-id
-    prefix-length
-    start-key)))
+  (i/prefix-keys-xf
+   snapshot
+   :compartment-search-param-value-index
+   sp-vr/by-id-grouper
+   prefix-length
+   start-key))
 
 (defn index-handles
   "Returns a reducible collection of index handles from keys of `value`,

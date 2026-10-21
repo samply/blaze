@@ -69,3 +69,50 @@
       (with-open [snapshot (kv/new-snapshot kv-store)]
         (is (= [(bs/from-hex (apply str (repeat (inc i/buffer-size) "00")))]
                (vec (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00"))))))))
+
+(deftest prefix-keys-xf-test
+  (with-system [{kv-store ::kv/mem} config]
+    (kv/put!
+     kv-store
+     [[:default (ba 0x00 0x00) bytes/empty]
+      [:default (ba 0x01 0x00) bytes/empty]
+      [:default (ba 0x01 0x01) bytes/empty]
+      [:default (ba 0x02 0x00) bytes/empty]])
+
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (testing "the transducer receives the keys with matching prefix"
+        (let [keys (i/prefix-keys-xf snapshot :default (map bs/from-byte-buffer!)
+                                     1 #blaze/byte-string"01")]
+          (is (= [#blaze/byte-string"0100" #blaze/byte-string"0101"]
+                 (vec keys)
+                 (vec-from-iter keys)))))
+
+      (testing "the transducer is completed"
+        (is (= [[#blaze/byte-string"0100" #blaze/byte-string"0101"]]
+               (vec (i/prefix-keys-xf snapshot :default
+                                      (comp (map bs/from-byte-buffer!)
+                                            (partition-all 3))
+                                      1 #blaze/byte-string"01"))))))))
+
+(deftest prefix-keys-prev-xf-test
+  (with-system [{kv-store ::kv/mem} config]
+    (kv/put!
+     kv-store
+     [[:default (ba 0x00 0x00) bytes/empty]
+      [:default (ba 0x01 0x00) bytes/empty]
+      [:default (ba 0x01 0x01) bytes/empty]
+      [:default (ba 0x02 0x00) bytes/empty]])
+
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (testing "the transducer receives the keys with matching prefix"
+        (is (= [#blaze/byte-string"0101" #blaze/byte-string"0100"]
+               (into [] (i/prefix-keys-prev-xf
+                         snapshot :default (map bs/from-byte-buffer!)
+                         1 #blaze/byte-string"01FF")))))
+
+      (testing "the transducer is completed"
+        (is (= [[#blaze/byte-string"0101" #blaze/byte-string"0100"]]
+               (into [] (i/prefix-keys-prev-xf
+                         snapshot :default
+                         (comp (map bs/from-byte-buffer!) (partition-all 3))
+                         1 #blaze/byte-string"01FF"))))))))
