@@ -5,16 +5,25 @@
    [clojure.string :as str]
    [clojure.walk :as walk]))
 
-(defn- has-refs? [non-refs {:keys [expression]}]
+(defn- has-refs-form?
+  "Returns true if `form` contains expression references not in `non-refs`.
+
+  Also looks into the bodies of function calls, which are attached to the call
+  form as :body metadata."
+  [non-refs form]
   (identical?
    (walk/postwalk
     #(if (sequential? %)
-       (if (and (= 'expr-ref (first %)) (not (non-refs (second %))))
+       (if (or (and (= 'expr-ref (first %)) (not (non-refs (second %))))
+               (some->> (:body (meta %)) (has-refs-form? non-refs)))
          ::ref
          (some #{::ref} %))
        %)
-    (c/form expression))
+    form)
    ::ref))
+
+(defn- has-refs? [non-refs {:keys [expression]}]
+  (has-refs-form? non-refs (c/form expression)))
 
 (defn- split-by-having-refs [non-refs expression-defs]
   (reduce-kv
