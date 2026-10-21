@@ -10,7 +10,7 @@
    [clojure.test.check.properties :as prop])
   (:import
    [java.lang AutoCloseable]
-   [java.util Iterator]))
+   [java.util Collection Iterator NoSuchElementException]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -103,6 +103,74 @@
            ^AutoCloseable (.iterator)
            (.close))
       (is @closed))))
+
+(defn- chunks
+  "Returns the chunks of `xs` with size `n` converted into vectors."
+  [n xs]
+  (into [] (comp (coll/partition-all n) (map vec)) xs))
+
+(defn- chunk-of [xs]
+  (first (into [] (coll/partition-all (count xs)) xs)))
+
+(deftest partition-all-test
+  (testing "init delegates to the reducing function"
+    (is (= [] (((coll/partition-all 2) conj)))))
+
+  (testing "empty input emits no chunk"
+    (is (= [] (chunks 2 []))))
+
+  (testing "full chunks"
+    (is (= [[1 2] [3 4]] (chunks 2 [1 2 3 4]))))
+
+  (testing "the last partial chunk is emitted on completion"
+    (is (= [[1 2] [3]] (chunks 2 [1 2 3]))))
+
+  (testing "emitted chunks are not changed by further input"
+    (let [chunks (into [] (coll/partition-all 2) [1 2 3 4 5])]
+      (is (= [[1 2] [3 4] [5]] (mapv vec chunks)))))
+
+  (testing "reduced in the downstream reducing function stops the input"
+    (is (= [[0 1]] (into [] (comp (coll/partition-all 2) (take 1) (map vec)) (range)))))
+
+  (testing "reduced on the last partial chunk"
+    (is (= [[1 2] [3]] (into [] (comp (coll/partition-all 2) (take 2) (map vec)) [1 2 3]))))
+
+  (testing "property: like clojure.core/partition-all"
+    (satisfies-prop 100
+      (prop/for-all [n gen/s-pos-int
+                     xs (gen/vector gen/small-integer)]
+        (= (into [] (partition-all n) xs) (chunks n xs))))))
+
+(deftest chunk-test
+  (testing "chunks are sequential"
+    (is (sequential? (chunk-of [1]))))
+
+  (testing "chunks can be reduced"
+    (is (= [1 2] (reduce conj [] (chunk-of [1 2])))))
+
+  (testing "reducing chunks stops on reduced"
+    (is (= 1 (reduce #(reduced %2) nil (chunk-of [1 2])))))
+
+  (testing "chunks are counted"
+    (is (= 2 (count (chunk-of [1 2]))))
+    (is (= 2 (coll/count (chunk-of [1 2])))))
+
+  (testing "chunks can be converted into a sequence"
+    (is (= [1 2] (seq (chunk-of [1 2])))))
+
+  (testing "chunks can't be mutated"
+    (is (not (instance? Collection (chunk-of [1]))))
+
+    (testing "through their iterator"
+      (let [iter (.iterator ^Iterable (chunk-of [1]))]
+        (.next iter)
+        (is (thrown? UnsupportedOperationException (.remove iter))))))
+
+  (testing "iterating past the end throws"
+    (let [iter (.iterator ^Iterable (chunk-of [1]))]
+      (.next iter)
+      (is (false? (.hasNext iter)))
+      (is (thrown? NoSuchElementException (.next iter))))))
 
 (deftest count-test
   (are [coll n] (and (= n (coll/count coll))

@@ -1,9 +1,9 @@
 (ns blaze.coll.core
-  (:refer-clojure :exclude [count eduction empty? first nth some])
+  (:refer-clojure :exclude [count eduction empty? first nth partition-all some])
   (:require
    [clojure.core.protocols])
   (:import
-   [blaze.coll IntersectionIterator UnionIterator]
+   [blaze.coll IntersectionIterator PartitionAll UnionIterator]
    [clojure.lang Counted IReduceInit Indexed Sequential]
    [java.lang AutoCloseable]
    [java.util ArrayDeque Iterator Queue]))
@@ -73,6 +73,15 @@
       (let [buffer (ArrayDeque.)
             rf (xform (completing (fn [_ x] (.add buffer x))))]
         (->TransformerIterator rf (.iterator ^Iterable coll) buffer false)))))
+
+(defn partition-all
+  "Like the transducer of `clojure.core/partition-all` but emits each chunk as
+  an immutable `blaze.coll.Chunk` without copying it.
+
+  Chunks are reducible, counted, sequential and iterable but aren't `=` to
+  vectors."
+  [n]
+  (fn [rf] (PartitionAll. rf n)))
 
 (defn count
   "Like `clojure.core/count` but works only for non-nil collections

@@ -21,6 +21,10 @@
 (s/fdef coll/eduction
   :args (s/cat :xform ifn? :coll any?))
 
+(s/fdef coll/partition-all
+  :args (s/cat :n pos-int?)
+  :ret fn?)
+
 (s/fdef coll/count
   :args (s/cat :coll counted?)
   :ret nat-int?)
