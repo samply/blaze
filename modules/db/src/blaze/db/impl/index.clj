@@ -343,7 +343,7 @@
   Emits futures of counts for each chunk."
   [chunk-xf]
   (comp
-   (partition-all 10000)
+   (coll/partition-all 10000)
    (map #(ac/supply-async (fn [] (count (coll/eduction chunk-xf %)))))))
 
 (defn type-query-total
