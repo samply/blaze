@@ -41,7 +41,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ring/ring-core
-  {:mvn/version "1.15.5"
+  {:mvn/version "1.15.6"
    :exclusions
    [crypto-equality/crypto-equality
     crypto-random/crypto-random

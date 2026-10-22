@@ -8,14 +8,14 @@
   {:local/root "../module-base"}
 
   ring/ring-core
-  {:mvn/version "1.15.5"
+  {:mvn/version "1.15.6"
    :exclusions
    [crypto-equality/crypto-equality
     crypto-random/crypto-random
     org.apache.commons/commons-fileupload2-core]}
 
   ring/ring-jetty-adapter
-  {:mvn/version "1.15.5"
+  {:mvn/version "1.15.6"
    :exclusions
    [;; replaced via local namespace ring.util.jakarta.servlet
     org.ring-clojure/ring-jakarta-servlet
