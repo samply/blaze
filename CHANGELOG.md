@@ -1,5 +1,77 @@
 # Changelog
 
+## v1.12.0
+
+### Notes
+
+This release fixes [CVE-2026-111497](https://github.com/samply/blaze/issues/4452) in the frontend. We recommend that everyone running the frontend update.
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Security
+
+* Fix CVE-2026-111497 ([#4452](https://github.com/samply/blaze/issues/4452))
+
+### Enhancements
+
+* Support Canonical Library Refs with Version ([#2717](https://github.com/samply/blaze/issues/2717))
+* Accept URL Encoded Dollar Sign in Operation URLs ([#4157](https://github.com/samply/blaze/issues/4157))
+* Increase Default Page Store Expiry to 5 Hours ([#4342](https://github.com/samply/blaze/issues/4342))
+
+### Performance
+
+* Improve JSON/CBOR Parsing Performance ([#4257](https://github.com/samply/blaze/issues/4257))
+* Improve Performance of Resource Type Detection ([#4263](https://github.com/samply/blaze/issues/4263))
+* Add ASCII Fast Path to URI Validation ([#4270](https://github.com/samply/blaze/issues/4270))
+* Replace condp identical? with Inlining Macro ([#4315](https://github.com/samply/blaze/issues/4315))
+* Split Primitive Interners by Extension Data ([#4317](https://github.com/samply/blaze/issues/4317))
+* Encode LUIDs Without BigInteger and Guava Base32 ([#4355](https://github.com/samply/blaze/issues/4355))
+* Remove Meta From Resource Handles ([#4384](https://github.com/samply/blaze/issues/4384))
+* Store the Hash Inline in Resource Handles ([#4389](https://github.com/samply/blaze/issues/4389))
+* Remove the FHIR Type From Resource Handles ([#4391](https://github.com/samply/blaze/issues/4391))
+* Open Patient Last Change Iterator Only Once in CQL ([#4426](https://github.com/samply/blaze/issues/4426))
+
+### Bugfixes
+
+* Prohibit use of Unencrypted Paging Params ([#3164](https://github.com/samply/blaze/issues/3164))
+* Restore OCI Labels of Docker Images ([#4378](https://github.com/samply/blaze/issues/4378))
+* Fix Aggregate Operators on Quantity Lists ([#4394](https://github.com/samply/blaze/issues/4394))
+* Fix Normalizing Such-That and Sort Expressions of Queries ([#4395](https://github.com/samply/blaze/issues/4395))
+* Fix Interval Type Detection on Date Arithmetic ([#4396](https://github.com/samply/blaze/issues/4396))
+* Fix Use of Closed Batch DB in $cql Operation ([#4417](https://github.com/samply/blaze/issues/4417))
+* Retry Cassandra Requests When All Nodes Failed ([#4236](https://github.com/samply/blaze/issues/4236))
+* Complete Kafka Last-T Future Off the Last-T Thread ([#4307](https://github.com/samply/blaze/issues/4307))
+* Fix Error on Invalid _id or _list Search Values ([#4418](https://github.com/samply/blaze/issues/4418))
+* Fix Cassandra Page Store Returning Nil on Miss ([#4347](https://github.com/samply/blaze/issues/4347))
+* Reject Null Elements in Primitive Arrays ([#4253](https://github.com/samply/blaze/issues/4253))
+* Keep modifierExtension in Bundle.entry.search ([#4255](https://github.com/samply/blaze/issues/4255))
+* Fix Identifier memSize Ignoring Assigner ([#4258](https://github.com/samply/blaze/issues/4258))
+* Find References in Nested Complex Types ([#4259](https://github.com/samply/blaze/issues/4259))
+* Fix Null List Fields in Empty Complex Types ([#4284](https://github.com/samply/blaze/issues/4284))
+* Fix FHIR Integer Without Value Equal to Integer 0 ([#4290](https://github.com/samply/blaze/issues/4290))
+* Fix Ambiguous Page Store Token Hashing ([#4341](https://github.com/samply/blaze/issues/4341))
+* Fix Ignored Parameters in Patient $everything ([#4156](https://github.com/samply/blaze/issues/4156))
+* Support Binary Accept Headers in vread Interaction ([#4185](https://github.com/samply/blaze/issues/4185))
+* Fix Error on Invalid Resource Id in Instance-Level URLs ([#4421](https://github.com/samply/blaze/issues/4421))
+* Honor $expand Parameters on Existing Expansions ([#4237](https://github.com/samply/blaze/issues/4237))
+* Fix Error After Frontend Session Expiry ([#4082](https://github.com/samply/blaze/issues/4082))
+* Keep Return-To Target When Signing In ([#4144](https://github.com/samply/blaze/issues/4144))
+* Do Not Cache Failed StructureDefinition Loads ([#4146](https://github.com/samply/blaze/issues/4146))
+* Fix Rendering of Canonical References ([#4220](https://github.com/samply/blaze/issues/4220))
+
+### Documentation
+
+* Paging Session Documentation Contradicts the Implementation ([#4131](https://github.com/samply/blaze/issues/4131))
+* Repeat Transaction Load Test Runs per System ([#4344](https://github.com/samply/blaze/issues/4344))
+* Update FHIR Search Performance Numbers for A5N46 ([#4380](https://github.com/samply/blaze/issues/4380))
+* Update FHIR Search Performance Numbers for LEA79 ([#4387](https://github.com/samply/blaze/issues/4387))
+* Add Complex CQL Performance Query ([#4410](https://github.com/samply/blaze/issues/4410))
+* Add AI Chat Animation to CQL Queries Docs ([#4415](https://github.com/samply/blaze/issues/4415))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/130?closed=1).
+
 ## v1.11.0
 
 ### Survey
