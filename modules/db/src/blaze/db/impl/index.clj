@@ -96,10 +96,7 @@
   [batch-db disjunction]
   (if (= 1 (count disjunction))
     (matcher batch-db (first disjunction))
-    (let [filters (map #((matcher batch-db %) (fn [_ _] true)) disjunction)]
-      (filter
-       (fn [resource-handle]
-         (some #(% nil resource-handle) filters))))))
+    (coll/disjunction-filter (mapv (partial matcher batch-db) disjunction))))
 
 (defn other-clauses-resource-handle-filter
   "Creates a filter transducer over resource handles for all clauses in
@@ -118,10 +115,8 @@
   [batch-db tid disjunction]
   (if (= 1 (count disjunction))
     (single-version-id-matcher batch-db tid (first disjunction))
-    (let [filters (map #((single-version-id-matcher batch-db tid %) (fn [_ _] true)) disjunction)]
-      (filter
-       (fn [single-version-id]
-         (some #(% nil single-version-id) filters))))))
+    (coll/disjunction-filter
+     (mapv (partial single-version-id-matcher batch-db tid) disjunction))))
 
 (defn- other-clauses-single-version-id-filter
   [batch-db tid conjunction]

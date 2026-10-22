@@ -9514,6 +9514,36 @@
 
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
 
+(defn- observation-status-or-date [id]
+  (cond-> {:fhir/type :fhir/Observation :id (str id)
+           :code #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri "http://loinc.org"
+                      :code #fhir/code "94564-2"}]}}
+    (= 0 (rem id 3)) (assoc :status #fhir/code "final")
+    (= 1 (rem id 3)) (assoc :status #fhir/code "preliminary"
+                            :effective #fhir/dateTime #system/date-time "2025")
+    (= 2 (rem id 3)) (assoc :status #fhir/code "preliminary")))
+
+(deftest count-query-disjunction-test
+  (log/set-min-level! :info)
+  (st/unstrument)
+  (testing "a disjunction seek clause over several parallel counted chunks"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      (forv [offset (range 0 30000 10000)]
+        (forv [id (range offset (+ offset 10000))]
+          [:put (observation-status-or-date id)]))
+
+      (let [clauses [["code" "94564-2"] [["status" "final"] ["date" "2025"]]]]
+        (given (explain-type-query node "Observation" clauses)
+          :scan-type := :ordered
+          [:scan-clauses count] := 1
+          [:seek-clauses count] := 2)
+
+        (dotimes [_ 5]
+          (is (= 20000 (count-type-query node "Observation" clauses))))))))
+
 (def ^:private data-absent-reason-unknown
   #fhir/Extension
    {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
