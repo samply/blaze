@@ -172,6 +172,58 @@
       (is (false? (.hasNext iter)))
       (is (thrown? NoSuchElementException (.next iter))))))
 
+(defn- counting-filter
+  "Returns a filter transducer that counts its instantiations and completions."
+  [pred instantiations completions]
+  (fn [rf]
+    (swap! instantiations inc)
+    (fn
+      ([result]
+       (swap! completions inc)
+       (rf result))
+      ([result input]
+       (if (pred input) (rf result input) result)))))
+
+(deftest disjunction-filter-test
+  (testing "one filter"
+    (is (= [0 2] (into [] (coll/disjunction-filter [(filter even?)]) (range 4)))))
+
+  (testing "two filters"
+    (is (= [0 1 4] (into [] (coll/disjunction-filter [(filter #(< % 2))
+                                                      (filter #(< 3 %))])
+                         (range 5)))))
+
+  (testing "passes the input and not the output of the filters"
+    (is (= [0 2] (into [] (coll/disjunction-filter [(comp (filter even?) (map str))])
+                       (range 4)))))
+
+  (testing "a filter returning a reduced value doesn't pass the input"
+    (is (= [0 2] (into [] (coll/disjunction-filter [(halt-when odd?)]) (range 4)))))
+
+  (testing "later filters don't see inputs passed by earlier filters"
+    (let [seen (atom [])]
+      (is (= [0 1 2 3] (into [] (coll/disjunction-filter
+                                 [(filter even?)
+                                  (filter #(do (swap! seen conj %) true))])
+                             (range 4))))
+      (is (= [1 3] @seen))))
+
+  (testing "instantiates and completes the filters per reduction"
+    (let [instantiations (atom 0)
+          completions (atom 0)
+          xform (coll/disjunction-filter
+                 [(counting-filter even? instantiations completions)
+                  (counting-filter odd? instantiations completions)])]
+      (is (zero? @instantiations))
+
+      (is (= [0 1] (into [] xform (range 2))))
+      (is (= 2 @instantiations))
+      (is (= 2 @completions))
+
+      (is (= [0 1 2] (into [] xform (range 3))))
+      (is (= 4 @instantiations))
+      (is (= 4 @completions)))))
+
 (deftest count-test
   (are [coll n] (and (= n (coll/count coll))
                      (= n (apply coll/count [coll])))

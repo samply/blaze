@@ -83,6 +83,35 @@
   [n]
   (fn [rf] (PartitionAll. rf n)))
 
+(defn- matches-rf
+  ([result] result)
+  ([_ _] true))
+
+(defn- some-matches? [filters input]
+  (reduce #(if (true? (%2 nil input)) (reduced true) %1) false filters))
+
+(defn disjunction-filter
+  "Returns a stateful transducer that passes an input if at least one of the
+  transducers in `xforms` passes it.
+
+  The `xforms` have to be filter-like: they emit an output if they pass an
+  input. Their outputs are discarded. A transducer returning a reduced value
+  doesn't pass the input. The `xforms` are tried in order, so later ones don't
+  see inputs passed by earlier ones.
+
+  The `xforms` are instantiated per reduction and completed with it."
+  [xforms]
+  (fn [rf]
+    (let [filters (mapv #(% matches-rf) xforms)]
+      (fn
+        ([result]
+         (run! #(% nil) filters)
+         (rf result))
+        ([result input]
+         (if (some-matches? filters input)
+           (rf result input)
+           result))))))
+
 (defn count
   "Like `clojure.core/count` but works only for non-nil collections
   implementing `clojure.lang.Counted` like vectors."

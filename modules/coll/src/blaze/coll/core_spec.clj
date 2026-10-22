@@ -25,6 +25,10 @@
   :args (s/cat :n pos-int?)
   :ret fn?)
 
+(s/fdef coll/disjunction-filter
+  :args (s/cat :xforms (s/coll-of ifn? :kind vector?))
+  :ret fn?)
+
 (s/fdef coll/count
   :args (s/cat :coll counted?)
   :ret nat-int?)
