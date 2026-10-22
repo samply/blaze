@@ -28,7 +28,8 @@
    [java-time.api :as time]
    [juxt.iota :refer [given]])
   (:import
-   [java.time OffsetDateTime]))
+   [java.time OffsetDateTime ZoneOffset]
+   [java.time.temporal ChronoUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -42,8 +43,22 @@
 
 (test/use-fixtures :each fixture)
 
+(def ^:private now-utc
+  (OffsetDateTime/now ZoneOffset/UTC))
+
+(defn- to-utc
+  "Moves DateTime values with offset into UTC keeping the fields as written, so
+  that their year is the same as written and in the offset of now."
+  [x]
+  (if (instance? OffsetDateTime x)
+    (.withOffsetSameLocal ^OffsetDateTime x ZoneOffset/UTC)
+    x))
+
 (defn- dateTime-value []
-  (gen/fmap #(p/to-date-time % (OffsetDateTime/now)) (fg/dateTime-value)))
+  (gen/fmap #(p/to-date-time (to-utc %) now-utc) (fg/dateTime-value)))
+
+(defn- year [x]
+  (some-> x (p/date-time-component-from ChronoUnit/YEARS)))
 
 (deftest sort-by-test
   (testing "date"
@@ -51,26 +66,34 @@
       (satisfies-prop 1000
         (prop/for-all [dates (gen/vector (fg/rare-nil fg/date-value))]
           (= (sort (map time/year dates))
-             (map time/year (queries/sort-by identity "asc" dates))))))
+             (map time/year (queries/sort-by identity "asc" now-utc dates))))))
 
     (testing "desc"
       (satisfies-prop 1000
         (prop/for-all [dates (gen/vector (fg/rare-nil fg/date-value))]
           (= (reverse (sort (map time/year dates)))
-             (map time/year (queries/sort-by identity "desc" dates)))))))
+             (map time/year (queries/sort-by identity "desc" now-utc dates)))))))
 
   (testing "date-time"
     (testing "asc"
       (satisfies-prop 1000
         (prop/for-all [date-times (gen/vector (fg/rare-nil (dateTime-value)))]
-          (= (sort (map time/year date-times))
-             (map time/year (queries/sort-by identity "asc" date-times))))))
+          (= (sort (map year date-times))
+             (map year (queries/sort-by identity "asc" now-utc date-times))))))
 
     (testing "desc"
       (satisfies-prop 1000
         (prop/for-all [date-times (gen/vector (fg/rare-nil (dateTime-value)))]
-          (= (reverse (sort (map time/year date-times)))
-             (map time/year (queries/sort-by identity "desc" date-times))))))))
+          (= (reverse (sort (map year date-times)))
+             (map year (queries/sort-by identity "desc" now-utc date-times)))))))
+
+  (testing "DateTime with offset is compared in the offset of now"
+    (let [a #system/date-time "2025-02-18T00:30:00+01:00"
+          b #system/date-time "2025-02-17T23:45:00"
+          c #system/date-time "2025-02-17T23:40:00Z"]
+      (doseq [date-times [[a b c] [b a c] [c b a]]]
+        (is (= [a c b] (queries/sort-by identity "asc" now-utc date-times)))
+        (is (= [b c a] (queries/sort-by identity "desc" now-utc date-times)))))))
 
 ;; 10.1. Query
 ;;

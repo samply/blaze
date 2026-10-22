@@ -269,32 +269,32 @@
 
 (extend-protocol p/Equal
   Object
-  (equal [x y]
+  (equal [x y _]
     (system/equals x y)))
 
 (extend-protocol p/Equivalent
   Object
-  (equivalent [x y]
+  (equivalent [x y _]
     (= x y)))
 
 (extend-protocol p/Greater
   Comparable
-  (greater [x y]
+  (greater [x y _]
     (some->> y (.compareTo x) (< 0))))
 
 (extend-protocol p/GreaterOrEqual
   Comparable
-  (greater-or-equal [x y]
+  (greater-or-equal [x y _]
     (some->> y (.compareTo x) (<= 0))))
 
 (extend-protocol p/Less
   Comparable
-  (less [x y]
+  (less [x y _]
     (some->> y (.compareTo x) (> 0))))
 
 (extend-protocol p/LessOrEqual
   Comparable
-  (less-or-equal [x y]
+  (less-or-equal [x y _]
     (some->> y (.compareTo x) (>= 0))))
 
 (extend-protocol p/ToString

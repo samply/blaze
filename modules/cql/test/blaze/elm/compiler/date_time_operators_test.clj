@@ -12,7 +12,6 @@
    [blaze.elm.date-time :as date-time]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
-   [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type.system :as system]
    [blaze.test-util :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
@@ -22,7 +21,7 @@
    [java-time.api :as time])
   (:import
    [blaze.fhir.spec.type.system DateDate]
-   [java.time OffsetDateTime]
+   [java.time OffsetDateTime ZoneOffset]
    [java.time.temporal Temporal]))
 
 (set! *warn-on-reflection* true)
@@ -271,6 +270,13 @@
     #elm/date-time"2019-04-17" #system/date"2019-04-17"
     #elm/date-time"2019-04-17T12:48" #system/date"2019-04-17")
 
+  (testing "DateTime with offset is taken as written"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (= #system/date"2025-02-18"
+             (ctu/eval-with-now (elm/date-from #elm/parameter-ref "x") now
+                                #system/date-time "2025-02-18T00:30:00+01:00"
+                                nil)))))
+
   (ctu/testing-unary-null elm/date-from)
 
   (ctu/testing-unary-op elm/date-from)
@@ -410,44 +416,55 @@
     (are [elm] (thrown? Exception (c/compile {} elm))
       #elm/date-time"10000-12-31T23:59:59.999"))
 
-  (testing "with timezone offset"
+  (testing "with timezone offset keeps the offset"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "-2"]
-      (system/date-time 2019 3 23 14 13 14)
-
-      #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                     #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                     #elm/decimal "-1"]
-      (system/date-time 2019 3 23 13 13 14)
+      #system/date-time "2019-03-23T12:13:14-02:00"
 
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "0"]
-      (system/date-time 2019 3 23 12 13 14)
+      #system/date-time "2019-03-23T12:13:14Z"
 
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "1"]
-      (system/date-time 2019 3 23 11 13 14)
-
-      #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                     #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                     #elm/decimal "2"]
-      (system/date-time 2019 3 23 10 13 14)
+      #system/date-time "2019-03-23T12:13:14+01:00"
 
       #elm/date-time[#elm/integer "2012" #elm/integer "3" #elm/integer "10"
                      #elm/integer "10" #elm/integer "20" #elm/integer "0" #elm/integer "999"
                      #elm/decimal "7"]
-      (system/date-time 2012 3 10 3 20 0 999)))
+      #system/date-time "2012-03-10T10:20:00.999+07:00"))
 
-  (testing "with decimal timezone offset"
+  (testing "with timezone offset equals the DateTime in the offset of now"
+    (are [now elm pred]
+         (pred (core/-eval
+                (c/compile {} (elm/equal
+                               [#elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                                               #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                                               #elm/decimal "-2"]
+                                elm]))
+                {:now now} nil nil))
+      ctu/now #elm/date-time "2019-03-23T14:13:14" true?
+      ctu/now-plus-one #elm/date-time "2019-03-23T15:13:14" true?
+      ctu/now-plus-one #elm/date-time "2019-03-23T14:13:14" false?))
+
+  (testing "with decimal timezone offset keeps the offset"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "1.5"]
-      (system/date-time 2019 3 23 10 43 14)))
+      #system/date-time "2019-03-23T12:13:14+01:30"))
+
+  (testing "with timezone offset isn't static, because it can't be compared at
+           compile time"
+    (is (false? (core/-static
+                 (c/compile {} #elm/date-time[#elm/integer "2019" #elm/integer "3"
+                                              #elm/integer "23" #elm/integer "12"
+                                              #elm/integer "13" #elm/integer "14"
+                                              #elm/integer "0" #elm/decimal "1"])))))
 
   (testing "an ELM date-time (only literals) always evaluates to a System.DateTime"
     (satisfies-prop 100
@@ -727,6 +744,21 @@
     (are [x precision res] (= res (eval (compile elm/date-time x precision)))
       "2019-04-17T12:48" "Hour" 12))
 
+  (testing "DateTime with offset is taken as written"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (are [precision res]
+           (= res (ctu/eval-with-now
+                   (elm/date-time-component-from
+                    [#elm/parameter-ref "x" precision])
+                   now #system/date-time "2025-02-18T00:30:15.123+01:00" nil))
+        "Year" 2025
+        "Month" 2
+        "Day" 18
+        "Hour" 0
+        "Minute" 30
+        "Second" 15
+        "Millisecond" 123)))
+
   (ctu/testing-unary-precision-op elm/date-time-component-from "Year" "Month"
                                   "Day" "Hour" "Minute" "Second" "Millisecond"))
 
@@ -798,6 +830,25 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
+  (testing "DateTime with offset"
+    (let [eval #(ctu/eval-with-now
+                 (elm/difference-between
+                  [#elm/parameter-ref "x" #elm/parameter-ref "y" %1])
+                 %2 %3 %4)]
+      (testing "at day precision the values are normalized to the offset of now"
+        (are [now res] (= res (eval "Day" now
+                                    #system/date-time "2025-02-18T00:30:00+01:00"
+                                    #system/date-time "2025-02-20T00:00:00"))
+          ctu/now 3
+          ctu/now-plus-one 2))
+
+      (testing "at hour precision the values are normalized to the offset of now"
+        (are [now res] (= res (eval "Hour" now
+                                    #system/date-time "2025-02-18T00:30:00+01:00"
+                                    #system/date-time "2025-02-18T02:00:00"))
+          ctu/now 3
+          ctu/now-plus-one 2))))
+
   (ctu/testing-binary-precision-only-op elm/difference-between "Year" "Month" "Day"))
 
 ;; 18.11. DurationBetween
@@ -865,6 +916,47 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
+  (testing "DateTime with offset"
+    (let [eval #(ctu/eval-with-now
+                 (elm/duration-between
+                  [#elm/parameter-ref "x" #elm/parameter-ref "y" %1])
+                 %2 %3 %4)]
+      (testing "at day precision the values are normalized to the offset of now"
+        (are [now x y res] (= res (eval "Day" now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-20T00:00:00" 2
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-20T00:00:00" 1
+
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-20T00:00:00Z" 2
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-20T00:00:00Z" 2))
+
+      (testing "at hour precision the values are normalized to the offset of now"
+        (are [now x y res] (= res (eval "Hour" now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T02:00:00" 2
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T02:00:00" 1
+
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T02:00:00Z" 2
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T02:00:00Z" 2))))
+
   (ctu/testing-binary-precision-only-op elm/duration-between "Year" "Month" "Day"))
 
 ;; 18.12. Not Equal
@@ -884,9 +976,15 @@
 ;; request, allowing the evaluation to be performed with the same timezone
 ;; offset information as the data delivered with the evaluation request.
 (deftest compile-now-test
-  (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
-    {:type "Now"}
-    (p/to-date-time ctu/now ctu/now)))
+  (testing "keeps the offset of the evaluation request"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (= now (core/-eval (c/compile {} {:type "Now"}) {:now now} nil nil)))))
+
+  (testing "equals the same DateTime without offset"
+    (doseq [now [ctu/now ctu/now-plus-one]]
+      (is (true? (ctu/eval-with-now
+                  (elm/equal [{:type "Now"} #elm/parameter-ref "x"])
+                  now (.toLocalDateTime ^OffsetDateTime now) nil))))))
 
 ;; 18.14. SameAs
 ;;
@@ -968,6 +1066,78 @@
         "2019-04" "2019-05" true?
         "2019-04-17" "2019-04-17" true?
         "2019-04-17" "2019-04-18" true?)))
+
+  (testing "DateTime with offset"
+    (let [eval #(ctu/eval-with-now
+                 (elm/same-as [#elm/parameter-ref "x" #elm/parameter-ref "y" %1])
+                 %2 %3 %4)]
+      (testing "at day precision the values are taken as written"
+        (doseq [now [ctu/now ctu/now-plus-one]]
+          (are [x y pred] (pred (eval "Day" now x y))
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-18" true?
+
+            #system/date-time "2025-02-18"
+            #system/date-time "2025-02-18T00:30:00+01:00" true?
+
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-18T12:00:00" true?
+
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-17T23:45:00Z" false?)))
+
+      (testing "a DateTime literal with offset is taken as written at day precision"
+        (doseq [now [ctu/now ctu/now-plus-one]]
+          (is (true? (core/-eval
+                      (c/compile {} (elm/same-as
+                                     [#elm/date-time [#elm/integer "2025" #elm/integer "2"
+                                                      #elm/integer "18" #elm/integer "0"
+                                                      #elm/integer "30" #elm/integer "0"
+                                                      #elm/integer "0" #elm/decimal "1"]
+                                      #elm/date-time "2025-02-18"
+                                      "Day"]))
+                      {:now now} nil nil)))))
+
+      (testing "at hour precision the values are normalized to the offset of now"
+        (are [now x y pred] (pred (eval "Hour" now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:00:00" true?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:00:00" false?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T00:00:00" true?
+
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:45:00Z" true?))
+
+      (testing "at hour precision values with the same offset are not normalized"
+        (is (false? (eval "Hour" (OffsetDateTime/now (ZoneOffset/ofHoursMinutes 5 30))
+                          #system/date-time "2025-02-18T10:50:00+01:00"
+                          #system/date-time "2025-02-18T11:10:00+01:00"))))
+
+      (testing "without precision the values are normalized to the offset of now"
+        (are [now x y pred] (pred (eval nil now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:30:00Z" true?
+
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:30:00" true?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:30:00" false?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T00:30:00" true?))))
 
   (ctu/testing-binary-precision-op elm/same-as))
 
@@ -1070,6 +1240,43 @@
         "2019-04" "2019-04" true?
         "2019-04" "2019-03" true?)))
 
+  (testing "DateTime with offset"
+    (let [eval #(ctu/eval-with-now
+                 (elm/same-or-before
+                  [#elm/parameter-ref "x" #elm/parameter-ref "y" %1])
+                 %2 %3 %4)]
+      (testing "at day precision the values are taken as written"
+        (doseq [now [ctu/now ctu/now-plus-one]]
+          (are [x y pred] (pred (eval "Day" now x y))
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-17" false?
+
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-17T23:45:00Z" false?
+
+            #system/date-time "2025-02-17T23:45:00Z"
+            #system/date-time "2025-02-18T00:30:00+01:00" true?)))
+
+      (testing "at hour precision the values are normalized to the offset of now"
+        (are [now x y pred] (pred (eval "Hour" now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:00:00" true?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-17T23:00:00" false?))))
+
+  (testing "DateTime with offset is normalized to the offset of now without precision"
+    (are [now pred] (pred (ctu/eval-with-now
+                           (elm/same-or-before
+                            [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                           now
+                           #system/date-time "2025-02-18T00:30:00+01:00"
+                           #system/date-time "2025-02-17T23:45:00"))
+      ctu/now true?
+      ctu/now-plus-one false?))
+
   (ctu/testing-binary-precision-op elm/same-or-before))
 
 ;; 18.15. SameOrAfter
@@ -1170,6 +1377,43 @@
         "2019-04" "2019-03" true?
         "2019-04" "2019-04" true?
         "2019-04" "2019-05" true?)))
+
+  (testing "DateTime with offset"
+    (let [eval #(ctu/eval-with-now
+                 (elm/same-or-after
+                  [#elm/parameter-ref "x" #elm/parameter-ref "y" %1])
+                 %2 %3 %4)]
+      (testing "at day precision the values are taken as written"
+        (doseq [now [ctu/now ctu/now-plus-one]]
+          (are [x y pred] (pred (eval "Day" now x y))
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-18" true?
+
+            #system/date-time "2025-02-18T00:30:00+01:00"
+            #system/date-time "2025-02-18T00:15:00Z" true?
+
+            #system/date-time "2025-02-17T23:45:00Z"
+            #system/date-time "2025-02-18T00:30:00+01:00" false?)))
+
+      (testing "at hour precision the values are normalized to the offset of now"
+        (are [now x y pred] (pred (eval "Hour" now x y))
+          ctu/now
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T00:00:00" false?
+
+          ctu/now-plus-one
+          #system/date-time "2025-02-18T00:30:00+01:00"
+          #system/date-time "2025-02-18T00:00:00" true?))))
+
+  (testing "DateTime with offset is normalized to the offset of now without precision"
+    (are [now pred] (pred (ctu/eval-with-now
+                           (elm/same-or-after
+                            [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+                           now
+                           #system/date-time "2025-02-18T00:30:00+01:00"
+                           #system/date-time "2025-02-18T00:00:00"))
+      ctu/now false?
+      ctu/now-plus-one true?))
 
   (ctu/testing-binary-precision-op elm/same-or-after))
 

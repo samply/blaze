@@ -65,13 +65,14 @@
 ;; For decimal values, trailing zeroes are ignored.
 (extend-protocol p/Equal
   BigDecimal
-  (equal [x y]
-    (some->> y (p/equivalent x))))
+  (equal [x y now]
+    (when (some? y)
+      (p/equivalent x y now))))
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
   BigDecimal
-  (equivalent [x y]
+  (equivalent [x y _]
     (if (number? y)
       (== x y)
       false)))

@@ -76,8 +76,8 @@
 (defn parse [s]
   (xml/parse-str s :namespace-aware false :coalescing true))
 
-(defn- equal "Special equality handling for Quantities" [a b]
-  (or (= a b) (p/equal a b)))
+(defn- equal "Special equality handling for Quantities" [now a b]
+  (or (= a b) (p/equal a b now)))
 
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)
@@ -90,7 +90,7 @@
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
                         `(is
                           (try
-                            (equal (eval ~'now ~output) (eval ~'now ~expression))
+                            (equal ~'now (eval ~'now ~output) (eval ~'now ~expression))
                             (catch Throwable e#
                               (throw (ex-info (ex-message e#) (merge (ex-data e#) {:name ~name}))))))))))))))
 

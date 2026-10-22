@@ -196,36 +196,39 @@
     (-form [_]
       `(~'vector-query ~(-form xform-factory) ~(core/-form source)))))
 
-(deftype AscComparator []
+(deftype AscComparator [now]
   Comparator
   (compare [_ x y]
-    [x y]
     (cond
-      (p/less x y) -1
-      (p/greater x y) 1
+      (p/less x y now) -1
+      (p/greater x y now) 1
       (and (nil? x) (some? y)) -1
       (and (nil? y) (some? x)) 1
       :else 0)))
 
-(def asc-comparator (->AscComparator))
-
-(deftype DescComparator []
+(deftype DescComparator [now]
   Comparator
   (compare [_ x y]
     (cond
-      (p/less x y) 1
-      (p/greater x y) -1
+      (p/less x y now) 1
+      (p/greater x y now) -1
       (and (nil? x) (some? y)) 1
       (and (nil? y) (some? x)) -1
       :else 0)))
 
-(def ^:private desc-comparator (->DescComparator))
+(defn comparator
+  "Returns a comparator for `direction` that compares relative to the
+  evaluation request at `now`."
+  [direction now]
+  (if (#{"desc" "descending"} direction)
+    (->DescComparator now)
+    (->AscComparator now)))
 
-(defn comparator [direction]
-  (if (#{"desc" "descending"} direction) desc-comparator asc-comparator))
-
-(defn sort-by [f direction coll]
-  (clojure.core/sort-by f (comparator direction) coll))
+(defn sort-by
+  "Sorts `coll` by `f` in `direction` relative to the evaluation request at
+  `now`."
+  [f direction now coll]
+  (clojure.core/sort-by f (comparator direction now) coll))
 
 (defn sort-by-item-form [sort-by-item]
   (if-let [expr (:expression sort-by-item)]
@@ -252,7 +255,8 @@
             (if-let [expr (:expression sort-by-item)]
               (partial core/-eval expr context resource)
               identity)
-            (:direction sort-by-item))
+            (:direction sort-by-item)
+            (:now context))
            (vec)))
     (-form [_]
       `(~'sorted-vector-query ~(-form xform-factory) ~(core/-form source)
