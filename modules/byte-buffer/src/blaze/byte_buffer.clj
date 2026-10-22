@@ -70,9 +70,11 @@
   {:inline
    (fn
      ([byte-buffer byte-array]
-      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array))
+      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer)
+             ~(vary-meta byte-array assoc :tag "[B")))
      ([byte-buffer byte-array offset length]
-      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array
+      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer)
+             ~(vary-meta byte-array assoc :tag "[B")
              (int ~offset) (int ~length))))}
   ([byte-buffer byte-array]
    (.put ^ByteBuffer byte-buffer ^bytes byte-array))

@@ -1,5 +1,6 @@
 (ns blaze.db.impl.iterators-test
   (:require
+   [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.iterators :as i]
@@ -21,7 +22,49 @@
 (def config
   {::kv/mem {:column-families {}}})
 
+(defn- bytes-of
+  "Returns a byte array of `n` bytes all having the value `b`."
+  [n b]
+  (byte-array (repeat n (unchecked-byte b))))
+
+(def ^:private large-size
+  "A size which doesn't fit into the initial byte buffers."
+  (inc i/buffer-size))
+
+(def ^:private larger-size
+  "A size which doesn't even fit into the first enlarged byte buffers."
+  (* 3 i/buffer-size))
+
+(def ^:private mixed-size-keys
+  "Keys in index order where small keys follow keys which need enlarged byte
+  buffers."
+  [(bytes-of 1 0x00)
+   (bytes-of large-size 0x01)
+   (bytes-of 1 0x02)
+   (bytes-of larger-size 0x03)
+   (bytes-of 1 0x04)])
+
 (deftest seek-key-filter-test
+  (testing "keys and targets which need enlarged byte buffers"
+    (with-system [{kv-store ::kv/mem} config]
+      (kv/put! kv-store (mapv #(vector :default % bytes/empty) mixed-size-keys))
+
+      (with-open [snapshot (kv/new-snapshot kv-store)]
+        (let [encode (fn [target-buf input _]
+                       (let [bytes (bs/to-byte-array input)
+                             buf (if (< (bb/capacity target-buf) (alength bytes))
+                                   (bb/allocate (alength bytes))
+                                   target-buf)]
+                         (bb/put-byte-array! buf bytes)))
+              matches? (i/target-length-matcher (fn [_ _ _] true))
+              inputs (mapv bs/from-byte-array
+                           (conj mixed-size-keys (bytes-of larger-size 0x05)))]
+          (is (= (mapv bs/from-byte-array mixed-size-keys)
+                 (into [] (i/seek-key-filter snapshot :default
+                                             (fn [_] kv/seek-buffer!)
+                                             matches? encode [:value])
+                       inputs)))))))
+
   (testing "minimal filter matching every input"
     (with-system [{kv-store ::kv/mem} config]
       (kv/put!
@@ -68,7 +111,29 @@
 
       (with-open [snapshot (kv/new-snapshot kv-store)]
         (is (= [(bs/from-hex (apply str (repeat (inc i/buffer-size) "00")))]
-               (vec (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00"))))))))
+               (vec (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00")))))))
+
+  (testing "small keys following keys which need enlarged byte buffers"
+    (with-system [{kv-store ::kv/mem} config]
+      (kv/put! kv-store (mapv #(vector :default % bytes/empty) mixed-size-keys))
+
+      (with-open [snapshot (kv/new-snapshot kv-store)]
+        (let [keys (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00")]
+          (is (= (mapv bs/from-byte-array mixed-size-keys)
+                 (vec keys)
+                 (vec-from-iter keys))))))))
+
+(deftest entries-test
+  (testing "small keys and values following ones which need enlarged byte buffers"
+    (with-system [{kv-store ::kv/mem} config]
+      (let [entries (mapv vector mixed-size-keys (reverse mixed-size-keys))]
+        (kv/put! kv-store (mapv #(into [:default] %) entries))
+
+        (with-open [snapshot (kv/new-snapshot kv-store)]
+          (is (= (mapv #(mapv bs/from-byte-array %) entries)
+                 (vec (i/entries snapshot :default
+                                 (map #(mapv bs/from-byte-buffer! %))
+                                 #blaze/byte-string"00")))))))))
 
 (deftest prefix-keys-xf-test
   (with-system [{kv-store ::kv/mem} config]

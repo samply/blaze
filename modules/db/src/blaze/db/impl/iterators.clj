@@ -88,6 +88,28 @@
 (defn- read-key! [buf iter]
   (read! kv/key! buf iter))
 
+(defn- buf-state ^objects []
+  (object-array [(bb/allocate buffer-size)]))
+
+(defmacro ^:private swap-buf!
+  "Calls `f` with the byte buffer held in `buf-state` and `args`, stores the
+  result back into `buf-state` if it's a different byte buffer and returns it.
+
+  The `buf-state` is a single-element object array created by `buf-state`. It
+  is accessed with plain array reads and writes, without memory barriers, so it
+  must be confined to a single thread.
+
+  The function `f` usually returns the current byte buffer and only allocates a
+  new one if it's too small, so the write is rarely needed. Being a macro, `f`
+  is called directly at each call site."
+  [buf-state f & args]
+  `(let [buf-state# ~buf-state
+         buf# (aget buf-state# 0)
+         new-buf# (~f buf# ~@args)]
+     (when-not (identical? buf# new-buf#)
+       (aset buf-state# 0 new-buf#))
+     new-buf#))
+
 (defn seek-key-filter
   "Returns a stateful transducer that filters it's inputs by finding a key in
   `column-family` that matches with regards of one of the `values`.
@@ -116,8 +138,8 @@
           encode (fn [target-buf input value]
                    (bb/clear! target-buf)
                    (encode target-buf input value))
-          target-buf-state (volatile! (bb/allocate buffer-size))
-          key-buf-state (volatile! (bb/allocate buffer-size))]
+          target-buf-state (buf-state)
+          key-buf-state (buf-state)]
       (fn
         ([result]
          (.close ^AutoCloseable iter)
@@ -125,12 +147,12 @@
         ([result input]
          (if (some
               (fn [value]
-                (let [target-buf (vswap! target-buf-state encode input value)]
+                (let [target-buf (swap-buf! target-buf-state encode input value)]
                   (bb/flip! target-buf)
                   ((seek value) iter target-buf)
                   (when (kv/valid? iter)
                     (bb/rewind! target-buf)
-                    (let [key-buf (vswap! key-buf-state read-key! iter)]
+                    (let [key-buf (swap-buf! key-buf-state read-key! iter)]
                       (matches? target-buf key-buf input value)))))
               values)
            (rf result input)
@@ -245,11 +267,11 @@
   iterator and keeps track of the buffer used."
   []
   (fn [rf]
-    (let [buf-state (volatile! (bb/allocate buffer-size))]
+    (let [buf-state (buf-state)]
       (fn
         ([result] (rf result))
         ([result input]
-         (rf result (vswap! buf-state read-key! input)))))))
+         (rf result (swap-buf! buf-state read-key! input)))))))
 
 (defn- key-decoder [decode]
   (comp
@@ -330,13 +352,13 @@
   downstream iterator and keeps track of the buffers used."
   []
   (fn [rf]
-    (let [kb-state (volatile! (bb/allocate buffer-size))
-          vb-state (volatile! (bb/allocate buffer-size))]
+    (let [kb-state (buf-state)
+          vb-state (buf-state)]
       (fn
         ([result] (rf result))
         ([result iter]
-         (rf result [(vswap! kb-state read-key! iter)
-                     (vswap! vb-state read-value! iter)]))))))
+         (rf result [(swap-buf! kb-state read-key! iter)
+                     (swap-buf! vb-state read-value! iter)]))))))
 
 (defn- entries-xf [xform]
   (comp
