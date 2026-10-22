@@ -48,7 +48,7 @@ services:
       start_period: 30s
 
   fhir-validator:
-    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.8@sha256:4a60074f0f780c9d497b68f67b7c62da886554fc156e19bb035f77962c363f26"
+    image: "ghcr.io/medizininformatik-initiative/mii-fhir-validator:0.0.1-alpha.9@sha256:8d51723ddef4096603b61b768ec254c6f78c1155cd13a68ccb46d389a9df2a4a"
     # Load the cqfmeasures IG, which defines the cqfm-populationBasis extension
     # used in Measure resources created by blazectl, at startup in addition to
     # the default IGs. Otherwise the validator would download and load it on
