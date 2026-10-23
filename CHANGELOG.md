@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.12.1
+
+### Notes
+
+This release fixes [CVE-2026-84782](https://github.com/samply/blaze/issues/4457) in the Docker base image. We recommend that everyone running the Blaze Docker image update.
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Security
+
+* Use eclipse-temurin:25-jre-noble as Base Image ([#4457](https://github.com/samply/blaze/issues/4457))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/132?closed=1).
+
 ## v1.12.0
 
 ### Notes
