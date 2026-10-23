@@ -60,7 +60,7 @@ jobs:
       uses: DeLaGuardo/setup-clojure@6d46099eae24853c33c0482f2bb54edf4f1a4c74 # 13.7.0
       env:
         # renovate: datasource=github-releases depName=clj-kondo/clj-kondo versioning=loose extractVersion=^v(?<version>.+)$
-        CLJ_KONDO_VERSION: 2026.08.04
+        CLJ_KONDO_VERSION: 2026.10.20
       with:
         clj-kondo: ${{ env.CLJ_KONDO_VERSION }}
 
