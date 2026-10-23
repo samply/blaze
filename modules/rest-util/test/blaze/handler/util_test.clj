@@ -9,6 +9,7 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)

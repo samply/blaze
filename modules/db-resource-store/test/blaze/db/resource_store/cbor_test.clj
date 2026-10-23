@@ -11,6 +11,7 @@
   (:import
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)

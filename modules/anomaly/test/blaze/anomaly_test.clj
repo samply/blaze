@@ -13,6 +13,7 @@
     CancellationException CompletionException ExecutionException
     TimeoutException]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)

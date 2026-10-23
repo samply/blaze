@@ -9,6 +9,7 @@
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
