@@ -8,8 +8,104 @@ on:
 permissions: read-all
 
 jobs:
+  # The rendered Implementation Guide is attached to the release that publishes
+  # it. The documentation site serves those assets instead of rebuilding the
+  # guide, so that every published version stays reachable.
+  #
+  # A release only publishes the guide when its conformance artifacts differ
+  # from the ones of the most recently published version. The artifacts change
+  # a few times a year while Blaze is released roughly twenty times a year, so
+  # rendering per release would fill the site with identical copies.
+  publish-ig:
+    if: github.event.release.target_commitish == 'main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+      with:
+        egress-policy: audit
+
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      with:
+        ref: ${{ github.event.release.tag_name }}
+
+    - name: Setup Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: 'modules/ig/package-lock.json'
+
+    - name: Build Artifacts
+      run: make -C modules/ig build
+
+    - name: Decide Whether to Publish
+      id: decide
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        current=$(modules/ig/scripts/artifact-hash.sh modules/ig/fsh-generated/resources)
+        published=$(.github/scripts/latest-ig-hash.sh)
+
+        if [ "$current" = "$published" ]; then
+          echo "Artifacts unchanged since the last published version, skipping."
+          echo "publish=false" >>"$GITHUB_OUTPUT"
+        else
+          echo "Artifacts changed since the last published version, publishing."
+          echo "publish=true" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Setup Java
+      if: steps.decide.outputs.publish == 'true'
+      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    # The IG Publisher shells out to Jekyll to assemble the final HTML site
+    # from the fragments it generates into temp/pages.
+    - name: Setup Ruby
+      if: steps.decide.outputs.publish == 'true'
+      uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+      with:
+        ruby-version: '3.3'
+
+    - name: Install Jekyll
+      if: steps.decide.outputs.publish == 'true'
+      run: gem install jekyll
+
+    - name: Cache IG Publisher
+      if: steps.decide.outputs.publish == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          modules/ig/input-cache
+          modules/ig/publisher.jar
+        key: ig-publisher-cache-${{ hashFiles('modules/ig/ig.ini', 'modules/ig/Makefile', 'modules/ig/sushi-config.yaml') }}
+
+    - name: Publish IG
+      if: steps.decide.outputs.publish == 'true'
+      working-directory: modules/ig
+      env:
+        RELEASE: ${{ github.event.release.tag_name }}
+        PUBLISHED_AT: ${{ github.event.release.published_at }}
+      run: make publish IG_VERSION="${RELEASE#v}" IG_DATE="${PUBLISHED_AT%%T*}"
+
+    - name: Upload IG to Release
+      if: steps.decide.outputs.publish == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE: ${{ github.event.release.tag_name }}
+      run: |
+        tar -czf "blaze-ig-${RELEASE#v}.tgz" -C modules/ig/output .
+        gh release upload "$RELEASE" "blaze-ig-${RELEASE#v}.tgz" --clobber
+
   pages:
     if: github.event.release.target_commitish == 'main'
+    needs: [ publish-ig ]
     runs-on: ubuntu-24.04
     permissions:
       actions: write

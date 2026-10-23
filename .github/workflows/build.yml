@@ -106,6 +106,73 @@ jobs:
         name: ig-profiles
         path: modules/ig/fsh-generated/resources/*.json
 
+  # Rendering the guide only happens when a release publishes it, so a broken
+  # template or publisher would otherwise surface at release time. This renders
+  # it on the changes that could break it, which are a handful per year.
+  ig-publish:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        fetch-depth: 0
+
+    - name: Detect Implementation Guide Changes
+      id: changes
+      env:
+        BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+      run: |
+        if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+          echo "No base commit to compare against, nothing to render."
+          echo "render=false" >>"$GITHUB_OUTPUT"
+        elif git diff --quiet "$BASE" HEAD -- modules/ig; then
+          echo "Implementation Guide unchanged, nothing to render."
+          echo "render=false" >>"$GITHUB_OUTPUT"
+        else
+          echo "Implementation Guide changed, rendering."
+          echo "render=true" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Setup Node
+      if: steps.changes.outputs.render == 'true'
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      with:
+        node-version-file: .nvmrc
+
+    - name: Setup Java
+      if: steps.changes.outputs.render == 'true'
+      uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # The IG Publisher shells out to Jekyll to assemble the final HTML site
+    # from the fragments it generates into temp/pages.
+    - name: Setup Ruby
+      if: steps.changes.outputs.render == 'true'
+      uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
+      with:
+        ruby-version: '3.3'
+
+    - name: Install Jekyll
+      if: steps.changes.outputs.render == 'true'
+      run: gem install jekyll
+
+    - name: Cache IG Publisher
+      if: steps.changes.outputs.render == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          modules/ig/input-cache
+          modules/ig/publisher.jar
+        key: ig-publisher-cache-${{ hashFiles('modules/ig/ig.ini', 'modules/ig/Makefile', 'modules/ig/sushi-config.yaml') }}
+
+    - name: Publish IG
+      if: steps.changes.outputs.render == 'true'
+      working-directory: modules/ig
+      run: make publish
+
   prep-deps:
     runs-on: ubuntu-24.04
 
