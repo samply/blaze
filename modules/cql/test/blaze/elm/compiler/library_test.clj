@@ -277,6 +277,52 @@
           (testing "there are no optimizations available"
             (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
+  (testing "Unfiltered expression referencing another Unfiltered expression"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+
+        context Unfiltered
+
+        define A: 1
+
+        define B: A")]
+      (with-system [system api-stub/mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
+          (given expression-defs
+            ["B" :context] := "Unfiltered"
+            ["B" expr-form] := '(expr-ref "A"))
+
+          (testing "the reference is resolved"
+            (given (library/resolve-all-refs expression-defs)
+              ["B" :expression] := 1))))))
+
+  (testing "Unfiltered expression referencing a Patient expression"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+
+        context Patient
+
+        define A: Patient.id
+
+        context Unfiltered
+
+        define B: A")]
+      (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        (let [{:keys [expression-defs]} (library/compile-library (compile-context system) library default-opts)]
+          (given expression-defs
+            ["B" :context] := "Unfiltered"
+            ["B" expr-form] := '(expr-ref-each "Patient" "A"))
+
+          (testing "the expression is evaluated over all patients"
+            (given (library/eval-unfiltered {:db (d/db node)
+                                             :now (bt/offset-date-time)
+                                             :expression-defs expression-defs}
+                                            expression-defs)
+              ["B" :expression] := ["0" "1"]))))))
+
   (testing "expressions from Unfiltered context are not resolved"
     (let [library (t/translate "library Test
         using FHIR version '4.0.0'

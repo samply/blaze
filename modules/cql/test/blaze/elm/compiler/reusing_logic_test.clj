@@ -5,7 +5,8 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
@@ -27,6 +28,7 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
 
@@ -70,7 +72,57 @@
 
       (has-form expr '(expr-ref "name-170312"))
 
-      (is (false? (core/-static expr))))))
+      (is (false? (core/-static expr)))))
+
+  (testing "in Unfiltered context"
+    (testing "referencing an Unfiltered expression"
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "name-170312"
+                                         :context "Unfiltered"}]}}
+            expr (c/compile {:library library :eval-context "Unfiltered"}
+                            #elm/expression-ref "name-170312")]
+
+        (testing "eval"
+          (is (= ::result (core/-eval expr {:expression-defs {"name-170312" {:expression ::result}}} nil nil))))
+
+        (testing "form"
+          (has-form expr '(expr-ref "name-170312")))))
+
+    (testing "referencing a Patient expression"
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "name-170312"
+                                         :context "Patient"}]}}
+            ctx {:library library :eval-context "Unfiltered"}
+            elm #elm/expression-ref "name-170312"]
+
+        (testing "eval"
+          (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+            (let [expr (c/compile ctx elm)
+                  patient-expr (c/compile {:node node :eval-context "Patient" :library {}}
+                                          ctu/patient-retrieve-elm)
+                  eval-ctx {:db (d/db node)
+                            :expression-defs {"name-170312" {:expression patient-expr}}}]
+              (given (core/-eval expr eval-ctx nil nil)
+                count := 2
+                [0 0 :id] := "0"
+                [1 0 :id] := "1")))
+
+          (testing "with missing expression definition"
+            (given (ba/try-anomaly (core/-eval (c/compile ctx elm) {:expression-defs {}} nil nil))
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Expression definition `name-170312` not found.")))
+
+        (testing "equals/hashCode"
+          (let [expr-1 (c/compile ctx elm)
+                expr-2 (c/compile ctx elm)]
+            (is (.equals ^Object expr-1 expr-2))
+            (is (= (.hashCode ^Object expr-1) (.hashCode ^Object expr-2)))))
+
+        (testing "form"
+          (has-form (c/compile ctx elm) '(expr-ref-each "Patient" "name-170312")))))))
 
 ;; 9.4. FunctionRef
 ;;

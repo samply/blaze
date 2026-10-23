@@ -40,14 +40,16 @@
     (-form [_]
       `(~'coalesce ~@(map core/-form operands)))))
 
-(defn coalesce-list-op [list]
+(defn- coalesce-list-op [list]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
-      (core/attach-cache-helper coalesce-op cache list))
+      (core/attach-cache-helper coalesce-list-op cache list))
     (-resolve-refs [_ expression-defs]
-      (coalesce-op (core/-resolve-refs list expression-defs)))
+      (core/resolve-refs-helper coalesce-list-op expression-defs list))
     (-resolve-params [_ parameters]
-      (coalesce-op (core/-resolve-params list parameters)))
+      (core/resolve-params-helper coalesce-list-op parameters list))
+    (-optimize [_ db]
+      (core/optimize-helper coalesce-list-op db list))
     (-eval [_ context resource scope]
       (reduce
        (fn [_ elem]
@@ -55,7 +57,9 @@
            (when (some? elem)
              (reduced elem))))
        nil
-       (core/-eval list context resource scope)))))
+       (core/-eval list context resource scope)))
+    (-form [_]
+      `(~'coalesce ~(core/-form list)))))
 
 (defmethod core/compile* :elm.compiler.type/coalesce
   [context {operands :operand}]

@@ -56,11 +56,10 @@
    :context context))
 
 (defmethod core/compile* :elm.compiler.type/expression-ref
-  [{:keys [library eval-context] :as context}
-   {:keys [name] def-eval-context :life/eval-context}]
+  [{:keys [library eval-context] :as context} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
   (when name
-    (if-let [def (find-expression-def library name)]
+    (if-let [{def-eval-context :context :as def} (find-expression-def library name)]
       (cond
         (and (= "Unfiltered" eval-context) (not= "Unfiltered" def-eval-context))
         ;; The referenced expression has a concrete context but we are in the
@@ -72,7 +71,11 @@
               (mapv
                #(core/-eval expression context % nil)
                (d/type-list db def-eval-context))
-              (throw-anom (expression-def-not-found-anom context name)))))
+              (throw-anom (expression-def-not-found-anom context name))))
+          ;; the form must not start with `expr-ref`, because such forms are
+          ;; seen as references that still have to be resolved
+          (-form [_]
+            (list 'expr-ref-each def-eval-context name)))
 
         :else
         (if-let [result-type-name (:resultTypeName def)]
