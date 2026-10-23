@@ -10,6 +10,8 @@
    [blaze.elm.interval :refer [interval]]
    [blaze.elm.protocols :as p]))
 
+(set! *warn-on-reflection* true)
+
 ;; 19.1. Interval
 (def ^:private function-ref-point-types
   "Point types of FHIRHelpers conversion functions that can appear as interval

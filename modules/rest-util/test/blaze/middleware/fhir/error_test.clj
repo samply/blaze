@@ -9,6 +9,7 @@
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)

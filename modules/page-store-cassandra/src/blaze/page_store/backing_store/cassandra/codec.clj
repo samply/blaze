@@ -6,6 +6,8 @@
   (:import
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private cbor-object-mapper
   (j/object-mapper {:factory (CBORFactory.)}))
 

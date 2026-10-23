@@ -12,6 +12,8 @@
    [blaze.util :refer [condp-identical]]
    [prometheus.alpha :as prom]))
 
+(set! *warn-on-reflection* true)
+
 ;; 13.1. And
 (defn- and-nil-op [x]
   (reify-expr core/Expression

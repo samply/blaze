@@ -8,6 +8,8 @@
    [blaze.elm.compiler.macros :refer [defbinop]]
    [blaze.elm.protocols :as p]))
 
+(set! *warn-on-reflection* true)
+
 ;; 12.1. Equal
 (defbinop equal [operand-1 operand-2]
   (p/equal operand-1 operand-2))

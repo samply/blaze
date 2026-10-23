@@ -30,6 +30,7 @@
    [reitit.ring]
    [taoensso.timbre :as log]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
