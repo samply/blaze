@@ -132,12 +132,13 @@
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-            ["InInitialPopulation" expr-form] := '(call "Gender" (singleton-from (retrieve-resource))))
+            ["InInitialPopulation" expr-form] := '((fn ["P"] (:gender (operand-ref "P"))) (singleton-from (retrieve-resource)))
+            ["InInitialPopulation" :expression c/display-form] := '(call "Gender" (singleton-from (retrieve-resource))))
 
           (given context
             [(function-def "Gender" 1) :context] := "Patient"
             [(function-def "Gender" 1) :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-            [(function-def "Gender" 1) :function #(% "x") c/form] := '(call "Gender" "x")
+            [(function-def "Gender" 1) :function #(% "x") c/form] := '((fn ["P"] (:gender (operand-ref "P"))) "x")
             [(function-def "Gender" 1) :operand count] := 1
             [(function-def "Gender" 1) :operand 0 :name] := "P"
             [(function-def "Gender" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{http://hl7.org/fhir}Patient")
@@ -160,18 +161,19 @@
               (library/compile-library (compile-context system) library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
-            ["InInitialPopulation" expr-form] := '(call "Inc2" 1))
+            ["InInitialPopulation" expr-form] := '((fn ["i"] (add ((fn ["i"] (add (operand-ref "i") 1)) (operand-ref "i")) 1)) 1)
+            ["InInitialPopulation" :expression c/display-form] := '(call "Inc2" 1))
 
           (given context
             [(function-def "Inc" 1) :context] := "Patient"
             [(function-def "Inc" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Inc" 1) :function #(% 1) c/form] := '(call "Inc" 1)
+            [(function-def "Inc" 1) :function #(% 1) c/form] := '((fn ["i"] (add (operand-ref "i") 1)) 1)
             [(function-def "Inc" 1) :operand count] := 1
             [(function-def "Inc" 1) :operand 0 :name] := "i"
             [(function-def "Inc" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
             [(function-def "Inc2" 1) :context] := "Patient"
             [(function-def "Inc2" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Inc2" 1) :function #(% 1) c/form] := '(call "Inc2" 1)
+            [(function-def "Inc2" 1) :function #(% 1) c/form] := '((fn ["i"] (add ((fn ["i"] (add (operand-ref "i") 1)) (operand-ref "i")) 1)) 1)
             [(function-def "Inc2" 1) :operand count] := 1
             [(function-def "Inc2" 1) :operand 0 :name] := "i"
             [(function-def "Inc2" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer")
@@ -195,19 +197,19 @@
           (given context
             [(function-def "Const" 0) :context] := "Patient"
             [(function-def "Const" 0) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Const" 0) :function #(%) c/form] := '(call "Const")
+            [(function-def "Const" 0) :function #(%) c/form] := '((fn [] 1))
             [(function-def "Const" 0) :function #(%) #(core/-eval % {} nil {})] := 1
             [(function-def "Const" 0) :operand count] := 0
             [(function-def "Inc" 1) :context] := "Patient"
             [(function-def "Inc" 1) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Inc" 1) :function #(% 1) c/form] := '(call "Inc" 1)
+            [(function-def "Inc" 1) :function #(% 1) c/form] := '((fn ["i"] (add (operand-ref "i") 1)) 1)
             [(function-def "Inc" 1) :function #(% 1) #(core/-eval % {} nil {})] := 2
             [(function-def "Inc" 1) :operand count] := 1
             [(function-def "Inc" 1) :operand 0 :name] := "i"
             [(function-def "Inc" 1) :operand 0 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
             [(function-def "Add" 2) :context] := "Patient"
             [(function-def "Add" 2) :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Add" 2) :function #(% 1 2) c/form] := '(call "Add" 1 2)
+            [(function-def "Add" 2) :function #(% 1 2) c/form] := '((fn ["i" "j"] (add (operand-ref "i") (operand-ref "j"))) 1 2)
             [(function-def "Add" 2) :function #(% 1 2) #(core/-eval % {} nil {})] := 3
             [(function-def "Add" 2) :operand count] := 2
             [(function-def "Add" 2) :operand 0 :name] := "i"
@@ -217,7 +219,7 @@
             [(function-def "Add" 3) :context] := "Patient"
             [(function-def "Add" 3) :resultTypeSpecifier :type] := "ListTypeSpecifier"
             [(function-def "Add" 3) :resultTypeSpecifier :elementType :name] := "{urn:hl7-org:elm-types:r1}Integer"
-            [(function-def "Add" 3) :function #(% 1 2 3) c/form] := '(call "Add" 1 2 3)
+            [(function-def "Add" 3) :function #(% 1 2 3) c/form] := '((fn ["i" "j" "k"] (list (operand-ref "i") (operand-ref "j") (operand-ref "k"))) 1 2 3)
             [(function-def "Add" 3) :function #(% 1 2 3) #(core/-eval % {} nil {})] := [1 2 3]
             [(function-def "Add" 3) :function #(% 3 1 2) #(core/-eval % {} nil {})] := [3 1 2]
             [(function-def "Add" 3) :operand count] := 3
@@ -227,6 +229,31 @@
             [(function-def "Add" 3) :operand 1 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer"
             [(function-def "Add" 3) :operand 2 :name] := "k"
             [(function-def "Add" 3) :operand 2 :operandTypeSpecifier :resultTypeName] := "{urn:hl7-org:elm-types:r1}Integer")))))
+
+  (testing "calls of functions with the same name but different bodies are different"
+    (let [library (fn [type]
+                    (t/translate (format "library Test
+                      using FHIR version '4.0.0'
+                      include FHIRHelpers version '4.0.0'
+                      context Patient
+                      define function Res(c String): [%s] R where R.id = c
+                      define InInitialPopulation: exists Res('a')" type)))]
+      (with-system [system api-stub/mem-node-config]
+        (let [compile (fn [type]
+                        (-> (library/compile-library (compile-context system) (library type) default-opts)
+                            :expression-defs
+                            (get "InInitialPopulation")
+                            :expression))
+              observation-expr (compile "Observation")
+              condition-expr (compile "Condition")]
+
+          (is (not= observation-expr condition-expr))
+          (is (not= (c/form observation-expr) (c/form condition-expr)))
+
+          (testing "both have the same display form"
+            (is (= '(exists (call "Res" "a"))
+                   (c/display-form observation-expr)
+                   (c/display-form condition-expr))))))))
 
   (testing "expressions from Patient context are resolved"
     (let [library (t/translate "library Test

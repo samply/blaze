@@ -16,7 +16,7 @@
     (-eval [_ context resource scope]
       (core/-eval fn-expr context resource scope))
     (-form [_]
-      `(~'call ~name))))
+      (core/function-call-form name [] (core/-form fn-expr) []))))
 
 (defn arity-1 [name fn-expr op-name op]
   (reify-expr core/Expression
@@ -34,7 +34,8 @@
       (let [op (core/-eval op context resource scope)]
         (core/-eval fn-expr context resource (assoc scope op-name op))))
     (-form [_]
-      `(~'call ~name ~(core/-form op)))))
+      (core/function-call-form name [op-name] (core/-form fn-expr)
+                               [(core/-form op)]))))
 
 (defn arity-2 [name fn-expr op-name-1 op-name-2 op-1 op-2]
   (reify-expr core/Expression
@@ -61,7 +62,8 @@
                       (assoc op-name-2 op-2))]
         (core/-eval fn-expr context resource scope)))
     (-form [_]
-      `(~'call ~name ~(core/-form op-1) ~(core/-form op-2)))))
+      (core/function-call-form name [op-name-1 op-name-2] (core/-form fn-expr)
+                               [(core/-form op-1) (core/-form op-2)]))))
 
 (defn arity-n [name fn-expr op-names & ops]
   (reify-expr core/Expression
@@ -90,4 +92,5 @@
                                (next op-names) (next ops))
                         scope)))))
     (-form [_]
-      `(~'call ~name ~@(map core/-form ops)))))
+      (core/function-call-form name op-names (core/-form fn-expr)
+                               (map core/-form ops)))))

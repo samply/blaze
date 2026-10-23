@@ -107,7 +107,7 @@
    (d/type-list db subject-type)))
 
 (defn- evaluate-expression* [context expression-def subject-type]
-  (log/trace "Evaluate expression" (c/form (:expression expression-def)))
+  (log/trace "Evaluate expression" (c/display-form (:expression expression-def)))
   (let [futures (evaluate-expression-futures context expression-def subject-type)]
     (do-sync [_ (ac/all-of futures)]
       (transduce (map ac/join) (completing (:combine-op context)) futures))))

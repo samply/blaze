@@ -37,3 +37,7 @@
 (s/fdef c/form
   :args (s/cat :expression core/expr?)
   :ret list?)
+
+(s/fdef c/display-form
+  :args (s/cat :expression core/expr?)
+  :ret any?)
