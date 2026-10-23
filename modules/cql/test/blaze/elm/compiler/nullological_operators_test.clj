@@ -4,16 +4,21 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.db.api-stub :as api-stub]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.nullological-operators]
-   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.module.test-util :refer [with-system]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
 
@@ -54,7 +59,52 @@
       []
       [#elm/list []]))
 
-  (ctu/testing-binary-op elm/coalesce))
+  (ctu/testing-binary-op elm/coalesce)
+
+  (testing "list operand"
+    (testing "attach cache"
+      (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [elm (elm/coalesce [#elm/list [#elm/exists #elm/retrieve{:type "Observation"}]])
+                expr (c/compile {:node node :eval-context "Patient"} elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 1
+              [1 0] := '(exists (retrieve "Observation")))))))
+
+    (testing "resolve expression references"
+      (let [elm (elm/coalesce [#elm/list [#elm/expression-ref "x"]])
+            expr-def {:type "ExpressionDef" :name "x" :expression "y"
+                      :context "Unfiltered"}
+            ctx {:library {:statements {:def [expr-def]}}}
+            expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+        (has-form expr '(coalesce (list "y")))
+        (is (= "y" (core/-eval expr {} nil nil)))))
+
+    (testing "resolve parameters"
+      (let [elm (elm/coalesce [#elm/list [{:type "Null"} #elm/parameter-ref "x"]])
+            ctx {:library {:parameters {:def [{:name "x"}]}}}
+            expr (c/resolve-params (c/compile ctx elm) {"x" "y"})]
+        (has-form expr '(coalesce (list nil "y")))
+        (is (= "y" (core/-eval expr {} nil nil)))))
+
+    (testing "optimize"
+      (let [elm (elm/coalesce [#elm/list [#ctu/optimizeable "x"]])
+            expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
+        (has-form expr '(coalesce (list (optimized "x"))))))
+
+    (testing "equals/hashCode"
+      (let [elm (elm/coalesce [#elm/list [#elm/parameter-ref "x"]])
+            ctx {:library {:parameters {:def [{:name "x"}]}}}
+            expr-1 (c/compile ctx elm)
+            expr-2 (c/compile ctx elm)]
+        (is (.equals ^Object expr-1 expr-2))
+        (is (= (.hashCode ^Object expr-1) (.hashCode ^Object expr-2)))))
+
+    (testing "form"
+      (let [expr (ctu/dynamic-compile (elm/coalesce [#elm/list [#elm/parameter-ref "x"]]))]
+        (has-form expr '(coalesce (list (param-ref "x"))))))))
 
 ;; 14.3. IsFalse
 ;;

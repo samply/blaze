@@ -298,41 +298,42 @@
       [#ctu/optimizeable "x" #ctu/optimize-to nil]
       '(and nil (optimized "x")))))
 
+(defn- patient-count-expr [patient-count]
+  (reify-expr core/Expression
+    (-patient-count [_]
+      patient-count)
+    (-form [_]
+      (list 'patient-count-expr patient-count))))
+
 (deftest and-op-patient-count-test
   (testing "both nil"
     (let [op (ops/and-op
-              (reify-expr core/Expression)
-              (reify-expr core/Expression))]
+              (patient-count-expr nil)
+              (patient-count-expr nil))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "first nil"
     (let [op (ops/and-op
-              (reify-expr core/Expression)
-              (reify-expr core/Expression
-                (-patient-count [_] 0)))]
+              (patient-count-expr nil)
+              (patient-count-expr 0))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "second nil"
     (let [op (ops/and-op
-              (reify-expr core/Expression
-                (-patient-count [_] 0))
-              (reify-expr core/Expression))]
+              (patient-count-expr 0)
+              (patient-count-expr nil))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "first smaller"
     (let [op (ops/and-op
-              (reify-expr core/Expression
-                (-patient-count [_] 1))
-              (reify-expr core/Expression
-                (-patient-count [_] 2)))]
+              (patient-count-expr 1)
+              (patient-count-expr 2))]
       (is (= 1 (core/-patient-count op)))))
 
   (testing "second smaller"
     (let [op (ops/and-op
-              (reify-expr core/Expression
-                (-patient-count [_] 2))
-              (reify-expr core/Expression
-                (-patient-count [_] 1)))]
+              (patient-count-expr 2)
+              (patient-count-expr 1))]
       (is (= 1 (core/-patient-count op))))))
 
 ;; 13.2. Implies
@@ -657,38 +658,32 @@
 (deftest or-op-patient-count-test
   (testing "both nil"
     (let [op (ops/or-op
-              (reify-expr core/Expression)
-              (reify-expr core/Expression))]
+              (patient-count-expr nil)
+              (patient-count-expr nil))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "first nil"
     (let [op (ops/or-op
-              (reify-expr core/Expression)
-              (reify-expr core/Expression
-                (-patient-count [_] 0)))]
+              (patient-count-expr nil)
+              (patient-count-expr 0))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "second nil"
     (let [op (ops/or-op
-              (reify-expr core/Expression
-                (-patient-count [_] 0))
-              (reify-expr core/Expression))]
+              (patient-count-expr 0)
+              (patient-count-expr nil))]
       (is (nil? (core/-patient-count op)))))
 
   (testing "first larger"
     (let [op (ops/or-op
-              (reify-expr core/Expression
-                (-patient-count [_] 2))
-              (reify-expr core/Expression
-                (-patient-count [_] 1)))]
+              (patient-count-expr 2)
+              (patient-count-expr 1))]
       (is (= 2 (core/-patient-count op)))))
 
   (testing "second larger"
     (let [op (ops/or-op
-              (reify-expr core/Expression
-                (-patient-count [_] 1))
-              (reify-expr core/Expression
-                (-patient-count [_] 2)))]
+              (patient-count-expr 1)
+              (patient-count-expr 2))]
       (is (= 2 (core/-patient-count op))))))
 
 ;; 13.5. Xor

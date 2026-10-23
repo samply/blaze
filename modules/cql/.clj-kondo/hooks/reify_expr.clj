@@ -2,6 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as api]))
 
+;; -form isn't stubbed, because reify-expr has no default for it
 (def ^:private method-arities
   {'-static 1
    '-attach-cache 2
@@ -9,8 +10,7 @@
    '-resolve-refs 2
    '-resolve-params 2
    '-optimize 2
-   '-eval 4
-   '-form 1})
+   '-eval 4})
 
 (defn- method-name [node]
   (when (api/list-node? node)

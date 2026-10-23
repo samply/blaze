@@ -19,6 +19,8 @@
 (def ^:private ^:const unknown nil)
 
 (defmacro reify-expr [_ & body]
+  (when-not (find-form '-form body)
+    (throw (ex-info "The `-form` method is missing in `reify-expr`." {:form &form})))
   `(reify
      core/Expression
      (~'-static [~'_]
@@ -41,9 +43,7 @@
      ~(if-let [form (find-form '-eval body)]
         form
         (list '-eval ['expr '_ '_ '_] 'expr))
-     ~(if-let [form (find-form '-form body)]
-        form
-        (list '-form ['_] 'nil))
+     ~(find-form '-form body)
 
      Object
      (~'equals [~'this ~'other]
