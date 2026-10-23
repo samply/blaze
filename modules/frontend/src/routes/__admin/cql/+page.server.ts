@@ -1,5 +1,5 @@
 import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { fetchJson } from '$lib/fetch.js';
 
 export interface BloomFilter {
   hash: string;
@@ -14,16 +14,9 @@ export interface Data {
 }
 
 export async function load({ fetch }): Promise<Data> {
-  const res = await fetch(backendUrl('/__admin/cql/bloom-filters'), {
-    headers: { Accept: 'application/json' }
-  });
-
-  if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading CQL Bloom filters. Please try again later.`
-    });
-  }
-
-  return { bloomFilters: await res.json() };
+  return {
+    bloomFilters: await fetchJson<BloomFilter[]>(fetch, backendUrl('/__admin/cql/bloom-filters'), {
+      error: 'An error happened while loading CQL Bloom filters. Please try again later.'
+    })
+  };
 }

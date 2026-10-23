@@ -1,4 +1,5 @@
 import { url, matches } from '$lib/canonical';
+import { loadError } from '$lib/fetch.js';
 import type { CodeableConcept, Coding, Task, TaskInput, TaskOutput } from 'fhir/r4';
 
 const numberUrl = url('sid/JobNumber');
@@ -10,6 +11,20 @@ const outputUrl = url('CodeSystem/JobOutput');
 // form of a Blaze canonical so jobs stored with either system are read.
 function jobCoding(concept: CodeableConcept, canonicalUrl: string): Coding | undefined {
   return concept.coding?.filter((c) => matches(canonicalUrl, c.system))[0];
+}
+
+/**
+ * The error body of a load reading the job with ID `id`.
+ *
+ * Unlike `resourceError`, a deleted job is not pointed at its history: the job
+ * pages show the current state of a job only.
+ */
+export function jobError(id: string): (res: Response) => Promise<App.Error> {
+  return loadError({
+    404: `The job with ID ${id} was not found.`,
+    410: `The job with ID ${id} was deleted.`,
+    default: `An error happened while loading the job with ID ${id}. Please try again later.`
+  });
 }
 
 export interface Job {
