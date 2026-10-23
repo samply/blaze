@@ -9544,6 +9544,24 @@
         (dotimes [_ 5]
           (is (= 20000 (count-type-query node "Observation" clauses))))))))
 
+(deftest type-query-disjunction-postprocess-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (doseq [[code clauses]
+            [["identifier" [[["identifier" "foo"] ["status" "final"]]]]
+             ["identifier" [[:sort "_lastUpdated" :asc]
+                            [["status" "final"] ["identifier" "foo"]]]]
+             ["_lastUpdated" [[["_lastUpdated" "gt1970-01-02"] ["status" "final"]]]]]]
+      (let [msg (format "Unsupported search param `%s` in a disjunction with other clauses." code)]
+        (testing "compile-type-query"
+          (given-failed-future (d/compile-type-query node "Observation" clauses)
+            ::anom/category := ::anom/unsupported
+            ::anom/message := msg))
+
+        (testing "type-query"
+          (given-failed-future (d/type-query (d/db node) "Observation" clauses)
+            ::anom/category := ::anom/unsupported
+            ::anom/message := msg))))))
+
 (def ^:private data-absent-reason-unknown
   #fhir/Extension
    {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"

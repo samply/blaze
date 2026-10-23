@@ -46,12 +46,37 @@
 (defn- multiple-clauses? [disjunction]
   (vector? (first disjunction)))
 
+(defn- postprocessing?
+  "Returns true if matches of `clause` need postprocessing.
+
+  Postprocess filters are created without a batch-db, because they only close
+  over it."
+  [[search-param modifier values compiled-values]]
+  (some? (p/-postprocess-matches search-param nil modifier values
+                                 compiled-values)))
+
+(defn- validate-disjunction
+  "Returns `clauses` or an unsupported anomaly if one of multiple `clauses`
+  needs postprocessing.
+
+  Postprocess filters only refine the matches of their own clause. Matches of a
+  disjunction can come from any of its clauses, so postprocessing them would
+  need to re-match every clause."
+  [clauses]
+  (if-let [[{:keys [code]}] (when (< 1 (count clauses))
+                              (some #(when (postprocessing? %) %) clauses))]
+    (ba/unsupported
+     (format "Unsupported search param `%s` in a disjunction with other clauses."
+             code))
+    clauses))
+
 (defn- resolve-disjunction [registry type disjunction lenient?]
   (let [clause-futures
         (mapv #(resolve-search-clause-only registry type % lenient?)
               (cond-> disjunction (not (multiple-clauses? disjunction)) vector))]
     (-> (ac/all-of clause-futures)
-        (ac/then-apply (fn [_] (into [] (keep ac/join) clause-futures))))))
+        (ac/then-apply
+         (fn [_] (validate-disjunction (into [] (keep ac/join) clause-futures)))))))
 
 (defn resolve-search-params* [registry type clauses lenient?]
   (let [disjunction-futures
