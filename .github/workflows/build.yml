@@ -3166,6 +3166,17 @@ jobs:
     - name: Jepsen Resource History Test
       run: make -C modules/jepsen resource-history-test-fast
 
+    - name: Run Blaze with a Tiny Resource Handle Cache
+      run: |
+        docker rm -f blaze
+        docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO=0.000002 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data-tiny-cache:/app/data blaze:latest
+
+    - name: Wait for Blaze with a Tiny Resource Handle Cache
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Jepsen Independent Register Test
+      run: make -C modules/jepsen independent-register-test
+
   openid-auth-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
     needs: build

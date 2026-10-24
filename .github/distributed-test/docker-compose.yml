@@ -214,6 +214,9 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_BLOCK_CACHE_SIZE: "1024"
+      # the second node runs without the resource handle cache, so that Jepsen
+      # tests both paths
+      DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO: "0"
       DB_RESOURCE_INDEXER_THREADS: "4"
       DB_SYNC_TIMEOUT: "100000"
       ALLOW_MULTIPLE_DELETE: "true"

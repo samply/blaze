@@ -247,7 +247,6 @@
         [meta :blaze.db/op] := :create)))
 
   (testing "one Observation while deleting the referenced Patient"
-    (log/set-min-level! :error)
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
@@ -265,7 +264,16 @@
 
       (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again."))))
+        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
+
+  (testing "a resource can't be created again with the same id after it was deleted"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
+
+      (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Resource `Patient/0` already exists in the database with t = 2 and can't be created again."))))
 
 (defn- ensure-db [node-or-db]
   (cond-> node-or-db
@@ -469,6 +477,18 @@
             ::anom/category := ::anom/conflict
             ::anom/message := "Resource `Patient/0` already exists.")))
 
+      (testing "of any on a deleted Patient"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+           [[:delete "Patient" "0"]]]
+
+          (given-failed-future
+           (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match :any]]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Resource `Patient/0` already exists.")))
+
       (testing "of 1"
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
@@ -505,6 +525,32 @@
           (testing "system history contains only one entry"
             (is (= 1 (d/total-num-of-system-changes db)))
             (is (= 1 (count (d/system-history db)))))))))
+
+  (testing "recreating a deleted Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:delete "Patient" "0"]]]
+
+      (let [db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])]
+
+        (testing "the Patient exists again"
+          (given @(pull-resource db "Patient" "0")
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id "3"
+            :gender := #fhir/code "female"
+            [meta :blaze.db/op] := :put))
+
+        (testing "the Patient is counted again"
+          (is (= 1 (d/type-total db "Patient"))))
+
+        (testing "the instance history contains all three versions"
+          (is (= 3 (d/total-num-of-instance-changes db "Patient" "0")))
+          (given (vec (d/instance-history db "Patient" "0"))
+            count := 3
+            [0 :op] := :put
+            [1 :op] := :delete
+            [2 :op] := :create)))))
 
   (testing "Diamond Reference Dependencies"
     (with-system-data [{:blaze.db/keys [node]} config]

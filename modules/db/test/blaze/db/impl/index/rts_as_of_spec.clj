@@ -18,6 +18,15 @@
                :op keyword?)
   :ret (s/coll-of :blaze.db.kv/put-entry))
 
+(s/fdef rts/resource-handle
+  :args (s/cat :tid :blaze.db/tid
+               :id :blaze.resource/id
+               :t :blaze.db/t
+               :hash :blaze.resource/hash
+               :num-changes nat-int?
+               :op keyword?)
+  :ret :blaze.db/resource-handle)
+
 (s/fdef rts/purge-index-entries
   :args (s/and
          (s/cat :tid :blaze.db/tid

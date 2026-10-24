@@ -83,6 +83,14 @@
   [byte-buffer resource-handle]
   (.copyHashPrefixTo ^ResourceHandle resource-handle byte-buffer))
 
+(defn with-id
+  "Returns a copy of `resource-handle` with `id`, which has to be equal to the
+  id of `resource-handle`.
+
+  Used to share the id instance with another object."
+  [resource-handle id]
+  (.withId ^ResourceHandle resource-handle ^String id))
+
 (defn deleted?
   "Returns `true` if `resource-handle` is deleted."
   [resource-handle]

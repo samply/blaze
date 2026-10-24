@@ -7,36 +7,22 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 compose_file="$1"
 
 restart "$compose_file"
-cql/search.sh observation-788-0
-cql/search.sh observation-788-0 false
-cql/search.sh observation-788-0 false
+profile "$compose_file" "observation-788-0" search-repeatedly observation-788-0 3
 
 restart "$compose_file"
-cql/search.sh observation-44261-6
-cql/search.sh observation-44261-6 false
-cql/search.sh observation-44261-6 false
+profile "$compose_file" "observation-44261-6" search-repeatedly observation-44261-6 3
 
 restart "$compose_file"
-cql/search.sh observation-72514-3
-cql/search.sh observation-72514-3 false
-cql/search.sh observation-72514-3 false
+profile "$compose_file" "observation-72514-3" search-repeatedly observation-72514-3 3
 
 restart "$compose_file"
-cql/search.sh condition-ten-frequent
-cql/search.sh condition-ten-frequent false
-cql/search.sh condition-ten-frequent false
+profile "$compose_file" "condition-ten-frequent" search-repeatedly condition-ten-frequent 3
 
 restart "$compose_file"
-cql/search.sh condition-ten-rare
-cql/search.sh condition-ten-rare false
-cql/search.sh condition-ten-rare false
+profile "$compose_file" "condition-ten-rare" search-repeatedly condition-ten-rare 3
 
 restart "$compose_file"
-cql/search.sh condition-all
-cql/search.sh condition-all false
-cql/search.sh condition-all false
+profile "$compose_file" "condition-all" search-repeatedly condition-all 3
 
 restart "$compose_file"
-cql/search.sh inpatient-stress
-cql/search.sh inpatient-stress false
-cql/search.sh inpatient-stress false
+profile "$compose_file" "inpatient-stress" search-repeatedly inpatient-stress 3
