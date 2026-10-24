@@ -23,8 +23,8 @@
    [integrant.core :as ig]
    [java-time.api :as time])
   (:import
-   [blaze.db.kv.iter_pool PoolingSnapshot State]
-   [java.lang AutoCloseable]))
+   [blaze.db.kv KvCloseable]
+   [blaze.db.kv.iter_pool Pools PoolingSnapshot]))
 
 (set! *warn-on-reflection* true)
 
@@ -178,27 +178,20 @@
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
 
-(defn- snapshot-borrowed-iterators [snapshot]
-  (into
-   {}
-   (keep
-    (fn [[column-family state]]
-      (let [n (count (.borrowed ^State state))]
-        (when (pos? n) [column-family n]))))
-   (.-pool ^PoolingSnapshot snapshot)))
+(defn- snapshot-num-borrowed-iterators [snapshot]
+  (.numBorrowed ^Pools (.-pools ^PoolingSnapshot snapshot)))
 
-(defn borrowed-iterators
-  "Returns a map of column family to the number of iterators borrowed from the
-  snapshot of `batch-db` and not returned yet.
+(defn num-borrowed-iterators
+  "Returns the number of iterators borrowed from the snapshot of `batch-db` and
+  not returned yet.
 
-  Iterators that are never returned pin the snapshot."
+  Iterators that are never returned stay open until the snapshot is closed."
   [{:keys [snapshot]}]
-  (snapshot-borrowed-iterators snapshot))
+  (snapshot-num-borrowed-iterators snapshot))
 
-(defn borrowed-iterators-on-close
-  "Calls `f` and returns a vector of the borrowed iterators, like
-  `borrowed-iterators` returns them, of each snapshot at the time it was closed
-  during the call."
+(defn num-borrowed-iterators-on-close
+  "Calls `f` and returns a vector of the number of borrowed iterators of each
+  snapshot at the time it was closed during the call."
   [f]
   (let [result (atom [])
         new-snapshot kv/new-snapshot]
@@ -209,11 +202,9 @@
                         kv-p/KvSnapshot
                         (-new-iterator [_ column-family]
                           (kv-p/-new-iterator snapshot column-family))
-                        (-snapshot-get [_ column-family key]
-                          (kv-p/-snapshot-get snapshot column-family key))
-                        AutoCloseable
+                        KvCloseable
                         (close [_]
-                          (swap! result conj (snapshot-borrowed-iterators snapshot))
-                          (.close ^AutoCloseable snapshot)))))]
+                          (swap! result conj (snapshot-num-borrowed-iterators snapshot))
+                          (.close ^KvCloseable snapshot)))))]
       (f))
     @result))

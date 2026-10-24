@@ -28,9 +28,7 @@
 (defprotocol KvSnapshot
   "A snapshot of the contents of a KvStore."
 
-  (-new-iterator [snapshot column-family])
-
-  (-snapshot-get [snapshot column-family key]))
+  (-new-iterator [snapshot column-family]))
 
 (defprotocol KvStore
   "A key-value store."

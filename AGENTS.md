@@ -32,6 +32,7 @@ Rigorous adherence to these patterns is required:
 * **Java Interop:**
   * Avoid reflection.
   * **Mandatory:** Add `(set! *warn-on-reflection* true)` to any namespace performing Java interop.
+* **Null Checks in Java:** Guard every argument of a public constructor or method of a Java class that must not be `null` with `requireNonNull`, statically imported from `java.util.Objects` (e.g. `this.snapshot = requireNonNull(snapshot);`). So a `null` fails at the call passing it, not later where it is used, possibly on another thread. Arguments of non-public constructors and methods don't need a guard, because their callers are in the same package.
 * **Async Composition:**
   * Prefer the `blaze.async.comp/do-sync` macro over threading chains of `blaze.async.comp/then-apply` where feasible.
   * Always use `blaze.async.comp/then-apply`, `blaze.async.comp/then-compose` and similar in conjunction with the threading macro (`->`), never as a standalone call.

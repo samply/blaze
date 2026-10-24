@@ -211,7 +211,7 @@
                                          1 #blaze/byte-string"01"))]
           (is (= #blaze/byte-string"0100" (.next ^Iterator iter)))
           (is (thrown? Exception (.close ^AutoCloseable iter)))
-          (is (empty? (dtu/borrowed-iterators {:snapshot snapshot}))))))))
+          (is (zero? (dtu/num-borrowed-iterators {:snapshot snapshot}))))))))
 
 (deftest prefix-keys-prev-xf-test
   (with-system [{kv-store ::kv/mem} config]

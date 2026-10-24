@@ -2,7 +2,8 @@
   "Batch Database Implementation
 
   A batch database keeps key-value store iterators open in order to avoid the
-  cost associated with open and closing them."
+  cost associated with open and closing them. It can be used from several
+  threads at once."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -300,8 +301,14 @@
   "Creates a new batch database.
 
   A batch database can be used instead of a normal database. It's functionally
-  the same. Only the performance for multiple calls differs. It's not thread
-  save and has to be closed after usage because it holds open iterators."
+  the same. Only the performance for multiple calls differs. It can be used from
+  several threads at once, because its snapshot pools iterators per thread.
+
+  It has to be closed after usage because it holds open iterators, but only
+  after all work using it is done. Closing it closes all iterators, also the
+  ones still in use, without waiting for running work. Using it or its
+  iterators after close throws a fault. So lazy results have to be reduced and
+  futures using it have to be completed before closing the batch database."
   ^AutoCloseable
   [{:keys [kv-store resource-handle-cache] :as node} basis-t t since-t]
   (let [snapshot (kv/new-snapshot kv-store)]

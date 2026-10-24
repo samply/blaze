@@ -51,7 +51,7 @@
         (with-open [batch-db (d/new-batch-db (d/db node))]
           (is (ba/unsupported? (p/-estimated-scan-size search-param batch-db (codec/tid "Observation") nil compiled-value)))
 
-          (is (empty? (dtu/borrowed-iterators batch-db))))))))
+          (is (zero? (dtu/num-borrowed-iterators batch-db))))))))
 
 (deftest validate-modifier-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]

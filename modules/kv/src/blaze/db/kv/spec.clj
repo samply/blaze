@@ -5,18 +5,18 @@
    [blaze.db.kv.protocols :as p]
    [clojure.spec.alpha :as s])
   (:import
-   [java.lang AutoCloseable]))
+   [blaze.db.kv KvCloseable]))
 
 (s/def :blaze.db/kv-store
   #(satisfies? p/KvStore %))
 
 (s/def ::kv/snapshot
   (s/and #(satisfies? p/KvSnapshot %)
-         #(instance? AutoCloseable %)))
+         #(instance? KvCloseable %)))
 
 (s/def ::kv/iterator
   (s/and #(satisfies? p/KvIterator %)
-         #(instance? AutoCloseable %)))
+         #(instance? KvCloseable %)))
 
 (s/def ::kv/put-entry
   (s/tuple keyword? bytes? bytes?))

@@ -8932,7 +8932,7 @@
         (given (coll/first @(d/type-query batch-db "Patient" [["_list" "0" "1"]]))
           :id := "0")
 
-        (is (empty? (dtu/borrowed-iterators batch-db))))))
+        (is (zero? (dtu/num-borrowed-iterators batch-db))))))
 
   (testing "chained search with more references than handled in ordered mode"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -8948,7 +8948,7 @@
           count := 1
           [0 :id] := "0")
 
-        (is (empty? (dtu/borrowed-iterators batch-db)))))))
+        (is (zero? (dtu/num-borrowed-iterators batch-db)))))))
 
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
@@ -9663,11 +9663,11 @@
       (let [matcher @(d/compile-type-matcher node "Patient" [["active" "true"]])
             db (d/db node)
             xform (d/matcher-transducer db matcher)]
-        (given (dtu/borrowed-iterators-on-close
+        (given (dtu/num-borrowed-iterators-on-close
                 #(into [] xform (d/type-list db "Patient")))
           count := 2
-          [0] := {}
-          [1] := {})))))
+          [0] := 0
+          [1] := 0)))))
 
 (deftest compile-type-matcher-test
   (testing "token search params"

@@ -18,6 +18,7 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
+   [blaze.db.kv KvCloseable]
    [java.lang AutoCloseable]
    [java.nio ByteBuffer]
    [java.util ArrayList List]
@@ -70,7 +71,7 @@
   (-value [_ buf]
     (.value i ^ByteBuffer buf))
 
-  AutoCloseable
+  KvCloseable
   (close [_]
     (.close i)))
 
@@ -79,10 +80,7 @@
   (-new-iterator [_ column-family]
     (->RocksKvIterator (.newIterator db (impl/get-cfh cfhs column-family) read-opts)))
 
-  (-snapshot-get [_ column-family k]
-    (.get db (impl/get-cfh cfhs column-family) read-opts ^bytes k))
-
-  AutoCloseable
+  KvCloseable
   (close [_]
     (.close read-opts)
     (.releaseSnapshot db snapshot)))

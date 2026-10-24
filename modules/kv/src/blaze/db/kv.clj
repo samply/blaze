@@ -7,7 +7,7 @@
    [blaze.db.kv.iter-pool :as ip]
    [blaze.db.kv.protocols :as p])
   (:import
-   [java.lang AutoCloseable]))
+   [blaze.db.kv KvCloseable]))
 
 (defn valid?
   "Returns true if `iter` is positioned at an entry."
@@ -126,24 +126,25 @@
   The result is initially invalid, so the caller must call one of the seek
   functions with the iterator before using it.
 
-  Throws an anomaly if `column-family` was not found.
+  Throws an anomaly if `column-family` was not found. Throws a fault if
+  `snapshot` is closed.
 
-  Iterators have to be closed after usage."
-  ^AutoCloseable
+  Iterators have to be closed after usage. Closing `snapshot` closes all its
+  iterators, so using an iterator after `snapshot` was closed throws a fault,
+  while closing it afterwards has no effect."
+  ^KvCloseable
   [snapshot column-family]
   (p/-new-iterator snapshot column-family))
-
-(defn snapshot-get
-  "Returns a new byte array storing the value associated with the `key` in
-  `column-family` if any."
-  [snapshot column-family key]
-  (p/-snapshot-get snapshot column-family key))
 
 (defn new-snapshot
   "Opens a new snapshot of `store`.
 
-  Snapshots have to be closed after usage."
-  ^AutoCloseable
+  Snapshots can be used from several threads at once. They have to be closed
+  after usage, but only after all work using them is done. Closing a snapshot
+  closes all its iterators, also the ones still in use, without waiting for
+  them. Using an iterator on another thread while the snapshot is closed can
+  crash the JVM."
+  ^KvCloseable
   [store]
   (ip/pooling-snapshot (p/-new-snapshot store)))
 

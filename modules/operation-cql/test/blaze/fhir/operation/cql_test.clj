@@ -1,10 +1,7 @@
 (ns blaze.fhir.operation.cql-test
   (:require
-   [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.kv :as kv]
-   [blaze.db.kv.protocols :as kv-p]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression.cache-spec]
    [blaze.fhir.operation.cql :as cql]
@@ -26,9 +23,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log])
-  (:import
-   [java.lang AutoCloseable]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -163,27 +158,6 @@
                                   (wrap-job-scheduler job-scheduler#)
                                   wrap-error)]
          ~@body))))
-
-;; A snapshot that, like the RocksDB snapshot, can't be used after it was closed.
-;; The snapshot of the in-memory kv store keeps working after close.
-(deftype StrictSnapshot [snapshot ^:volatile-mutable closed?]
-  kv-p/KvSnapshot
-  (-new-iterator [_ column-family]
-    (when closed? (throw-anom (ba/fault "The snapshot is closed.")))
-    (kv-p/-new-iterator snapshot column-family))
-
-  (-snapshot-get [_ column-family key]
-    (when closed? (throw-anom (ba/fault "The snapshot is closed.")))
-    (kv-p/-snapshot-get snapshot column-family key))
-
-  AutoCloseable
-  (close [_]
-    (set! closed? true)
-    (.close ^AutoCloseable snapshot)))
-
-(defn- wrap-strict-snapshot [new-snapshot]
-  (fn [store]
-    (->StrictSnapshot (new-snapshot store) false)))
 
 (deftest handler-unsupported-param-test
   (testing "data"
@@ -505,25 +479,24 @@
           [(parameter "return") 1 :resource :id] := "1"))))
 
   (testing "returns all patients with a snapshot that can't be used after close"
-    (with-redefs [kv/new-snapshot (wrap-strict-snapshot kv/new-snapshot)]
-      (with-handler [handler]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]
-          [:create {:fhir/type :fhir/Patient :id "1"}]]]
+    (with-handler [handler]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1"}]]]
 
-        (let [{:keys [status body]}
-              @(handler
-                {:request-method :post
-                 :body
-                 (fu/parameters
-                  "expression" #fhir/string "[Patient]")})]
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :post
+               :body
+               (fu/parameters
+                "expression" #fhir/string "[Patient]")})]
 
-          (is (= 200 status))
+        (is (= 200 status))
 
-          (given body
-            :fhir/type := :fhir/Parameters
-            [(parameter "return") count] := 2
-            [(parameter "return") 0 :resource :id] := "0"
-            [(parameter "return") 1 :resource :id] := "1")))))
+        (given body
+          :fhir/type := :fhir/Parameters
+          [(parameter "return") count] := 2
+          [(parameter "return") 0 :resource :id] := "0"
+          [(parameter "return") 1 :resource :id] := "1"))))
 
   (testing "returns the id and bith date of all patients"
     (with-handler [handler]
