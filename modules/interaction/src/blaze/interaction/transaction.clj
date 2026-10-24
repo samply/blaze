@@ -29,9 +29,7 @@
    [reitit.ring]
    [ring.util.codec :as ring-codec]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [java.lang AutoCloseable]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -186,7 +184,7 @@
 
 (defmethod build-response-entry "DELETE"
   [{:blaze/keys [db]} _ _]
-  (let [t (d/basis-t db)]
+  (let [t (d/t db)]
     (ac/completed-future
      {:fhir/type :fhir.Bundle/entry
       :response
@@ -201,20 +199,10 @@
 (defn- build-response-entries* [context entries]
   (into [] (map-indexed (partial build-response-entry context)) entries))
 
-(defn- handle-close [stage db]
-  (ac/handle
-   stage
-   (fn [entries e]
-     (let [res (if e e entries)]
-       (.close ^AutoCloseable db)
-       res))))
-
-(defn- build-response-entries [{:blaze/keys [db] :as context} entries]
-  (let [db (d/new-batch-db db)
-        futures (build-response-entries* (assoc context :blaze/db db) entries)]
+(defn- build-response-entries [context entries]
+  (let [futures (build-response-entries* context entries)]
     (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv ac/join futures)))
-        (handle-close db))))
+        (ac/then-apply (fn [_] (mapv ac/join futures))))))
 
 (defmulti process-entries
   "Processes `entries` according to the batch or transaction rules.
@@ -232,15 +220,20 @@
   [context _ entries]
   (fhir-util/process-batch-entries context entries))
 
+(defn- build-response-entries-fn [context entries]
+  #(build-response-entries (assoc context :blaze/db %) entries))
+
+(defn- transact* [{:keys [node] :as context} entries]
+  (let [tx-ops (bundle/tx-ops entries)
+        build-response-entries (build-response-entries-fn context entries)]
+    (if (empty? tx-ops)
+      (d/with-sync-db node build-response-entries)
+      (-> (d/transact node tx-ops)
+          (ac/then-compose #(d/with-sync-db node % build-response-entries))))))
+
 (defn- transact [{:keys [node] :as context} entries]
-  (if-ok [entries (bundle/assoc-tx-ops (d/db node) entries)]
-    (-> (let [tx-ops (bundle/tx-ops entries)]
-          (if (empty? tx-ops)
-            (fhir-util/sync node (:db-sync-timeout context))
-            (d/transact node tx-ops)))
-        (ac/then-compose
-         #(build-response-entries (assoc context :blaze/db %) entries)))
-    ac/completed-future))
+  (-> (d/with-db node #(ac/completed-future (bundle/assoc-tx-ops % entries)))
+      (ac/then-compose (partial transact* context))))
 
 (defn- validate-entry-resource
   [validator {{:keys [method]} :request :keys [resource] :as entry}]
@@ -270,7 +263,7 @@
         (ac/then-compose (partial process-transaction-entries context)))
     (process-transaction-entries context entries)))
 
-(defn- process-context*
+(defn- process-context
   [context {:keys [headers] :blaze/keys [base-url] ::reitit/keys [router match]}]
   (let [return-preference (handler-util/preference headers "return")]
     (cond->
@@ -281,11 +274,12 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
-(defn- process-context [context type request]
-  (if (= "batch" (:value type))
-    (-> (fhir-util/sync (:node context) (:db-sync-timeout context))
-        (ac/then-apply #(assoc (process-context* context request) :blaze/db %)))
-    (ac/completed-future (process-context* context request))))
+(defn- process [{:keys [node] :as context} type request entries]
+  (let [context (process-context context request)]
+    (if (= "batch" (:value type))
+      (d/with-sync-db node
+        #(process-entries (assoc context :blaze/db %) type entries))
+      (process-entries context type entries))))
 
 (defn- response-bundle [context type entries]
   {:fhir/type :fhir/Bundle
@@ -294,8 +288,7 @@
    :entry entries})
 
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
-  (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn
-                   ::rest-api/db-sync-timeout]
+  (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn]
           :opt-un [:blaze/validator]))
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]
@@ -304,7 +297,6 @@
     (if-ok [entries (check-and-prepare-bundle context bundle)]
       (-> (if (empty? entries)
             (ac/completed-future [])
-            (-> (process-context context type request)
-                (ac/then-compose #(process-entries % type entries))))
+            (process context type request entries))
           (ac/then-apply #(ring/response (response-bundle context type %))))
       ac/completed-future)))

@@ -17,6 +17,7 @@
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.create]
    [blaze.interaction.delete]
+   [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
    [blaze.interaction.search.util :as search-util]
@@ -62,7 +63,7 @@
 (defmethod ig/init-key ::router
   [_ {:keys [node create-handler search-type-handler
              read-handler delete-handler update-handler
-             conditional-delete-type-handler batch?]}]
+             conditional-delete-type-handler history-instance-handler batch?]}]
   (reitit.ring/router
    [["/metadata"
      {:get
@@ -73,7 +74,7 @@
      {:name :Observation/type
       :conflicting true
       :fhir.resource/type "Observation"
-      :get {:middleware [[wrap-db node 100]]
+      :get {:middleware [[wrap-db node]]
             :handler (wrap-params search-type-handler)}
       :post create-handler
       :delete conditional-delete-type-handler}]
@@ -81,12 +82,12 @@
      {:name :Observation/page
       :conflicting true
       :fhir.resource/type "Observation"
-      :get {:middleware [[wrap-db node 100]]
+      :get {:middleware [[wrap-db node]]
             :handler (wrap-params search-type-handler)}}]
     ["/Patient"
      {:name :Patient/type
       :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node 100]]
+      :get {:middleware [[wrap-db node]]
             :handler (wrap-params search-type-handler)}
       :post create-handler
       :delete conditional-delete-type-handler}]
@@ -94,15 +95,23 @@
      {:name :Patient/page
       :conflicting true
       :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node 100]]
+      :get {:middleware [[wrap-db node]]
             :handler (wrap-params search-type-handler)}}]
     ["/Patient/{id}"
      {:name :Patient/instance
       :conflicting true
       :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node 100]] :handler read-handler}
+      :get {:middleware [[wrap-db node]] :handler read-handler}
       :delete delete-handler
       :put update-handler}]
+    ["/Patient/{id}/_history"
+     {:name :Patient/history-instance
+      :fhir.resource/type "Patient"
+      :get {:middleware [[wrap-db node]]
+            :handler (wrap-params history-instance-handler)}}]
+    ["/Patient/{id}/__history-page/{page-id}"
+     {:name :Patient/history-instance-page
+      :fhir.resource/type "Patient"}]
     ["/Patient/{id}/_history/{vid}"
      {:name :Patient/versioned-instance}]]
    (cond-> {:syntax :bracket}
@@ -123,8 +132,7 @@
    {:node (ig/ref :blaze.db/node)
     :batch-handler (ig/ref ::batch-handler)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :db-sync-timeout 1000}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.interaction/create
    {:node (ig/ref :blaze.db/node)
@@ -150,6 +158,12 @@
    :blaze.interaction/conditional-delete-type
    {:node (ig/ref :blaze.db/node)}
 
+   :blaze.interaction.history/instance
+   {::search-util/link (ig/ref ::search-util/link)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+
    ::batch-handler
    {:router (ig/ref ::batch-router)}
 
@@ -160,7 +174,8 @@
     :read-handler (ig/ref :blaze.interaction/read)
     :delete-handler (ig/ref :blaze.interaction/delete)
     :update-handler (ig/ref :blaze.interaction/update)
-    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)}
+    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
+    :history-instance-handler (ig/ref :blaze.interaction.history/instance)}
 
    ::batch-router
    {:batch? true
@@ -170,7 +185,8 @@
     :read-handler (ig/ref :blaze.interaction/read)
     :delete-handler (ig/ref :blaze.interaction/delete)
     :update-handler (ig/ref :blaze.interaction/update)
-    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)}
+    :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
+    :history-instance-handler (ig/ref :blaze.interaction.history/instance)}
 
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
@@ -196,8 +212,7 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "missing batch-handler"
     (given-failed-system (update config :blaze.interaction/transaction dissoc :batch-handler)
@@ -216,12 +231,6 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
-
-  (testing "missing db-sync-timeout"
-    (given-failed-system (update config :blaze.interaction/transaction dissoc :db-sync-timeout)
-      :key := :blaze.interaction/transaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.interaction/transaction :node] ::invalid)
@@ -249,13 +258,6 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid db-sync-timeout"
-    (given-failed-system (assoc-in config [:blaze.interaction/transaction :db-sync-timeout] ::invalid)
-      :key := :blaze.interaction/transaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid validator"
@@ -1033,6 +1035,45 @@
                 :status := #fhir/string "200"
                 :etag := #fhir/string "W/\"1\""
                 :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
+
+(deftest handler-history-since-test
+  (doseq [type ["transaction" "batch"]]
+    (testing (format "On %s bundle" type)
+      ;; GET entries of transactions used to be processed on a batch
+      ;; database that didn't support since
+      (testing "returns the history of a resource since an instant"
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+          (let [{:keys [status]
+                 {[{:keys [resource response]}] :entry} :body}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type (type/code type)
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "GET"
+                       :url #fhir/uri "Patient/0/_history?_since=1970-01-01T00:00:00Z"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "entry response"
+              (given response
+                :status := #fhir/string "200"))
+
+            ;; both transactions happened at the instant of the fixed clock,
+            ;; so there are no changes after it
+            (testing "entry resource"
+              (given resource
+                :fhir/type := :fhir/Bundle
+                :type := #fhir/code "history"
+                :total := #fhir/unsignedInt 0
+                :entry :? empty?))))))))
 
 (deftest handler-transaction-missing-request-test
   (with-handler [handler]

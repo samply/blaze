@@ -1,4 +1,4 @@
-(ns blaze.db.impl.batch-db.patient-everything
+(ns blaze.db.impl.db.patient-everything
   (:refer-clojure :exclude [str])
   (:require
    [blaze.coll.core :as coll]
@@ -54,45 +54,45 @@
 (defn- date-end-clause [search-param end]
   [search-param nil [(str "le" end)] [(spd/le-value end)]])
 
-(defn- date-start-end-filter [batch-db source-type start end]
-  (when-let [search-param (date-search-param batch-db source-type)]
+(defn- date-start-end-filter [db source-type start end]
+  (when-let [search-param (date-search-param db source-type)]
     (let [start-clause (date-start-clause search-param start)
           end-clause (date-end-clause search-param end)]
-      (index/other-clauses-resource-handle-filter batch-db [[start-clause]
-                                                            [end-clause]]))))
+      (index/other-clauses-resource-handle-filter db [[start-clause]
+                                                      [end-clause]]))))
 
-(defn- date-start-filter [batch-db source-type start]
-  (when-let [search-param (date-search-param batch-db source-type)]
+(defn- date-start-filter [db source-type start]
+  (when-let [search-param (date-search-param db source-type)]
     (let [clause (date-start-clause search-param start)]
-      (index/other-clauses-resource-handle-filter batch-db [[clause]]))))
+      (index/other-clauses-resource-handle-filter db [[clause]]))))
 
-(defn- date-end-filter [batch-db source-type end]
-  (when-let [search-param (date-search-param batch-db source-type)]
+(defn- date-end-filter [db source-type end]
+  (when-let [search-param (date-search-param db source-type)]
     (let [clause (date-end-clause search-param end)]
-      (index/other-clauses-resource-handle-filter batch-db [[clause]]))))
+      (index/other-clauses-resource-handle-filter db [[clause]]))))
 
-(defn- date-filter [batch-db source-type start end]
+(defn- date-filter [db source-type start end]
   (cond
     (and start end)
-    (date-start-end-filter batch-db source-type start end)
+    (date-start-end-filter db source-type start end)
     start
-    (date-start-filter batch-db source-type start)
+    (date-start-filter db source-type start)
     end
-    (date-end-filter batch-db source-type end)))
+    (date-end-filter db source-type end)))
 
-(defn- rev-include [batch-db resource-handle start end]
+(defn- rev-include [db resource-handle start end]
   (fn [source-type code]
-    (let [filter (date-filter batch-db source-type start end)]
-      (cond->> (p/-rev-include batch-db resource-handle source-type code)
+    (let [filter (date-filter db source-type start end)]
+      (cond->> (p/-rev-include db resource-handle source-type code)
         filter
         (coll/eduction filter)))))
 
 (defn patient-everything
-  {:arglists '([batch-db patient-handle start end])}
-  [{{:keys [search-param-registry]} :node :as batch-db} patient-handle start end]
+  {:arglists '([db patient-handle start end])}
+  [{{:keys [search-param-registry]} :node :as db} patient-handle start end]
   (let [non-compartment-types (non-compartment-types search-param-registry)
         supporting-codes #(supporting-codes search-param-registry non-compartment-types %)
-        rev-include (rev-include batch-db patient-handle start end)]
+        rev-include (rev-include db patient-handle start end)]
     (coll/eduction
      cat
      [[patient-handle]
@@ -109,7 +109,7 @@
                   (into
                    [resource-handle]
                    (comp
-                    (mapcat #(p/-include batch-db resource-handle %))
+                    (mapcat #(p/-include db resource-handle %))
                     (filter (comp non-compartment-types name :fhir/type)))
                    supporting-codes))))
               codes))))

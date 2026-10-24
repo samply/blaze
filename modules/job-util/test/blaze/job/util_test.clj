@@ -3,7 +3,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job.test-util :as jtu]
@@ -266,7 +266,8 @@
           :status := #fhir/code "failed"
           job-util/error := (ba/fault "msg-181135"))
 
-        (is (some? (d/resource-handle (d/db node) "Bundle" "0")))))))
+        (with-db [db node]
+          (is (some? (d/resource-handle db "Bundle" "0"))))))))
 
 (defn- start-job* [{:keys [status] :as job}]
   (if (nil? status)

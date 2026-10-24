@@ -22,7 +22,7 @@
   :ret map?)
 
 (s/fdef page/build-page
-  :args (s/cat :duration-histogram some? :batch-db :blaze.db/db :pull fn?
+  :args (s/cat :duration-histogram some? :db :blaze.db/db :pull fn?
                :include-defs (s/nilable map?) :page-size nat-int?
                :handles some?)
   :ret (s/or :page map? :anomaly ::anom/anomaly))

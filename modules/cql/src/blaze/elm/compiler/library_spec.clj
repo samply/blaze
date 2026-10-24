@@ -24,7 +24,7 @@
 
 (s/fdef library/eval-unfiltered
   :args (s/cat :context ::expr/context :expression-defs ::c/expression-defs)
-  :ret ::c/expression-defs)
+  :ret (s/or :expression-defs ::c/expression-defs :anomaly ::anom/anomaly))
 
 (s/fdef library/optimize
   :args (s/cat :db :blaze.db/db :expression-defs ::c/expression-defs)

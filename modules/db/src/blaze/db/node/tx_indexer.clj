@@ -13,8 +13,8 @@
 (defn index-tx
   "Indexes a transaction by expanding and verifying its commands.
 
-  Opens a batch database from `:db-before` in `context`, expands any conditional
-  transaction commands (e.g. conditional creates/deletes) against it
+  Expands any conditional transaction commands (e.g. conditional
+  creates/deletes) against the database value `:db-before` in `context`
   asynchronously, then verifies the expanded commands against the full context
   at transaction point `t`.
 
@@ -25,11 +25,9 @@
   {:arglists '([context tx-data])}
   [{:keys [db-before] :as context} {:keys [t tx-cmds]}]
   (log/trace "verify transaction commands with t =" t
-             "based on db with t =" (d/basis-t db-before))
-  (let [db-before (d/new-batch-db db-before)]
-    (-> (expand/expand-tx-cmds db-before tx-cmds)
-        (ac/then-apply
-         (fn [tx-cmds]
-           (with-open [_ (prom/timer tx-u/duration-seconds "verify-tx-cmds")]
-             (verify/verify-tx-cmds (assoc context :db-before db-before) t tx-cmds))))
-        (ac/when-complete (fn [_ _] (.close db-before))))))
+             "based on db with t =" (d/t db-before))
+  (-> (expand/expand-tx-cmds db-before tx-cmds)
+      (ac/then-apply
+       (fn [tx-cmds]
+         (with-open [_ (prom/timer tx-u/duration-seconds "verify-tx-cmds")]
+           (verify/verify-tx-cmds context t tx-cmds))))))

@@ -1,8 +1,9 @@
 (ns blaze.db.impl.index.type-as-of-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.db :as db]
+   [blaze.db.impl.db-spec]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-as-of-spec]
    [blaze.db.test-util :refer [config with-system-data]]
@@ -16,18 +17,21 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(defn- with-since-db
+  "Calls `f` with the database value at the current t of `node` including only
+  changes after `since-t` and returns its result."
+  [node since-t f]
+  (db/call-with-db node (:t @(:state node)) since-t f))
+
 (defn- list-desc [node since-t]
-  (let [db (d/db node)]
-    (with-open [batch-db (batch-db/new-batch-db node (d/basis-t db) (d/t db)
-                                                since-t)]
-      (into [] (map :id) (tao/type-list-desc batch-db (codec/tid "Patient")
+  (with-since-db node since-t
+    (fn [db]
+      (into [] (map :id) (tao/type-list-desc db (codec/tid "Patient")
                                              since-t (d/t db) nil)))))
 
 (defn- list-asc [node since-t]
-  (let [db (d/db node)]
-    (with-open [batch-db (batch-db/new-batch-db node (d/basis-t db) (d/t db)
-                                                since-t)]
-      (into [] (map :id) (tao/type-list-asc batch-db (codec/tid "Patient"))))))
+  (with-since-db node since-t
+    #(into [] (map :id) (tao/type-list-asc % (codec/tid "Patient")))))
 
 (deftest type-list-test
   (testing "three patients, each in its own transaction"
@@ -82,10 +86,8 @@
        [[:put {:fhir/type :fhir/Patient :id "1"}]]
        [[:put {:fhir/type :fhir/Patient :id "2"}]]]
 
-      (let [db (d/db node)]
-        (with-open [batch-db (batch-db/new-batch-db node (d/basis-t db) (d/t db)
-                                                    2)]
+      (with-since-db node 2
+        (fn [db]
           (is (thrown-with-msg?
                AssertionError #"start-t 1 must not be smaller than since-t 2"
-               (tao/type-list-asc batch-db (codec/tid "Patient") 1
-                                  "0"))))))))
+               (tao/type-list-asc db (codec/tid "Patient") 1 "0"))))))))

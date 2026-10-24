@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
@@ -109,15 +109,16 @@
        ::ts/keys [local]} config]
      [(tx-ops (:entry (read-data name)))]
 
-     (let [db (d/db node)
-           context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+     (let [context {:clock fixed-clock :rng-fn fixed-rng-fn
                     ::expr/cache cache :blaze/base-url "" ::reitit/router router
                     :terminology-service local :executor executor}
-           measure @(d/pull node (d/resource-handle db "Measure" "0"))
            period [#system/date "2000" #system/date "2020"]
            params {:period period :report-type report-type}
            eval #(try
-                   @(measure/evaluate-measure context measure params)
+                   @(d/with-db node
+                      (fn [db]
+                        (let [measure @(d/pull node (d/resource-handle db "Measure" "0"))]
+                          (measure/evaluate-measure (assoc context :db db) measure params))))
                    (catch Exception e
                      (ex-data (ex-cause e))))]
        (if twice-for-caching
@@ -252,6 +253,21 @@
     exists from [MedicationStatement] M
       where M.medication.reference in \"Temozolomid Refs\"")
 
+(def library-unfiltered-conditions
+  "library Retrieve
+  using FHIR version '4.0.0'
+  include FHIRHelpers version '4.0.0'
+
+  context Unfiltered
+
+  define \"All Conditions\":
+    [Condition]
+
+  context Patient
+
+  define InInitialPopulation:
+    exists (\"All Conditions\" C where C.subject.reference = 'Patient/' + Patient.id)")
+
 (def library-patient-encounter
   "library Retrieve
   using FHIR version '4.0.0'
@@ -282,48 +298,48 @@
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content library-encounter)]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :executor executor :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "Encounter"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :executor executor :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :extension
+                         [#fhir/Extension
+                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                            :value #fhir/code "Encounter"}]
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}]
 
-        (testing "population report"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count] := #fhir/integer 3)))
+          (testing "population report"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 0 :population 0 :count] := #fhir/integer 3)))
 
-        (testing "subject-list report"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "subject-list"}
-                {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
+          (testing "subject-list report"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "subject-list"}
+                  {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
-            (given resource
-              :fhir/type := :fhir/MeasureReport
-              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count] := #fhir/integer 3
-              [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA")
+              (given resource
+                :fhir/type := :fhir/MeasureReport
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 0 :population 0 :count] := #fhir/integer 3
+                [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA")
 
-            (given tx-ops
-              [0 0] := :create
-              [0 1 :id] := "AAAAAAAAAAAAAAAA"
-              [0 1 :entry 0 :item :reference] := #fhir/string "Encounter/0-0"
-              [0 1 :entry 1 :item :reference] := #fhir/string "Encounter/1-0"
-              [0 1 :entry 2 :item :reference] := #fhir/string "Encounter/1-1"))))))
+              (given tx-ops
+                [0 0] := :create
+                [0 1 :id] := "AAAAAAAAAAAAAAAA"
+                [0 1 :entry 0 :item :reference] := #fhir/string "Encounter/0-0"
+                [0 1 :entry 1 :item :reference] := #fhir/string "Encounter/1-0"
+                [0 1 :entry 2 :item :reference] := #fhir/string "Encounter/1-1")))))))
 
   (testing "two groups"
     (with-system-data
@@ -342,106 +358,106 @@
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content library-patient-encounter)]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :executor executor :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :code #fhir/CodeableConcept{:text #fhir/string "group-1"}
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "boolean"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]
-                       :stratifier
-                       [{:fhir/type :fhir.Measure.group/stratifier
-                         :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-                         :criteria (cql-expression "Gender")}]}
-                      {:fhir/type :fhir.Measure/group
-                       :code #fhir/CodeableConcept{:text #fhir/string "group-2"}
-                       :extension
-                       [#fhir/Extension
-                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                          :value #fhir/code "Encounter"}]
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "AllEncounters")}]}]}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :executor executor :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :code #fhir/CodeableConcept{:text #fhir/string "group-1"}
+                         :extension
+                         [#fhir/Extension
+                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                            :value #fhir/code "boolean"}]
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]
+                         :stratifier
+                         [{:fhir/type :fhir.Measure.group/stratifier
+                           :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                           :criteria (cql-expression "Gender")}]}
+                        {:fhir/type :fhir.Measure/group
+                         :code #fhir/CodeableConcept{:text #fhir/string "group-2"}
+                         :extension
+                         [#fhir/Extension
+                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                            :value #fhir/code "Encounter"}]
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "AllEncounters")}]}]}]
 
-        (testing "population report"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              [:group count] := 2
-              [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string "group-1"}
-              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count] := #fhir/integer 4
-              [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string "group-2"}
-              [:group 1 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 1 :population 0 :count] := #fhir/integer 6)))
+          (testing "population report"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                [:group count] := 2
+                [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string "group-1"}
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 0 :population 0 :count] := #fhir/integer 4
+                [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string "group-2"}
+                [:group 1 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 1 :population 0 :count] := #fhir/integer 6)))
 
-        (testing "subject-list report"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "subject-list"}
-                {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
+          (testing "subject-list report"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "subject-list"}
+                  {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
-            (given resource
-              :fhir/type := :fhir/MeasureReport
-              [:group count] := 2
-              [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string "group-1"}
-              [:group 0 :population count] := 1
-              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count] := #fhir/integer 4
-              [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA"
-              [:group 0 :stratifier count] := 1
-              [:group 0 :stratifier 0 :stratum count] := 2
-              [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string "male"
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAB"
-              [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string "female"
-              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := #fhir/integer 3
-              [:group 0 :stratifier 0 :stratum 1 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAC"
-              [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string "group-2"}
-              [:group 1 :population count] := 1
-              [:group 1 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 1 :population 0 :count] := #fhir/integer 6
-              [:group 1 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAD")
+              (given resource
+                :fhir/type := :fhir/MeasureReport
+                [:group count] := 2
+                [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string "group-1"}
+                [:group 0 :population count] := 1
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 0 :population 0 :count] := #fhir/integer 4
+                [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA"
+                [:group 0 :stratifier count] := 1
+                [:group 0 :stratifier 0 :stratum count] := 2
+                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string "male"
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := #fhir/integer 1
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAB"
+                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string "female"
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := #fhir/integer 3
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAC"
+                [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string "group-2"}
+                [:group 1 :population count] := 1
+                [:group 1 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 1 :population 0 :count] := #fhir/integer 6
+                [:group 1 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAD")
 
-            (given tx-ops
-              count := 4
-              [0 0] := :create
-              [0 1 :id] := "AAAAAAAAAAAAAAAA"
-              [0 1 :entry count] := 4
-              [0 1 :entry 0 :item :reference] := #fhir/string "Patient/0"
-              [0 1 :entry 1 :item :reference] := #fhir/string "Patient/1"
-              [0 1 :entry 2 :item :reference] := #fhir/string "Patient/2"
-              [0 1 :entry 3 :item :reference] := #fhir/string "Patient/3"
-              [1 0] := :create
-              [1 1 :id] := "AAAAAAAAAAAAAAAB"
-              [1 1 :entry count] := 1
-              [1 1 :entry 0 :item :reference] := #fhir/string "Patient/0"
-              [2 0] := :create
-              [2 1 :id] := "AAAAAAAAAAAAAAAC"
-              [2 1 :entry count] := 3
-              [2 1 :entry 0 :item :reference] := #fhir/string "Patient/1"
-              [2 1 :entry 1 :item :reference] := #fhir/string "Patient/2"
-              [2 1 :entry 2 :item :reference] := #fhir/string "Patient/3"
-              [3 0] := :create
-              [3 1 :id] := "AAAAAAAAAAAAAAAD"
-              [3 1 :entry count] := 6
-              [3 1 :entry 0 :item :reference] := #fhir/string "Encounter/1-0"
-              [3 1 :entry 1 :item :reference] := #fhir/string "Encounter/2-0"
-              [3 1 :entry 2 :item :reference] := #fhir/string "Encounter/2-1"
-              [3 1 :entry 3 :item :reference] := #fhir/string "Encounter/3-0"
-              [3 1 :entry 4 :item :reference] := #fhir/string "Encounter/3-1"
-              [3 1 :entry 5 :item :reference] := #fhir/string "Encounter/3-2"))))))
+              (given tx-ops
+                count := 4
+                [0 0] := :create
+                [0 1 :id] := "AAAAAAAAAAAAAAAA"
+                [0 1 :entry count] := 4
+                [0 1 :entry 0 :item :reference] := #fhir/string "Patient/0"
+                [0 1 :entry 1 :item :reference] := #fhir/string "Patient/1"
+                [0 1 :entry 2 :item :reference] := #fhir/string "Patient/2"
+                [0 1 :entry 3 :item :reference] := #fhir/string "Patient/3"
+                [1 0] := :create
+                [1 1 :id] := "AAAAAAAAAAAAAAAB"
+                [1 1 :entry count] := 1
+                [1 1 :entry 0 :item :reference] := #fhir/string "Patient/0"
+                [2 0] := :create
+                [2 1 :id] := "AAAAAAAAAAAAAAAC"
+                [2 1 :entry count] := 3
+                [2 1 :entry 0 :item :reference] := #fhir/string "Patient/1"
+                [2 1 :entry 1 :item :reference] := #fhir/string "Patient/2"
+                [2 1 :entry 2 :item :reference] := #fhir/string "Patient/3"
+                [3 0] := :create
+                [3 1 :id] := "AAAAAAAAAAAAAAAD"
+                [3 1 :entry count] := 6
+                [3 1 :entry 0 :item :reference] := #fhir/string "Encounter/1-0"
+                [3 1 :entry 1 :item :reference] := #fhir/string "Encounter/2-0"
+                [3 1 :entry 2 :item :reference] := #fhir/string "Encounter/2-1"
+                [3 1 :entry 3 :item :reference] := #fhir/string "Encounter/3-0"
+                [3 1 :entry 4 :item :reference] := #fhir/string "Encounter/3-1"
+                [3 1 :entry 5 :item :reference] := #fhir/string "Encounter/3-2")))))))
 
   (testing "library with syntax error"
     (with-system-data
@@ -451,27 +467,27 @@
                :content [(library-content "library Test
                                            define Error: (")]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router
-                     :executor executor :terminology-service local}
-            measure-id "measure-id-133021"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")}]}]}
-            params {:period [#system/date "2000" #system/date "2020"]
-                    :report-type "population"}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router
+                       :executor executor :terminology-service local}
+              measure-id "measure-id-133021"
+              measure {:fhir/type :fhir/Measure :id measure-id
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]
+                      :report-type "population"}]
 
-        (given-failed-future (measure/evaluate-measure context measure params)
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Syntax error at <EOF>"
-          :measure-id := measure-id
-          :fhir/issue := "value"
-          :fhir.issue/expression := "Measure.library"))))
+          (given-failed-future (measure/evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Syntax error at <EOF>"
+            :measure-id := measure-id
+            :fhir/issue := "value"
+            :fhir.issue/expression := "Measure.library")))))
 
   (testing "canonical library reference with version"
     (with-system-data
@@ -487,36 +503,36 @@
                :version #fhir/string "10.0.0"
                :content [(library-content (library "Patient.gender = 'female'"))]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :executor executor :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            params {:period [#system/date "2000" #system/date "2020"]
-                    :report-type "population"}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :executor executor :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              params {:period [#system/date "2000" #system/date "2020"]
+                      :report-type "population"}]
 
-        (testing "without a version, the numerically highest version `10.0.0` is used"
-          (let [measure (initial-population-measure "0")]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              [:group 0 :population 0 :count] := #fhir/integer 2)))
-
-        (testing "with a version, that exact version is used"
-          (let [measure (initial-population-measure "0|9.0.0")]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              [:group 0 :population 0 :count] := #fhir/integer 1)))
-
-        (testing "with an unknown version, the Library is not found"
-          (let [measure (initial-population-measure "0|8.0.0")]
-            (given-failed-future (measure/evaluate-measure context measure params)
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "The Library resource with canonical URI `0|8.0.0` was not found."
-              :fhir/issue := "value"
-              :fhir.issue/expression := "Measure.library")))
-
-        (testing "with a blank version, the version is ignored"
-          (doseq [library-ref ["0|" "0| "]]
-            (let [measure (initial-population-measure library-ref)]
+          (testing "without a version, the numerically highest version `10.0.0` is used"
+            (let [measure (initial-population-measure "0")]
               (given (:resource @(measure/evaluate-measure context measure params))
-                [:group 0 :population 0 :count] := #fhir/integer 2)))))))
+                [:group 0 :population 0 :count] := #fhir/integer 2)))
+
+          (testing "with a version, that exact version is used"
+            (let [measure (initial-population-measure "0|9.0.0")]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                [:group 0 :population 0 :count] := #fhir/integer 1)))
+
+          (testing "with an unknown version, the Library is not found"
+            (let [measure (initial-population-measure "0|8.0.0")]
+              (given-failed-future (measure/evaluate-measure context measure params)
+                ::anom/category := ::anom/incorrect
+                ::anom/message := "The Library resource with canonical URI `0|8.0.0` was not found."
+                :fhir/issue := "value"
+                :fhir.issue/expression := "Measure.library")))
+
+          (testing "with a blank version, the version is ignored"
+            (doseq [library-ref ["0|" "0| "]]
+              (let [measure (initial-population-measure library-ref)]
+                (given (:resource @(measure/evaluate-measure context measure params))
+                  [:group 0 :population 0 :count] := #fhir/integer 2))))))))
 
   (testing "missing criteria"
     (with-system-data
@@ -525,27 +541,27 @@
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content (library-gender true))]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router
-                     :executor executor :terminology-service local}
-            measure-id "measure-id-133021"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")}]}]}
-            params {:period [#system/date "2000" #system/date "2020"]
-                    :report-type "population"}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router
+                       :executor executor :terminology-service local}
+              measure-id "measure-id-133021"
+              measure {:fhir/type :fhir/Measure :id measure-id
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]
+                      :report-type "population"}]
 
-        (given-failed-future (measure/evaluate-measure context measure params)
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Missing criteria."
-          :measure-id := measure-id
-          :fhir/issue := "required"
-          :fhir.issue/expression := "Measure.group[0].population[0]"))))
+          (given-failed-future (measure/evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing criteria."
+            :measure-id := measure-id
+            :fhir/issue := "required"
+            :fhir.issue/expression := "Measure.group[0].population[0]")))))
 
   (testing "evaluation timeout"
     (with-system-data
@@ -555,42 +571,9 @@
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content (library-gender true))]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn
-                     :db db :timeout (time/seconds 0)
-                     :executor executor :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            measure-id "measure-id-132321"
-            measure {:fhir/type :fhir/Measure :id measure-id
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}
-            params {:period [#system/date "2000" #system/date "2020"]}]
-
-        (doseq [report-type ["population" "subject-list"]
-                :let [params (assoc params :report-type report-type)]]
-
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/interrupted
-            ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
-            :measure-id := measure-id)))))
-
-  (testing "cancellation"
-    (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
-        ::ts/keys [local]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content (library-gender true))]}]]]
-
-      (doseq [cancelled? [(ba/interrupted "The evaluation was cancelled.") nil]]
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn
-                       :db db :blaze/cancelled? (constantly cancelled?)
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn
+                       :db db :timeout (time/seconds 0)
                        :executor executor :terminology-service local
                        :blaze/base-url "" ::reitit/router router}
               measure-id "measure-id-132321"
@@ -607,14 +590,47 @@
           (doseq [report-type ["population" "subject-list"]
                   :let [params (assoc params :report-type report-type)]]
 
-            (if cancelled?
-              (given-failed-future (measure/evaluate-measure context measure params)
-                ::anom/category := ::anom/interrupted
-                ::anom/message := "The evaluation was cancelled."
-                :measure-id := measure-id)
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/interrupted
+              ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
+              :measure-id := measure-id))))))
 
-              (given @(measure/evaluate-measure context measure params)
-                [:resource :fhir/type] := :fhir/MeasureReport))))))
+  (testing "cancellation"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        ::ts/keys [local]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+               :content [(library-content (library-gender true))]}]]]
+
+      (doseq [cancelled? [(ba/interrupted "The evaluation was cancelled.") nil]]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn
+                         :db db :blaze/cancelled? (constantly cancelled?)
+                         :executor executor :terminology-service local
+                         :blaze/base-url "" ::reitit/router router}
+                measure-id "measure-id-132321"
+                measure {:fhir/type :fhir/Measure :id measure-id
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]}]
+
+            (doseq [report-type ["population" "subject-list"]
+                    :let [params (assoc params :report-type report-type)]]
+
+              (if cancelled?
+                (given-failed-future (measure/evaluate-measure context measure params)
+                  ::anom/category := ::anom/interrupted
+                  ::anom/message := "The evaluation was cancelled."
+                  :measure-id := measure-id)
+
+                (given @(measure/evaluate-measure context measure params)
+                  [:resource :fhir/type] := :fhir/MeasureReport)))))))
 
     (testing "Encounter population basis"
       (with-system-data
@@ -629,33 +645,33 @@
          [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content library-encounter)]}]]]
 
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/cancelled?
-                       (constantly (ba/interrupted "msg-114556"))
-                       :executor executor :terminology-service local
-                       :blaze/base-url "" ::reitit/router router}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :extension
-                         [#fhir/Extension
-                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                            :value #fhir/code "Encounter"}]
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date "2000" #system/date "2020"]}]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/cancelled?
+                         (constantly (ba/interrupted "msg-114556"))
+                         :executor executor :terminology-service local
+                         :blaze/base-url "" ::reitit/router router}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :extension
+                           [#fhir/Extension
+                             {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                              :value #fhir/code "Encounter"}]
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]}]
 
-          (doseq [report-type ["population" "subject-list"]
-                  :let [params (assoc params :report-type report-type)]]
+            (doseq [report-type ["population" "subject-list"]
+                    :let [params (assoc params :report-type report-type)]]
 
-            (given-failed-future (measure/evaluate-measure context measure params)
-              ::anom/category := ::anom/interrupted
-              ::anom/message := "msg-114556"
-              :measure-id := "0"))))))
+              (given-failed-future (measure/evaluate-measure context measure params)
+                ::anom/category := ::anom/interrupted
+                ::anom/message := "msg-114556"
+                :measure-id := "0")))))))
 
   (testing "single subject"
     (doseq [subject-ref ["0" ["Patient" "0"]]
@@ -667,34 +683,34 @@
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content library)]}]]]
 
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :executor executor :terminology-service local
-                       :blaze/base-url "" ::reitit/router router}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :url #fhir/uri "measure-155437"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date "2000" #system/date "2020"]
-                      :report-type "subject"
-                      :subject-ref subject-ref}]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :executor executor :terminology-service local
+                         :blaze/base-url "" ::reitit/router router}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :url #fhir/uri "measure-155437"
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]
+                        :report-type "subject"
+                        :subject-ref subject-ref}]
 
-          (given (:resource @(measure/evaluate-measure context measure params))
-            :fhir/type := :fhir/MeasureReport
-            :status := #fhir/code "complete"
-            :type := #fhir/code "individual"
-            :measure := #fhir/canonical "measure-155437"
-            [:subject :reference] := #fhir/string "Patient/0"
-            :date := #fhir/dateTime #system/date-time "1970-01-01T00:00Z"
-            :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
-                                    :end #fhir/dateTime #system/date-time "2020"}
-            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-            [:group 0 :population 0 :count :value] := count))))
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              :status := #fhir/code "complete"
+              :type := #fhir/code "individual"
+              :measure := #fhir/canonical "measure-155437"
+              [:subject :reference] := #fhir/string "Patient/0"
+              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00Z"
+              :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
+                                      :end #fhir/dateTime #system/date-time "2020"}
+              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+              [:group 0 :population 0 :count :value] := count)))))
 
     (testing "with stratifiers"
       (doseq [[library count] [[(library-gender true) 1] [(library-gender false) 0]]]
@@ -705,41 +721,41 @@
             [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                    :content [(library-content library)]}]]]
 
-          (let [db (d/db node)
-                context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                         :executor executor :terminology-service local
-                         :blaze/base-url "" ::reitit/router router}
-                measure {:fhir/type :fhir/Measure :id "0"
-                         :url #fhir/uri "measure-155502"
-                         :library [#fhir/canonical "0"]
-                         :group
-                         [{:fhir/type :fhir.Measure/group
-                           :population
-                           [{:fhir/type :fhir.Measure.group/population
-                             :code (population-concept "initial-population")
-                             :criteria (cql-expression "InInitialPopulation")}]
-                           :stratifier
-                           [{:fhir/type :fhir.Measure.group/stratifier
-                             :code #fhir/CodeableConcept{:text #fhir/string "gender"}
-                             :criteria (cql-expression "Gender")}]}]}
-                params {:period [#system/date "2000" #system/date "2020"]
-                        :report-type "subject"
-                        :subject-ref "0"}]
+          (with-db [db node]
+            (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                           :executor executor :terminology-service local
+                           :blaze/base-url "" ::reitit/router router}
+                  measure {:fhir/type :fhir/Measure :id "0"
+                           :url #fhir/uri "measure-155502"
+                           :library [#fhir/canonical "0"]
+                           :group
+                           [{:fhir/type :fhir.Measure/group
+                             :population
+                             [{:fhir/type :fhir.Measure.group/population
+                               :code (population-concept "initial-population")
+                               :criteria (cql-expression "InInitialPopulation")}]
+                             :stratifier
+                             [{:fhir/type :fhir.Measure.group/stratifier
+                               :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+                               :criteria (cql-expression "Gender")}]}]}
+                  params {:period [#system/date "2000" #system/date "2020"]
+                          :report-type "subject"
+                          :subject-ref "0"}]
 
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code "complete"
-              :type := #fhir/code "individual"
-              :measure := #fhir/canonical "measure-155502"
-              [:subject :reference] := #fhir/string "Patient/0"
-              :date := #fhir/dateTime #system/date-time "1970-01-01T00:00Z"
-              :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
-                                      :end #fhir/dateTime #system/date-time "2020"}
-              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
-              [:group 0 :population 0 :count :value] := count
-              [:group 0 :stratifier 0 :code 0 :text] := #fhir/string "gender"
-              [:group 0 :stratifier 0 :stratum 0 :value :text :value] := (when (= 1 count) "male")
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :count :value] := (when (= 1 count) 1))))))
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                :status := #fhir/code "complete"
+                :type := #fhir/code "individual"
+                :measure := #fhir/canonical "measure-155502"
+                [:subject :reference] := #fhir/string "Patient/0"
+                :date := #fhir/dateTime #system/date-time "1970-01-01T00:00Z"
+                :period := #fhir/Period{:start #fhir/dateTime #system/date-time "2000"
+                                        :end #fhir/dateTime #system/date-time "2020"}
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
+                [:group 0 :population 0 :count :value] := count
+                [:group 0 :stratifier 0 :code 0 :text] := #fhir/string "gender"
+                [:group 0 :stratifier 0 :stratum 0 :value :text :value] := (when (= 1 count) "male")
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :count :value] := (when (= 1 count) 1)))))))
 
     (testing "invalid subject"
       (with-system-data
@@ -748,25 +764,25 @@
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content (library-gender true))]}]]]
 
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router
-                       :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date "2000" #system/date "2020"]
-                      :report-type "subject"
-                      :subject-ref ["Observation" "0"]}]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/base-url "" ::reitit/router router
+                         :executor executor :terminology-service local}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]
+                        :report-type "subject"
+                        :subject-ref ["Observation" "0"]}]
 
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`.")))))
 
     (testing "missing subject"
       (with-system-data
@@ -775,25 +791,25 @@
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [(library-content (library-gender true))]}]]]
 
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router
-                       :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date "2000" #system/date "2020"]
-                      :report-type "subject"
-                      :subject-ref "0"}]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/base-url "" ::reitit/router router
+                         :executor executor :terminology-service local}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]
+                        :report-type "subject"
+                        :subject-ref "0"}]
 
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Subject with type `Patient` and id `0` was not found.")))))
 
     (testing "deleted subject"
       (with-system-data
@@ -804,25 +820,25 @@
                  :content [(library-content (library-gender true))]}]]
          [[:delete "Patient" "0"]]]
 
-        (let [db (d/db node)
-              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router
-                       :executor executor :terminology-service local}
-              measure {:fhir/type :fhir/Measure :id "0"
-                       :library [#fhir/canonical "0"]
-                       :group
-                       [{:fhir/type :fhir.Measure/group
-                         :population
-                         [{:fhir/type :fhir.Measure.group/population
-                           :code (population-concept "initial-population")
-                           :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date "2000" #system/date "2020"]
-                      :report-type "subject"
-                      :subject-ref "0"}]
+        (with-db [db node]
+          (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/base-url "" ::reitit/router router
+                         :executor executor :terminology-service local}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical "0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}
+                params {:period [#system/date "2000" #system/date "2020"]
+                        :report-type "subject"
+                        :subject-ref "0"}]
 
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Subject with type `Patient` and id `0` was not found.")))))))
 
 (defn- extension-finder
   "Returns a function selecting the extension with the given `url` from a
@@ -863,49 +879,49 @@
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content library-exists-condition)]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     ::expr/cache cache :executor executor
-                     :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       ::expr/cache cache :executor executor
+                       :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}]
 
-        (testing "without bloom filter because it's not available yet"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
+          (testing "without bloom filter because it's not available yet"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
               ;; current bloom-filter-ratio extension
-              [:extension bloom-filter-ratio :url] := "https://blaze-server.org/fhir/StructureDefinition/bloom-filter-ratio"
-              [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
-              [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+                [:extension bloom-filter-ratio :url] := "https://blaze-server.org/fhir/StructureDefinition/bloom-filter-ratio"
+                [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+                [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
               ;; legacy bloom-filter-ratio extension
-              [:extension legacy-bloom-filter-ratio :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio"
-              [:extension legacy-bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
-              [:extension legacy-bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
-              [:group 0 :population 0 :count] := #fhir/integer 1000)))
+                [:extension legacy-bloom-filter-ratio :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio"
+                [:extension legacy-bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+                [:extension legacy-bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+                [:group 0 :population 0 :count] := #fhir/integer 1000)))
 
-        (run-all! manual-executor)
+          (run-all! manual-executor)
 
-        (testing "with bloom filter"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 1M
-              [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
-              [:group 0 :population 0 :count] := #fhir/integer 1000))
+          (testing "with bloom filter"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 1M
+                [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+                [:group 0 :population 0 :count] := #fhir/integer 1000))
 
-          (given (into [] (ec/list-by-t cache))
-            count := 1
-            [0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))")))))
+            (given (into [] (ec/list-by-t cache))
+              count := 1
+              [0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"))))))
 
   (testing "Medication"
     (with-system-data
@@ -920,57 +936,56 @@
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [(library-content library-medication)]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     ::expr/cache cache :executor executor
-                     :terminology-service local
-                     :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical "0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       ::expr/cache cache :executor executor
+                       :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}]
 
-        (testing "without bloom filter because it's not available yet"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
-              [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
-              [:group 0 :population 0 :count] := #fhir/integer 500)))
+          (testing "without bloom filter because it's not available yet"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+                [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+                [:group 0 :population 0 :count] := #fhir/integer 500)))
 
-        (run-all! manual-executor)
+          (run-all! manual-executor)
 
-        (testing "with bloom filter"
-          (let [params {:period [#system/date "2000" #system/date "2100"]
-                        :report-type "population"}]
-            (given (:resource @(measure/evaluate-measure context measure params))
-              :fhir/type := :fhir/MeasureReport
-              [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 1M
-              [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
-              [:group 0 :population 0 :count] := #fhir/integer 500))
+          (testing "with bloom filter"
+            (let [params {:period [#system/date "2000" #system/date "2100"]
+                          :report-type "population"}]
+              (given (:resource @(measure/evaluate-measure context measure params))
+                :fhir/type := :fhir/MeasureReport
+                [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 1M
+                [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+                [:group 0 :population 0 :count] := #fhir/integer 500))
 
-          (given (into [] (ec/list-by-t cache))
-            count := 1
-            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (matcher [[\"medication\" \"Medication/0\"]]) (retrieve \"MedicationStatement\")))")))))
+            (given (into [] (ec/list-by-t cache))
+              count := 1
+              [0 ::bloom-filter/expr-form] := "(exists (eduction-query (matcher [[\"medication\" \"Medication/0\"]]) (retrieve \"MedicationStatement\")))"))))))
 
-  (testing "Bloom filter newer than the database isn't attached"
+  (testing "Query over an Unfiltered expression with each evaluation in its own database scope"
     (with-system-data
       [{:blaze.db/keys [node]
         ::expr/keys [cache]
         :blaze.test/keys [fixed-clock fixed-rng-fn executor]
         manual-executor :blaze.test/manual-executor
         ::ts/keys [local]} config]
-      [(into [] (mapcat patient-condition-tx-ops) (range 2000))
+      [(into [] (mapcat patient-condition-tx-ops) (range 20))
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
-               :content [(library-content library-exists-condition)]}]]]
+               :content [(library-content library-unfiltered-conditions)]}]]]
 
-      (let [db (d/db node)
-            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+      (let [context {:clock fixed-clock :rng-fn fixed-rng-fn
                      ::expr/cache cache :executor executor
                      :terminology-service local
                      :blaze/base-url "" ::reitit/router router}
@@ -983,24 +998,82 @@
                          :code (population-concept "initial-population")
                          :criteria (cql-expression "InInitialPopulation")}]}]}
             params {:period [#system/date "2000" #system/date "2100"]
-                    :report-type "population"}]
+                    :report-type "population"}
+            evaluate #(:resource @(d/with-db node
+                                    (fn [db]
+                                      (measure/evaluate-measure (assoc context :db db) measure params))))]
 
-        @(d/transact node [[:delete "Condition" "0"]])
-
-        (testing "create the Bloom filter on the newer database state"
-          @(measure/evaluate-measure (assoc context :db (d/db node)) measure params)
-          (run-all! manual-executor)
-
-          (given (into [] (ec/list-by-t cache))
-            count := 1
-            [0 ::bloom-filter/t] := 3))
-
-        (testing "evaluating on the older database doesn't attach the newer Bloom filter"
-          (given (:resource @(measure/evaluate-measure context measure params))
+        (testing "without Bloom filter because it's not available yet"
+          (given (evaluate)
             :fhir/type := :fhir/MeasureReport
             [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
             [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
-            [:group 0 :population 0 :count] := #fhir/integer 1000))))))
+            [:group 0 :population 0 :count] := #fhir/integer 10))
+
+        (testing "without Bloom filter because its creation didn't run yet"
+          (given (evaluate)
+            :fhir/type := :fhir/MeasureReport
+            [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+            [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+            [:group 0 :population 0 :count] := #fhir/integer 10))
+
+        (run-all! manual-executor)
+
+        (testing "with Bloom filter created after the scopes of the evaluations have ended"
+          (given (evaluate)
+            :fhir/type := :fhir/MeasureReport
+            [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 1M
+            [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+            [:group 0 :population 0 :count] := #fhir/integer 10)
+
+          (given (into [] (ec/list-by-t cache))
+            count := 1
+            [0 ::bloom-filter/patient-count] := 10)))))
+
+  (testing "Bloom filter newer than the database isn't attached"
+    (with-system-data
+      [{:blaze.db/keys [node]
+        ::expr/keys [cache]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]
+        manual-executor :blaze.test/manual-executor
+        ::ts/keys [local]} config]
+      [(into [] (mapcat patient-condition-tx-ops) (range 2000))
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
+               :content [(library-content library-exists-condition)]}]]]
+
+      (with-db [db node]
+        (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       ::expr/cache cache :executor executor
+                       :terminology-service local
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical "0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date "2000" #system/date "2100"]
+                      :report-type "population"}]
+
+          @(d/transact node [[:delete "Condition" "0"]])
+
+          (testing "create the Bloom filter on the newer database state"
+            (with-db [db node]
+              @(measure/evaluate-measure (assoc context :db db) measure params))
+            (run-all! manual-executor)
+
+            (given (into [] (ec/list-by-t cache))
+              count := 1
+              [0 ::bloom-filter/t] := 3))
+
+          (testing "evaluating on the older database doesn't attach the newer Bloom filter"
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:extension bloom-filter-ratio :value :numerator :value] := #fhir/decimal 0M
+              [:extension bloom-filter-ratio :value :denominator :value] := #fhir/decimal 1M
+              [:group 0 :population 0 :count] := #fhir/integer 1000)))))))
 
 (defmacro testing-query [name count]
   `(testing ~name
@@ -1388,52 +1461,52 @@
       [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
              :content [(library-content library-gender-parameter)]}]]]
 
-    (let [db (d/db node)
-          context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                   :blaze/base-url "" ::reitit/router router
-                   :executor executor :terminology-service local}
-          measure {:fhir/type :fhir/Measure :id "0"
-                   :library [#fhir/canonical "0"]
-                   :group
-                   [{:fhir/type :fhir.Measure/group
-                     :population
-                     [{:fhir/type :fhir.Measure.group/population
-                       :code (population-concept "initial-population")
-                       :criteria (cql-expression "InInitialPopulation")}]}]}
-          params {:period [#system/date "2000" #system/date "2020"]
-                  :report-type "population"}]
+    (with-db [db node]
+      (let [context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router
+                     :executor executor :terminology-service local}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical "0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            params {:period [#system/date "2000" #system/date "2020"]
+                    :report-type "population"}]
 
-      (testing "without supplied parameters the library default `male` is used"
-        (given (first-population @(measure/evaluate-measure context measure params))
-          :count := #fhir/integer 1))
-
-      (testing "a supplied `Gender` parameter overrides the library default"
-        (let [params (assoc params :parameters
-                            (fu/parameters "Gender" #fhir/string "female"))]
+        (testing "without supplied parameters the library default `male` is used"
           (given (first-population @(measure/evaluate-measure context measure params))
-            :count := #fhir/integer 2)))
+            :count := #fhir/integer 1))
 
-      (testing "a supplied `Gender` parameter not matching any patient"
-        (let [params (assoc params :parameters
-                            (fu/parameters "Gender" #fhir/string "other"))]
-          (given (first-population @(measure/evaluate-measure context measure params))
-            :count := #fhir/integer 0)))
+        (testing "a supplied `Gender` parameter overrides the library default"
+          (let [params (assoc params :parameters
+                              (fu/parameters "Gender" #fhir/string "female"))]
+            (given (first-population @(measure/evaluate-measure context measure params))
+              :count := #fhir/integer 2)))
 
-      (testing "an unknown parameter results in an anomaly"
-        (let [params (assoc params :parameters
-                            (fu/parameters "Unknown" #fhir/string "x"))]
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Unknown parameter `Unknown`."
-            :measure-id := "0")))
+        (testing "a supplied `Gender` parameter not matching any patient"
+          (let [params (assoc params :parameters
+                              (fu/parameters "Gender" #fhir/string "other"))]
+            (given (first-population @(measure/evaluate-measure context measure params))
+              :count := #fhir/integer 0)))
 
-      (testing "an unsupported parameter type results in an anomaly"
-        (let [params (assoc params :parameters
-                            (fu/parameters "Gender" #fhir/Quantity{:value #fhir/decimal 1M}))]
-          (given-failed-future (measure/evaluate-measure context measure params)
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported type `Quantity` of parameter `Gender`."
-            :measure-id := "0"))))))
+        (testing "an unknown parameter results in an anomaly"
+          (let [params (assoc params :parameters
+                              (fu/parameters "Unknown" #fhir/string "x"))]
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "Unknown parameter `Unknown`."
+              :measure-id := "0")))
+
+        (testing "an unsupported parameter type results in an anomaly"
+          (let [params (assoc params :parameters
+                              (fu/parameters "Gender" #fhir/Quantity{:value #fhir/decimal 1M}))]
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported type `Quantity` of parameter `Gender`."
+              :measure-id := "0")))))))
 
 (comment
   (log/set-min-level! :debug)

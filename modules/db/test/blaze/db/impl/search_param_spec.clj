@@ -4,8 +4,8 @@
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.index :as-alias index]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
    [blaze.db.impl.index.resource-search-param-value-spec]
@@ -43,7 +43,7 @@
 
 (s/fdef search-param/index-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
@@ -52,7 +52,7 @@
 
 (s/fdef search-param/estimated-scan-size
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
@@ -60,7 +60,7 @@
 
 (s/fdef search-param/sorted-index-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.resource/id))
@@ -68,7 +68,7 @@
 
 (s/fdef search-param/ordered-index-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
@@ -77,7 +77,7 @@
 
 (s/fdef search-param/ordered-compartment-index-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
@@ -87,14 +87,14 @@
 
 (s/fdef search-param/matcher
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret fn?)
 
 (s/fdef search-param/single-version-id-matcher
   :args (s/cat :search-param :blaze.db/search-param
-               :batch-db :blaze.db.impl/batch-db
+               :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))

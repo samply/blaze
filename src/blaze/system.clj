@@ -133,8 +133,7 @@
    :blaze/rest-api
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
     :auth-backends (ig/refset :blaze.auth/backend)
-    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
-    :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
 
    ::rest-api/requests-total {}
    ::rest-api/request-duration-seconds {}

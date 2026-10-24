@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
@@ -311,80 +311,80 @@
                           executor :blaze.test/manual-executor} exists-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (let [db (d/db node)
-              patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
-              elm #elm/exists #elm/retrieve{:type "Observation"}
-              compile-context
-              {:node node
-               :eval-context "Patient"
-               :library {}}
-              expr (c/compile compile-context elm)
-              eval-context
-              {:db db
-               :now (bt/offset-date-time)}]
+        (with-db [db node]
+          (let [patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
+                elm #elm/exists #elm/retrieve{:type "Observation"}
+                compile-context
+                {:node node
+                 :eval-context "Patient"
+                 :library {}}
+                expr (c/compile compile-context elm)
+                eval-context
+                {:db db
+                 :now (bt/offset-date-time)}]
 
-          (testing "has no Observation at the beginning"
-            (let [[expr bloom-filters] (c/attach-cache expr cache)]
-              (is (every? ba/unavailable? bloom-filters))
-              (is (false? (expr/eval eval-context expr patient)))))
+            (testing "has no Observation at the beginning"
+              (let [[expr bloom-filters] (c/attach-cache expr cache)]
+                (is (every? ba/unavailable? bloom-filters))
+                (is (false? (expr/eval eval-context expr patient)))))
 
-          (run-all! executor)
+            (run-all! executor)
 
-          (testing "has still no Observation after the Bloom filter is filled"
-            (let [[expr bloom-filters] (c/attach-cache expr cache)]
-              (given bloom-filters
-                count := 1
-                [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
-                [0 ::bloom-filter/patient-count] := 0)
-              (is (false? (expr/eval eval-context expr patient)))))
+            (testing "has still no Observation after the Bloom filter is filled"
+              (let [[expr bloom-filters] (c/attach-cache expr cache)]
+                (given bloom-filters
+                  count := 1
+                  [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
+                  [0 ::bloom-filter/patient-count] := 0)
+                (is (false? (expr/eval eval-context expr patient)))))
 
-          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                db-after @(d/transact node [tx-op])]
+            (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
+              (with-db [db-after node @(d/transact node [tx-op])]
 
-            (testing "has an Observation after transaction"
-              (let [[expr bloom-filters] (c/attach-cache expr cache)
-                    patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
-                (testing "even so the bloom filter is still the old one"
-                  (given bloom-filters
-                    count := 1
-                    [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
-                    [0 ::bloom-filter/patient-count] := 0))
-                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+                (testing "has an Observation after transaction"
+                  (let [[expr bloom-filters] (c/attach-cache expr cache)
+                        patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                    (testing "even so the bloom filter is still the old one"
+                      (given bloom-filters
+                        count := 1
+                        [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
+                        [0 ::bloom-filter/patient-count] := 0))
+                    (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
 
-            (testing "has still no Observation at the old database"
-              (let [[expr] (c/attach-cache expr cache)]
-                (is (false? (expr/eval eval-context expr patient)))))))))
+                (testing "has still no Observation at the old database"
+                  (let [[expr] (c/attach-cache expr cache)]
+                    (is (false? (expr/eval eval-context expr patient)))))))))))
 
     (testing "without caching expressions"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (let [db (d/db node)
-              patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
-              elm #elm/exists #elm/retrieve{:type "Observation"}
-              compile-context
-              {:node node
-               :eval-context "Patient"
-               :library {}}
-              expr (c/compile compile-context elm)
-              eval-context
-              {:db db
-               :now (bt/offset-date-time)}]
+        (with-db [db node]
+          (let [patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
+                elm #elm/exists #elm/retrieve{:type "Observation"}
+                compile-context
+                {:node node
+                 :eval-context "Patient"
+                 :library {}}
+                expr (c/compile compile-context elm)
+                eval-context
+                {:db db
+                 :now (bt/offset-date-time)}]
 
-          (testing "has no Observation at the beginning"
-            (is (false? (expr/eval eval-context expr patient))))
+            (testing "has no Observation at the beginning"
+              (is (false? (expr/eval eval-context expr patient))))
 
-          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-                db-after @(d/transact node [tx-op])]
+            (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
+              (with-db [db-after node @(d/transact node [tx-op])]
 
-            (testing "has an Observation after transaction"
-              (let [patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
-                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+                (testing "has an Observation after transaction"
+                  (let [patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                    (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
 
-            (testing "has still no Observation at the old database"
-              (is (false? (expr/eval eval-context expr patient)))))))))
+                (testing "has still no Observation at the old database"
+                  (is (false? (expr/eval eval-context expr patient)))))))))))
 
   (ctu/testing-unary-dynamic elm/exists)
 

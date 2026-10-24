@@ -10,11 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- type-query-total [batch-db clauses tid]
-  (index/type-query-total batch-db tid (:search-clauses clauses)))
+(defn- type-query-total [db clauses tid]
+  (index/type-query-total db tid (:search-clauses clauses)))
 
-(defn- type-queries [batch-db clauses]
-  (mapcat #(index/type-query batch-db % clauses)))
+(defn- type-queries [db clauses]
+  (mapcat #(index/type-query db % clauses)))
 
 (defn- tid-lt
   "Returns true if `tid` comes before `start-tid` in the order of the
@@ -26,13 +26,13 @@
 ;; in `tids` and resource id, matching the ResourceAsOf index order.
 (defrecord SystemQuery [tids clauses]
   p/Query
-  (-count [_ batch-db]
-    (let [futures (mapv (partial type-query-total batch-db clauses) tids)]
+  (-count [_ db]
+    (let [futures (mapv (partial type-query-total db clauses) tids)]
       (do-sync [_ (ac/all-of futures)]
         (transduce (map ac/join) + futures))))
-  (-execute [_ batch-db]
-    (coll/eduction (type-queries batch-db clauses) tids))
-  (-execute [_ batch-db start-type start-id]
+  (-execute [_ db]
+    (coll/eduction (type-queries db clauses) tids))
+  (-execute [_ db start-type start-id]
     (let [start-tid (codec/tid start-type)
           [tid & tids] (drop-while (partial tid-lt start-tid) tids)]
       (cond
@@ -41,11 +41,11 @@
         (= start-tid tid)
         (coll/eduction
          cat
-         [(index/type-query batch-db tid clauses start-id)
-          (coll/eduction (type-queries batch-db clauses) tids)])
+         [(index/type-query db tid clauses start-id)
+          (coll/eduction (type-queries db clauses) tids)])
 
         :else
-        (coll/eduction (type-queries batch-db clauses) (cons tid tids)))))
+        (coll/eduction (type-queries db clauses) (cons tid tids)))))
   (-query-clauses [_]
     (qu/decode-clauses clauses))
   (-query-plan [_ _]
@@ -55,12 +55,12 @@
 
 (defrecord EmptySystemQuery []
   p/Query
-  (-count [_ batch-db]
-    (ac/completed-future (p/-system-total batch-db)))
-  (-execute [_ batch-db]
-    (rao/system-list batch-db))
-  (-execute [_ batch-db start-type start-id]
-    (rao/system-list batch-db (codec/tid start-type)
+  (-count [_ db]
+    (ac/completed-future (p/-system-total db)))
+  (-execute [_ db]
+    (rao/system-list db))
+  (-execute [_ db start-type start-id]
+    (rao/system-list db (codec/tid start-type)
                      start-id))
   (-query-clauses [_])
   (-query-plan [_ _]

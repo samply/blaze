@@ -122,8 +122,7 @@
       (seq parameters) (library/resolve-params (extract-param-value parameters)))))
 
 (defn- compile-library [context db params]
-  (with-open [_ (prom/timer compile-duration-seconds)
-              db (d/new-batch-db db)]
+  (with-open [_ (prom/timer compile-duration-seconds)]
     (when-ok [expression-defs (compile-library* context params)]
       (library/optimize db expression-defs))))
 
@@ -187,12 +186,11 @@
 (defn- evaluate-expression
   "Evaluates `expression` and returns the result as Parameters resource.
 
-  The Parameters resource is created while the batch DB is still open, because
-  the result of the expression can contain lazy collections like eductions over
-  that batch DB."
+  The Parameters resource is created within the scope of `db`, because the
+  result of the expression can contain lazy collections like eductions over
+  `db`."
   [context db expression resource]
-  (with-open [_ (prom/timer evaluate-duration-seconds)
-              db (d/new-batch-db db)]
+  (with-open [_ (prom/timer evaluate-duration-seconds)]
     (evaluate-expression* (assoc context :db db) expression resource)))
 
 (defn- eval-context [{:keys [clock] :as context}]

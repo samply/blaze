@@ -142,10 +142,10 @@
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
       ((page-id/wrap-decrypt-page-id
-        (db/wrap-snapshot-db handler node 100)
+        (db/wrap-snapshot-db handler node)
         page-id-cipher)
        request)
-      ((db/wrap-db handler node 100) request))))
+      ((db/wrap-db handler node) request))))
 
 (defn- wrap-error [handler]
   (fn [request]

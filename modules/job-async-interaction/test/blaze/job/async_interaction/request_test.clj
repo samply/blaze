@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.fhir.test-util]
    [blaze.job.async-interaction.request :as req]
    [blaze.job.async-interaction.request-spec]
@@ -35,61 +35,65 @@
     (with-system [{:blaze/keys [job-scheduler] :blaze.db/keys [node]
                    :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
 
-      (given @(req/handle-async
-               {:context-path "/context-path-164322"
-                :clock fixed-clock
-                :rng-fn fixed-rng-fn}
-               {:request-method :get
-                :uri "/context-path-164322/Observation"
-                :query-string "code=http://loinc.org|10230-1"
-                :headers {"prefer" "respond-async"}
-                :body ::some-input
-                :blaze/job-scheduler job-scheduler
-                :blaze/db (d/db node)})
+      (with-db [db node]
+        (given @(req/handle-async
+                 {:context-path "/context-path-164322"
+                  :clock fixed-clock
+                  :rng-fn fixed-rng-fn}
+                 {:request-method :get
+                  :uri "/context-path-164322/Observation"
+                  :query-string "code=http://loinc.org|10230-1"
+                  :headers {"prefer" "respond-async"}
+                  :body ::some-input
+                  :blaze/job-scheduler job-scheduler
+                  :blaze/db db})
 
-        :status := 202
-        [:headers "Content-Location"] := "/context-path-164322/__async-status/AAAAAAAAAAAAAAAA")
+          :status := 202
+          [:headers "Content-Location"] := "/context-path-164322/__async-status/AAAAAAAAAAAAAAAA"))
 
       (testing "the request bundle is stored"
-        (given @(d/pull node (d/resource-handle (d/db node) "Bundle" "AAAAAAAAAAAAAAAA"))
-          :fhir/type := :fhir/Bundle
-          :id := "AAAAAAAAAAAAAAAA"
-          :type := #fhir/code "batch"
-          [:entry count] := 1
-          [:entry 0 :fhir/type] := :fhir.Bundle/entry
-          [:entry 0 :request :method] := #fhir/code "GET"
-          [:entry 0 :request :url] := #fhir/uri "Observation?code=http://loinc.org|10230-1"
-          [:entry 0 :resource] := nil))))
+        (with-db [db node]
+          (given @(d/pull node (d/resource-handle db "Bundle" "AAAAAAAAAAAAAAAA"))
+            :fhir/type := :fhir/Bundle
+            :id := "AAAAAAAAAAAAAAAA"
+            :type := #fhir/code "batch"
+            [:entry count] := 1
+            [:entry 0 :fhir/type] := :fhir.Bundle/entry
+            [:entry 0 :request :method] := #fhir/code "GET"
+            [:entry 0 :request :url] := #fhir/uri "Observation?code=http://loinc.org|10230-1"
+            [:entry 0 :resource] := nil)))))
 
   (testing "POST request"
     (with-system [{:blaze/keys [job-scheduler] :blaze.db/keys [node]
                    :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
 
-      (given @(req/handle-async
-               {:context-path "/context-path-164322"
-                :clock fixed-clock
-                :rng-fn fixed-rng-fn}
-               {:request-method :post
-                :uri "/context-path-164322/Measure/$evaluate-measure"
-                :headers {"prefer" "respond-async,return=representation"}
-                :body {:fhir/type :fhir/Parameters}
-                :blaze/job-scheduler job-scheduler
-                :blaze/db (d/db node)})
+      (with-db [db node]
+        (given @(req/handle-async
+                 {:context-path "/context-path-164322"
+                  :clock fixed-clock
+                  :rng-fn fixed-rng-fn}
+                 {:request-method :post
+                  :uri "/context-path-164322/Measure/$evaluate-measure"
+                  :headers {"prefer" "respond-async,return=representation"}
+                  :body {:fhir/type :fhir/Parameters}
+                  :blaze/job-scheduler job-scheduler
+                  :blaze/db db})
 
-        :status := 202
-        [:headers "Content-Location"] := "/context-path-164322/__async-status/AAAAAAAAAAAAAAAA")
+          :status := 202
+          [:headers "Content-Location"] := "/context-path-164322/__async-status/AAAAAAAAAAAAAAAA"))
 
       (testing "the request bundle is stored"
-        (given @(d/pull node (d/resource-handle (d/db node) "Bundle" "AAAAAAAAAAAAAAAA"))
-          :fhir/type := :fhir/Bundle
-          :id := "AAAAAAAAAAAAAAAA"
-          :type := #fhir/code "batch"
-          [:entry count] := 1
-          [:entry 0 :fhir/type] := :fhir.Bundle/entry
-          [:entry 0 :request :method] := #fhir/code "POST"
-          [:entry 0 :request :url] := #fhir/uri "Measure/$evaluate-measure"
-          [:entry 0 :request :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/return-preference"
-          [:entry 0 :request :extension 0 :value] := #fhir/code "representation"
-          [:entry 0 :request :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
-          [:entry 0 :request :extension 1 :value] := #fhir/code "representation"
-          [:entry 0 :resource] := {:fhir/type :fhir/Parameters})))))
+        (with-db [db node]
+          (given @(d/pull node (d/resource-handle db "Bundle" "AAAAAAAAAAAAAAAA"))
+            :fhir/type := :fhir/Bundle
+            :id := "AAAAAAAAAAAAAAAA"
+            :type := #fhir/code "batch"
+            [:entry count] := 1
+            [:entry 0 :fhir/type] := :fhir.Bundle/entry
+            [:entry 0 :request :method] := #fhir/code "POST"
+            [:entry 0 :request :url] := #fhir/uri "Measure/$evaluate-measure"
+            [:entry 0 :request :extension 0 :url] := "https://blaze-server.org/fhir/StructureDefinition/return-preference"
+            [:entry 0 :request :extension 0 :value] := #fhir/code "representation"
+            [:entry 0 :request :extension 1 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
+            [:entry 0 :request :extension 1 :value] := #fhir/code "representation"
+            [:entry 0 :resource] := {:fhir/type :fhir/Parameters}))))))

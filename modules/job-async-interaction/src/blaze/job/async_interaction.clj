@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
@@ -84,18 +85,20 @@
    :entry entries})
 
 (defn- process-batch-entries
-  [{:keys [main-node db-sync-timeout] ::keys [running-jobs] :as context}
+  [{:keys [main-node] ::keys [running-jobs] :as context}
    {job-id :id} t entries]
-  (-> (fhir-util/sync main-node t db-sync-timeout)
-      (ac/then-compose-async
-       (fn [db]
-         (let [context (assoc
-                        context
-                        :blaze/db db
-                        :blaze/cancelled? #(when (get @running-jobs job-id)
-                                             (ba/interrupted)))]
-           (do-sync [entries (fhir-util/process-batch-entries context entries)]
-             (response-bundle context entries)))))))
+  (d/with-sync-db main-node t
+    (fn [db]
+      (-> (ac/completed-future db)
+          (ac/then-compose-async
+           (fn [db]
+             (let [context (assoc
+                            context
+                            :blaze/db db
+                            :blaze/cancelled? #(when (get @running-jobs job-id)
+                                                 (ba/interrupted)))]
+               (do-sync [entries (fhir-util/process-batch-entries context entries)]
+                 (response-bundle context entries)))))))))
 
 (defn add-response-bundle-reference [job response-bundle-id]
   (->> (type/reference {:reference (type/string (str "Bundle/" response-bundle-id))})
@@ -145,7 +148,7 @@
 (defmethod m/pre-init-spec :blaze.job/async-interaction [_]
   (s/keys :req [:blaze/base-url]
           :req-un [::main-node ::admin-node ::rest-api/batch-handler
-                   ::rest-api/db-sync-timeout :blaze/context-path]))
+                   :blaze/context-path]))
 
 (defmethod ig/init-key :blaze.job/async-interaction
   [_ config]

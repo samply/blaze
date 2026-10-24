@@ -1,5 +1,6 @@
 (ns blaze.dev
   (:require
+   [blaze.async.comp :as ac]
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
@@ -69,7 +70,7 @@
 ;; Node
 (comment
   (def node (:blaze.db/node system))
-  (def db (d/db node)))
+  @(d/with-db node #(ac/completed-future (d/type-total % "Patient"))))
 
 ;; Local Transaction Log
 (comment
