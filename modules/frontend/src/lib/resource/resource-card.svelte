@@ -9,13 +9,13 @@
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
 
-  import { isTabActive } from '$lib/util.js';
-  import { willBeRendered as willMetaBeRendered } from '$lib/values/meta.js';
-  import { title } from '$lib/resource.js';
+  import { isTabActive } from '#lib/util.js';
+  import { willBeRendered as willMetaBeRendered } from '#lib/values/meta.js';
+  import { title } from '#lib/resource.js';
 
   import TabItem from '../tab-item.svelte';
   import TabItemEmbedded from '../tab-item-embedded.svelte';
-  import DateTime from '$lib/values/date-time.svelte';
+  import DateTime from '#lib/values/date-time.svelte';
   import Property from './property.svelte';
   import Object from './json/object.svelte';
 

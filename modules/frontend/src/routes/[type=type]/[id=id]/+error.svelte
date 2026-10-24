@@ -2,12 +2,12 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
 
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
-  import ErrorCard from '$lib/error-card.svelte';
+  import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
+  import ErrorCard from '#lib/error-card.svelte';
 
   // Error components are not passed the route props, so read the params off the page state.
   let params = $derived(page.params as { type: string; id: string });

@@ -1,10 +1,10 @@
 import type { CapabilityStatement, OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
-import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
-import { processParams } from '$lib/util.js';
-import { transformBundle } from '$lib/resource/resource-card.js';
-import { searchMetadata, type SearchMetadata } from '$lib/search-metadata.js';
+import { backendUrl } from '#lib/backend.js';
+import { error } from '@sveltejs/kit';
+import { processParams } from '#lib/util.js';
+import { transformBundle } from '#lib/resource/resource-card.js';
+import { searchMetadata, type SearchMetadata } from '#lib/search-metadata.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
   return (await res.json()) as OperationOutcome;
@@ -13,33 +13,30 @@ async function outcome(res: Response): Promise<OperationOutcome> {
 /**
  * Builds the error body for an unsuccessful search response.
  *
- * The status is carried in the body as well, because the bundle is streamed:
- * a rejected streamed promise reaches the `{:catch}` block as the jsonified
- * body alone, without the `HttpError` that holds the status.
+ * The status is left out because `error` adds it.
  */
-export async function appError(params: RouteParams, res: Response): Promise<App.Error> {
+export async function appError(
+  params: RouteParams,
+  res: Response
+): Promise<Omit<App.Error, 'status'>> {
   switch (res.status) {
     case 400:
       return {
-        status: res.status,
         short: 'Bad Request',
         message: (await outcome(res)).issue[0].diagnostics ?? 'Please check your search params.'
       };
     case 422:
       return {
-        status: res.status,
         short: 'Unprocessable Content',
         message: (await outcome(res)).issue[0].diagnostics ?? 'Please check your search params.'
       };
     case 404:
       return {
-        status: res.status,
         short: 'Not Found',
         message: `The resource type ${params.type} was not found.`
       };
     default:
       return {
-        status: res.status,
         short: undefined,
         message: `An error happened while loading the ${params.type}s. Please try again later.`
       };
@@ -61,7 +58,7 @@ export async function fetchSearchMetadata(
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, 'error while fetching the search metadata');
+    error(res.status, 'error while fetching the search metadata');
   }
 
   return searchMetadata((await res.json()) as CapabilityStatement, type);
@@ -79,7 +76,8 @@ export async function fetchBundleWithDuration(
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, await appError(params, res));
+    const { message, ...properties } = await appError(params, res);
+    error(res.status, message, properties);
   }
 
   return {
@@ -100,7 +98,8 @@ export async function fetchPageBundleWithDuration(
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, await appError(params, res));
+    const { message, ...properties } = await appError(params, res);
+    error(res.status, message, properties);
   }
 
   return {

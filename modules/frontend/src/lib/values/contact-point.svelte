@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { FhirObject } from '$lib/resource/resource-card.js';
+  import type { FhirObject } from '#lib/resource/resource-card.js';
   import type { ContactPoint } from 'fhir/r4';
-  import { joinStrings } from '$lib/util.js';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import { joinStrings } from '#lib/util.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     values: FhirObject[];

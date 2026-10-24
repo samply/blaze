@@ -1,12 +1,12 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
-  import BreadcrumbEntryVersion from '$lib/breadcrumb/version.svelte';
-  import ResourceCard from '$lib/resource/resource-card.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
+  import BreadcrumbEntryVersion from '#lib/breadcrumb/version.svelte';
+  import ResourceCard from '#lib/resource/resource-card.svelte';
 
   let { data, params }: PageProps = $props();
 </script>

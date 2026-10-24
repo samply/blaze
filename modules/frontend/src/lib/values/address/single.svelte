@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Address } from 'fhir/r4';
-  import { joinStrings } from '$lib/util';
+  import { joinStrings } from '#lib/util.js';
 
   interface Props {
     value: Address;

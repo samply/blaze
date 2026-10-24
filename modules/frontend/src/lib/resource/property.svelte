@@ -18,15 +18,15 @@
 
   import PrimitiveValue from './primitive-value.svelte';
   import ComplexValue from './complex-value.svelte';
-  import AttachmentValues from '$lib/values/attachment.svelte';
-  import IdentifierValues from '$lib/values/identifier.svelte';
-  import HumanNameValues from '$lib/values/human-name.svelte';
-  import AddressValues from '$lib/values/address.svelte';
-  import ContactPointValues from '$lib/values/contact-point.svelte';
-  import ReferenceValues from '$lib/values/reference.svelte';
-  import DosageValues from '$lib/values/dosage.svelte';
+  import AttachmentValues from '#lib/values/attachment.svelte';
+  import IdentifierValues from '#lib/values/identifier.svelte';
+  import HumanNameValues from '#lib/values/human-name.svelte';
+  import AddressValues from '#lib/values/address.svelte';
+  import ContactPointValues from '#lib/values/contact-point.svelte';
+  import ReferenceValues from '#lib/values/reference.svelte';
+  import DosageValues from '#lib/values/dosage.svelte';
 
-  import { toTitleCase } from '$lib/util.js';
+  import { toTitleCase } from '#lib/util.js';
 
   interface Props {
     property: FhirProperty;

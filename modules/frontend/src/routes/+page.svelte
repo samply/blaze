@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Table from '$lib/tailwind/table/table.svelte';
-  import ResourceRow from '$lib/resource-row.svelte';
+  import Table from '#lib/tailwind/table/table.svelte';
+  import ResourceRow from '#lib/resource-row.svelte';
 
   let { data }: PageProps = $props();
 </script>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { signIn } from '$lib/auth-client';
+  import { signIn } from '#lib/auth-client.js';
 
   let error = $state<string>();
 

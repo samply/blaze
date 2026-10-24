@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { ReIndexJob } from '$lib/jobs/re-index';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { ReIndexJob } from '#lib/jobs/re-index.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   function progress(job: ReIndexJob) {
     const total = job.totalResources;

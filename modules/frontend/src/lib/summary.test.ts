@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summaryFromUrl, withSummaryParam } from '$lib/summary.js';
+import { summaryFromUrl, withSummaryParam } from '#lib/summary.js';
 
 describe('summaryFromUrl test', () => {
   function params(query: string): URLSearchParams {

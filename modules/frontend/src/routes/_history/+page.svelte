@@ -3,11 +3,11 @@
 
   import { page } from '$app/state';
 
-  import TotalCard from '$lib/total-card.svelte';
-  import TotalBadge from '$lib/total-badge.svelte';
-  import EntryCard from '$lib/resource/entry-card.svelte';
-  import SummaryControl from '$lib/summary-control.svelte';
-  import SummaryBanner from '$lib/summary-banner.svelte';
+  import TotalCard from '#lib/total-card.svelte';
+  import TotalBadge from '#lib/total-badge.svelte';
+  import EntryCard from '#lib/resource/entry-card.svelte';
+  import SummaryControl from '#lib/summary-control.svelte';
+  import SummaryBanner from '#lib/summary-banner.svelte';
 
   let { data }: PageProps = $props();
 </script>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Badge from '$lib/tailwind/badge.svelte';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     total: number;

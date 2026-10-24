@@ -5,7 +5,7 @@
 <div class="mt-6 flex items-center justify-end gap-x-6">
   <a
     class="text-sm leading-6 font-semibold text-gray-900 dark:text-gray-100"
-    href={resolve('/__admin/jobs')}>Cancel</a
+    href={resolve('__admin/jobs')}>Cancel</a
   >
   <button
     type="submit"

@@ -1,27 +1,27 @@
 import type { Actions, PageServerLoad } from './$types';
 import { resolve } from '$app/paths';
-import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { pascalCase } from 'change-case';
-import { backendUrl } from '$lib/backend.js';
-import { type Job, toJob } from '$lib/jobs';
+import { backendUrl } from '#lib/backend.js';
+import { type Job, toJob } from '#lib/jobs.js';
 import {
   extractRequest,
   extractProcessingDuration as extractAsyncProcessingDuration
-} from '$lib/jobs/async-interaction';
+} from '#lib/jobs/async-interaction.js';
 import {
   extractDatabase,
   extractColumnFamily,
   extractProcessingDuration as extractCompactProcessingDuration
-} from '$lib/jobs/compact';
+} from '#lib/jobs/compact.js';
 import {
   extractDatabase as extractDiskPerfDatabase,
   extractScore,
   extractProcessingDuration as extractDiskPerfProcessingDuration
-} from '$lib/jobs/disk-perf';
+} from '#lib/jobs/disk-perf.js';
 import {
   extractSearchParamUrl,
   extractProcessingDuration as extractReIndexProcessingDuration
-} from '$lib/jobs/re-index';
+} from '#lib/jobs/re-index.js';
 import type { Bundle, BundleEntry, Task } from 'fhir/r4';
 
 export interface SummaryJob extends Job {
@@ -85,14 +85,15 @@ async function loadJobs(fetch: typeof window.fetch, status?: string): Promise<Su
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the list of running jobs. Please try again later.`
-    });
+    error(
+      res.status,
+      `An error happened while loading the list of running jobs. Please try again later.`
+    );
   }
 
   const bundle = (await res.json()) as Bundle;
   const includes = bundle.entry?.filter((e) => e.search?.mode === 'include') || [];
+
   return (
     bundle.entry
       ?.filter((e) => e.search?.mode === 'match')
@@ -119,7 +120,7 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, resolve('/__admin/jobs'));
+    redirect(303, resolve('__admin/jobs'));
   },
   resume: async ({ request, fetch }) => {
     const data = await request.formData();
@@ -134,7 +135,7 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, resolve('/__admin/jobs'));
+    redirect(303, resolve('__admin/jobs'));
   },
   cancel: async ({ request, fetch }) => {
     const data = await request.formData();
@@ -149,6 +150,6 @@ export const actions = {
       return fail(400);
     }
 
-    redirect(303, resolve('/__admin/jobs'));
+    redirect(303, resolve('__admin/jobs'));
   }
 } satisfies Actions;

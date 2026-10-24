@@ -3,23 +3,23 @@
 
   import { page } from '$app/state';
 
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
 
   import SearchForm from './search-form.svelte';
-  import TotalCard from '$lib/total-card.svelte';
-  import TotalBadge from '$lib/total-badge.svelte';
-  import DurationBadge from '$lib/duration-badge.svelte';
-  import EntryCard from '$lib/resource/entry-card.svelte';
+  import TotalCard from '#lib/total-card.svelte';
+  import TotalBadge from '#lib/total-badge.svelte';
+  import DurationBadge from '#lib/duration-badge.svelte';
+  import EntryCard from '#lib/resource/entry-card.svelte';
   import NoResultsCard from './no-results-card.svelte';
-  import ErrorCard from '$lib/error-card.svelte';
-  import SummaryControl from '$lib/summary-control.svelte';
-  import SummaryBanner from '$lib/summary-banner.svelte';
+  import ErrorCard from '#lib/error-card.svelte';
+  import SummaryControl from '#lib/summary-control.svelte';
+  import SummaryBanner from '#lib/summary-banner.svelte';
   import HistoryButton from './history-button.svelte';
   import MetadataButton from './metadata-button.svelte';
   import CodeSystemOperationDropdown from '../CodeSystem/operation-dropdown.svelte';
   import ValueSetOperationDropdown from '../ValueSet/operation-dropdown.svelte';
-  import LoadingIndicator from '$lib/loading-indicator.svelte';
+  import LoadingIndicator from '#lib/loading-indicator.svelte';
 
   let { data, params }: PageProps = $props();
 </script>

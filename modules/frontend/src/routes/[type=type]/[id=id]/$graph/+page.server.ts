@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
 import type { Bundle, GraphDefinition } from 'fhir/r4';
 
-import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
-import { fhirObject, transformBundle } from '$lib/resource/resource-card';
+import { backendUrl } from '#lib/backend.js';
+import { error } from '@sveltejs/kit';
+import { fhirObject, transformBundle } from '#lib/resource/resource-card.js';
 
 export const load: PageServerLoad = async ({ fetch, params, url }) => {
   const resourceRes = await fetch(backendUrl(`/${params.type}/${params.id}`), {
@@ -13,16 +13,18 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
   });
 
   if (!resourceRes.ok) {
-    error(resourceRes.status as NumericRange<400, 599>, {
-      short:
-        resourceRes.status == 404 ? 'Not Found' : resourceRes.status == 410 ? 'Gone' : undefined,
-      message:
-        resourceRes.status == 404
-          ? `The ${params.type} with ID ${params.id} was not found.`
-          : resourceRes.status == 410
-            ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-            : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`
-    });
+    error(
+      resourceRes.status,
+      resourceRes.status == 404
+        ? `The ${params.type} with ID ${params.id} was not found.`
+        : resourceRes.status == 410
+          ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
+          : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`,
+      {
+        short:
+          resourceRes.status == 404 ? 'Not Found' : resourceRes.status == 410 ? 'Gone' : undefined
+      }
+    );
   }
 
   const resource = await resourceRes.json();
@@ -34,10 +36,10 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
   });
 
   if (!graphDefinitionsRes.ok) {
-    error(graphDefinitionsRes.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading GraphDefinitions. Please try again later.`
-    });
+    error(
+      graphDefinitionsRes.status,
+      `An error happened while loading GraphDefinitions. Please try again later.`
+    );
   }
 
   const bundle: Bundle = await graphDefinitionsRes.json();
@@ -54,15 +56,17 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
     );
 
     if (!graphRes.ok) {
-      error(graphRes.status as NumericRange<400, 599>, {
-        short: graphRes.status == 404 ? 'Not Found' : graphRes.status == 410 ? 'Gone' : undefined,
-        message:
-          graphRes.status == 404
-            ? `The ${params.type} with ID ${params.id} was not found.`
-            : graphRes.status == 410
-              ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-              : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`
-      });
+      error(
+        graphRes.status,
+        graphRes.status == 404
+          ? `The ${params.type} with ID ${params.id} was not found.`
+          : graphRes.status == 410
+            ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
+            : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`,
+        {
+          short: graphRes.status == 404 ? 'Not Found' : graphRes.status == 410 ? 'Gone' : undefined
+        }
+      );
     }
   }
 
