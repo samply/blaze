@@ -2,7 +2,8 @@ import { type Handle, type HandleFetch, redirect } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { sequence } from '@sveltejs/kit/hooks';
-import { handle as handleAuthentication } from '$lib/server/auth';
+import { auth, handle as handleAuthentication } from '$lib/server/auth';
+import { authenticate } from '$lib/server/session';
 import { resolve as resolveRoute } from '$app/paths';
 
 const signInPath = resolveRoute('/__sign-in');
@@ -13,7 +14,7 @@ const signInPath = resolveRoute('/__sign-in');
  *
  * Only the path and the query are kept, percent-encoded: unencoded, the
  * target's own `&` would end the `redirect` param and truncate the query,
- * and its origin has no business in a callback URL handed to Auth.js.
+ * and its origin has no business in a callback URL handed to Better Auth.
  */
 function signInUrl(target: URL): string {
   return `${signInPath}?redirect=${encodeURIComponent(target.pathname + target.search)}`;
@@ -21,10 +22,9 @@ function signInUrl(target: URL): string {
 
 export const handleAuthorization: Handle = async ({ event, resolve }) => {
   if (event.route.id != '/__sign-in') {
-    // authenticate the user
-    const session = await event.locals.auth();
+    const session = await authenticate(auth.api, event.request.headers);
 
-    if (!session || !session.expiresAt || session.expiresAt - Date.now() < 10000) {
+    if (!session) {
       redirect(307, signInUrl(event.url));
     }
 
@@ -34,7 +34,32 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-export const handle = sequence(handleAuthentication, handleAuthorization);
+const authJsCookie = /^(__Secure-|__Host-)?authjs\./;
+
+/**
+ * Expires the cookies Auth.js set before the switch to Better Auth.
+ *
+ * Its session cookie alone is 3-4 KB, so together with the Better Auth
+ * cookies, the Cookie header would exceed the 8 KB a reverse proxy like nginx
+ * accepts by default.
+ *
+ * The cookies are expired on every page response and redirect, so they are
+ * gone by the time the sign-in page is shown, before signing in adds the
+ * Better Auth cookies. Responses of the Better Auth endpoints don't expire
+ * them, because those bypass `resolve`, but they are only reached from the
+ * sign-in page.
+ */
+export const expireAuthJsCookies: Handle = async ({ event, resolve }) => {
+  for (const { name } of event.cookies.getAll()) {
+    if (authJsCookie.test(name)) {
+      event.cookies.delete(name, { path: '/' });
+    }
+  }
+
+  return resolve(event);
+};
+
+export const handle = sequence(expireAuthJsCookies, handleAuthentication, handleAuthorization);
 
 const origin = env.ORIGIN || '';
 const forwarded = `host=${new URL(origin).host};proto=${new URL(origin).protocol.replace(':', '')}`;

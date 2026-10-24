@@ -25,7 +25,7 @@ test.beforeEach('Sign In', async ({ page }) => {
 // — SvelteKit fetches `__data.json` for a client-side navigation, and the
 // client router has to turn the redirect it finds there into a navigation.
 //
-// The other half of #4082 — a session Auth.js still considers valid whose
+// The other half of #4082 — a session Better Auth still considers valid whose
 // token the backend rejects, which is what `handleFetch` recovers from — is
 // covered by `src/hooks.server.test.ts`. Reaching it from here would mean
 // revoking the Keycloak session behind the app's back.

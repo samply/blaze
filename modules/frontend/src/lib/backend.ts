@@ -14,7 +14,7 @@ import { base } from '$app/paths';
  * to duplicate that knowledge.
  *
  * `base` is deprecated in favor of `resolve`, but `resolve` cannot serve this
- * case, which is why this stays the single place that reads it:
+ * case:
  * - Some backend paths are not routes of this app at all — there is none for
  *   `/$totals` or `/__admin/Task/{id}/$pause`. That the generated `Pathname`
  *   type admits them anyway is an accident of the `[type=type]` routes

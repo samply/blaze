@@ -4,31 +4,48 @@ import { isRedirect } from '@sveltejs/kit';
 vi.mock('$env/dynamic/private', () => ({
   env: { ORIGIN: 'http://localhost', BACKEND_BASE_URL: 'http://backend:8080' }
 }));
+const authApi = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  getAccessToken: vi.fn(),
+  refreshToken: vi.fn()
+}));
 vi.mock('$lib/server/auth', () => ({
+  auth: { api: authApi },
   handle: (input: { event: unknown; resolve: unknown }) =>
     (input.resolve as (e: unknown) => unknown)(input.event)
 }));
 
-const { handleAuthorization, handleFetch } = await import('./hooks.server.js');
+const { expireAuthJsCookies, handleAuthorization, handleFetch } = await import('./hooks.server.js');
+
+/**
+ * Lets the mocked Better Auth API answer with a session of the user `name`
+ * holding `accessToken`, or with no session at all for `null`.
+ */
+function mockSession(session: { name: string; accessToken?: string | Error } | null) {
+  authApi.getSession.mockResolvedValue(session ? { user: { name: session.name } } : null);
+  authApi.getAccessToken.mockImplementation(async () => {
+    if (session?.accessToken instanceof Error) {
+      throw session.accessToken;
+    }
+    return {
+      accessToken: session?.accessToken ?? 'token',
+      accessTokenExpiresAt: new Date(Date.now() + 60000)
+    };
+  });
+}
 
 function mockEvent(options: {
   routeId?: string | null;
-  session?: { expiresAt?: number } | null;
+  session?: { name: string; accessToken?: string | Error } | null;
   url?: string;
 }) {
-  const locals: { session?: unknown } = {};
+  mockSession(options.session ?? null);
+  const url = options.url ?? 'http://localhost/Patient';
   return {
     route: { id: options.routeId ?? '/[type=type]' },
-    url: new URL(options.url ?? 'http://localhost/Patient'),
-    locals: {
-      auth: async () => options.session,
-      get session() {
-        return locals.session;
-      },
-      set session(value) {
-        locals.session = value;
-      }
-    }
+    url: new URL(url),
+    request: new Request(url),
+    locals: {} as { session?: unknown }
   };
 }
 
@@ -38,6 +55,69 @@ async function callHandleAuthorization(event: ReturnType<typeof mockEvent>) {
   const result = await handleAuthorization({ event: event as any, resolve } as any);
   return { result, resolve };
 }
+
+describe('expireAuthJsCookies test', () => {
+  function cookieEvent(names: string[]) {
+    return {
+      cookies: {
+        getAll: () => names.map((name) => ({ name, value: 'value' })),
+        delete: vi.fn()
+      }
+    };
+  }
+
+  async function callExpireAuthJsCookies(event: ReturnType<typeof cookieEvent>) {
+    const resolve = vi.fn().mockResolvedValue(new Response('ok'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await expireAuthJsCookies({ event: event as any, resolve } as any);
+    return { result, resolve };
+  }
+
+  // Browsers signed in before the switch to Better Auth still send the
+  // cookies of Auth.js. Its session cookie alone is 3-4 KB, so together with
+  // the Better Auth cookies, the Cookie header would exceed the 8 KB a reverse
+  // proxy like nginx accepts by default.
+  it('expires the cookies of Auth.js', async () => {
+    const event = cookieEvent([
+      '__Secure-authjs.session-token.0',
+      '__Secure-authjs.session-token.1',
+      '__Secure-authjs.callback-url',
+      '__Host-authjs.csrf-token',
+      'authjs.session-token'
+    ]);
+
+    await callExpireAuthJsCookies(event);
+
+    expect(event.cookies.delete.mock.calls).toStrictEqual([
+      ['__Secure-authjs.session-token.0', { path: '/' }],
+      ['__Secure-authjs.session-token.1', { path: '/' }],
+      ['__Secure-authjs.callback-url', { path: '/' }],
+      ['__Host-authjs.csrf-token', { path: '/' }],
+      ['authjs.session-token', { path: '/' }]
+    ]);
+  });
+
+  it('keeps all other cookies', async () => {
+    const event = cookieEvent([
+      '__Secure-better-auth.session_token',
+      '__Secure-better-auth.account_data.0',
+      'other'
+    ]);
+
+    await callExpireAuthJsCookies(event);
+
+    expect(event.cookies.delete).not.toHaveBeenCalled();
+  });
+
+  it('resolves the request', async () => {
+    const event = cookieEvent(['__Secure-authjs.session-token']);
+
+    const { result, resolve } = await callExpireAuthJsCookies(event);
+
+    expect(resolve).toHaveBeenCalledWith(event);
+    expect(await result.text()).toBe('ok');
+  });
+});
 
 describe('handleAuthorization test', () => {
   it('bypasses authorization for the sign-in route itself', async () => {
@@ -50,11 +130,11 @@ describe('handleAuthorization test', () => {
   });
 
   it('sets locals.session and resolves normally for a valid session', async () => {
-    const event = mockEvent({ session: { expiresAt: Date.now() + 60000 } });
+    const event = mockEvent({ session: { name: 'John', accessToken: 'token-1' } });
 
     const { resolve } = await callHandleAuthorization(event);
 
-    expect(event.locals.session).toStrictEqual({ expiresAt: expect.any(Number) });
+    expect(event.locals.session).toStrictEqual({ user: { name: 'John' }, accessToken: 'token-1' });
     expect(resolve).toHaveBeenCalledWith(event);
   });
 
@@ -95,8 +175,10 @@ describe('handleAuthorization test', () => {
     }
   });
 
-  it('redirects to the sign-in page when the session expires soon', async () => {
-    const event = mockEvent({ session: { expiresAt: Date.now() + 1000 } });
+  it('redirects to the sign-in page when no valid access token can be obtained', async () => {
+    const event = mockEvent({
+      session: { name: 'John', accessToken: new Error('refresh failed') }
+    });
 
     try {
       await callHandleAuthorization(event);
@@ -169,7 +251,7 @@ describe('handleFetch test', () => {
   });
 
   // The backend rejecting the access token even though `handleAuthorization`
-  // found the Auth.js session valid — revoked at the identity provider, clock
+  // found the Better Auth session valid — revoked at the identity provider, clock
   // skew, a realm mismatch. Recovering here rather than in the load that made
   // the request is what keeps the return-to target: `event.url` is the page
   // the user is on, which the load cannot read.
