@@ -2,15 +2,15 @@
   import type { PageProps } from './$types';
   import type { FhirResource } from 'fhir/r4';
 
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
 
-  import ResourceCard from '$lib/resource/resource-card.svelte';
+  import ResourceCard from '#lib/resource/resource-card.svelte';
   import HistoryButton from './history-button.svelte';
   import OperationDropdown from './operation-dropdown.svelte';
 
-  import { title } from '$lib/resource.js';
+  import { title } from '#lib/resource.js';
 
   let { data, params }: PageProps = $props();
 

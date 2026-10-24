@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Job } from '$lib/jobs';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { Job } from '#lib/jobs.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     job: Job;

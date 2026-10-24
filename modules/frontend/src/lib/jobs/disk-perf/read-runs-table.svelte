@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { RandReadRun } from '$lib/jobs/disk-perf';
-  import Table from '$lib/tailwind/table/table.svelte';
-  import prettyMicros from '$lib/pretty-micros';
-  import prettyNum from '$lib/pretty-num';
+  import type { RandReadRun } from '#lib/jobs/disk-perf.js';
+  import Table from '#lib/tailwind/table/table.svelte';
+  import prettyMicros from '#lib/pretty-micros.js';
+  import prettyNum from '#lib/pretty-num.js';
   import prettyBytes from 'pretty-bytes';
 
   interface Props {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { instanceHistoryQuery, historySummaryFromUrl } from '$lib/history.js';
+import { instanceHistoryQuery, historySummaryFromUrl } from '#lib/history.js';
 
 function params(query: string): URLSearchParams {
   return new URLSearchParams(query);

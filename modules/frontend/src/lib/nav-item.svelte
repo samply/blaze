@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { Pathname } from '$app/types';
+  import type { Path } from '$app/types';
   import { resolve } from '$app/paths';
 
   interface Props {
     active?: boolean;
-    id: Pathname;
+    id: Path;
     /** Optional query string, including the leading `?`. */
     query?: string;
     label: string;

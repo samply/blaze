@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { CapabilityStatement } from 'fhir/r4';
-import { emptySearchMetadata, searchMetadata } from '$lib/search-metadata.js';
+import { emptySearchMetadata, searchMetadata } from '#lib/search-metadata.js';
 
 function capabilityStatement(rest: CapabilityStatement['rest']): CapabilityStatement {
   return {

@@ -162,7 +162,6 @@ The frontend of Blaze runs as separate container. It will talk to the backend di
 frontend:
   image: "samply/blaze-frontend:{{ tag }}@{{ frontendDigest }}"
   environment:
-    ORIGIN: "https://blaze.localhost"
     BACKEND_BASE_URL: "http://backend:8080"
     AUTH_CLIENT_ID: "account"
     AUTH_CLIENT_SECRET: "e11a3a8e-6e24-4f9d-b914-da7619e8b31f"

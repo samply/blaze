@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
-import SummaryBanner from '$lib/summary-banner.svelte';
+import SummaryBanner from '#lib/summary-banner.svelte';
 
 const url = new URL('http://localhost/Patient?_summary=true');
 

@@ -1,8 +1,8 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { resolve } from '$app/paths';
-import { backendUrl } from '$lib/backend.js';
-import { url } from '$lib/canonical';
+import { backendUrl } from '#lib/backend.js';
+import { url } from '#lib/canonical.js';
 import { fail, redirect } from '@sveltejs/kit';
 
 export const actions = {
@@ -56,10 +56,11 @@ export const actions = {
     }
 
     const task: Task = await res.json();
+
     redirect(
       303,
       task.id === undefined
-        ? resolve('/__admin/jobs')
+        ? resolve('__admin/jobs')
         : resolve('/__admin/jobs/re-index/[id=id]', { id: task.id })
     );
   }

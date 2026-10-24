@@ -1,18 +1,18 @@
 <script lang="ts">
   import type { CapabilityStatement } from 'fhir/r4';
-  import { RestfulInteraction } from '$lib/fhir.js';
-  import type { FhirObject } from '$lib/resource/resource-card.js';
-  import { isTabActive } from '$lib/util.js';
+  import { RestfulInteraction } from '#lib/fhir.js';
+  import type { FhirObject } from '#lib/resource/resource-card.js';
+  import { isTabActive } from '#lib/util.js';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
-  import DateTime from '$lib/values/date-time.svelte';
+  import DateTime from '#lib/values/date-time.svelte';
   import { Check, ArrowDownTray, XMark } from 'svelte-heros-v2';
-  import Object from '$lib/resource/json/object.svelte';
-  import TabItem from '$lib/tab-item.svelte';
+  import Object from '#lib/resource/json/object.svelte';
+  import TabItem from '#lib/tab-item.svelte';
   import InteractionTh from './interaction-th.svelte';
   import InteractionTd from './interaction-td.svelte';
-  import Table from '$lib/tailwind/table/table.svelte';
+  import Table from '#lib/tailwind/table/table.svelte';
 
   interface Props {
     capabilityStatement: CapabilityStatement;
@@ -36,6 +36,7 @@
           <h1 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
             {capabilityStatement.software?.name} v{capabilityStatement.software?.version}
           </h1>
+
           <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">
             Last Updated&nbsp;<DateTime value={capabilityStatement.date} />
           </p>
@@ -74,23 +75,34 @@
             ><a
               href={resolve('/metadata/[type=type]', { type: resource.type })}
               class="hover:text-gray-500 dark:text-gray-400">{resource.type}</a
-            ></td
-          >
+            >
+          </td>
+
           <td class="py-2 text-sm text-gray-900 dark:text-gray-100">
             <a
-              href="{resolve('/StructureDefinition')}?url={resource.profile}&_format=json"
+              href="{resolve('StructureDefinition')}?url={resource.profile}&_format=json"
               download="{resource.type}.json"><ArrowDownTray class="mx-auto h-5 w-5" /></a
             >
           </td>
+
           <InteractionTd {resource} interaction={RestfulInteraction.read} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.vread} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.searchType} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.historyInstance} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.historyType} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.create} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.update} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.patch} />
+
           <InteractionTd {resource} interaction={RestfulInteraction.delete} />
+
           <td class="py-2">
             {#if resource.readHistory}
               <Check class="mx-auto h-5 w-5 text-green-600 dark:text-green-400" />

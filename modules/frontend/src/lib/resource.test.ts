@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { FhirResource } from 'fhir/r4';
-import { title, versionedTitle } from '$lib/resource.js';
+import { title, versionedTitle } from '#lib/resource.js';
 
 const patient: FhirResource = { resourceType: 'Patient', id: '0' };
 

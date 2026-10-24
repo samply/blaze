@@ -1,4 +1,4 @@
-import type { Type } from '$lib/resource/resource-card.js';
+import type { Type } from '#lib/resource/resource-card.js';
 
 const targetProfilePrefix = 'http://hl7.org/fhir/StructureDefinition/';
 

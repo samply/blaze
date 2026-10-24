@@ -1,5 +1,5 @@
 import type { CapabilityStatement, CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
-import { sortByProperty } from '$lib/util.js';
+import { sortByProperty } from '#lib/util.js';
 
 /**
  * Everything the search form needs to offer for one resource type.

@@ -1,13 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
 
   import SearchForm from './search-form.svelte';
-  import ErrorCard from '$lib/error-card.svelte';
-  import { emptySearchMetadata, type SearchMetadata } from '$lib/search-metadata.js';
+  import ErrorCard from '#lib/error-card.svelte';
+  import { emptySearchMetadata, type SearchMetadata } from '#lib/search-metadata.js';
 
   // Error components are not passed the route props, so read the params off the page state.
   let params = $derived(page.params as { type: string });

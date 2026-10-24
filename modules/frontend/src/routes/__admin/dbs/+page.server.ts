@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 
-import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { backendUrl } from '#lib/backend.js';
+import { error } from '@sveltejs/kit';
 import type { Stats } from './[dbId=id]/+page.server.js';
 
 export const load: PageServerLoad = async ({ fetch }) => {
@@ -10,10 +10,10 @@ export const load: PageServerLoad = async ({ fetch }) => {
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: undefined,
-      message: `An error happened while loading the list of database stats. Please try again later.`
-    });
+    error(
+      res.status,
+      `An error happened while loading the list of database stats. Please try again later.`
+    );
   }
 
   return { databases: (await res.json()) as Stats[] };

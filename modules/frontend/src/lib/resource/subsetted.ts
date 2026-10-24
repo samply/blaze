@@ -1,5 +1,5 @@
 import type { Bundle, BundleEntry } from 'fhir/r4';
-import type { SummaryMode } from '$lib/summary.js';
+import type { SummaryMode } from '#lib/summary.js';
 
 const subsettedSystem = 'http://terminology.hl7.org/CodeSystem/v3-ObservationValue';
 

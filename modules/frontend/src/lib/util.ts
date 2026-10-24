@@ -1,3 +1,5 @@
+import type { ReadonlyURL } from '$app/state';
+
 export function toTitleCase(s: string): string {
   return s.substring(0, 1).toUpperCase() + s.substring(1);
 }
@@ -34,12 +36,12 @@ export function joinStrings(
   return vs.length == 0 ? undefined : vs.join(separator);
 }
 
-export function isTabActive(url: URL, name: string): boolean {
+export function isTabActive(url: ReadonlyURL, name: string): boolean {
   return (url.searchParams.get('__tab') ?? 'default') == name;
 }
 
-export function withTab(url: URL, name: string): string {
-  const copy = new URL(url);
+export function withTab(url: ReadonlyURL, name: string): string {
+  const copy = new URL(url.href);
   copy.searchParams.set('__tab', name);
   return copy.toString();
 }

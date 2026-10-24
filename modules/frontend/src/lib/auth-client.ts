@@ -1,12 +1,12 @@
 import { createAuthClient } from 'better-auth/client';
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 
 /**
  * Created on use, in the browser, where the client takes its origin from the
  * page.
  */
 function authClient() {
-  return createAuthClient({ basePath: `${base}/auth` });
+  return createAuthClient({ basePath: resolve('auth') });
 }
 
 /**

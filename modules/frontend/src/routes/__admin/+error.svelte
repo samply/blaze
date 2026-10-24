@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
 
-  import ErrorCard from '$lib/error-card.svelte';
+  import ErrorCard from '#lib/error-card.svelte';
 </script>
 
 <svelte:head>
@@ -9,5 +9,5 @@
 </svelte:head>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
-  <ErrorCard homeHref={resolve('/__admin')} homeMsg="Go back to Overview" />
+  <ErrorCard homeHref={resolve('__admin')} homeMsg="Go back to Overview" />
 </main>

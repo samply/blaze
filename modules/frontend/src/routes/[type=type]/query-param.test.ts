@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { initQueryParams, submitParams } from './query-param.js';
-import { SearchParamType } from '$lib/fhir.js';
+import { SearchParamType } from '#lib/fhir.js';
 
 describe('initQueryParams test', () => {
   it('returns empty query params on empty input', () => {

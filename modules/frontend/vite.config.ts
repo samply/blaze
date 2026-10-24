@@ -14,7 +14,9 @@ export default defineConfig({
       },
       adapter: adapter(),
       paths: {
-        base: '/fhir'
+        base: '/fhir',
+        // Backend URLs built with `resolve` have to be root-relative, see `backendUrl`.
+        relative: false
       },
       csp: {
         directives: {

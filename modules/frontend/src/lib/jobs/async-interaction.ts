@@ -1,5 +1,5 @@
-import { url } from '$lib/canonical';
-import { input, type Job, output, toJob as toBaseJob } from '$lib/jobs';
+import { url } from '#lib/canonical.js';
+import { input, type Job, output, toJob as toBaseJob } from '#lib/jobs.js';
 import type { Bundle, BundleEntry, Task, TaskInput, TaskOutput } from 'fhir/r4';
 
 export interface AsyncInteractionJob extends Job {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
 
-  import Card from '$lib/tailwind/simple-logo-card.svelte';
+  import Card from '#lib/tailwind/simple-logo-card.svelte';
   import { Bolt, CircleStack, MagnifyingGlass } from 'svelte-heros-v2';
 </script>
 
@@ -13,14 +13,16 @@
   <h1 class="text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">Please Choose</h1>
 
   <ul role="list" class="mt-4 grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-3 xl:gap-x-8">
-    <Card href={resolve('/__admin/jobs/new/re-index')} title="(Re)Index a Search Parameter">
-      <MagnifyingGlass class="size-7 text-gray-900 dark:text-gray-100" />
-    </Card>
-    <Card href={resolve('/__admin/jobs/new/compact')} title="Compact a Database Column Family">
-      <CircleStack class="size-7 text-gray-900 dark:text-gray-100" />
-    </Card>
-    <Card href={resolve('/__admin/jobs/new/disk-perf')} title="Measure Disk Performance">
-      <Bolt class="size-7 text-gray-900 dark:text-gray-100" />
-    </Card>
+    <Card href={resolve('__admin/jobs/new/re-index')} title="(Re)Index a Search Parameter"
+      ><MagnifyingGlass class="size-7 text-gray-900 dark:text-gray-100" /></Card
+    >
+
+    <Card href={resolve('__admin/jobs/new/compact')} title="Compact a Database Column Family"
+      ><CircleStack class="size-7 text-gray-900 dark:text-gray-100" /></Card
+    >
+
+    <Card href={resolve('__admin/jobs/new/disk-perf')} title="Measure Disk Performance"
+      ><Bolt class="size-7 text-gray-900 dark:text-gray-100" /></Card
+    >
   </ul>
 </main>

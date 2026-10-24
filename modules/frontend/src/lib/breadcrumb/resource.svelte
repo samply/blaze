@@ -4,7 +4,7 @@
   import { resolve } from '$app/paths';
 
   import Entry from './entry.svelte';
-  import { versionedTitle } from '$lib/resource.js';
+  import { versionedTitle } from '#lib/resource.js';
 
   interface Props {
     type: string;

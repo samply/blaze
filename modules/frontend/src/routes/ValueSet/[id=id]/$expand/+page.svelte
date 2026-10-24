@@ -1,19 +1,19 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
-  import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
-  import CheckBoxes from '$lib/tailwind/form/check-boxes.svelte';
-  import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import CheckBox from '$lib/tailwind/form/check-box.svelte';
-  import Section from '$lib/tailwind/form/section.svelte';
-  import Form from '$lib/tailwind/form.svelte';
-  import TextField from '$lib/tailwind/form/text-field.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
+  import BreadcrumbEntry from '#lib/breadcrumb/entry.svelte';
+  import CheckBoxes from '#lib/tailwind/form/check-boxes.svelte';
+  import SubmitButton from '#lib/tailwind/form/button-submit.svelte';
+  import CheckBox from '#lib/tailwind/form/check-box.svelte';
+  import Section from '#lib/tailwind/form/section.svelte';
+  import Form from '#lib/tailwind/form.svelte';
+  import TextField from '#lib/tailwind/form/text-field.svelte';
 
-  import { title } from '$lib/resource.js';
+  import { title } from '#lib/resource.js';
 
   let { data, form, params }: PageProps = $props();
 </script>

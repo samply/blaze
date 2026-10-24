@@ -1,7 +1,7 @@
 <script lang="ts">
   import { preventDefault } from 'svelte/legacy';
 
-  import type { SearchMetadata } from '$lib/search-metadata.js';
+  import type { SearchMetadata } from '#lib/search-metadata.js';
   import { initQueryParams, selectParam, submitParams } from './query-param.js';
   import {
     insertAtIndex,
@@ -9,7 +9,7 @@
     moveUpAtIndex,
     removeAtIndex,
     updateAtIndex
-  } from '$lib/util.js';
+  } from '#lib/util.js';
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -25,8 +25,8 @@
 
   import { fade } from 'svelte/transition';
   import { quintIn } from 'svelte/easing';
-  import Dropdown from '$lib/tailwind/dropdown.svelte';
-  import Toggle from '$lib/tailwind/toggle.svelte';
+  import Dropdown from '#lib/tailwind/dropdown.svelte';
+  import Toggle from '#lib/tailwind/toggle.svelte';
 
   interface Props {
     searchMetadata: SearchMetadata;
@@ -62,8 +62,7 @@
       page.url.searchParams.get('_summary')
     );
 
-    // eslint-disable-next-line svelte/no-navigation-without-resolve
-    goto(`${resolve('/[type=type]', { type: type })}?${params}`);
+    goto(`${resolve('/[type=type]', { type })}?${params}`);
   }
 
   let openSearchSettings = $state(false);
@@ -159,7 +158,7 @@
                 d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
                 clip-rule="evenodd"
                 fill-rule="evenodd"
-              />
+              ></path>
             </svg>
           </button>
         </div>

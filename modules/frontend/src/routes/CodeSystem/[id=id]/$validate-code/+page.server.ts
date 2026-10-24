@@ -6,8 +6,8 @@ import type {
   Parameters,
   ParametersParameter
 } from 'fhir/r4';
-import { backendUrl } from '$lib/backend.js';
-import { error, fail, type NumericRange } from '@sveltejs/kit';
+import { backendUrl } from '#lib/backend.js';
+import { error, fail } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
@@ -20,15 +20,15 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
   );
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, {
-      short: res.status == 404 ? 'Not Found' : res.status == 410 ? 'Gone' : undefined,
-      message:
-        res.status == 404
-          ? `The CodeSystem with ID ${params.id} was not found.`
-          : res.status == 410
-            ? `The CodeSystem with ID ${params.id} was deleted. Please look into the history.`
-            : `An error happened while loading the CodeSystem with ID ${params.id}. Please try again later.`
-    });
+    error(
+      res.status,
+      res.status == 404
+        ? `The CodeSystem with ID ${params.id} was not found.`
+        : res.status == 410
+          ? `The CodeSystem with ID ${params.id} was deleted. Please look into the history.`
+          : `An error happened while loading the CodeSystem with ID ${params.id}. Please try again later.`,
+      { short: res.status == 404 ? 'Not Found' : res.status == 410 ? 'Gone' : undefined }
+    );
   }
 
   const bundle: Bundle = await res.json();

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { FhirObjectBundleEntry } from '$lib/resource/resource-card';
-  import { isSubsetted } from '$lib/resource/subsetted.js';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { FhirObjectBundleEntry } from '#lib/resource/resource-card.js';
+  import { isSubsetted } from '#lib/resource/subsetted.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     entry: FhirObjectBundleEntry;

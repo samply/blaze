@@ -1,4 +1,4 @@
-import { url, matches } from '$lib/canonical';
+import { url, matches } from '#lib/canonical.js';
 import type { CodeableConcept, Coding, Task, TaskInput, TaskOutput } from 'fhir/r4';
 
 const numberUrl = url('sid/JobNumber');
@@ -6,7 +6,7 @@ const typeUrl = url('CodeSystem/JobType');
 const statusReasonUrl = url('CodeSystem/JobStatusReason');
 const outputUrl = url('CodeSystem/JobOutput');
 
-// Like `coding` from `$lib/fhir`, but accepts both the current and the legacy
+// Like `coding` from `#lib/fhir.js`, but accepts both the current and the legacy
 // form of a Blaze canonical so jobs stored with either system are read.
 function jobCoding(concept: CodeableConcept, canonicalUrl: string): Coding | undefined {
   return concept.coding?.filter((c) => matches(canonicalUrl, c.system))[0];
