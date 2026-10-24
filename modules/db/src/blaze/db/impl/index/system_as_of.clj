@@ -66,10 +66,10 @@
     (Longs/toByteArray (codec/descending-long ^long start-t))))
 
 (defn system-history
-  "Returns a reducible collection of all historic resource handles of `batch-db`,
-  between `start-t` (inclusive) and the `since-t` of `batch-db` (exclusive),
+  "Returns a reducible collection of all historic resource handles of `db`,
+  between `start-t` (inclusive) and the `since-t` of `db` (exclusive),
   optionally starting at `start-tid` and `start-id` (both inclusive)."
-  {:arglists '([batch-db start-t start-tid start-id])}
+  {:arglists '([db start-t start-tid start-id])}
   [{:keys [snapshot t since-t]} start-t start-tid start-id]
   (i/entries
    snapshot :system-as-of-index

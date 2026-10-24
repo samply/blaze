@@ -58,18 +58,18 @@
 (defn- resource-value
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
-  {:arglists '([batch-db c-hash tid id])}
-  [{:keys [snapshot] :as batch-db} c-hash tid id]
-  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash))
+  {:arglists '([db c-hash tid id])}
+  [{:keys [snapshot] :as db} c-hash tid id]
+  (r-sp-v/next-value snapshot (p/-resource-handle db tid id) c-hash))
 
 (defn- index-handles
   "Returns a reducible collection of index handles starting at `start-id`
   (optional)."
-  {:arglists '([batch-db c-hash tid value] [batch-db c-hash tid value start-id])}
+  {:arglists '([db c-hash tid value] [db c-hash tid value start-id])}
   ([{:keys [snapshot]} c-hash tid value]
    (sp-vr/index-handles snapshot c-hash tid (bs/size value) value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid _value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id)]
+  ([{:keys [snapshot] :as db} c-hash tid _value start-id]
+   (let [start-value (resource-value db c-hash tid start-id)]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid (bs/size start-value) start-value
                           start-id))))
@@ -94,11 +94,11 @@
   (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
-    (index-handles batch-db c-hash tid compiled-value))
+  (-index-handles [_ db tid _ compiled-value]
+    (index-handles db c-hash tid compiled-value))
 
-  (-index-handles [_ batch-db tid _ compiled-value start-id]
-    (index-handles batch-db c-hash tid compiled-value start-id))
+  (-index-handles [_ db tid _ compiled-value start-id]
+    (index-handles db c-hash tid compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -109,12 +109,12 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ compled-values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compled-values))
+  (-matcher [_ db _ compled-values]
+    (r-sp-v/value-prefix-filter (:snapshot db) c-hash compled-values))
 
-  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+  (-single-version-id-matcher [_ db tid _ compiled-values]
     (r-sp-v/single-version-id-value-prefix-filter
-     (:snapshot batch-db) tid c-hash compiled-values))
+     (:snapshot db) tid c-hash compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])
 

@@ -14,7 +14,3 @@
 
 (s/def ::rest-api/batch-handler
   fn?)
-
-;; in milliseconds
-(s/def ::rest-api/db-sync-timeout
-  pos-int?)

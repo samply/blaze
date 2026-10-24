@@ -200,6 +200,10 @@
   (log/error "Failed to dispatch the pending jobs on start of the job scheduler:"
              message))
 
+(defn- pending-job-handles [db]
+  (do-sync [handles (d/type-query db "Task" [["status" "ready" "in-progress"]])]
+    (vec handles)))
+
 (defn- dispatch-pending-jobs
   "Dispatches the jobs of `node` that are pending, because they became ready
   or were resumed while no job scheduler was listening, like the
@@ -215,16 +219,20 @@
   Returns a CompletableFuture that will complete after all pending jobs were
   dispatched."
   [node job-scheduler]
-  (-> (d/type-query (d/db node) "Task" [["status" "ready" "in-progress"]])
-      (ac/then-compose #(d/pull-many node (vec %)))
+  (-> (d/with-db node pending-job-handles)
+      (ac/then-compose (partial d/pull-many node))
       (ac/then-apply #(run! (partial dispatch-job job-scheduler) %))
       (ac/exceptionally dispatch-pending-jobs-error-handler)))
 
-(defn- current-job-number-observation [{:keys [node] :as context} db]
-  (-> (d/type-query db "Observation" [["identifier" "job-number"]])
+(defn- current-job-number-observation-handle [db]
+  (do-sync [handles (d/type-query db "Observation" [["identifier" "job-number"]])]
+    (coll/first handles)))
+
+(defn- current-job-number-observation [{:keys [node] :as context}]
+  (-> (d/with-db node current-job-number-observation-handle)
       (ac/then-compose
-       (fn [handles]
-         (if-let [handle (coll/first handles)]
+       (fn [handle]
+         (if handle
            (d/pull node handle)
            (-> (d/transact node
                            [[:create
@@ -233,7 +241,7 @@
                               :identifier [#fhir/Identifier{:value #fhir/string "job-number"}]
                               :value #fhir/integer 0}
                              [["identifier" "job-number"]]]])
-               (ac/then-compose (partial current-job-number-observation context))))))))
+               (ac/then-compose (fn [_] (current-job-number-observation context)))))))))
 
 (def ^:private inc-fhir-integer
   (comp type/integer inc :value))
@@ -253,7 +261,7 @@
       (update :identifier (fnil into []) (job-number-identifiers job-number))))
 
 (defn- create-job* [{:keys [node] :as context} job other-resources]
-  (-> (current-job-number-observation context (d/db node))
+  (-> (current-job-number-observation context)
       (ac/then-compose
        (fn [{job-number :value :as obs}]
          (let [id (m/luid context)]
@@ -265,9 +273,9 @@
                  (map (fn [resource] [:create resource]))
                  other-resources))
                (ac/then-compose
-                (fn [db]
+                (fn [t]
                   (log/debug "Created new job with id =" id)
-                  (d/pull db (d/resource-handle db "Task" id))))))))))
+                  (job-util/pull-job node t id)))))))))
 
 (defn- concurrent-inc?
   "Tests whether `anomaly` is the result of a concurrent increment of the job

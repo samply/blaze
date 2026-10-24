@@ -2,8 +2,8 @@
   (:require
    [blaze.byte-string :refer [byte-string?]]
    [blaze.byte-string-spec]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
    [blaze.db.impl.index.search-param-value-resource-spec]
    [blaze.db.impl.search-param.token :as spt]
@@ -12,7 +12,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef spt/index-handles
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?

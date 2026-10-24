@@ -26,31 +26,31 @@
             (ac/then-apply (fn [_] (bs/concat (ac/join f1) (ac/join f2))))))
       ac/completed-future))
 
-  (-estimated-scan-size [_ batch-db tid _ compiled-value]
-    (sp-vr/estimated-scan-size (:kv-store batch-db) c-hash tid compiled-value))
+  (-estimated-scan-size [_ db tid _ compiled-value]
+    (sp-vr/estimated-scan-size (:kv-store db) c-hash tid compiled-value))
 
   (-supports-ordered-index-handles [_ _ _ _ _]
     true)
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (p/-index-handles search-param db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param db tid modifier %)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values start-id]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (p/-index-handles search-param db tid modifier (first compiled-values) start-id)
+      (let [index-handles #(p/-index-handles search-param db tid modifier % start-id)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
-    (spt/index-handles batch-db c-hash tid compiled-value))
+  (-index-handles [_ db tid _ compiled-value]
+    (spt/index-handles db c-hash tid compiled-value))
 
-  (-index-handles [_ batch-db tid _ compiled-value start-id]
-    (spt/index-handles batch-db c-hash tid compiled-value start-id))
+  (-index-handles [_ db tid _ compiled-value start-id]
+    (spt/index-handles db c-hash tid compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -61,12 +61,12 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ compiled-values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash compiled-values))
+  (-matcher [_ db _ compiled-values]
+    (r-sp-v/value-prefix-filter (:snapshot db) c-hash compiled-values))
 
-  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
+  (-single-version-id-matcher [_ db tid _ compiled-values]
     (r-sp-v/single-version-id-value-prefix-filter
-     (:snapshot batch-db) tid c-hash compiled-values))
+     (:snapshot db) tid c-hash compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])
 

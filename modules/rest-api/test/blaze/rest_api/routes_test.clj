@@ -28,8 +28,7 @@
 (deftest resource-route-test
   (testing "read interaction"
     (given (routes/resource-route
-            {:node ::node
-             :db-sync-timeout 1000}
+            {:node ::node}
             [#:blaze.rest-api.resource-pattern
               {:type :default
                :interactions
@@ -51,7 +50,7 @@
       [7 2 1 :get :middleware count] := 1
       [7 2 1 :get :middleware 0 0 :name] := :db
       [7 2 1 :get :middleware 0 1] := ::node
-      [7 2 1 :get :middleware 0 2] := 1000
+      [7 2 1 :get :middleware 0 count] := 2
       [7 2 1 :get :handler #(% {})] := ::read
       [7 3 0] := "/_history"
       [7 3 1] := ["" {:name :Patient/history-instance, :conflicting true}])
@@ -176,8 +175,7 @@
    :capabilities-handler (handler ::capabilities)
    :admin-handler (handler ::admin)
    :node ::node
-   :admin-node ::admin-node
-   :db-sync-timeout 1000})
+   :admin-node ::admin-node})
 
 (defn- router
   [config

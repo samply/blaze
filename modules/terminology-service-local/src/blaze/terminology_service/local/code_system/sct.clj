@@ -245,7 +245,7 @@
   "Ensures that all SNOMED CT code systems are present in the database node."
   {:arglists '([context sct-context])}
   [{:keys [node] :as context} {:keys [code-systems]}]
-  (-> (cs-u/code-system-versions (d/db node) sct-u/url)
+  (-> (d/with-db node #(cs-u/code-system-versions % sct-u/url))
       (ac/then-compose
        (fn [existing-versions]
          (let [tx-ops (cs-u/tx-ops context existing-versions code-systems)]

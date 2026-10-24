@@ -67,7 +67,7 @@
   :ret :fhir/Task)
 
 (s/fdef job-util/pull-job
-  :args (s/cat :node :blaze.db/node :db (s/? :blaze.db/db) :id :blaze.resource/id)
+  :args (s/cat :node :blaze.db/node :t (s/? :blaze.db/t) :id :blaze.resource/id)
   :ret ac/completable-future?)
 
 (s/fdef job-util/update-job+

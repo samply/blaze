@@ -16,7 +16,11 @@
    [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.library.resolve-refs :refer [resolve-refs]]
    [blaze.elm.expression :as expr]
-   [blaze.elm.normalizer :as normalizer]))
+   [blaze.elm.normalizer :as normalizer])
+  (:import
+   [clojure.lang IReduceInit]))
+
+(set! *warn-on-reflection* true)
 
 (defn- compile-expression-def
   "Compiles the expression of `def` in `context`.
@@ -137,15 +141,33 @@
   [expression-defs parameters]
   (into {} (resolve-params-xf parameters) expression-defs))
 
+(defn- realize
+  "Realizes all reducible collections in `x` into vectors."
+  [x]
+  (if (instance? IReduceInit x)
+    (into [] (map realize) x)
+    x))
+
 (defn- eval-unfiltered-xf [context]
   (comp (filter (comp #{"Unfiltered"} :context val))
         (map
          (fn [[name {expr :expression :as expression-def}]]
-           (when-ok [expr (ba/try-anomaly (expr/eval context expr nil))]
+           (when-ok [expr (ba/try-anomaly (realize (expr/eval context expr nil)))]
              [name (assoc expression-def :expression expr)])))
         (halt-when ba/anomaly?)))
 
-(defn eval-unfiltered [context expression-defs]
+(defn eval-unfiltered
+  "Evaluates the expressions of `expression-defs` in the Unfiltered context
+  using `context` and replaces them with their results.
+
+  The results are realized, because they end up in other expressions after
+  resolving references, and those expressions can outlive the scope of the
+  database value of `context`. For example, the expression cache holds
+  expressions as keys and evaluates them asynchronously to create Bloom
+  filters.
+
+  Returns the updated `expression-defs` or an anomaly in case of errors."
+  [context expression-defs]
   (transduce (eval-unfiltered-xf context)
              (completing (fn [r [k v]] (assoc r k v)))
              expression-defs expression-defs))

@@ -5,7 +5,7 @@
 
   A database value is an immutable, indexed set of resources at a certain point
   in time `t`."
-  (:refer-clojure :exclude [str sync])
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.codec :as codec]
@@ -13,32 +13,49 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.node.protocols :as np]
    [blaze.util :refer [str]]
-   [taoensso.timbre :as log])
-  (:import
-   [java.lang AutoCloseable]))
+   [taoensso.timbre :as log]))
 
-(defn db
-  "Retrieves the most recent available value of the database for reading.
+(defn with-db
+  "Calls `f` with the database value at the current `t` of `node`.
 
-  Does not communicate with the transaction log, nor block."
-  [node]
-  (np/-db node))
+  Does not communicate with the transaction log, nor block.
 
-(defn sync
+  The database value is valid only within a scope that ends when the
+  CompletableFuture returned by `f` completes, either normally or
+  exceptionally, or when `f` returns something else or throws. So `f` has to
+  realize its results before its future completes. Reducible collections
+  returned by database functions can't be reduced after the scope has ended.
+
+  Returns a CompletableFuture that will complete with the result of the future
+  returned by `f` after the scope has ended. Fails with the anomaly returned or
+  thrown by `f` and with a fault if `f` returns neither a CompletableFuture nor
+  an anomaly."
+  [node f]
+  (np/-with-db node f))
+
+(defn with-sync-db
   "Used to coordinate with other nodes.
 
-  When called with `t`, returns a CompletionStage that will complete with the
-  database value with at least the point in time `t` available. Does not
-  communicate with the transaction log. Simply waits for the database value
-  becoming available.
+  When called without `t`, first syncs with the last `t` of the transaction log
+  and then calls `f` with the database value guaranteed to include all
+  transactions that were submitted at the time `with-sync-db` was called.
+  Communicates with the transaction log.
 
-  When called without `t`, returns a CompletionStage that will complete with the
-  database value guaranteed to include all transactions that were submitted at
-  the time sync was called. Communicates with the transaction log."
-  ([node]
-   (np/-sync node))
-  ([node t]
-   (np/-sync node t)))
+  When called with `t`, waits until `t` is available and then calls `f` with
+  the database value at exactly `t`. Does not communicate with the transaction
+  log.
+
+  The database value is valid only within a scope like the one of `with-db`.
+
+  Returns a CompletableFuture that will complete with the result of the future
+  returned by `f` after the scope has ended or will complete exceptionally if
+  syncing fails. Fails with a busy anomaly if the database value isn't
+  available within the sync timeout of `node`, without calling `f`. The sync
+  timeout doesn't apply to `f`."
+  ([node f]
+   (np/-with-sync-db node f))
+  ([node t f]
+   (np/-with-sync-db node t f)))
 
 (defn transact
   "Submits `tx-ops` (transaction operators) to the central transaction log and
@@ -52,9 +69,10 @@
   * [:put resource precondition?]
   * [:delete type id]
 
-  Returns a CompletableFuture that will complete with the database after the
+  Returns a CompletableFuture that will complete with the `t` of the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors. Fails with an unavailable
+  in case of a transaction error or other errors. Use `with-sync-db` with that
+  `t` to obtain the database value after the transaction. Fails with an unavailable
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
   transaction up anymore. Fails with a busy anomaly if `node` already has the
   maximum number of transactions submitted but not yet indexed, before anything
@@ -106,11 +124,6 @@
   [db]
   (p/-node db))
 
-(defn as-of
-  "Returns the value of `db` as of some point `t`, inclusive."
-  [db t]
-  (p/-as-of db t))
-
 (defn since
   "Returns the value of `db` since some `instant`, inclusive."
   [db instant]
@@ -122,19 +135,9 @@
   (p/-since-t db))
 
 (defn t
-  "Returns the effective `t` of `db`."
+  "Returns the `t` of `db`."
   [db]
-  (or (p/-as-of-t db) (p/-basis-t db)))
-
-(defn basis-t
-  "Returns the `t` of the most recent transaction reachable via `db`."
-  [db]
-  (p/-basis-t db))
-
-(defn as-of-t
-  "Returns the as-of point, or nil if none."
-  [db]
-  (p/-as-of-t db))
+  (p/-t db))
 
 (defn tx
   "Returns the transaction of `t`."
@@ -387,8 +390,8 @@
   the patient compartment or nil if the patient has no resources.
 
   Use this transducer instead of calling `patient-compartment-last-change-t` for
-  many patients, because batch databases keep only one iterator open for all
-  resource handles processed."
+  many patients, because it keeps only one iterator open for all resource
+  handles processed."
   [db f]
   (p/-patient-compartment-last-change-t-xf db f))
 
@@ -595,20 +598,6 @@
    (p/-patient-everything db patient-handle nil nil))
   ([db patient-handle start end]
    (p/-patient-everything db patient-handle start end)))
-
-;; ---- Batch DB --------------------------------------------------------------
-
-(defn new-batch-db
-  "Returns a variant of this `db` which is optimized for batch processing.
-
-  The batch database can be used from several threads at once. It has to be
-  closed after usage, because it holds resources that have to be freed, but
-  only after all work using it is done. Lazy results have to be reduced and
-  futures using it have to be completed before closing it, because using the
-  batch database after close fails."
-  ^AutoCloseable
-  [db]
-  (p/-new-batch-db db))
 
 ;; ---- Pull ------------------------------------------------------------------
 

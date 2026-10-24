@@ -75,13 +75,12 @@
 
 (defn- evaluate-expression***
   [{:keys [db] :as context} {:keys [name expression]} mapper subject-handles]
-  (with-open [db (d/new-batch-db db)]
-    (transduce
-     (comp (mapper db)
-           (result-xf (assoc context :db db) name expression)
-           (halt-when ba/anomaly?))
-     ((:reduce-op context) db)
-     subject-handles)))
+  (transduce
+   (comp (mapper db)
+         (result-xf context name expression)
+         (halt-when ba/anomaly?))
+   ((:reduce-op context) db)
+   subject-handles))
 
 (defn- evaluate-expression**
   "Returns a CompletableFuture that will complete with the result of evaluating

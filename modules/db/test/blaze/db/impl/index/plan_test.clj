@@ -17,15 +17,15 @@
     (st/with-instrument-disabled
       (doseq [size [0 (ba/unsupported)]]
         (with-redefs [search-param/estimated-scan-size
-                      (fn [search-param batch-db tid modifier compiled-values]
+                      (fn [search-param db tid modifier compiled-values]
                         (assert (= ::search-param search-param))
-                        (assert (= ::batch-db batch-db))
+                        (assert (= ::db db))
                         (assert (= ::tid tid))
                         (assert (= ::modifier modifier))
                         (assert (= ::compiled-values compiled-values))
                         size)]
           (given (plan/group-by-estimated-scan-size
-                  ::batch-db ::tid [[[::search-param ::modifier [] ::compiled-values]]])
+                  ::db ::tid [[[::search-param ::modifier [] ::compiled-values]]])
             :small := [[[::search-param ::modifier [] ::compiled-values]]]
             :large :? empty?)))))
 
@@ -35,8 +35,8 @@
                     (fn [search-param _ _ _ _]
                       (if (= ::search-param-small search-param) 1 10))]
         (given (plan/group-by-estimated-scan-size
-                ::batch-db ::tid [[[::search-param-small]]
-                                  [[::search-param-large]]])
+                ::db ::tid [[[::search-param-small]]
+                            [[::search-param-large]]])
           :small := [[[::search-param-small]]]
           :large := [[[::search-param-large]]]))))
 
@@ -46,8 +46,8 @@
                     (fn [search-param _ _ _ _]
                       (if (= ::search-param-small search-param) 1 9))]
         (given (plan/group-by-estimated-scan-size
-                ::batch-db ::tid [[[::search-param-small]]
-                                  [[::search-param-large]]])
+                ::db ::tid [[[::search-param-small]]
+                            [[::search-param-large]]])
           :small := [[[::search-param-small]] [[::search-param-large]]]
           :large :? empty?))))
 
@@ -57,7 +57,7 @@
                     (fn [search-param _ _ _ _]
                       (if (= ::search-param-small search-param) 1 (ba/unsupported)))]
         (given (plan/group-by-estimated-scan-size
-                ::batch-db ::tid [[[::search-param-small]]
-                                  [[::search-param-no-size]]])
+                ::db ::tid [[[::search-param-small]]
+                            [[::search-param-no-size]]])
           :small := [[[::search-param-small]]]
           :large := [[[::search-param-no-size]]])))))

@@ -58,7 +58,7 @@
   "Ensures that all StructureDefinition resources are present in the database node."
   {:arglists '([context])}
   [{:keys [node parsing-context structure-definition-repo] :as context}]
-  (-> (structure-definition-urls (d/db node))
+  (-> (d/with-db node structure-definition-urls)
       (ac/then-compose
        (fn [existing-urls]
          (let [tx-ops (tx-ops context existing-urls (resources-and-types parsing-context structure-definition-repo))]

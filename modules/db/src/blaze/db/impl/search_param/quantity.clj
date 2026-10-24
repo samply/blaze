@@ -70,13 +70,13 @@
   and so more than one value per search parameter. Different unit
   representations and other possible prefixes from composite search parameters
   are responsible for the multiple values."
-  {:arglists '([batch-db c-hash tid id prefix])}
-  [{:keys [snapshot] :as batch-db} c-hash tid id prefix]
-  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash
+  {:arglists '([db c-hash tid id prefix])}
+  [{:keys [snapshot] :as db} c-hash tid id prefix]
+  (r-sp-v/next-value snapshot (p/-resource-handle db tid id) c-hash
                      (bs/size prefix) prefix))
 
-(defn- id-start-key [batch-db c-hash tid prefix start-id]
-  (let [start-value (resource-value batch-db c-hash tid start-id prefix)]
+(defn- id-start-key [db c-hash tid prefix start-id]
+  (let [start-value (resource-value db c-hash tid start-id prefix)]
     (assert start-value)
     (sp-vr/encode-seek-key c-hash tid start-value start-id)))
 
@@ -97,14 +97,14 @@
      drop-value
      u/by-id-grouper)
     (sp-vr/keys snapshot (sp-vr/encode-seek-key c-hash tid lower-bound))))
-  ([{:keys [snapshot] :as batch-db} c-hash tid lower-bound-prefix upper-bound
+  ([{:keys [snapshot] :as db} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
     (comp
      (take-while-less-equal c-hash tid upper-bound)
      drop-value
      u/by-id-grouper)
-    (sp-vr/keys snapshot (id-start-key batch-db c-hash tid lower-bound-prefix
+    (sp-vr/keys snapshot (id-start-key db c-hash tid lower-bound-prefix
                                        start-id)))))
 
 (defn- gt-handles
@@ -115,8 +115,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles' snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
+  ([{:keys [snapshot] :as db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
@@ -130,8 +130,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev' snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
+  ([{:keys [snapshot] :as db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
@@ -145,8 +145,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
+  ([{:keys [snapshot] :as db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
@@ -160,8 +160,8 @@
   values have to have."
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev snapshot c-hash tid prefix-length value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
+  ([{:keys [snapshot] :as db} c-hash tid prefix-length value start-id]
+   (let [start-value (resource-value db c-hash tid start-id
                                      (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
@@ -174,26 +174,26 @@
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   {:arglists
-   '([batch-db c-hash tid prefix-length value]
-     [batch-db c-hash tid prefix-length value start-id])}
-  ([batch-db c-hash tid prefix-length
+   '([db c-hash tid prefix-length value]
+     [db c-hash tid prefix-length value start-id])}
+  ([db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}]
    (case op
-     :eq (eq-handles batch-db c-hash tid lower-bound upper-bound)
-     :gt (gt-handles batch-db c-hash tid prefix-length exact-value)
-     :lt (lt-handles batch-db c-hash tid prefix-length exact-value)
-     :ge (ge-handles batch-db c-hash tid prefix-length exact-value)
-     :le (le-handles batch-db c-hash tid prefix-length exact-value)))
-  ([batch-db c-hash tid prefix-length
+     :eq (eq-handles db c-hash tid lower-bound upper-bound)
+     :gt (gt-handles db c-hash tid prefix-length exact-value)
+     :lt (lt-handles db c-hash tid prefix-length exact-value)
+     :ge (ge-handles db c-hash tid prefix-length exact-value)
+     :le (le-handles db c-hash tid prefix-length exact-value)))
+  ([db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}
     start-id]
    (case op
-     :eq (eq-handles batch-db c-hash tid (bs/subs lower-bound 0 prefix-length)
+     :eq (eq-handles db c-hash tid (bs/subs lower-bound 0 prefix-length)
                      upper-bound start-id)
-     :gt (gt-handles batch-db c-hash tid prefix-length exact-value start-id)
-     :lt (lt-handles batch-db c-hash tid prefix-length exact-value start-id)
-     :ge (ge-handles batch-db c-hash tid prefix-length exact-value start-id)
-     :le (le-handles batch-db c-hash tid prefix-length exact-value start-id))))
+     :gt (gt-handles db c-hash tid prefix-length exact-value start-id)
+     :lt (lt-handles db c-hash tid prefix-length exact-value start-id)
+     :ge (ge-handles db c-hash tid prefix-length exact-value start-id)
+     :le (le-handles db c-hash tid prefix-length exact-value start-id))))
 
 (defn- resource-handle-search-param-value-encoder [c-hash]
   (let [encoder (r-sp-v/resource-handle-search-param-value-encoder c-hash)]
@@ -270,11 +270,11 @@
   (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
-    (index-handles batch-db c-hash tid codec/v-hash-size compiled-value))
+  (-index-handles [_ db tid _ compiled-value]
+    (index-handles db c-hash tid codec/v-hash-size compiled-value))
 
-  (-index-handles [_ batch-db tid _ compiled-value start-id]
-    (index-handles batch-db c-hash tid codec/v-hash-size compiled-value
+  (-index-handles [_ db tid _ compiled-value start-id]
+    (index-handles db c-hash tid codec/v-hash-size compiled-value
                    start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
@@ -286,11 +286,11 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ values]
-    (matcher batch-db c-hash codec/v-hash-size values))
+  (-matcher [_ db _ values]
+    (matcher db c-hash codec/v-hash-size values))
 
-  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
-    (single-version-id-matcher batch-db tid c-hash codec/v-hash-size
+  (-single-version-id-matcher [_ db tid _ compiled-values]
+    (single-version-id-matcher db tid c-hash codec/v-hash-size
                                compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])

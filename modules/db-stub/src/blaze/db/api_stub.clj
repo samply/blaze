@@ -1,5 +1,6 @@
 (ns blaze.db.api-stub
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.db.kv :as kv]
@@ -147,14 +148,15 @@
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
 
-(defmacro with-open-db
-  "Runs `body` once in a normal database and then again in a batch database."
-  [[db node] & body]
-  `(do
-     (let [~db (d/db ~node)]
-       ~@body)
-     (with-open [~db (d/new-batch-db (d/db ~node))]
-       ~@body)))
+(defmacro with-db
+  "Runs `body` with `db` bound to the database value of `node` at its current
+  `t` or, if given, at exactly `t`, waiting until `t` is available.
+
+  The database value is valid only within `body`. Returns nil."
+  [[db node t] & body]
+  `(ac/join
+    (~@(if t `[d/with-sync-db ~node ~t] `[d/with-db ~node])
+     (bound-fn [~db] ~@body (ac/completed-future nil)))))
 
 (defn extract-txs-body [more]
   (if (vector? (first more))

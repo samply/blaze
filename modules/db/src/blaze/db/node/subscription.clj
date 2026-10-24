@@ -185,7 +185,7 @@
   Half the capacity, so that the publishing loop refills half a queue at a time
   instead of once per delivered transaction. Waking it up at the first free slot
   would degenerate a subscription that lags behind into one round per delivery,
-  each with its own batch database, while the space freed until it runs is a
+  each with its own database value, while the space freed until it runs is a
   single transaction."
   ^long [^long queue-capacity]
   (quot queue-capacity 2))

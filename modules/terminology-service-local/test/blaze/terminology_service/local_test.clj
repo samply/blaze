@@ -140,7 +140,7 @@
    ::cs/sct {:release-path (path "sct-release")}))
 
 (defn- pull-type-list [node type]
-  @(d/pull-many node (vec (d/type-list (d/db node) type))))
+  @(d/with-db node #(d/pull-many node (vec (d/type-list % type)))))
 
 (defn- vcl-uri [expr]
   (type/uri (str "http://fhir.org/VCL?v1=" expr)))

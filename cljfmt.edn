@@ -20,6 +20,7 @@
   mem-size-test [[:block 1]]
   clojure.test.check.properties/for-all [[:block 1]]
   blaze.metrics.core/collector [[:block 0]]
+  blaze.db.impl.db/call-with-db [[:block 3]]
   reify-expr [[:inner 0] [:inner 1]]
   code-system-lookup [[:block 1]]
   code-system-validate-code [[:block 1]]

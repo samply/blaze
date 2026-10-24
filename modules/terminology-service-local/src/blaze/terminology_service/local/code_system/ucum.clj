@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.ucum
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -63,8 +63,9 @@
   (when (valid? code)
     {:code (type/code code) :system url :version version}))
 
-(defn- ucum-query [db]
-  (d/type-query db "CodeSystem" [["url" "http://unitsofmeasure.org"]]))
+(defn- ucum-handle [db]
+  (do-sync [handles (d/type-query db "CodeSystem" [["url" "http://unitsofmeasure.org"]])]
+    (coll/first handles)))
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create UCUM code system...")
@@ -73,9 +74,9 @@
 (defn ensure-code-system
   "Ensures that the UCUM code system is present in the database node."
   [{:keys [node] :as context}]
-  (-> (ucum-query (d/db node))
+  (-> (d/with-db node ucum-handle)
       (ac/then-compose
-       (fn [handles]
-         (if (coll/first handles)
+       (fn [handle]
+         (if handle
            (ac/completed-future nil)
            (create-code-system context))))))

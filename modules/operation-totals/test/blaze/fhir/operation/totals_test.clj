@@ -51,7 +51,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.fhir.operation/totals} config]
        ~txs
-       (let [~handler-binding (db/wrap-db handler# node# 100)
+       (let [~handler-binding (db/wrap-db handler# node#)
              ~(or node-binding '_) node#]
          ~@body))))
 

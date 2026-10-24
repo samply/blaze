@@ -34,8 +34,8 @@
    [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.spec]
-   [blaze.db.test-util :refer [config resource-handle-cache-config wait-for
-                               with-system-data]]
+   [blaze.db.test-util :refer [config resource-handle-cache-config
+                               wait-for with-db with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
@@ -338,6 +338,13 @@
       [:cause-data ::s/problems 0 :via] := [::node/queue-capacity]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid sync-timeout"
+    (given-failed-system (assoc-in config [:blaze.db/node :sync-timeout] ::invalid)
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::node/sync-timeout]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "incompatible version"
     (given-failed-system (with-index-store-version config -1)
       :key := :blaze.db/node
@@ -439,13 +446,19 @@
   (with-system [{collector ::tx-indexer/duration-seconds} {::tx-indexer/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
+(defn- sync-t
+  "Returns a CompletableFuture of `t` that completes after `t` is available on
+  `node`."
+  [node t]
+  (d/with-sync-db node t #(ac/completed-future (d/t %))))
+
 (defn- tx-result-after-indexing
   "Returns a CompletableFuture of the result of the transaction with `t`,
   fetching it only after `t` was either indexed or indexing failed.
 
   That way the result is already available when `node/tx-result` is called."
   [node t]
-  (-> (d/sync node t)
+  (-> (sync-t node t)
       (ac/then-compose (fn [_] (node/tx-result node t)))))
 
 (defn- named-node-config [name]
@@ -491,14 +504,16 @@
     (testing "create"
       (testing "one Patient"
         (with-system [{:blaze.db/keys [node]} config]
-          @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
-               (ac/then-compose (partial tx-result-after-indexing node)))
+          (testing "the result is the t of the transaction"
+            (is (= 1 @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+                          (ac/then-compose (partial tx-result-after-indexing node))))))
 
-          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id "1"
-            [meta :blaze.db/op] := :create))))
+          (with-db [db node]
+            (given @(d/pull node (d/resource-handle db "Patient" "0"))
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id "1"
+              [meta :blaze.db/op] := :create)))))
 
     (testing "with failing resource storage"
       (testing "on get"
@@ -550,7 +565,7 @@
 
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
-      (let [db (d/db node)]
+      (with-db [db node]
         (is (= 2 (d/type-total db "Patient")))
         (is (= 2 (d/system-total db)))
         (is (= 2 (d/total-num-of-type-changes db "Patient")))
@@ -598,7 +613,7 @@
         (deliver release-put nil)
 
         (testing "indexing the transactions frees their in-flight places"
-          @(d/sync node 2)
+          @(sync-t node 2)
           (is (= 3 (deref (submit-patient node "2") 10000 ::timeout)))))))
 
   (testing "a transaction that never reaches the transaction log frees its
@@ -612,7 +627,7 @@
 (deftest sync-test
   (testing "callers waiting for the same t share a single waiter"
     (with-system [{:blaze.db/keys [node]} config]
-      (let [futures [(d/sync node 1) (d/sync node 1)]]
+      (let [futures [(sync-t node 1) (sync-t node 1)]]
         (given @(:state node)
           [:waiters count] := 1
           [:waiters keys] := [1])
@@ -620,28 +635,71 @@
         @(node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (doseq [future futures]
-          (is (= 1 (d/basis-t @future))))
+          (is (= 1 @future)))
 
         (testing "the waiter is removed after its t was reached"
           (is (empty? (:waiters @(:state node))))))))
 
   (testing "cancelling one caller doesn't affect another one waiting for the same t"
     (with-system [{:blaze.db/keys [node]} config]
-      (let [cancelled (d/sync node 1)
-            future (d/sync node 1)]
+      (let [cancelled (sync-t node 1)
+            future (sync-t node 1)]
         (is (ac/cancel! cancelled))
 
         @(node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
-        (is (= 1 (d/basis-t @future))))))
+        (is (= 1 @future)))))
 
   (testing "functions applied by a caller waiting for a t don't run on the
             thread of the indexing loop"
     (with-system [{:blaze.db/keys [node]} config]
-      (let [thread-name (mtu/thread-name (d/sync node 1))]
+      (let [thread-name (mtu/thread-name (sync-t node 1))]
         @(node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (is (mtu/common-pool-thread? (deref thread-name 1000 "timeout")))))))
+
+(def ^:private sync-timeout-config
+  (assoc-in config [:blaze.db/node :sync-timeout] 100))
+
+(def ^:private blocked-sync-timeout-config
+  "A config with a node that syncs on the last t of the transaction log, indexes
+  no transaction before the index key-value store is released and has a sync
+  timeout of 100 ms."
+  (update in-flight-config :blaze.db/node assoc :storage :distributed
+          :sync-timeout 100))
+
+(deftest sync-timeout-test
+  (testing "syncing on t fails if t isn't available within the sync timeout"
+    (with-system [{:blaze.db/keys [node]} sync-timeout-config]
+      (let [called? (atom false)]
+        (given-failed-future (d/with-sync-db node 1 (fn [_] (reset! called? true) (ac/completed-future nil)))
+          ::anom/category := ::anom/busy
+          ::anom/message := "Timeout while trying to acquire the database state with t=1. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")
+
+        (testing "`f` isn't called if t gets available after the timeout"
+          @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+          @(sync-t node 1)
+          (is (false? @called?))))))
+
+  (testing "syncing on the last t fails if it isn't available within the sync
+            timeout"
+    (with-system [{:blaze.db/keys [node] kv-store ::blocking-index-kv-store}
+                  blocked-sync-timeout-config]
+      (is (= 1 (deref (submit-patient node "0") 10000 ::timeout)))
+
+      (given-failed-future (d/with-sync-db node (fn [_] (ac/completed-future nil)))
+        ::anom/category := ::anom/busy
+        ::anom/message := "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")
+
+      (deliver (:release-put (meta kv-store)) nil)))
+
+  (testing "the sync timeout doesn't apply to `f`"
+    (with-system [{:blaze.db/keys [node]} sync-timeout-config]
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+
+      (is (= 1 @(d/with-sync-db node 1
+                  (fn [db]
+                    (ac/supply-async #(d/t db) (ac/delayed-executor 200 TimeUnit/MILLISECONDS)))))))))
 
 (deftest closed-node-test
   ;; a changed resources subscriber can still be busy while the node closes, so
@@ -679,7 +737,7 @@
       (with-system [{n :blaze.db/node} config]
         (deliver node n))
 
-      (given-failed-future (d/sync @node 1)
+      (given-failed-future (sync-t @node 1)
         ::anom/category := ::anom/unavailable
         ::anom/message := "The database node `main` was closed before the transaction with t = 1 was indexed. But it was stored durable and will be indexed at the next start of the database node."))))
 
@@ -718,7 +776,7 @@
         ;; the indexing loop records the failure before it finishes
         @(:index-finished node)
 
-        (given-failed-future (d/sync node 1)
+        (given-failed-future (sync-t node 1)
           ::anom/category := ::anom/unavailable
           ::anom/message := "The database node `main` stopped because of an unrecoverable error.")))))
 
@@ -813,6 +871,26 @@
 
       (given (plc/state (:kv-store node))
         :type := :current))))
+
+(deftest build-patient-last-change-index-test
+  (testing "patients existing before the index is built get an entry with the t of the build"
+    (with-system [{:blaze.db/keys [node]
+                   :blaze.test/keys [manual-scheduler]} manual-scheduler-config]
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]
+                         [:create {:fhir/type :fhir/Patient :id "1"}]])
+
+      (testing "a Patient alone doesn't change its compartment"
+        (with-db [db node]
+          (is (nil? (d/patient-compartment-last-change-t db "0")))))
+
+      (stu/run-all! manual-scheduler)
+
+      (given (plc/state (:kv-store node))
+        :type := :current)
+
+      (with-db [db node]
+        (is (= 1 (d/patient-compartment-last-change-t db "0")))
+        (is (= 1 (d/patient-compartment-last-change-t db "1")))))))
 
 ;; The following tests exercise the pipelining of the resource indexing across
 ;; transactions. They drive the indexing loop with a transaction log that
@@ -922,13 +1000,13 @@
         (with-system [{:blaze.db/keys [node]} (batch-tx-log-config batch released)]
           (deliver released true)
 
-          (let [db (deref (d/sync node 4) 10000 ::timeout)
+          (let [t (deref (sync-t node 4) 10000 ::timeout)
                 ids @dispatched]
             ;; release the gate in any case, so that the node can be closed
             (ac/complete! gate true)
 
             (testing "all transactions of the batch are indexed"
-              (is (not (identical? ::timeout db))))
+              (is (not (identical? ::timeout t))))
 
             (testing "the resources are dispatched in transaction order"
               (is (= ["0" "1" "2" "3"] ids)))))))))
@@ -977,7 +1055,7 @@
 
           (ac/complete! gate true)
 
-          (is (not (identical? ::timeout (deref (d/sync node 2) 10000 ::timeout)))))))))
+          (is (not (identical? ::timeout (deref (sync-t node 2) 10000 ::timeout)))))))))
 
 (defmethod ig/init-key ::multi-get-recording-resource-store
   [_ {:keys [resource-store sizes]}]
@@ -1028,7 +1106,7 @@
 
           (ac/complete! gate true)
 
-          (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+          (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
 
           (testing "no fetch of the resource store exceeds the chunk size"
             (is (= 10 (count @sizes)))
@@ -1106,7 +1184,7 @@
           (with-system [{:blaze.db/keys [node]} (node-config released)]
             (deliver released true)
 
-            (is (not (identical? ::timeout (deref (d/sync node 2) 10000 ::timeout))))))))))
+            (is (not (identical? ::timeout (deref (sync-t node 2) 10000 ::timeout))))))))))
 
 (defn- recording-index-resource
   "Returns a replacement of `resource-indexer/index-resource` that records the
@@ -1133,7 +1211,7 @@
           (with-system [{:blaze.db/keys [node]} (batch-tx-log-config batch released)]
             (deliver released true)
 
-            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+            (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
             (is (= ["put"] @ids))))))
 
     (testing "without a local payload, the commands that have a hash and aren't
@@ -1149,7 +1227,7 @@
             @(rs/put! resource-store (payload [put kept]))
             (deliver released true)
 
-            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+            (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
             (is (= ["put"] @ids))
 
             (testing "only the resource of the put command is fetched"
@@ -1200,11 +1278,11 @@
                           (with-tx-entries-signalling-kv-store gate))]
           (deliver released true)
 
-          (let [db (deref (d/sync node 1) 10000 ::timeout)]
+          (let [t (deref (sync-t node 1) 10000 ::timeout)]
             ;; release the gate in any case, so that the node can be closed
             (ac/complete! gate true)
 
-            (is (not (identical? ::timeout db)))))))))
+            (is (not (identical? ::timeout t)))))))))
 
 (deftest index-batch-transactions-collector-init-test
   (with-system [{collector ::node/index-batch-transactions}
@@ -1236,7 +1314,7 @@
               transactions (index-batch-transactions-sum)]
           (deliver released true)
 
-          (is (not (identical? ::timeout (deref (d/sync node 3) 10000 ::timeout))))
+          (is (not (identical? ::timeout (deref (sync-t node 3) 10000 ::timeout))))
 
           (testing "one batch with three transactions was indexed"
             (is (= (inc batches) (indexed-batches)))
@@ -1286,7 +1364,7 @@
                         (batch-tx-log-config batch released 2)]
             (deliver released true)
 
-            (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+            (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
 
             (testing "the transaction was rejected"
               (given @(:state node)
@@ -1314,7 +1392,7 @@
         (let [observations (duration-observations "await-resources")]
           (deliver released true)
 
-          (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+          (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
 
           (is (= (+ observations 3.0)
                  (duration-observations "await-resources"))))))))
@@ -1330,7 +1408,7 @@
                     (batch-tx-log-config batch released 2)]
         (deliver released true)
 
-        (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout)))))
+        (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout)))))
 
       (is (= (inc observations) (index-resources-observations))))))
 
@@ -1346,7 +1424,7 @@
                     (batch-tx-log-config batch released 2)]
         (deliver released true)
 
-        (is (not (identical? ::timeout (deref (d/sync node 1) 10000 ::timeout))))
+        (is (not (identical? ::timeout (deref (sync-t node 1) 10000 ::timeout))))
 
         (testing "the transaction was rejected"
           (given @(:state node)
@@ -1429,9 +1507,10 @@
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given (d/resource-handle (d/db node) "Patient" "0")
-        :id := "0"
-        :t := 1)
+      (with-db [db node]
+        (given (d/resource-handle db "Patient" "0")
+          :id := "0"
+          :t := 1))
 
       (is (nil? (cached-handle resource-handle-cache "0" 1)))))
 
@@ -1440,9 +1519,10 @@
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given (resource-handle-twice (d/db node) "Patient" "0")
-        :id := "0"
-        :t := 1)
+      (with-db [db node]
+        (given (resource-handle-twice db "Patient" "0")
+          :id := "0"
+          :t := 1))
 
       (given (cached-handle resource-handle-cache "0" 1)
         :id := "0"
@@ -1450,9 +1530,10 @@
 
       (testing "reading it again hits the cache"
         (let [hit-count (.hitCount ^CacheStats (ccp/-stats resource-handle-cache))]
-          (given (d/resource-handle (d/db node) "Patient" "0")
-            :id := "0"
-            :t := 1)
+          (with-db [db node]
+            (given (d/resource-handle db "Patient" "0")
+              :id := "0"
+              :t := 1))
 
           (given (ccp/-stats resource-handle-cache)
             CacheStats/.hitCount := (inc hit-count))))))
@@ -1462,7 +1543,8 @@
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (nil? (d/resource-handle (d/db node) "Patient" "1")))
+      (with-db [db node]
+        (is (nil? (d/resource-handle db "Patient" "1"))))
       (is (zero? (ccp/-estimated-size resource-handle-cache)))))
 
   (testing "a query run twice inserts the resource handles it resolves"
@@ -1471,10 +1553,12 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]]]
 
-      (vec @(d/type-query (d/db node) "Patient" [["gender" "male"]]))
-      (given (vec @(d/type-query (d/db node) "Patient" [["gender" "male"]]))
-        count := 1
-        [0 :id] := "0")
+      (with-db [db node]
+        (vec @(d/type-query db "Patient" [["gender" "male"]])))
+      (with-db [db node]
+        (given (vec @(d/type-query db "Patient" [["gender" "male"]]))
+          count := 1
+          [0 :id] := "0"))
 
       (given (cached-handle resource-handle-cache "0" 1)
         :id := "0"
@@ -1482,20 +1566,21 @@
       (is (nil? (cached-handle resource-handle-cache "1" 1)))
 
       (testing "running it again gives the same result"
-        (given (vec @(d/type-query (d/db node) "Patient" [["gender" "male"]]))
-          count := 1
-          [0 :id] := "0"))))
+        (with-db [db node]
+          (given (vec @(d/type-query db "Patient" [["gender" "male"]]))
+            count := 1
+            [0 :id] := "0")))))
 
   (testing "the indexer updates the entries present"
     (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [db-before (d/db node)]
+      (with-db [db-before node]
         (resource-handle-twice db-before "Patient" "0")
 
-        (let [db-after @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                                 :gender #fhir/code "male"}]])]
+        (with-db [db-after node @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                                          :gender #fhir/code "male"}]])]
 
           (given (cached-handle resource-handle-cache "0" 2)
             :t := 2
@@ -1511,8 +1596,9 @@
               :t := 1))
 
           (testing "an as-of database value sees the old version"
-            (given (d/resource-handle (d/as-of db-after 1) "Patient" "0")
-              :t := 1))
+            (with-db [db node 1]
+              (given (d/resource-handle db "Patient" "0")
+                :t := 1)))
 
           (testing "readers of the old version don't replace the new one"
             (given (cached-handle resource-handle-cache "0" 2)
@@ -1523,9 +1609,10 @@
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (resource-handle-twice (d/db node) "Patient" "0")
+      (with-db [db node]
+        (resource-handle-twice db "Patient" "0"))
 
-      (let [db-after @(d/transact node [[:delete "Patient" "0"]])]
+      (with-db [db-after node @(d/transact node [[:delete "Patient" "0"]])]
 
         (given (cached-handle resource-handle-cache "0" 2)
           :t := 2
@@ -1542,10 +1629,10 @@
                        resource-handle-cache-config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [db-before (d/db node)]
+      (with-db [db-before node]
         (resource-handle-twice db-before "Patient" "0")
 
-        (let [db-after @(d/transact node [[:patient-purge "0"]])]
+        (with-db [db-after node @(d/transact node [[:patient-purge "0"]])]
 
           (is (nil? (cached-handle resource-handle-cache "0" 2)))
           (is (nil? (d/resource-handle db-after "Patient" "0")))
@@ -1563,12 +1650,13 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
-      (resource-handle-twice (d/db node) "Patient" "0")
+      (with-db [db node]
+        (resource-handle-twice db "Patient" "0"))
 
       (given (cached-handle resource-handle-cache "0" 2)
         :t := 2)
 
-      (let [db-after @(d/transact node [[:patient-purge "0"]])]
+      (with-db [db-after node @(d/transact node [[:patient-purge "0"]])]
 
         (is (nil? (cached-handle resource-handle-cache "0" 3)))
         (is (nil? (d/resource-handle db-after "Patient" "0"))))))
@@ -1579,9 +1667,10 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
-      (resource-handle-twice (d/db node) "Patient" "0")
+      (with-db [db node]
+        (resource-handle-twice db "Patient" "0"))
 
-      (let [db-after @(d/transact node [[:delete-history "Patient" "0"]])]
+      (with-db [db-after node @(d/transact node [[:delete-history "Patient" "0"]])]
 
         (given (cached-handle resource-handle-cache "0" 3)
           :t := 2)
@@ -1596,7 +1685,7 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:create {:fhir/type :fhir/Patient :id "1"}]]]
 
-      (let [db (d/db node)]
+      (with-db [db node]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"
                                   :gender #fhir/code "male"}]])
 
@@ -1618,8 +1707,9 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:create {:fhir/type :fhir/Patient :id "1"}]]]
 
-      (given (resource-handle-twice (d/as-of (d/db node) 1) "Patient" "0")
-        :t := 1)
+      (with-db [db node 1]
+        (given (resource-handle-twice db "Patient" "0")
+          :t := 1))
 
       (given (cached-handle resource-handle-cache "0" 2)
         :t := 1)))
@@ -1630,8 +1720,9 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
 
-      (given (resource-handle-twice (d/as-of (d/db node) 1) "Patient" "0")
-        :t := 1)
+      (with-db [db node 1]
+        (given (resource-handle-twice db "Patient" "0")
+          :t := 1))
 
       (is (nil? (cached-handle resource-handle-cache "0" 2)))))
 
@@ -1643,18 +1734,18 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:create {:fhir/type :fhir/Patient :id "1"}]]]
 
-      (let [db (d/db node)
-            since-db (d/since db (:blaze.db.tx/instant (d/tx db 1)))]
-        (resource-handle-twice db "Patient" "0")
-        (resource-handle-twice db "Patient" "1")
+      (with-db [db node]
+        (let [since-db (d/since db (:blaze.db.tx/instant (d/tx db 1)))]
+          (resource-handle-twice db "Patient" "0")
+          (resource-handle-twice db "Patient" "1")
 
-        (testing "both handles are cached"
-          (is (cached-handle resource-handle-cache "0" 2))
-          (is (cached-handle resource-handle-cache "1" 2)))
+          (testing "both handles are cached"
+            (is (cached-handle resource-handle-cache "0" 2))
+            (is (cached-handle resource-handle-cache "1" 2)))
 
-        (is (nil? (d/resource-handle since-db "Patient" "0")))
-        (given (d/resource-handle since-db "Patient" "1")
-          :t := 2)))))
+          (is (nil? (d/resource-handle since-db "Patient" "0")))
+          (given (d/resource-handle since-db "Patient" "1")
+            :t := 2))))))
 
 (defn- with-existing-patient-versions
   "Returns `config` with an index store already containing two transactions
@@ -1676,14 +1767,16 @@
                 (with-existing-patient-versions resource-handle-cache-config)]
 
     (testing "a reader at an older t than the start doesn't insert"
-      (given (resource-handle-twice (d/as-of (d/db node) 1) "Patient" "0")
-        :t := 1)
+      (with-db [db node 1]
+        (given (resource-handle-twice db "Patient" "0")
+          :t := 1))
 
       (is (nil? (cached-handle resource-handle-cache "0" 2))))
 
     (testing "a reader at the t of the start inserts"
-      (given (resource-handle-twice (d/db node) "Patient" "0")
-        :t := 2)
+      (with-db [db node]
+        (given (resource-handle-twice db "Patient" "0")
+          :t := 2))
 
       (given (cached-handle resource-handle-cache "0" 2)
         :t := 2))))

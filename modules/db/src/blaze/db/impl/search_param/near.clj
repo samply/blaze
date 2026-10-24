@@ -29,8 +29,8 @@
     (let [actual-dist (spng/haversine-distance coordinates compiled-value)]
       (<= actual-dist distance))))
 
-(defn- matches? [batch-db resource-handle compiled-values]
-  (let [{:keys [position]} @(d/pull batch-db resource-handle)]
+(defn- matches? [db resource-handle compiled-values]
+  (let [{:keys [position]} @(d/pull db resource-handle)]
     (some #(near? position %) compiled-values)))
 
 (defn- missing-param-msg [arg]
@@ -126,35 +126,35 @@
           :longitude parsed-long
           :distance parsed-dist}))))
 
-  (-estimated-scan-size [_ batch-db tid _ _]
-    (rao/estimated-scan-size (:kv-store batch-db) tid))
+  (-estimated-scan-size [_ db tid _ _]
+    (rao/estimated-scan-size (:kv-store db) tid))
 
   (-supports-ordered-index-handles [_ _ _ _ _]
     true)
 
-  (-ordered-index-handles [search-param batch-db tid modifier compiled-values]
+  (-ordered-index-handles [search-param db tid modifier compiled-values]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (p/-index-handles search-param db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param db tid modifier %)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
-  (-ordered-index-handles [search-param batch-db tid modifier compiled-values start-id]
+  (-ordered-index-handles [search-param db tid modifier compiled-values start-id]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (p/-index-handles search-param db tid modifier (first compiled-values) start-id)
+      (let [index-handles #(p/-index-handles search-param db tid modifier % start-id)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
-  (-index-handles [search-param batch-db tid modifier compiled-value]
+  (-index-handles [search-param db tid modifier compiled-value]
     (coll/eduction
-     (comp (p/-matcher search-param batch-db modifier [compiled-value])
+     (comp (p/-matcher search-param db modifier [compiled-value])
            (map ih/from-resource-handle))
-     (p/-type-list batch-db tid)))
+     (p/-type-list db tid)))
 
-  (-index-handles [search-param batch-db tid modifier compiled-value start-id]
+  (-index-handles [search-param db tid modifier compiled-value start-id]
     (coll/eduction
-     (comp (p/-matcher search-param batch-db modifier [compiled-value])
+     (comp (p/-matcher search-param db modifier [compiled-value])
            (map ih/from-resource-handle))
-     (p/-type-list batch-db tid start-id)))
+     (p/-type-list db tid start-id)))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -165,11 +165,11 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ compiled-values]
-    (filter #(matches? batch-db % compiled-values)))
+  (-matcher [_ db _ compiled-values]
+    (filter #(matches? db % compiled-values)))
 
-  (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
-    (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
+  (-single-version-id-matcher [search-param db tid modifier compiled-values]
+    (u/single-version-id-matcher search-param db tid modifier compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])
 

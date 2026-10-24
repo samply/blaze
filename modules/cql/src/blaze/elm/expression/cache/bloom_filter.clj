@@ -1,6 +1,7 @@
 (ns blaze.elm.expression.cache.bloom-filter
   (:refer-clojure :exclude [merge])
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.expression :as expr]
@@ -63,16 +64,15 @@
                            filter mem-size)))
 
 (defn- calc-bloom-filter [db xform expression]
-  (with-open [batch-db (d/new-batch-db db)
-              _ (prom/timer bloom-filter-creation-duration-seconds)]
+  (with-open [_ (prom/timer bloom-filter-creation-duration-seconds)]
     (build-bloom-filter
      expression
-     (d/t batch-db)
+     (d/t db)
      (into
       []
-      (comp (cr/patient-mapper batch-db)
+      (comp (cr/patient-mapper db)
             xform
-            (filter (partial expr/eval {:db batch-db :now (bt/offset-date-time)} expression))
+            (filter (partial expr/eval {:db db :now (bt/offset-date-time)} expression))
             (map :id))
       (d/type-list db "Patient")))))
 
@@ -80,10 +80,17 @@
   (format "Create Bloom filter for expression `%s` evaluating it for %d patients."
           (core/display-form expression) (d/type-total db "Patient")))
 
+(defn- with-db
+  "Calls `f` with the current database value of `node` and returns its
+  result."
+  [node f]
+  (ac/join (d/with-db node #(ac/completed-future (f %)))))
+
 (defn create [node expression]
-  (let [db (d/db node)]
-    (log/debug (create-bloom-filter-msg expression db))
-    (calc-bloom-filter db identity expression)))
+  (with-db node
+    (fn [db]
+      (log/debug (create-bloom-filter-msg expression db))
+      (calc-bloom-filter db identity expression))))
 
 (defn- recreate-bloom-filter-msg [expr-form t db]
   (format "Recreate Bloom filter for expression `%s` last created at t = %d evaluating it for %d patients."
@@ -92,9 +99,10 @@
 (defn recreate
   {:arglists '([node old-bloom-filter expression])}
   [node {::keys [t expr-form] :as old-bloom-filter} expression]
-  (let [db (d/db node)]
-    (log/debug (recreate-bloom-filter-msg expr-form t db))
-    (calc-bloom-filter
-     db
-     (filter (partial might-contain? old-bloom-filter))
-     expression)))
+  (with-db node
+    (fn [db]
+      (log/debug (recreate-bloom-filter-msg expr-form t db))
+      (calc-bloom-filter
+       db
+       (filter (partial might-contain? old-bloom-filter))
+       expression))))

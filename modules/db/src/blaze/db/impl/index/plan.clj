@@ -8,22 +8,22 @@
   "Returns a estimated scan size of `clause` under `tid`.
 
   Returns an anomaly on errors."
-  {:arglists '([batch-db tid clause])}
-  [batch-db tid [search-param modifier _ compiled-values]]
-  (search-param/estimated-scan-size search-param batch-db tid modifier compiled-values))
+  {:arglists '([db tid clause])}
+  [db tid [search-param modifier _ compiled-values]]
+  (search-param/estimated-scan-size search-param db tid modifier compiled-values))
 
 (defn- total-estimated-scan-size
   "Returns the sum of estimated scan sizes of all `clauses`.
 
   Returns an anomaly on errors."
-  [batch-db tid clauses]
+  [db tid clauses]
   (transduce
-   (comp (map (partial estimated-scan-size batch-db tid))
+   (comp (map (partial estimated-scan-size db tid))
          (halt-when ba/anomaly?))
    + clauses))
 
-(defn- attach-total-estimated-scan-size [batch-db tid disjunction]
-  (let [estimated-scan-size (total-estimated-scan-size batch-db tid disjunction)]
+(defn- attach-total-estimated-scan-size [db tid disjunction]
+  (let [estimated-scan-size (total-estimated-scan-size db tid disjunction)]
     (cond-> disjunction
       (not (ba/anomaly? estimated-scan-size))
       (with-meta {:estimated-scan-size estimated-scan-size}))))
@@ -38,8 +38,8 @@
 
 (defn group-by-estimated-scan-size
   "Returns two groups, :small and :large."
-  [batch-db tid search-clauses]
-  (let [sized-clauses (mapv (partial attach-total-estimated-scan-size batch-db tid)
+  [db tid search-clauses]
+  (let [sized-clauses (mapv (partial attach-total-estimated-scan-size db tid)
                             search-clauses)
         estimated-sizes (->> (keep (comp :estimated-scan-size meta) sized-clauses)
                              (remove zero?)

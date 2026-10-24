@@ -1,5 +1,6 @@
 (ns blaze.db.test-util
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -168,6 +169,16 @@
       (finally
         (remove-watch state key)))))
 
+(defmacro with-db
+  "Runs `body` with `db` bound to the database value of `node` at its current
+  `t` or, if given, at exactly `t`, waiting until `t` is available.
+
+  The database value is valid only within `body`. Returns nil."
+  [[db node t] & body]
+  `(ac/join
+    (~@(if t `[d/with-sync-db ~node ~t] `[d/with-db ~node])
+     (bound-fn [~db] ~@body (ac/completed-future nil)))))
+
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
   `binding-form` and finally halted.
@@ -182,7 +193,7 @@
   (.numBorrowed ^Pools (.-pools ^PoolingSnapshot snapshot)))
 
 (defn num-borrowed-iterators
-  "Returns the number of iterators borrowed from the snapshot of `batch-db` and
+  "Returns the number of iterators borrowed from the snapshot of `db` and
   not returned yet.
 
   Iterators that are never returned stay open until the snapshot is closed."

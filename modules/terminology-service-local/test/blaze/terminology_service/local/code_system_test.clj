@@ -1,7 +1,6 @@
 (ns blaze.terminology-service.local.code-system-test
   (:require
-   [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system-spec]
    [blaze.test-util :as tu]
@@ -20,11 +19,12 @@
                :url #fhir/uri "system-192435"
                :content #fhir/code "complete"}]]]
 
-      (given @(cs/list (d/db node))
-        count := 1
-        [0 key] := "system-192435"
-        [0 val count] := 1
-        [0 val 0 :id] := "id-160617")))
+      (with-db [db node]
+        (given @(cs/list db)
+          count := 1
+          [0 key] := "system-192435"
+          [0 val count] := 1
+          [0 val 0 :id] := "id-160617"))))
 
   (testing "with two code system"
     (testing "with same URL"
@@ -39,12 +39,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the one with the higher id comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-1"
-                [0 val 1 :id] := "id-0"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-1"
+                  [0 val 1 :id] := "id-0")))))
 
         (testing "created in different transactions"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -56,12 +57,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the newer one comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1")))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1"))))))
 
       (testing "with different versions"
         (testing "major only"
@@ -76,12 +78,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the higher version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "same major but different numeric minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -95,12 +98,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the higher version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "same major but different mixed minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -114,12 +118,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "major and major.minor"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -133,12 +138,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "active version comes before no version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -153,12 +159,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "active version comes before draft version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -174,12 +181,13 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))
 
         (testing "draft version comes before retired version"
           (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -195,9 +203,10 @@
                      :content #fhir/code "complete"}]]]
 
             (testing "the alpha version comes first"
-              (given @(cs/list (d/db node))
-                count := 1
-                [0 key] := "system-192435"
-                [0 val count] := 2
-                [0 val 0 :id] := "id-0"
-                [0 val 1 :id] := "id-1"))))))))
+              (with-db [db node]
+                (given @(cs/list db)
+                  count := 1
+                  [0 key] := "system-192435"
+                  [0 val count] := 2
+                  [0 val 0 :id] := "id-0"
+                  [0 val 1 :id] := "id-1")))))))))

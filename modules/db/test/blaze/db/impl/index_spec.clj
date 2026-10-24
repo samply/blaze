@@ -4,8 +4,8 @@
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.iterators-spec]
    [blaze.db.impl.search-param-spec]
@@ -44,11 +44,11 @@
   :ret (s/or :clauses ::query/clauses :anomaly ::anom/anomaly))
 
 (s/fdef index/other-clauses-resource-handle-filter
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :conjunction ::query/search-clauses))
 
 (s/fdef index/ordered-resource-handles
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :scan-clauses ::query/search-clauses
                :other-clauses (s/nilable (s/coll-of ::query/disjunction :kind vector?))
@@ -56,26 +56,26 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/type-query
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :clauses ::query/clauses
                :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef index/type-query-plan
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :clauses ::query/clauses)
   :ret :blaze.db.query/plan)
 
 (s/fdef index/type-query-total
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :scan-clauses (s/nilable ::query/search-clauses))
   :ret ac/completable-future?)
 
 (s/fdef index/compartment-query
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :scan-clauses ::query/search-clauses
