@@ -2,24 +2,42 @@
 
 ## Authentication / Authorization
 
-The frontend uses the [Auth.js][1] [@auth/sveltekit][2] library for for authentication and authorization. 
+The frontend uses the [Better Auth][1] library for authentication and authorization, in its stateless mode without a
+database.
 
-* a single Keycloak provider is used
+* a single Keycloak provider is used, configured in `src/lib/server/auth.ts`
 * the env vars `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`, `AUTH_ISSUER` and `AUTH_SECRET` are used as config
-* the authorization code flow is used
-* at sign-in the access token and refresh token are stored in a secure, HTTP only, encrypted JWT session cookie
-  * nobody can access the tokens in the session cookie, because it is encrypted and only the server-side of the frontend has the secret
-* the session cookie is transferred for every request (the frontend is stateless)
-* the access token will be refreshed via the refresh token if possible
-* the session will expire at the same time as the last successful refreshed access token will expire 
+* the authorization code flow is used, with the callback URL `/fhir/auth/callback/keycloak`
+* at sign-in, three secure, HTTP only cookies are set, each standing in for a database table of Better Auth:
+
+  | Cookie                                | Format                                       | Content                                                          |
+  |---------------------------------------|----------------------------------------------|------------------------------------------------------------------|
+  | `__Secure-better-auth.session_token`  | random session ID with an HMAC signature     | the ID of the session                                            |
+  | `__Secure-better-auth.session_data`   | JWE (encrypted JWT)                          | the session and the user                                         |
+  | `__Secure-better-auth.account_data.*` | JWE (encrypted JWT), split into chunks       | the access token, the refresh token and the ID token of Keycloak |
+
+  * nobody can access the tokens in the account cookie, because it is encrypted and only the server-side of the
+    frontend has the secret (`AUTH_SECRET`)
+  * together the cookies are about 6 KB, most of it the Keycloak tokens, so a reverse proxy has to accept request
+    headers of that size
+  * the cookies of Auth.js, used before Better Auth, are expired on every page response, because together with the
+    Better Auth cookies they would exceed that size
+* the cookies are transferred for every request (the frontend is stateless)
+* the access token will be refreshed via the refresh token if possible, at the latest 10 s before it expires, so that it
+  doesn't expire while the backend requests of a page are still running
+* if the access token can't be refreshed, the user has to sign in again
+* no base URL is configured; Better Auth takes the origin of each request, which is the one the adapter derived for it
+* Keycloak users don't need an email, but Better Auth requires one, so an email under the reserved `.invalid` TLD is
+  made up for users without one
 
 ## Loading
 
 All loading happens server side. There are `+page.server.ts` / `+layout.server.ts` load functions and form actions, and
 no `+server.ts` endpoints at all.
 
-* The browser never makes a plain `fetch` to this app. It only issues document loads, SvelteKit's own `__data.json`
-  data requests and `use:enhance`d form submissions.
+* Apart from signing in and out, which go to the Better Auth endpoints under `/fhir/auth` and never reach a load, the
+  browser never makes a plain `fetch` to this app. It only issues document loads, SvelteKit's own `__data.json` data
+  requests and `use:enhance`d form submissions.
 * Backend requests are made with the event's `fetch`. The access token stays on the server: `handleFetch` in
   `src/hooks.server.ts` adds it and rewrites the request URL from this app's `ORIGIN` to `BACKEND_BASE_URL`.
 * Every request that reaches the app is therefore one that the browser or SvelteKit's client runtime turns into a
@@ -36,8 +54,8 @@ request was made. SvelteKit puts it into the right envelope by itself:
 
 ### Rejected access tokens
 
-`handleAuthorization` only knows what the Auth.js session claims, which is its `expiresAt`. The backend can still reject 
-the access token that session carries — revoked at the identity provider, clock skew, a realm mismatch — and
+`handleAuthorization` only knows that Better Auth handed out an access token which isn't expired. The backend can still
+reject that access token — revoked at the identity provider, clock skew, a realm mismatch — and
 answers 401. `handleFetch` redirects to the sign-in page in that case, for the same reason `handleAuthorization` can: 
 the request it was serving is one SvelteKit turns into a navigation.
 
@@ -89,5 +107,4 @@ a redirect can still be acted upon.
 The StructureDefinition loads are the exception: they run inside the streamed promise, via `transformBundle`. A token
 revoked between the `/metadata` call and them ends in an error card rather than the sign-in page.
 
-[1]: <https://authjs.dev>
-[2]: <https://www.npmjs.com/package/@auth/sveltekit>
+[1]: <https://www.better-auth.com>

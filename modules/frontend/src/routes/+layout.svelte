@@ -5,8 +5,8 @@
   import '@fontsource-variable/lexend';
   import { page } from '$app/state';
   import { fade } from 'svelte/transition';
-  import { onNavigate } from '$app/navigation';
-  import { signOut } from '@auth/sveltekit/client';
+  import { invalidateAll, onNavigate } from '$app/navigation';
+  import { signOut } from '$lib/auth-client';
   import NavItem from '$lib/nav-item.svelte';
   import { asset } from '$app/paths';
   import { UserCircle } from 'svelte-heros-v2';
@@ -127,7 +127,11 @@
                   {page.data.session?.user?.name}
                 </p>
                 <button
-                  onclick={() => signOut()}
+                  onclick={async () => {
+                    await signOut();
+                    // the reloaded page finds no session and goes to the sign-in page
+                    await invalidateAll();
+                  }}
                   class="block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 enabled:cursor-pointer dark:text-gray-300 hover:dark:bg-gray-600"
                   role="menuitem"
                   tabindex="-1"

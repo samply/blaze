@@ -1,20 +1,4 @@
-import type { Session } from '@auth/sveltekit';
-
-declare module '@auth/core/jwt' {
-  interface JWT {
-    accessToken?: string;
-    refreshToken?: string;
-    expiresAt?: number;
-  }
-}
-
-declare module '@auth/core/types' {
-  interface Session {
-    accessToken?: string;
-    refreshToken?: string;
-    expiresAt?: number;
-  }
-}
+import type { Session } from '$lib/server/session';
 
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
