@@ -1,7 +1,7 @@
 import type { PageServerLoad } from './$types';
 
 import { fetchBundleWithDuration, fetchSearchMetadata } from './util.js';
-import { summaryFromUrl } from '$lib/summary.js';
+import { summaryFromUrl } from '#lib/summary.js';
 
 export const load: PageServerLoad = async ({ fetch, params, url }) => {
   return {

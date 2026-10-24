@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FhirPrimitive } from '$lib/resource/resource-card.js';
+  import type { FhirPrimitive } from '#lib/resource/resource-card.js';
   import { targetType } from './canonical.js';
   import { resolve } from '$app/paths';
 

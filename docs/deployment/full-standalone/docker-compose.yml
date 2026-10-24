@@ -12,11 +12,17 @@ services:
     - "../../../modules/ingress/blaze-key.pem:/etc/nginx/conf.d/blaze-key.pem:ro"
     - "../../../modules/ingress/keycloak-cert.pem:/etc/nginx/conf.d/keycloak-cert.pem:ro"
     - "../../../modules/ingress/keycloak-key.pem:/etc/nginx/conf.d/keycloak-key.pem:ro"
+    networks:
+      default:
+        aliases:
+        - "keycloak.localhost"
+    depends_on:
+    - backend
+    - keycloak
 
   frontend:
     image: "samply/blaze-frontend:latest"
     environment:
-      ORIGIN: "https://blaze.localhost"
       BACKEND_BASE_URL: "http://backend:8080"
       AUTH_CLIENT_ID: "account"
       AUTH_CLIENT_SECRET: "e11a3a8e-6e24-4f9d-b914-da7619e8b31f"
@@ -25,10 +31,21 @@ services:
       PROTOCOL_HEADER: "x-forwarded-proto"
       HOST_HEADER: "x-forwarded-host"
       NODE_EXTRA_CA_CERTS: "/app/keycloak-cert.pem"
-    extra_hosts:
-    - "keycloak.localhost:host-gateway"
     volumes:
     - "../../../modules/ingress/keycloak-cert.pem:/app/keycloak-cert.pem:ro"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      ingress:
+        condition: service_started
 
   backend:
     image: "samply/blaze:latest"
@@ -39,20 +56,30 @@ services:
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
-    extra_hosts:
-    - "keycloak.localhost:host-gateway"
     volumes:
     - "blaze-data:/app/data"
     - "../../../modules/ingress/keycloak-trust-store.p12:/app/keycloak-trust-store.p12:ro"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   keycloak:
     image: "quay.io/keycloak/keycloak:26.4.2"
-    command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
+    command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true --health-enabled=true"
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     volumes:
     - "./keycloak/import:/opt/keycloak/data/import"
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:8080\r\nConnection: close\r\n\r\n' >&3; grep -q '\"status\": \"UP\"' <&3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
 volumes:
   blaze-data:

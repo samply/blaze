@@ -16,8 +16,8 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@sveltejs/adapter-node": "5.5.7",
-    "@sveltejs/kit": "2.70.3",
+    "@sveltejs/adapter-node": "6.0.0",
+    "@sveltejs/kit": "3.1.0",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/dom-view-transitions": "1.0.6",
@@ -49,9 +49,7 @@
     "better-auth": "1.7.12",
     "svelte-heros-v2": "^3.0.1"
   },
-  "overrides": {
-    "@sveltejs/kit": {
-      "cookie": "^1.0.0"
-    }
+  "imports": {
+    "#lib/*": "./src/lib/*"
   }
 }

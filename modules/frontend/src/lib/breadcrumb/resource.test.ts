@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
 import type { FhirResource } from 'fhir/r4';
-import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
 
 function renderEntry(resource?: FhirResource): string {
   return render(BreadcrumbEntryResource, {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Bundle, BundleEntry } from 'fhir/r4';
-import { bundleSummaryMode, isSubsetted } from '$lib/resource/subsetted.js';
+import { bundleSummaryMode, isSubsetted } from '#lib/resource/subsetted.js';
 
 const subsettedTag = {
   system: 'http://terminology.hl7.org/CodeSystem/v3-ObservationValue',

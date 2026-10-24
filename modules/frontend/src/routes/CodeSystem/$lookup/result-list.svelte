@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Parameters } from 'fhir/r4';
 
-  import { parameter, parameterParts, parameterValue } from '$lib/fhir';
-  import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
-  import Row from '$lib/tailwind/description/left-aligned/row-3-2.svelte';
+  import { parameter, parameterParts, parameterValue } from '#lib/fhir.js';
+  import DescriptionList from '#lib/tailwind/description/left-aligned/list.svelte';
+  import Row from '#lib/tailwind/description/left-aligned/row-3-2.svelte';
 
   interface Props {
     parameters: Parameters;

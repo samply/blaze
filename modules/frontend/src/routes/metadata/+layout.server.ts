@@ -1,8 +1,8 @@
-import { fhirObject } from '$lib/resource/resource-card.js';
+import { fhirObject } from '#lib/resource/resource-card.js';
 import type { LayoutServerLoad } from './$types';
 
-import { backendUrl } from '$lib/backend.js';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { backendUrl } from '#lib/backend.js';
+import { error } from '@sveltejs/kit';
 import type { CapabilityStatement } from 'fhir/r4';
 
 export const load: LayoutServerLoad = async ({ fetch }) => {
@@ -11,7 +11,7 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
   });
 
   if (!res.ok) {
-    error(res.status as NumericRange<400, 599>, 'error while loading the CapabilityStatement');
+    error(res.status, 'error while loading the CapabilityStatement');
   }
 
   const capabilityStatement = (await res.json()) as CapabilityStatement;

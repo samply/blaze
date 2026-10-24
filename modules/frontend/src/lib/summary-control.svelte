@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { withSummaryParam, type SummaryMode } from '$lib/summary.js';
-  import InfoTooltip from '$lib/tailwind/info-tooltip.svelte';
+  import type { ReadonlyURL } from '$app/state';
+  import { withSummaryParam, type SummaryMode } from '#lib/summary.js';
+  import InfoTooltip from '#lib/tailwind/info-tooltip.svelte';
   import TooltipList from './tooltip/tooltip-list.svelte';
   import TooltipListItem from './tooltip/tooltip-list-item.svelte';
   import { ExclamationCircle } from 'svelte-heros-v2';
@@ -9,7 +10,7 @@
 
   interface Props {
     /** The URL of the current result set, used to build the mode links. */
-    url: URL;
+    url: ReadonlyURL;
     /**
      * The summary mode of this view, or undefined if the view gives no
      * evidence of its summary mode, in which case nothing is shown.
@@ -66,7 +67,7 @@
           <a
             href={withSummaryParam(url, option.mode)}
             aria-current={mode === option.mode ? 'page' : undefined}
-            data-sveltekit-keepfocus
+            data-sveltekit-reset="false"
             class="block rounded-md px-3 py-1 text-sm font-semibold text-gray-600 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:text-gray-300 dark:hover:text-gray-100 {mode ===
             option.mode
               ? 'bg-indigo-600 text-white hover:text-white dark:text-white dark:hover:text-white'

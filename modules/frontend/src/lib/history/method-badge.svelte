@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { HttpMethod } from '$lib/fhir';
-  import type { Color } from '$lib/tailwind/badge.svelte';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { HttpMethod } from '#lib/fhir.js';
+  import type { Color } from '#lib/tailwind/badge.svelte';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     method: HttpMethod;

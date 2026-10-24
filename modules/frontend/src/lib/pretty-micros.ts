@@ -1,4 +1,4 @@
-import prettyNum from '$lib/pretty-num';
+import prettyNum from '#lib/pretty-num.js';
 
 /** Formats a latency given in microseconds, switching to milliseconds at 1000 µs. */
 export default function prettyMicros(micros: number): string {

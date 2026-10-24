@@ -1,6 +1,6 @@
 <script lang="ts">
-  import ExternalLink from '$lib/values/util/external-link.svelte';
-  import CardHeading from '$lib/tailwind/card/heading.svelte';
+  import ExternalLink from '#lib/values/util/external-link.svelte';
+  import CardHeading from '#lib/tailwind/card/heading.svelte';
 
   interface Props {
     diagnostics: string;

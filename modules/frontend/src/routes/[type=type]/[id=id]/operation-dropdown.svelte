@@ -3,8 +3,8 @@
 
   import { resolve } from '$app/paths';
 
-  import Dropdown from '$lib/tailwind/dropdown.svelte';
-  import DropdownItem from '$lib/tailwind/dropdown/item.svelte';
+  import Dropdown from '#lib/tailwind/dropdown.svelte';
+  import DropdownItem from '#lib/tailwind/dropdown/item.svelte';
 
   let params: RouteParams = $props();
 </script>

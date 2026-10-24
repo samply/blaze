@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import { invalidateAll } from '$app/navigation';
-  import Status from '$lib/jobs/status.svelte';
-  import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
-  import DateTime from '$lib/values/date-time.svelte';
-  import Row from '$lib/tailwind/description/left-aligned/row-3-2.svelte';
+  import { refreshAll } from '$app/navigation';
+  import Status from '#lib/jobs/status.svelte';
+  import DescriptionList from '#lib/tailwind/description/left-aligned/list.svelte';
+  import DateTime from '#lib/values/date-time.svelte';
+  import Row from '#lib/tailwind/description/left-aligned/row-3-2.svelte';
   import humanizeDuration from 'humanize-duration';
 
   let { data }: PageProps = $props();
@@ -14,7 +14,7 @@
   $effect(() => {
     if (data.job.status === 'ready' || data.job.status === 'in-progress') {
       const timeout = setTimeout(() => {
-        invalidateAll();
+        refreshAll();
       }, 5000);
 
       return () => {

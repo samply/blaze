@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from 'svelte/server';
-import SummaryControl from '$lib/summary-control.svelte';
+import SummaryControl from '#lib/summary-control.svelte';
 
 const url = new URL('http://localhost/Patient');
 

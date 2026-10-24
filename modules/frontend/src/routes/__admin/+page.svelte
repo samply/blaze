@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Table from '$lib/tailwind/table/table.svelte';
+  import Table from '#lib/tailwind/table/table.svelte';
   import SettingRow from './setting-row.svelte';
   import FeatureRow from './feature-row.svelte';
 

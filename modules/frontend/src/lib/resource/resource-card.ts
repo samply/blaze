@@ -21,7 +21,7 @@ import type {
   Resource,
   StructureDefinition
 } from 'fhir/r4';
-import { startsWithUpperCase, toTitleCase } from '$lib/util.js';
+import { startsWithUpperCase, toTitleCase } from '#lib/util.js';
 import { fetchStructureDefinition } from '../metadata.js';
 
 export function isPrimitive(type: Type) {

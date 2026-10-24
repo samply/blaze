@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { FhirObjectBundleEntry } from '$lib/resource/resource-card.js';
-  import ResourceCard from '$lib/resource/resource-card.svelte';
+  import type { FhirObjectBundleEntry } from '#lib/resource/resource-card.js';
+  import ResourceCard from '#lib/resource/resource-card.svelte';
   import DeletedCard from '../history/deleted-card.svelte';
   import OutcomeCard from './outcome-card.svelte';
   import EntryBadges from './entry-badges.svelte';

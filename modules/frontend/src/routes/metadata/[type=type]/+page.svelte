@@ -2,15 +2,15 @@
   import type { PageProps } from './$types';
 
   import { resolve } from '$app/paths';
-  import { sortByProperty2 } from '$lib/util';
+  import { sortByProperty2 } from '#lib/util.js';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryMetadata from '$lib/breadcrumb/metadata.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
-  import Row from '$lib/tailwind/description/left-aligned/row-5-4.svelte';
-  import ExternalLink from '$lib/values/util/external-link.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryMetadata from '#lib/breadcrumb/metadata.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import DescriptionList from '#lib/tailwind/description/left-aligned/list.svelte';
+  import Row from '#lib/tailwind/description/left-aligned/row-5-4.svelte';
+  import ExternalLink from '#lib/values/util/external-link.svelte';
 
   let { data, params }: PageProps = $props();
 
@@ -56,7 +56,7 @@
               <li>
                 <a
                   class="hover:text-gray-500 dark:text-gray-400"
-                  href="{resolve('/StructureDefinition?_summary=true')}&url={profile}">{profile}</a
+                  href="{resolve('StructureDefinition?_summary=true')}&url={profile}">{profile}</a
                 >
               </li>
             {/each}

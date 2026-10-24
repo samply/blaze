@@ -1,10 +1,11 @@
 <script lang="ts">
+  import type { ReadonlyURL } from '$app/state';
   import { ExclamationTriangle } from 'svelte-heros-v2';
-  import { withSummaryParam, type SummaryMode } from '$lib/summary.js';
+  import { withSummaryParam, type SummaryMode } from '#lib/summary.js';
 
   interface Props {
     /** The URL of the current result set, used to build the escape-hatch link. */
-    url: URL;
+    url: ReadonlyURL;
     /**
      * The summary mode of this view, or undefined if the view gives no
      * evidence of its summary mode, in which case nothing is shown.

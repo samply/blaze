@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import type { DiskPerfJob } from '$lib/jobs/disk-perf';
-  import Results from '$lib/jobs/disk-perf/results.svelte';
-  import Status from '$lib/jobs/disk-perf/status.svelte';
-  import TimeAgo from '$lib/time-ago.svelte';
+  import type { DiskPerfJob } from '#lib/jobs/disk-perf.js';
+  import Results from '#lib/jobs/disk-perf/results.svelte';
+  import Status from '#lib/jobs/disk-perf/status.svelte';
+  import TimeAgo from '#lib/time-ago.svelte';
 
   interface Props {
     /** the most recent job with measurement results, if any */
@@ -21,7 +21,7 @@
   $effect(() => {
     if (running !== undefined) {
       const timeout = setTimeout(() => {
-        invalidateAll();
+        refreshAll();
       }, 5000);
 
       return () => {

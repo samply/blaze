@@ -7,7 +7,7 @@ import {
   moveDownAtIndex,
   processParams,
   defaultCount
-} from '$lib/util.js';
+} from '#lib/util.js';
 
 describe('toTitleCase test', () => {
   it('works with empty strings', () => {

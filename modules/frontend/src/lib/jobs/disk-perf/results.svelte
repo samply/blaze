@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { bestReadRun, type DiskPerfJob } from '$lib/jobs/disk-perf';
-  import ReadIopsChart from '$lib/jobs/disk-perf/read-iops-chart.svelte';
-  import ReadLatencyChart from '$lib/jobs/disk-perf/read-latency-chart.svelte';
-  import ReadRunsTable from '$lib/jobs/disk-perf/read-runs-table.svelte';
-  import ScoreGauge from '$lib/jobs/disk-perf/score-gauge.svelte';
-  import SimpleStats from '$lib/tailwind/stats/simple.svelte';
-  import prettyNum from '$lib/pretty-num';
+  import { bestReadRun, type DiskPerfJob } from '#lib/jobs/disk-perf.js';
+  import ReadIopsChart from '#lib/jobs/disk-perf/read-iops-chart.svelte';
+  import ReadLatencyChart from '#lib/jobs/disk-perf/read-latency-chart.svelte';
+  import ReadRunsTable from '#lib/jobs/disk-perf/read-runs-table.svelte';
+  import ScoreGauge from '#lib/jobs/disk-perf/score-gauge.svelte';
+  import SimpleStats from '#lib/tailwind/stats/simple.svelte';
+  import prettyNum from '#lib/pretty-num.js';
   import prettyBytes from 'pretty-bytes';
   import { ExclamationTriangle } from 'svelte-heros-v2';
 
