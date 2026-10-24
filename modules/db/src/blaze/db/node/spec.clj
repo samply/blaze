@@ -11,6 +11,9 @@
 (s/def :blaze.db.node/queue-capacity
   pos-int?)
 
+(s/def :blaze.db.node/sync-timeout
+  pos-int?)
+
 (s/def :blaze.db.node/nodes
   (s/map-of some? :blaze.db/node))
 

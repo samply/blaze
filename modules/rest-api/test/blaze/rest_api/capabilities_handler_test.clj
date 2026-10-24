@@ -125,7 +125,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# ::rest-api/capabilities-handler} ~config]
        ~txs
-       (let [~handler-binding (-> handler# (wrap-db node# 100))]
+       (let [~handler-binding (-> handler# (wrap-db node#))]
          ~@body))))
 
 (deftest minimal-config-test

@@ -41,9 +41,12 @@
 
 (defn pull-request-bundle [node job]
   (if-ok [[type id] (request-bundle-ref job)]
-    (if-let [handle (d/resource-handle (d/db node) type id)]
-      (if-not (d/deleted? handle)
-        (d/pull node handle)
-        (ac/completed-future (ba/not-found (deleted-msg job id))))
-      (ac/completed-future (ba/not-found (not-found-msg job id))))
+    (-> (d/with-db node #(ac/completed-future (d/resource-handle % type id)))
+        (ac/then-compose
+         (fn [handle]
+           (if handle
+             (if-not (d/deleted? handle)
+               (d/pull node handle)
+               (ac/completed-future (ba/not-found (deleted-msg job id))))
+             (ac/completed-future (ba/not-found (not-found-msg job id)))))))
     ac/completed-future))

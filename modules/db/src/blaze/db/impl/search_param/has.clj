@@ -55,10 +55,10 @@
    * `tid`             - Patient
    * `resource-handle` - an Encounter
    * result            - a coll with one Patient"
-  {:arglists '([batch-db search-param tid resource-handle])}
-  [{:keys [snapshot] :as batch-db} {:keys [c-hash]} tid resource-handle]
+  {:arglists '([db search-param tid resource-handle])}
+  [{:keys [snapshot] :as db} {:keys [c-hash]} tid resource-handle]
   (coll/eduction
-   (u/reference-resource-handle-mapper batch-db)
+   (u/reference-resource-handle-mapper db)
    (let [tid-byte-string (codec/tid-byte-string tid)
          {:keys [tid id hash-prefix]} resource-handle]
      (r-sp-v/prefix-keys snapshot tid id hash-prefix
@@ -68,12 +68,12 @@
   (drop-while #(neg? (let [^String id (:id %)] (.compareTo id start-id)))))
 
 (defn- resource-handles*
-  [batch-db tid [search-param chain-search-param join-tid value]]
+  [db tid [search-param chain-search-param join-tid value]]
   (into
    (sorted-set-by ResourceHandle/ID_CMP)
-   (comp (u/resource-handle-xf batch-db join-tid)
-         (mapcat (partial resolve-resource-handles batch-db chain-search-param tid)))
-   (p/-index-handles search-param batch-db join-tid nil value)))
+   (comp (u/resource-handle-xf db join-tid)
+         (mapcat (partial resolve-resource-handles db chain-search-param tid)))
+   (p/-index-handles search-param db join-tid nil value)))
 
 ;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache
@@ -86,15 +86,15 @@
   "Returns a sorted set of resource handles of resources of type `tid`,
   referenced from resources of the type `join-tid` by `chain-search-param` that
   have `value` according to `search-param`."
-  {:arglists '([batch-db tid [search-param chain-search-param join-tid value]])}
-  [{:keys [t] :as batch-db} tid
+  {:arglists '([db tid [search-param chain-search-param join-tid value]])}
+  [{:keys [t] :as db} tid
    [{:keys [c-hash]} {chain-c-hash :c-hash} join-tid value :as data]]
   (let [key [t tid join-tid chain-c-hash c-hash value]]
-    (.get resource-handles-cache key (fn [_] (resource-handles* batch-db tid data)))))
+    (.get resource-handles-cache key (fn [_] (resource-handles* db tid data)))))
 
 (defn- matches?
-  [batch-db {:keys [tid] :as resource-handle} values]
-  (some #(contains? (resource-handles batch-db tid %) resource-handle) values))
+  [db {:keys [tid] :as resource-handle} values]
+  (some #(contains? (resource-handles db tid %) resource-handle) values))
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
@@ -122,16 +122,16 @@
   (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
+  (-index-handles [_ db tid _ compiled-value]
     (coll/eduction
      (map ih/from-resource-handle)
-     (resource-handles batch-db tid compiled-value)))
+     (resource-handles db tid compiled-value)))
 
-  (-index-handles [_ batch-db tid _ compiled-value start-id]
+  (-index-handles [_ db tid _ compiled-value start-id]
     (coll/eduction
      (comp (drop-lesser-ids start-id)
            (map ih/from-resource-handle))
-     (resource-handles batch-db tid compiled-value)))
+     (resource-handles db tid compiled-value)))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -142,11 +142,11 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ compiled-values]
-    (filter #(matches? batch-db % compiled-values)))
+  (-matcher [_ db _ compiled-values]
+    (filter #(matches? db % compiled-values)))
 
-  (-single-version-id-matcher [search-param batch-db tid modifier compiled-values]
-    (u/single-version-id-matcher search-param batch-db tid modifier compiled-values))
+  (-single-version-id-matcher [search-param db tid modifier compiled-values]
+    (u/single-version-id-matcher search-param db tid modifier compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])
 

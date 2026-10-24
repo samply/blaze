@@ -29,26 +29,23 @@
   (cond
     (empty? clauses)
     (do-sync [query (d/compile-compartment-query db code type)]
-      (with-open [batch-db (d/new-batch-db db)]
-        (when-ok [handles (d/execute-query batch-db query id)]
-          {:query query
-           :handles (vec handles)})))
+      (when-ok [handles (d/execute-query db query id)]
+        {:query query
+         :handles (vec handles)}))
 
     (identical? :blaze.preference.handling/strict handling)
     (do-sync [query (d/compile-compartment-query db code type clauses)]
-      (with-open [batch-db (d/new-batch-db db)]
-        (when-ok [handles (d/execute-query batch-db query id)]
-          {:query query
-           :handles (vec handles)
-           :clauses clauses})))
+      (when-ok [handles (d/execute-query db query id)]
+        {:query query
+         :handles (vec handles)
+         :clauses clauses}))
 
     :else
     (do-sync [query (d/compile-compartment-query-lenient db code type clauses)]
-      (with-open [batch-db (d/new-batch-db db)]
-        (when-ok [handles (d/execute-query batch-db query id)]
-          {:query query
-           :handles (vec handles)
-           :clauses (d/query-clauses query)})))))
+      (when-ok [handles (d/execute-query db query id)]
+        {:query query
+         :handles (vec handles)
+         :clauses (d/query-clauses query)}))))
 
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context} query]
   (comp

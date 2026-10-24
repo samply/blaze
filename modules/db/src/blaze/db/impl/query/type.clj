@@ -13,16 +13,16 @@
 
 (defrecord TypeQuery [tid clauses]
   p/Query
-  (-count [_ batch-db]
-    (index/type-query-total batch-db tid (:search-clauses clauses)))
-  (-execute [_ batch-db]
-    (index/type-query batch-db tid clauses))
-  (-execute [_ batch-db start-id]
-    (index/type-query batch-db tid clauses start-id))
+  (-count [_ db]
+    (index/type-query-total db tid (:search-clauses clauses)))
+  (-execute [_ db]
+    (index/type-query db tid clauses))
+  (-execute [_ db start-id]
+    (index/type-query db tid clauses start-id))
   (-query-clauses [_]
     (qu/decode-clauses clauses))
-  (-query-plan [_ batch-db]
-    (index/type-query-plan batch-db tid clauses))
+  (-query-plan [_ db]
+    (index/type-query-plan db tid clauses))
   (-query-match-extension-fn [_]
     (qu/match-extension-fn (:search-clauses clauses))))
 
@@ -34,44 +34,44 @@
   (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
           (codec/tid->type tid) id t since-t))
 
-(defn- non-deleted-resource-handle* [batch-db tid id]
-  (when-let [handle (p/-resource-handle batch-db tid id)]
+(defn- non-deleted-resource-handle* [db tid id]
+  (when-let [handle (p/-resource-handle db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
 
-(defn- non-deleted-resource-handle [batch-db tid id]
-  (or (non-deleted-resource-handle* batch-db tid id)
-      (ba/fault (resource-handle-not-found-msg batch-db tid id))))
+(defn- non-deleted-resource-handle [db tid id]
+  (or (non-deleted-resource-handle* db tid id)
+      (ba/fault (resource-handle-not-found-msg db tid id))))
 
 (defn- first-referenced-patient-not-found-msg [{:keys [t since-t]} resource-handle]
   (format "Patient resource handle referenced from `%s/%s` not found in database with t=%d and since-t=%d."
           (name (:fhir/type resource-handle)) (:id resource-handle) t since-t))
 
-(defn- first-referenced-patient-id [batch-db resource-handle]
-  (or (coll/first (spc/target-ids batch-db resource-handle patient-code-hash patient-tid))
-      (ba/fault (first-referenced-patient-not-found-msg batch-db resource-handle))))
+(defn- first-referenced-patient-id [db resource-handle]
+  (or (coll/first (spc/target-ids db resource-handle patient-code-hash patient-tid))
+      (ba/fault (first-referenced-patient-not-found-msg db resource-handle))))
 
-(defn- start-patient-id [batch-db tid start-id]
-  (when-ok [start-handle (non-deleted-resource-handle batch-db tid start-id)]
-    (first-referenced-patient-id batch-db start-handle)))
+(defn- start-patient-id [db tid start-id]
+  (when-ok [start-handle (non-deleted-resource-handle db tid start-id)]
+    (first-referenced-patient-id db start-handle)))
 
 ;; A type query over resources with `tid` and patients with `patient-ids`.
 (defrecord PatientTypeQuery [tid patient-ids compartment-clause scan-clauses
                              other-clauses compartment-query]
   p/Query
-  (-count [query batch-db]
-    (ac/completed-future (count (p/-execute query batch-db))))
-  (-execute [_ batch-db]
-    (coll/eduction (mapcat #(compartment-query batch-db %)) patient-ids))
-  (-execute [_ batch-db start-id]
-    (when-ok [start-patient-id (start-patient-id batch-db tid start-id)]
+  (-count [query db]
+    (ac/completed-future (count (p/-execute query db))))
+  (-execute [_ db]
+    (coll/eduction (mapcat #(compartment-query db %)) patient-ids))
+  (-execute [_ db start-id]
+    (when-ok [start-patient-id (start-patient-id db tid start-id)]
       (coll/eduction
        cat
-       [(compartment-query batch-db start-patient-id start-id)
+       [(compartment-query db start-patient-id start-id)
         (coll/eduction
          (comp (drop-while #(not= start-patient-id %))
                (drop 1)
-               (mapcat #(compartment-query batch-db %)))
+               (mapcat #(compartment-query db %)))
          patient-ids)])))
   (-query-clauses [_]
     (qu/decode-clauses {:search-clauses (-> [[compartment-clause]]
@@ -87,21 +87,21 @@
   (->PatientTypeQuery
    tid patient-ids compartment-clause scan-clauses other-clauses
    (fn
-     ([batch-db patient-id]
-      (index/compartment-query batch-db [patient-compartment-hash patient-id]
+     ([db patient-id]
+      (index/compartment-query db [patient-compartment-hash patient-id]
                                tid scan-clauses other-clauses))
-     ([batch-db patient-id start-id]
-      (index/compartment-query batch-db [patient-compartment-hash patient-id]
+     ([db patient-id start-id]
+      (index/compartment-query db [patient-compartment-hash patient-id]
                                tid scan-clauses other-clauses start-id)))))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
-  (-count [_ batch-db]
-    (ac/completed-future (p/-type-total batch-db tid)))
-  (-execute [_ batch-db]
-    (rao/type-list batch-db tid))
-  (-execute [_ batch-db start-id]
-    (rao/type-list batch-db tid start-id))
+  (-count [_ db]
+    (ac/completed-future (p/-type-total db tid)))
+  (-execute [_ db]
+    (rao/type-list db tid))
+  (-execute [_ db start-id]
+    (rao/type-list db tid start-id))
   (-query-clauses [_])
   (-query-plan [_ _]
     {:query-type :type})

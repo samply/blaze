@@ -38,6 +38,17 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
+(defn- build-response [request type id tx-op conditional-clauses db-after]
+  (if-let [handle (d/resource-handle db-after type id)]
+    (response/build-response
+     (response-context request db-after) tx-op nil handle)
+    (-> (d/type-query db-after type conditional-clauses)
+        (ac/then-compose
+         (fn [handles]
+           (let [handle (coll/first handles)]
+             (response/build-response
+              (response-context request db-after) tx-op handle handle)))))))
+
 (defn- create-resource
   [{:keys [node]}
    {{{:fhir.resource/keys [type]} :data} ::reitit/match
@@ -48,16 +59,9 @@
         tx-op (create-op resource conditional-clauses)]
     (-> (d/transact node [tx-op])
         (ac/then-compose
-         (fn [db-after]
-           (if-let [handle (d/resource-handle db-after type id)]
-             (response/build-response
-              (response-context request db-after) tx-op nil handle)
-             (-> (d/type-query db-after type conditional-clauses)
-                 (ac/then-compose
-                  (fn [handles]
-                    (let [handle (coll/first handles)]
-                      (response/build-response
-                       (response-context request db-after) tx-op handle handle)))))))))))
+         #(d/with-sync-db node %
+            (partial build-response request type id tx-op
+                     conditional-clauses))))))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."

@@ -146,7 +146,7 @@
 (deftest wake-up-test
   (testing "the publishing loop is woken up after the queue drained to half its capacity"
     ;; waking it up at the first free slot would make it run a round per
-    ;; delivered transaction, each with its own batch database
+    ;; delivered transaction, each with its own database value
     (let [wake-ups (atom 0)
           items (atom [])
           subscriber-subscription (promise)

@@ -7,16 +7,12 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
-   [blaze.handler.fhir.util :as fhir-util]
-   [blaze.handler.fhir.util-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.test-util :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
-   [cognitect.anomalies :as anom])
-  (:import
-   [java.util.concurrent TimeUnit]))
+   [cognitect.anomalies :as anom]))
 
 (st/instrument)
 
@@ -24,107 +20,76 @@
   (st/instrument)
   (st/unstrument `db/wrap-db)
   (st/unstrument `db/wrap-snapshot-db)
-  (st/unstrument `fhir-util/sync)
-  (st/unstrument `d/sync)
-  (st/unstrument `d/as-of)
+  (st/unstrument `d/with-sync-db)
   (f)
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
 
-(def timeout 100)
 (def handler (comp ac/completed-future :blaze/db))
 
 (deftest wrap-db-test
   (testing "uses existing database value"
-    (is (= ::db @((db/wrap-db handler ::node timeout) {:blaze/db ::db}))))
+    (is (= ::db @((db/wrap-db handler ::node) {:blaze/db ::db}))))
 
   (testing "uses sync for database value acquisition"
     (with-redefs
-     [d/sync
-      (fn [node]
+     [d/with-sync-db
+      (fn [node f]
         (assert (= ::node node))
-        (ac/completed-future ::db))]
+        (f ::db))]
 
-      (is (= ::db @((db/wrap-db handler ::node timeout) {})))))
-
-  (testing "fails on timeout"
-    (with-redefs
-     [d/sync
-      (fn [node]
-        (assert (= ::node node))
-        (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
-
-      (given-failed-future ((db/wrap-db handler ::node timeout) {})
-        ::anom/category := ::anom/busy
-        ::anom/message := "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))
+      (is (= ::db @((db/wrap-db handler ::node) {})))))
 
   (testing "fails on other sync error"
     (with-redefs
-     [d/sync
-      (fn [node]
+     [d/with-sync-db
+      (fn [node _]
         (assert (= ::node node))
         (ac/completed-future (ba/fault "msg-115845")))]
 
-      (given-failed-future ((db/wrap-db handler ::node timeout) {})
+      (given-failed-future ((db/wrap-db handler ::node) {})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115845"))))
 
 (deftest wrap-snapshot-db-test
   (testing "uses existing database value"
-    (is (= ::db @((db/wrap-snapshot-db handler ::node timeout) {:blaze/db ::db}))))
+    (is (= ::db @((db/wrap-snapshot-db handler ::node) {:blaze/db ::db}))))
 
   (testing "with missing params"
-    (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) nil)
+    (given-failed-future ((db/wrap-snapshot-db handler ::node) nil)
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing or invalid `__t` paging param `null`."))
 
   (testing "ignores __t from params"
-    (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114429"}})
+    (given-failed-future ((db/wrap-snapshot-db handler ::node) {:params {"__t" "114429"}})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing or invalid `__t` paging param `null`."))
 
   (testing "with missing or invalid __t"
     (doseq [t ["a" "-1"]]
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" t}})
+      (given-failed-future ((db/wrap-snapshot-db handler ::node) {:blaze/paging-params {"__t" t}})
         ::anom/category := ::anom/incorrect
         ::anom/message := (format "Missing or invalid `__t` paging param `%s`." t))))
 
   (testing "uses __t for database value acquisition"
     (with-redefs
-     [d/sync
-      (fn [node t]
+     [d/with-sync-db
+      (fn [node t f]
         (assert (= ::node node))
         (assert (= 114429 t))
-        (ac/completed-future ::db))
-      d/as-of
-      (fn [db t]
-        (assert (= ::db db))
-        (assert (= 114429 t))
-        ::as-of-db)]
+        (f ::db))]
 
-      (is (= ::as-of-db @((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114429"}})))))
-
-  (testing "fails on timeout"
-    (with-redefs
-     [d/sync
-      (fn [node t]
-        (assert (= ::node node))
-        (assert (= 114148 t))
-        (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
-
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114148"}})
-        ::anom/category := ::anom/busy
-        ::anom/message := "Timeout while trying to acquire the database state with t=114148. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))
+      (is (= ::db @((db/wrap-snapshot-db handler ::node) {:blaze/paging-params {"__t" "114429"}})))))
 
   (testing "fails on other sync error"
     (with-redefs
-     [d/sync
-      (fn [node t]
+     [d/with-sync-db
+      (fn [node t _]
         (assert (= ::node node))
         (assert (= 114148 t))
         (ac/completed-future (ba/fault "msg-115945")))]
 
-      (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:blaze/paging-params {"__t" "114148"}})
+      (given-failed-future ((db/wrap-snapshot-db handler ::node) {:blaze/paging-params {"__t" "114148"}})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115945"))))

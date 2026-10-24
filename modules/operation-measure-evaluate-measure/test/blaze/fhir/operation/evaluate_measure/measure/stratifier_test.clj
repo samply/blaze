@@ -4,7 +4,7 @@
    [blaze.anomaly-spec]
    [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
@@ -151,11 +151,10 @@
      :criteria (cql-expression "Age")}]})
 
 (defn- context
-  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor] :as system}
-   library]
+  [{:blaze.test/keys [fixed-clock executor] :as system} db library]
   (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     (cond->
-     {:db (d/db node)
+     {:db db
       :now (bt/offset-date-time fixed-clock)
       :interrupted? (constantly nil)
       :expression-defs expression-defs
@@ -177,26 +176,27 @@
           [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]
           [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code "male"}]]]
 
-        (let [{:keys [db] :as context} (context system library-age-gender)
-              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-age-gender)
+                handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op
-                       (assoc context :report-type "population")
-                       gender-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {nil 1
-                      #fhir/code "male" 2
-                      #fhir/code "female" 1}))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op
+                         (assoc context :report-type "population")
+                         gender-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {nil 1
+                        #fhir/code "male" 2
+                        #fhir/code "female" 1}))))
 
-          (testing "report-type subject-list"
-            (let [op ((strat/reduce-op
-                       (assoc context :report-type "subject-list")
-                       gender-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {nil [(nth handles 0)]
-                      #fhir/code "male" [(nth handles 1) (nth handles 3)]
-                      #fhir/code "female" [(nth handles 2)]})))))))
+            (testing "report-type subject-list"
+              (let [op ((strat/reduce-op
+                         (assoc context :report-type "subject-list")
+                         gender-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {nil [(nth handles 0)]
+                        #fhir/code "male" [(nth handles 1) (nth handles 3)]
+                        #fhir/code "female" [(nth handles 2)]}))))))))
 
     (testing "CodeableConcept"
       (with-system-data [system config]
@@ -208,22 +208,23 @@
                                        :code #fhir/code "17861-6"}]}
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-        (let [{:keys [db] :as context} (context system library-observation-code)
-              handles [{:population-handle (em-tu/resource db "Observation" "0")
-                        :subject-handle (em-tu/resource db "Patient" "0")}]]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-observation-code)
+                handles [{:population-handle (em-tu/resource db "Observation" "0")
+                          :subject-handle (em-tu/resource db "Patient" "0")}]]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op
-                       (assoc context
-                              :report-type "population"
-                              :population-basis "Observation")
-                       observation-code-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {#fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding{:system #fhir/uri "http://loinc.org"
-                                      :code #fhir/code "17861-6"}]}
-                      1})))))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op
+                         (assoc context
+                                :report-type "population"
+                                :population-basis "Observation")
+                         observation-code-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {#fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding{:system #fhir/uri "http://loinc.org"
+                                        :code #fhir/code "17861-6"}]}
+                        1}))))))))
 
     (testing "Quantity"
       (with-system-data [system config]
@@ -242,47 +243,50 @@
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 
-        (let [{:keys [db] :as context} (context system library-observation-value-age)
-              handles [{:population-handle (em-tu/resource db "Observation" "0")
-                        :subject-handle (em-tu/resource db "Patient" "0")}
-                       {:population-handle (em-tu/resource db "Observation" "1")
-                        :subject-handle (em-tu/resource db "Patient" "0")}
-                       {:population-handle (em-tu/resource db "Observation" "2")
-                        :subject-handle (em-tu/resource db "Patient" "0")}]]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-observation-value-age)
+                handles [{:population-handle (em-tu/resource db "Observation" "0")
+                          :subject-handle (em-tu/resource db "Patient" "0")}
+                         {:population-handle (em-tu/resource db "Observation" "1")
+                          :subject-handle (em-tu/resource db "Patient" "0")}
+                         {:population-handle (em-tu/resource db "Observation" "2")
+                          :subject-handle (em-tu/resource db "Patient" "0")}]]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op
-                       (assoc context
-                              :report-type "population"
-                              :population-basis "Observation")
-                       observation-value-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 1
-                      #fhir/Quantity{:value #fhir/decimal 2M} 2})))))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op
+                         (assoc context
+                                :report-type "population"
+                                :population-basis "Observation")
+                         observation-value-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 1
+                        #fhir/Quantity{:value #fhir/decimal 2M} 2}))))))))
 
     (testing "errors"
       (testing "with expression"
         (with-system [system config]
-          (let [context (context system empty-library)]
-            (given (strat/reduce-op
-                    (assoc context
-                           :report-type "population"
-                           :group-idx 1
-                           :stratifier-idx 2)
-                    stratifier-with-missing-expression)
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Missing expression."
-              :fhir/issue := "required"
-              :fhir.issue/expression := "Measure.group[1].stratifier[2].criteria"))))
+          (with-db [db (:blaze.db/node system)]
+            (let [context (context system db empty-library)]
+              (given (strat/reduce-op
+                      (assoc context
+                             :report-type "population"
+                             :group-idx 1
+                             :stratifier-idx 2)
+                      stratifier-with-missing-expression)
+                ::anom/category := ::anom/incorrect
+                ::anom/message := "Missing expression."
+                :fhir/issue := "required"
+                :fhir.issue/expression := "Measure.group[1].stratifier[2].criteria")))))
 
       (testing "with unknown expression"
         (with-system [system config]
-          (let [context (context system empty-library)]
-            (given (strat/reduce-op (assoc context :report-type "population")
-                                    gender-stratifier)
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Missing expression with name `Gender`."
-              :expression-name := "Gender"))))))
+          (with-db [db (:blaze.db/node system)]
+            (let [context (context system db empty-library)]
+              (given (strat/reduce-op (assoc context :report-type "population")
+                                      gender-stratifier)
+                ::anom/category := ::anom/incorrect
+                ::anom/message := "Missing expression with name `Gender`."
+                :expression-name := "Gender")))))))
 
   (testing "two components"
     (testing "subject-based measure"
@@ -298,17 +302,18 @@
                  :gender #fhir/code "male"
                  :birthDate #fhir/date #system/date "1950"}]]]
 
-        (let [{:keys [db] :as context} (context system library-age-gender)
-              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-age-gender)
+                handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op (assoc context :report-type "population")
-                                       age-gender-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {[nil nil] 1
-                      [10 #fhir/code "female"] 1
-                      [10 #fhir/code "male"] 1
-                      [20 #fhir/code "male"] 1})))))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op (assoc context :report-type "population")
+                                         age-gender-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {[nil nil] 1
+                        [10 #fhir/code "female"] 1
+                        [10 #fhir/code "male"] 1
+                        [20 #fhir/code "male"] 1}))))))))
 
     (testing "Encounter measure"
       (with-system-data [system config]
@@ -334,29 +339,30 @@
                  :subject #fhir/Reference{:reference #fhir/string "Patient/2"}
                  :period #fhir/Period{:start #fhir/dateTime #system/date-time "2022"}}]]]
 
-        (let [{:keys [db] :as context} (context system library-encounter-status-age)
-              handles [{:population-handle (em-tu/resource db "Encounter" "0")
-                        :subject-handle (em-tu/resource db "Patient" "0")}
-                       {:population-handle (em-tu/resource db "Encounter" "1")
-                        :subject-handle (em-tu/resource db "Patient" "0")}
-                       {:population-handle (em-tu/resource db "Encounter" "2")
-                        :subject-handle (em-tu/resource db "Patient" "1")}
-                       {:population-handle (em-tu/resource db "Encounter" "3")
-                        :subject-handle (em-tu/resource db "Patient" "2")}
-                       {:population-handle (em-tu/resource db "Encounter" "4")
-                        :subject-handle (em-tu/resource db "Patient" "2")}]]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-encounter-status-age)
+                handles [{:population-handle (em-tu/resource db "Encounter" "0")
+                          :subject-handle (em-tu/resource db "Patient" "0")}
+                         {:population-handle (em-tu/resource db "Encounter" "1")
+                          :subject-handle (em-tu/resource db "Patient" "0")}
+                         {:population-handle (em-tu/resource db "Encounter" "2")
+                          :subject-handle (em-tu/resource db "Patient" "1")}
+                         {:population-handle (em-tu/resource db "Encounter" "3")
+                          :subject-handle (em-tu/resource db "Patient" "2")}
+                         {:population-handle (em-tu/resource db "Encounter" "4")
+                          :subject-handle (em-tu/resource db "Patient" "2")}]]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op
-                       (assoc context
-                              :report-type "population"
-                              :population-basis "Encounter")
-                       status-age-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {[nil nil] 1
-                      [#fhir/code "finished" 19] 2
-                      [#fhir/code "finished" 20] 1
-                      [#fhir/code "planned" 20] 1})))))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op
+                         (assoc context
+                                :report-type "population"
+                                :population-basis "Encounter")
+                         status-age-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {[nil nil] 1
+                        [#fhir/code "finished" 19] 2
+                        [#fhir/code "finished" 20] 1
+                        [#fhir/code "planned" 20] 1}))))))))
 
     (testing "Quantity"
       (with-system-data [system config]
@@ -373,42 +379,45 @@
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
 
-        (let [{:keys [db] :as context} (context system library-observation-value-age)
-              handles [{:population-handle (em-tu/resource db "Observation" "0")
-                        :subject-handle (em-tu/resource db "Patient" "0")}
-                       {:population-handle (em-tu/resource db "Observation" "1")
-                        :subject-handle (em-tu/resource db "Patient" "0")}]]
+        (with-db [db (:blaze.db/node system)]
+          (let [context (context system db library-observation-value-age)
+                handles [{:population-handle (em-tu/resource db "Observation" "0")
+                          :subject-handle (em-tu/resource db "Patient" "0")}
+                         {:population-handle (em-tu/resource db "Observation" "1")
+                          :subject-handle (em-tu/resource db "Patient" "0")}]]
 
-          (testing "report-type population"
-            (let [op ((strat/reduce-op
-                       (assoc context
-                              :report-type "population"
-                              :population-basis "Observation")
-                       observation-value-age-stratifier) db)]
-              (is (= (reduce op (op) handles)
-                     {[#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 20] 1
-                      [#fhir/Quantity{:value #fhir/decimal 2M} 21] 1})))))))
+            (testing "report-type population"
+              (let [op ((strat/reduce-op
+                         (assoc context
+                                :report-type "population"
+                                :population-basis "Observation")
+                         observation-value-age-stratifier) db)]
+                (is (= (reduce op (op) handles)
+                       {[#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code "kg"} 20] 1
+                        [#fhir/Quantity{:value #fhir/decimal 2M} 21] 1}))))))))
 
     (testing "errors"
       (testing "with expression"
         (with-system [system config]
-          (let [context (context system empty-library)]
-            (given (strat/reduce-op
-                    (assoc context
-                           :report-type "population"
-                           :group-idx 1
-                           :stratifier-idx 2)
-                    multi-component-stratifier-with-missing-expression)
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Missing expression."
-              :fhir/issue := "required"
-              :fhir.issue/expression := "Measure.group[1].stratifier[2].component[0].criteria"))))
+          (with-db [db (:blaze.db/node system)]
+            (let [context (context system db empty-library)]
+              (given (strat/reduce-op
+                      (assoc context
+                             :report-type "population"
+                             :group-idx 1
+                             :stratifier-idx 2)
+                      multi-component-stratifier-with-missing-expression)
+                ::anom/category := ::anom/incorrect
+                ::anom/message := "Missing expression."
+                :fhir/issue := "required"
+                :fhir.issue/expression := "Measure.group[1].stratifier[2].component[0].criteria")))))
 
       (testing "with unknown expression"
         (with-system [system config]
-          (let [context (context system empty-library)]
-            (given (strat/reduce-op (assoc context :report-type "population")
-                                    age-gender-stratifier)
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Missing expression with name `Age`."
-              :expression-name := "Age")))))))
+          (with-db [db (:blaze.db/node system)]
+            (let [context (context system db empty-library)]
+              (given (strat/reduce-op (assoc context :report-type "population")
+                                      age-gender-stratifier)
+                ::anom/category := ::anom/incorrect
+                ::anom/message := "Missing expression with name `Age`."
+                :expression-name := "Age"))))))))

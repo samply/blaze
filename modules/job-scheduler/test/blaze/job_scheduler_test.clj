@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
+   [blaze.db.api-stub :refer [with-db]]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.node :as node]
@@ -527,9 +528,10 @@
             bundle-input := (type/reference {:reference (type/string (str "Bundle/" bundle-id))})))
 
         (testing "the bundle is created"
-          (given @(d/pull node (d/resource-handle (d/db node) "Bundle" bundle-id))
-            :fhir/type := :fhir/Bundle
-            :type := #fhir/code "batch"))))))
+          (with-db [db node]
+            (given @(d/pull node (d/resource-handle db "Bundle" bundle-id))
+              :fhir/type := :fhir/Bundle
+              :type := #fhir/code "batch")))))))
 
 (deftest create-job-concurrently-test
   (testing "all jobs are created with unique job numbers"

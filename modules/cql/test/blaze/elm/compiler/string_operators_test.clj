@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
@@ -232,11 +232,11 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context #elm/length #elm/retrieve{:type "Observation"})
-              db (d/db node)
-              patient (d/resource-handle db "Patient" "0")]
+              expr (c/compile context #elm/length #elm/retrieve{:type "Observation"})]
+          (with-db [db node]
+            (let [patient (d/resource-handle db "Patient" "0")]
 
-          (is (identical? count (core/-eval expr {:db db} patient nil)))))))
+              (is (identical? count (core/-eval expr {:db db} patient nil)))))))))
 
   (ctu/testing-unary-op elm/length)
 

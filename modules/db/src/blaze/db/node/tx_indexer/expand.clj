@@ -117,8 +117,8 @@
                  :else []))))))))
 
 (defn- purge-tx-cmds
-  [{{:keys [search-param-registry]} :node :as batch-db} patient-handle check-refs]
-  (let [rev-include (partial p/-rev-include batch-db patient-handle)]
+  [{{:keys [search-param-registry]} :node :as db} patient-handle check-refs]
+  (let [rev-include (partial p/-rev-include db patient-handle)]
     (coll/eduction
      (comp
       (mapcat

@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.fhir.operation.disk-perf]
    [blaze.fhir.util :as fu]
    [blaze.handler.util :as handler-util]
@@ -191,11 +191,12 @@
                    (str base-url "/fhir/__async-status/AAAAAAAAAAAAAAAA"))))
 
           (testing "the job contains all parameters"
-            (given @(d/pull node (d/resource-handle (d/db node) "Task" "AAAAAAAAAAAAAAAA"))
-              [:input count] := 4
-              [:input 0 :value] := #fhir/code "index"
-              [:input 1 :value :value :value] := 1M
-              [:input 1 :value :code] := #fhir/code "GiBy"
-              [:input 2 :value :value :value] := 10M
-              [:input 2 :value :code] := #fhir/code "s"
-              [:input 3 :value] := #fhir/positiveInt 4)))))))
+            (with-db [db node]
+              (given @(d/pull node (d/resource-handle db "Task" "AAAAAAAAAAAAAAAA"))
+                [:input count] := 4
+                [:input 0 :value] := #fhir/code "index"
+                [:input 1 :value :value :value] := 1M
+                [:input 1 :value :code] := #fhir/code "GiBy"
+                [:input 2 :value :value :value] := 10M
+                [:input 2 :value :code] := #fhir/code "s"
+                [:input 3 :value] := #fhir/positiveInt 4))))))))

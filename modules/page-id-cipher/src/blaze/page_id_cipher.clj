@@ -107,11 +107,14 @@
 
 (defn- find-key-set-resource
   "Returns a CompletableFuture that will complete with the resource handle of
-  the key set `DocumentReference` in `db`, or `nil` if it doesn't exist yet."
-  [db]
+  the key set `DocumentReference` in the current database of `node`, or `nil`
+  if it doesn't exist yet."
+  [node]
   (log/trace "try to find the key set resource")
-  (-> (d/type-query db "DocumentReference" [["identifier" key-set-identifier]])
-      (ac/then-apply coll/first)))
+  (d/with-db node
+    (fn [db]
+      (-> (d/type-query db "DocumentReference" [["identifier" key-set-identifier]])
+          (ac/then-apply coll/first)))))
 
 (defn- b64-encode [bytes]
   (.encodeToString (Base64/getEncoder) bytes))
@@ -153,17 +156,16 @@
   "Returns a CompletableFuture that will complete with the `DocumentReference`
   resource with the key set as first attachment, creating that resource with a
   freshly generated key set if it doesn't exist yet."
-  {:arglists '([context])}
-  ([{:keys [node] :as context}]
-   (find-or-create-key-set-resource context (d/db node)))
-  ([{:keys [node] :as context} db]
-   (-> (find-key-set-resource db)
-       (ac/then-compose
-        (fn [handle]
-          (if handle
-            (d/pull node handle)
-            (-> (d/transact node [(key-set-resource-create-op context)])
-                (ac/then-compose (partial find-or-create-key-set-resource context)))))))))
+  [{:keys [node] :as context}]
+  (-> (find-key-set-resource node)
+      (ac/then-compose
+       (fn [handle]
+         (if handle
+           (d/pull node handle)
+           ;; the current database of `node` includes the transaction after it
+           ;; completed
+           (-> (d/transact node [(key-set-resource-create-op context)])
+               (ac/then-compose (fn [_] (find-or-create-key-set-resource context)))))))))
 
 (defn- b64-decode [s]
   (.decode (Base64/getDecoder) ^String s))
@@ -249,7 +251,7 @@
   instances subscribed to the changed `DocumentReference` resources of `node`,
   including this instance."
   ([node]
-   (when-let [handle @(find-key-set-resource (d/db node))]
+   (when-let [handle @(find-key-set-resource node)]
      @(rotate-keys* node @(d/pull node handle)))))
 
 (defn- schedule-key-rotation
