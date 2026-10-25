@@ -68,6 +68,7 @@
      :max-background-jobs (.maxBackgroundJobs options)
      :max-subcompactions (.maxSubcompactions options)
      :compaction-readahead-size (.compactionReadaheadSize options)
+     :use-direct-reads? (.useDirectReads options)
      :enable-pipelined-write (.enablePipelinedWrite options)
      :create-if-missing (.createIfMissing options)
      :create-missing-column-families (.createMissingColumnFamilies options)})
@@ -149,6 +150,7 @@
         :max-background-jobs := 2
         :max-subcompactions := 1
         :compaction-readahead-size := 2097152
+        :use-direct-reads? := false
         :enable-pipelined-write := true
         :create-if-missing := true
         :create-missing-column-families := true))
@@ -160,6 +162,7 @@
         :max-background-jobs := 2
         :max-subcompactions := 1
         :compaction-readahead-size := 2097152
+        :use-direct-reads? := false
         :enable-pipelined-write := true
         :create-if-missing := true
         :create-missing-column-families := true))
@@ -172,7 +175,8 @@
                          [:max-background-jobs 4]
                          [:max-subcompactions 8]
                          [:compaction-readahead-size 0]
-                         [:compaction-readahead-size 10]]]
+                         [:compaction-readahead-size 10]
+                         [:use-direct-reads? true]]]
       (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
         key := value))))
 

@@ -101,7 +101,8 @@
    {:keys [wal-dir
            max-background-jobs
            max-subcompactions
-           compaction-readahead-size]
+           compaction-readahead-size
+           use-direct-reads?]
     :or {wal-dir ""
          max-background-jobs 2
          max-subcompactions 1}}]
@@ -116,7 +117,9 @@
     stats
     (.setStatistics ^Statistics stats)
     (int? compaction-readahead-size)
-    (.setCompactionReadaheadSize (long compaction-readahead-size))))
+    (.setCompactionReadaheadSize (long compaction-readahead-size))
+    use-direct-reads?
+    (.setUseDirectReads true)))
 
 (defn write-options [{:keys [sync? disable-wal?]}]
   (cond-> (WriteOptions.)

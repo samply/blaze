@@ -108,6 +108,16 @@ We recommend reserving half of your system memory for the OS page cache. For ins
 
 The operating system’s page cache can significantly improve performance, particularly on systems with limited disk I/O throughput. If your cache can hold the most actively accessed database files, you'll see significant gains. When all database files fit in memory, the system effectively operates as an in-memory database.
 
+To see how much of the database files the page cache currently holds, run [vmtouch](https://hoytech.com/vmtouch/) on the host for the index, the transaction and the resource database directories, adjusting the paths to your data volume:
+
+```sh
+sudo vmtouch /path/to/data/index
+sudo vmtouch /path/to/data/transaction
+sudo vmtouch /path/to/data/resource
+```
+
+Without options, vmtouch only reports and doesn't change the page cache. The line `Resident Pages` shows the cached part of all files in the directory, like `21G/675G 3.11%`. If accessing many resources pushes the index out of the page cache, see [`RESOURCE_DB_DIRECT_READS`](deployment/environment-variables.md#resource-db-direct-reads).
+
 ### Storage Requirements
 
 > [!tip]

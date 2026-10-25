@@ -88,7 +88,14 @@
       :key := ::kv/rocksdb
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `pos-int?
-      [:cause-data ::s/problems 0 :val] := 0)))
+      [:cause-data ::s/problems 0 :val] := 0))
+
+  (testing "invalid use-direct-reads?"
+    (given-failed-system (assoc-in (config (new-temp-dir!)) [::kv/rocksdb :opts :use-direct-reads?] ::invalid)
+      :key := ::kv/rocksdb
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `boolean?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest stats-collector-init-test
   (testing "nil config"
