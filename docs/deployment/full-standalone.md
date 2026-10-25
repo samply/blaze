@@ -237,11 +237,11 @@ On top of the realm an admin user with name `admin` and password `admin` is conf
 
 ```yaml
 keycloak:
-  image: "quay.io/keycloak/keycloak:24.0.1"
+  image: "quay.io/keycloak/keycloak:26.4.2"
   command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
   environment:
-    KEYCLOAK_ADMIN: admin
-    KEYCLOAK_ADMIN_PASSWORD: admin
+    KC_BOOTSTRAP_ADMIN_USERNAME: admin
+    KC_BOOTSTRAP_ADMIN_PASSWORD: admin
   volumes:
   - "./keycloak/import:/opt/keycloak/data/import"
 ```

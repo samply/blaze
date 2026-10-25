@@ -1,6 +1,6 @@
 services:
   keycloak:
-    image: "quay.io/keycloak/keycloak:24.0.1"
+    image: "quay.io/keycloak/keycloak:26.4.2"
     command: "start-dev --import-realm"
     volumes:
     - "../../.github/openid-auth-test/realm:/opt/keycloak/data/import"
