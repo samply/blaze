@@ -16,7 +16,7 @@ import static java.util.Objects.requireNonNull;
  * {@link Multi}. The factory methods ensure that representation, so equal
  * index handles always have the same class.
  */
-public sealed abstract class IndexHandle permits IndexHandle.Single, IndexHandle.Multi {
+public sealed abstract class IndexHandle {
 
     private static final int[] EMPTY = new int[0];
 
