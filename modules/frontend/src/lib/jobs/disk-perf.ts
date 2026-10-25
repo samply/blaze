@@ -1,5 +1,5 @@
-import { url } from '$lib/canonical';
-import { input, output, outputs, type Job, toJob as toBaseJob } from '$lib/jobs';
+import { url } from '#lib/canonical.js';
+import { input, output, outputs, type Job, toJob as toBaseJob } from '#lib/jobs.js';
 import type { Task, TaskOutput } from 'fhir/r4';
 
 /** one run of the random read sweep */

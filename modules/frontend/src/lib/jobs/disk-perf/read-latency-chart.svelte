@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { RandReadRun } from '$lib/jobs/disk-perf';
-  import prettyMicros from '$lib/pretty-micros';
+  import type { RandReadRun } from '#lib/jobs/disk-perf.js';
+  import prettyMicros from '#lib/pretty-micros.js';
 
   interface Props {
     /** runs of the random read sweep, ordered by ascending concurrency */

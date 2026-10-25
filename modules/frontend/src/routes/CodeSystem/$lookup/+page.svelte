@@ -1,14 +1,14 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
-  import Form from '$lib/tailwind/form.svelte';
-  import Section from '$lib/tailwind/form/section.svelte';
-  import TextField from '$lib/tailwind/form/text-field.svelte';
-  import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntry from '#lib/breadcrumb/entry.svelte';
+  import Form from '#lib/tailwind/form.svelte';
+  import Section from '#lib/tailwind/form/section.svelte';
+  import TextField from '#lib/tailwind/form/text-field.svelte';
+  import SubmitButton from '#lib/tailwind/form/button-submit.svelte';
   import ResultList from './result-list.svelte';
 
   let { form }: PageProps = $props();

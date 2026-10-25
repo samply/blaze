@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { DiskPerfJob } from '$lib/jobs/disk-perf';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { DiskPerfJob } from '#lib/jobs/disk-perf.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   function progress(job: DiskPerfJob) {
     return job.phaseProgress ?? 0;

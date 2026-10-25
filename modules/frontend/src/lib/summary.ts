@@ -1,3 +1,5 @@
+import type { ReadonlyURL } from '$app/state';
+
 /**
  * Summary mode state of a single result set.
  *
@@ -61,8 +63,8 @@ export function summaryFromUrl(params: URLSearchParams): SummaryState {
  * For `full`, deletes the param, since absent already means full (Blaze's
  * own default) and this keeps the URL copyable to curl.
  */
-export function withSummaryParam(url: URL, mode: SummaryMode): string {
-  const copy = new URL(url);
+export function withSummaryParam(url: ReadonlyURL, mode: SummaryMode): string {
+  const copy = new URL(url.href);
   if (mode === 'summary') {
     copy.searchParams.set('_summary', 'true');
   } else if (mode === 'count') {

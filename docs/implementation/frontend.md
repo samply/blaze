@@ -39,7 +39,7 @@ no `+server.ts` endpoints at all.
   browser never makes a plain `fetch` to this app. It only issues document loads, SvelteKit's own `__data.json` data
   requests and `use:enhance`d form submissions.
 * Backend requests are made with the event's `fetch`. The access token stays on the server: `handleFetch` in
-  `src/hooks.server.ts` adds it and rewrites the request URL from this app's `ORIGIN` to `BACKEND_BASE_URL`.
+  `src/hooks.server.ts` adds it and rewrites the request URL from the origin of the page request to `BACKEND_BASE_URL`.
 * Every request that reaches the app is therefore one that the browser or SvelteKit's client runtime turns into a
   navigation on its own when it is answered with a redirect.
 

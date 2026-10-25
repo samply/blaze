@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ChevronDown } from 'svelte-heros-v2';
   import type { ActionData } from './$types';
-  import { defaultParameters } from '$lib/jobs/disk-perf';
+  import { defaultParameters } from '#lib/jobs/disk-perf.js';
   import SubmitButtons from './../submit-buttons.svelte';
 
   interface Props {

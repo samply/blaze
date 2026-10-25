@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { Color } from '$lib/tailwind/badge.svelte';
-  import type { SearchMode } from '$lib/fhir';
-  import Badge from '$lib/tailwind/badge.svelte';
+  import type { Color } from '#lib/tailwind/badge.svelte';
+  import type { SearchMode } from '#lib/fhir.js';
+  import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
     mode: SearchMode | 'unknown';

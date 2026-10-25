@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
-import { error, type NumericRange } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 
 import type { Bundle, Task } from 'fhir/r4';
-import { backendUrl } from '$lib/backend.js';
-import { toJob } from '$lib/jobs/async-interaction';
+import { backendUrl } from '#lib/backend.js';
+import { toJob } from '#lib/jobs/async-interaction.js';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(
@@ -14,10 +14,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
   );
 
   if (!res.ok) {
-    error(
-      res.status as NumericRange<400, 599>,
-      `Error while loading the job with ID ${params.id}.`
-    );
+    error(res.status, `Error while loading the job with ID ${params.id}.`);
   }
 
   const bundle = (await res.json()) as Bundle;

@@ -1,7 +1,7 @@
 import type { Actions } from './$types';
 import { resolve } from '$app/paths';
-import { backendUrl } from '$lib/backend.js';
-import { newTask } from '$lib/jobs/disk-perf';
+import { backendUrl } from '#lib/backend.js';
+import { newTask } from '#lib/jobs/disk-perf.js';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { fail, redirect } from '@sveltejs/kit';
 
@@ -32,10 +32,11 @@ export const actions = {
     }
 
     const task: Task = await res.json();
+
     redirect(
       303,
       task.id === undefined
-        ? resolve('/__admin/jobs')
+        ? resolve('__admin/jobs')
         : resolve('/__admin/jobs/disk-perf/[id=id]', { id: task.id })
     );
   }

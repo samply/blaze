@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
-import LoadingIndicator from '$lib/loading-indicator.svelte';
+import LoadingIndicator from '#lib/loading-indicator.svelte';
 
 /**
  * Renders the indicator as if the query had been running for `runningMillis`.

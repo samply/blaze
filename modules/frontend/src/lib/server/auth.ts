@@ -1,12 +1,12 @@
 import { betterAuth } from 'better-auth';
 import { genericOAuth, keycloak } from 'better-auth/plugins/generic-oauth';
 import { svelteKitHandler, sveltekitCookies } from 'better-auth/svelte-kit';
-import type { Handle } from '@sveltejs/kit';
-import { building, dev } from '$app/environment';
-import { base } from '$app/paths';
+import type { Handle } from '@sveltejs/kit/hooks';
+import { building, dev } from '$app/env';
+import { resolve } from '$app/paths';
 import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
-import { keycloakUser } from '$lib/server/session';
+import { AUTH_CLIENT_ID, AUTH_CLIENT_SECRET, AUTH_ISSUER, AUTH_SECRET } from '$app/env/private';
+import { keycloakUser } from '#lib/server/session.js';
 
 /**
  * Better Auth without a database: the session and the Keycloak tokens are
@@ -17,17 +17,17 @@ import { keycloakUser } from '$lib/server/session';
  */
 export const auth = betterAuth({
   // keeps the callback URL at `/fhir/auth/callback/keycloak`
-  basePath: `${base}/auth`,
-  secret: env.AUTH_SECRET,
+  basePath: resolve('auth'),
+  secret: AUTH_SECRET,
   advanced: { useSecureCookies: !dev },
   plugins: [
     genericOAuth({
       config: [
         {
           ...keycloak({
-            clientId: env.AUTH_CLIENT_ID ?? '',
-            clientSecret: env.AUTH_CLIENT_SECRET ?? '',
-            issuer: env.AUTH_ISSUER ?? '',
+            clientId: AUTH_CLIENT_ID,
+            clientSecret: AUTH_CLIENT_SECRET,
+            issuer: AUTH_ISSUER,
             // signing out only ends the session of this app, not the one at Keycloak
             disableProviderLogout: true
           }),

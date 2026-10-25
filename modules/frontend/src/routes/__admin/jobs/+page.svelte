@@ -2,7 +2,7 @@
   import type { PageProps } from './$types';
 
   import { resolve } from '$app/paths';
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import TaskRow from './task-row.svelte';
 
   let { data }: PageProps = $props();
@@ -10,7 +10,7 @@
   // reload page data every 10 seconds if at least one of the jobs is still in progress
   $effect(() => {
     const timeout = setTimeout(() => {
-      invalidateAll();
+      refreshAll();
     }, 10000);
 
     return () => {
@@ -31,10 +31,8 @@
     <div class="flex md:ml-4">
       <a
         class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-nowrap text-white hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        href={resolve('/__admin/jobs/new')}
+        href={resolve('__admin/jobs/new')}>New Job</a
       >
-        New Job
-      </a>
     </div>
   </div>
 

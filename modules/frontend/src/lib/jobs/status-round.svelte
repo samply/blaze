@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type Job } from '$lib/jobs';
+  import { type Job } from '#lib/jobs.js';
   import { CheckCircle, XMark, ChartPie, Pause, QuestionMarkCircle } from 'svelte-heros-v2';
 
   interface Props {

@@ -1,6 +1,6 @@
 import type { Actions } from './$types';
 import type { OperationOutcome, Parameters, ParametersParameter } from 'fhir/r4';
-import { backendUrl } from '$lib/backend.js';
+import { backendUrl } from '#lib/backend.js';
 import { fail } from '@sveltejs/kit';
 
 export const actions = {

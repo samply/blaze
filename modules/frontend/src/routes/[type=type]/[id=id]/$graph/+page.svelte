@@ -1,17 +1,17 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
-  import BreadcrumbEntry from '$lib/breadcrumb/entry.svelte';
-  import Section from '$lib/tailwind/form/section.svelte';
-  import SubmitButton from '$lib/tailwind/form/button-submit.svelte';
-  import EntryCard from '$lib/resource/entry-card.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryResource from '#lib/breadcrumb/resource.svelte';
+  import BreadcrumbEntry from '#lib/breadcrumb/entry.svelte';
+  import Section from '#lib/tailwind/form/section.svelte';
+  import SubmitButton from '#lib/tailwind/form/button-submit.svelte';
+  import EntryCard from '#lib/resource/entry-card.svelte';
   import NoResultsCard from '../../no-results-card.svelte';
 
-  import { title } from '$lib/resource.js';
+  import { title } from '#lib/resource.js';
   import type { FhirResource } from 'fhir/r4';
 
   import { ChevronDown } from 'svelte-heros-v2';

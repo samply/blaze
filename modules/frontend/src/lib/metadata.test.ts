@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Bundle, StructureDefinition } from 'fhir/r4';
 
-// The cache in `$lib/metadata.js` is module state, so every test needs a fresh
+// The cache in `#lib/metadata.js` is module state, so every test needs a fresh
 // module instance.
 async function importMetadata() {
   vi.resetModules();
-  return await import('$lib/metadata.js');
+  return await import('#lib/metadata.js');
 }
 
 function structureDefinition(type: string): StructureDefinition {

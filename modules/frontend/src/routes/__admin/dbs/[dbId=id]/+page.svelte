@@ -2,7 +2,7 @@
   import type { PageProps } from './$types';
 
   import ColumnFamilyTable from './column-family-table.svelte';
-  import { toTitleCase } from '$lib/util.js';
+  import { toTitleCase } from '#lib/util.js';
   import { descriptions } from '../util.js';
   import DiskPerf from './disk-perf.svelte';
   import Stats from './stats.svelte';

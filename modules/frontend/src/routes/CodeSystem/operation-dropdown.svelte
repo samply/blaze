@@ -1,11 +1,12 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
 
-  import Dropdown from '$lib/tailwind/dropdown.svelte';
-  import DropdownItem from '$lib/tailwind/dropdown/item.svelte';
+  import Dropdown from '#lib/tailwind/dropdown.svelte';
+  import DropdownItem from '#lib/tailwind/dropdown/item.svelte';
 </script>
 
 <Dropdown name="Operations">
-  <DropdownItem name="$lookup" url={resolve('/CodeSystem/$lookup')} />
-  <DropdownItem name="$validate-code" url={resolve('/CodeSystem/$validate-code')} />
+  <DropdownItem name="$lookup" url={resolve('CodeSystem/$lookup')} />
+
+  <DropdownItem name="$validate-code" url={resolve('CodeSystem/$validate-code')} />
 </Dropdown>

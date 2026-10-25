@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FhirObjectBundleEntry } from '$lib/resource/resource-card';
+  import type { FhirObjectBundleEntry } from '#lib/resource/resource-card.js';
   import MethodBadge from '../history/method-badge.svelte';
   import SearchModeBadge from '../history/search-mode-badge.svelte';
   import SubsettedBadge from '../history/subsetted-badge.svelte';

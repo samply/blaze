@@ -10,9 +10,11 @@
 
 ### Environment Variables
 
-#### `ORIGIN` <Badge type="warning" text="Since 0.26"/>
+The frontend doesn't start if one of `BACKEND_BASE_URL`, `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`, `AUTH_ISSUER` or `AUTH_SECRET` is missing or empty, and names the missing ones in its log.
 
-The base URL of the frontend as accessed by the browser.
+#### `ORIGIN` <Badge type="warning" text="Since 0.26"/> <Badge type="danger" text="Removed 1.13.0"/>
+
+No longer used. The base URL of the frontend as accessed by the browser is derived from the request instead, using the `Host` header, or the header named in [`HOST_HEADER`](#host-header), and the header named in [`PROTOCOL_HEADER`](#protocol-header), with `https` as default protocol. If `ORIGIN` is still set, a warning is logged at startup, and an error the first time the origin derived from a request differs from it.
 
 #### `BACKEND_BASE_URL` <Badge type="warning" text="Since 0.26"/>
 
@@ -36,11 +38,11 @@ A secret random string that is used to encrypt the session cookie. This should b
 
 #### `PROTOCOL_HEADER` <Badge type="warning" text="Since 0.26"/>
 
-Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse proxy.
+Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse proxy. Without it, the frontend assumes it is accessed via `https`.
 
 #### `HOST_HEADER` <Badge type="warning" text="Since 0.26"/>
 
-Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy.
+Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy which doesn't keep the `Host` header.
 
 #### `NODE_EXTRA_CA_CERTS` <Badge type="warning" text="Since 0.26"/>
 

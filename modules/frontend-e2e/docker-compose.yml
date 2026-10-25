@@ -12,11 +12,17 @@ services:
     - "../ingress/blaze-key.pem:/etc/nginx/conf.d/blaze-key.pem:ro"
     - "../ingress/keycloak-cert.pem:/etc/nginx/conf.d/keycloak-cert.pem:ro"
     - "../ingress/keycloak-key.pem:/etc/nginx/conf.d/keycloak-key.pem:ro"
+    networks:
+      default:
+        aliases:
+        - "keycloak.localhost"
+    depends_on:
+    - backend
+    - keycloak
 
   frontend:
     image: "blaze-frontend:latest"
     environment:
-      ORIGIN: "https://blaze.localhost"
       BACKEND_BASE_URL: "http://backend:8080"
       AUTH_CLIENT_ID: "account"
       AUTH_CLIENT_SECRET: "e11a3a8e-6e24-4f9d-b914-da7619e8b31f"
@@ -25,14 +31,12 @@ services:
       PROTOCOL_HEADER: "x-forwarded-proto"
       HOST_HEADER: "x-forwarded-host"
       NODE_EXTRA_CA_CERTS: "/app/keycloak-cert.pem"
-    extra_hosts:
-    - "keycloak.localhost:host-gateway"
     volumes:
     - "../ingress/keycloak-cert.pem:/app/keycloak-cert.pem:ro"
     deploy:
       replicas: 2
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir" ]
+      test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir/" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,6 +44,10 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      ingress:
+        condition: service_started
 
   backend:
     image: "blaze:latest"
@@ -57,8 +65,6 @@ services:
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
-    extra_hosts:
-    - "keycloak.localhost:host-gateway"
     volumes:
     - "blaze-data:/app/data"
     - "./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release"

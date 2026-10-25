@@ -1,12 +1,12 @@
-import { type Handle, type HandleFetch, redirect } from '@sveltejs/kit';
-import { error } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-import { sequence } from '@sveltejs/kit/hooks';
-import { auth, handle as handleAuthentication } from '$lib/server/auth';
-import { authenticate } from '$lib/server/session';
+import { redirect, error } from '@sveltejs/kit';
+import { BACKEND_BASE_URL, ORIGIN } from '$app/env/private';
+import { sequence, type Handle, type HandleFetch, type ServerInit } from '@sveltejs/kit/hooks';
+import { auth, handle as handleAuthentication } from '#lib/server/auth.js';
+import { authenticate } from '#lib/server/session.js';
+import { createOriginCheck, warnAboutOrigin } from '#lib/server/origin.js';
 import { resolve as resolveRoute } from '$app/paths';
 
-const signInPath = resolveRoute('/__sign-in');
+const signInPath = resolveRoute('__sign-in');
 
 /**
  * Builds the sign-in URL, remembering `target` as the page to return to
@@ -31,6 +31,21 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
     event.locals.session = session;
   }
 
+  return resolve(event);
+};
+
+export const init: ServerInit = () => {
+  warnAboutOrigin(ORIGIN, (message) => console.warn(message));
+};
+
+const checkRequestOrigin = createOriginCheck(ORIGIN, (message) => console.error(message));
+
+/**
+ * Logs an error once if the origin derived from a request differs from the
+ * no longer supported `ORIGIN`.
+ */
+export const checkOrigin: Handle = ({ event, resolve }) => {
+  checkRequestOrigin(event.url.origin);
   return resolve(event);
 };
 
@@ -59,30 +74,52 @@ export const expireAuthJsCookies: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-export const handle = sequence(expireAuthJsCookies, handleAuthentication, handleAuthorization);
+export const handle = sequence(
+  checkOrigin,
+  expireAuthJsCookies,
+  handleAuthentication,
+  handleAuthorization
+);
 
-const origin = env.ORIGIN || '';
-const forwarded = `host=${new URL(origin).host};proto=${new URL(origin).protocol.replace(':', '')}`;
+/**
+ * The `Forwarded` header telling the backend the origin the browser uses, so
+ * that the links it builds point there.
+ *
+ * The origin is the one adapter-node derived for the page request from the
+ * `Host` (or `HOST_HEADER`) and `PROTOCOL_HEADER` headers.
+ */
+function forwarded(url: URL) {
+  return `host=${url.host};proto=${url.protocol.replace(':', '')}`;
+}
 
-function translateUrl(request: Request) {
-  return request.url.replace(origin, env.BACKEND_BASE_URL || '');
+/**
+ * Swaps the origin of `url`, the one of the page request, for
+ * `BACKEND_BASE_URL`.
+ */
+function translateUrl(url: URL) {
+  return `${BACKEND_BASE_URL}${url.pathname}${url.search}`;
 }
 
 export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
+  const url = new URL(request.url);
+
+  // `event.fetch` resolves the root-relative backend URLs against the URL of
+  // the page request, so only requests to its origin are backend requests.
+  // Others go out as they are, without the access token.
+  if (url.origin !== event.url.origin) {
+    return fetch(request);
+  }
+
   const session = event.locals.session;
 
   if (!session?.accessToken) {
-    error(401, {
-      status: 401,
-      short: undefined,
-      message: `Unauthorized.`
-    });
+    error(401, `Unauthorized.`);
   }
 
   const headers: HeadersInit = {
     Accept: request.headers.get('accept') || 'application/fhir+json',
     Authorization: 'Bearer ' + session?.accessToken,
-    Forwarded: forwarded
+    Forwarded: forwarded(event.url)
   };
 
   const contentType = request.headers.get('content-type');
@@ -91,10 +128,10 @@ export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
     headers['Content-Type'] = contentType;
   }
 
-  request = new Request(translateUrl(request), {
+  request = new Request(translateUrl(url), {
     body: request.body,
     credentials: 'omit',
-    headers: headers,
+    headers,
     method: request.method,
     // @ts-expect-error because duplex is not part of RequestInit
     duplex: 'half'

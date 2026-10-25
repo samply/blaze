@@ -162,7 +162,6 @@ The frontend of Blaze runs as separate container. It will talk to the backend di
 frontend:
   image: "samply/blaze-frontend:{{ tag }}@{{ frontendDigest }}"
   environment:
-    ORIGIN: "https://blaze.localhost"
     BACKEND_BASE_URL: "http://backend:8080"
     AUTH_CLIENT_ID: "account"
     AUTH_CLIENT_SECRET: "e11a3a8e-6e24-4f9d-b914-da7619e8b31f"
@@ -175,6 +174,12 @@ frontend:
   - "keycloak.localhost:host-gateway"
   volumes:
   - "../../../modules/ingress/keycloak-cert.pem:/app/keycloak-cert.pem:ro"
+  healthcheck:
+    test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir/" ]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 ```
 
 > [!IMPORTANT]
@@ -216,6 +221,12 @@ backend:
 Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
 
 ### Health Check
+
+#### Frontend
+
+The command `wget` is available in the Blaze frontend image and can be used for implementing a health check on the `/fhir/` path at port 3000. Use the IPv4 address `127.0.0.1` instead of `localhost`, because the frontend listens only on IPv4 by default, while `localhost` may resolve to the IPv6 address `::1` inside the container.
+
+#### Backend
 
 The command `wget` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
 

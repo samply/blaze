@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { authenticate, keycloakUser, type AccessToken, type AuthApi } from '$lib/server/session.js';
+import { authenticate, keycloakUser, type AccessToken, type AuthApi } from '#lib/server/session.js';
 
 interface TokenOptions {
   accessToken?: string;

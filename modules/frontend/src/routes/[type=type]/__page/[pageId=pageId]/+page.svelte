@@ -3,22 +3,22 @@
 
   import { page } from '$app/state';
 
-  import Breadcrumb from '$lib/breadcrumb.svelte';
-  import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
-  import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
-  import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
+  import Breadcrumb from '#lib/breadcrumb.svelte';
+  import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
+  import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
+  import BreadcrumbEntryPage from '#lib/breadcrumb/page.svelte';
 
   import SearchForm from '../../search-form.svelte';
-  import TotalCard from '$lib/total-card.svelte';
-  import TotalBadge from '$lib/total-badge.svelte';
-  import DurationBadge from '$lib/duration-badge.svelte';
-  import EntryCard from '$lib/resource/entry-card.svelte';
+  import TotalCard from '#lib/total-card.svelte';
+  import TotalBadge from '#lib/total-badge.svelte';
+  import DurationBadge from '#lib/duration-badge.svelte';
+  import EntryCard from '#lib/resource/entry-card.svelte';
   import NoResultsCard from '../../no-results-card.svelte';
-  import ErrorCard from '$lib/error-card.svelte';
-  import LoadingIndicator from '$lib/loading-indicator.svelte';
-  import SummaryControl from '$lib/summary-control.svelte';
-  import SummaryBanner from '$lib/summary-banner.svelte';
-  import { bundleSummaryMode } from '$lib/resource/subsetted.js';
+  import ErrorCard from '#lib/error-card.svelte';
+  import LoadingIndicator from '#lib/loading-indicator.svelte';
+  import SummaryControl from '#lib/summary-control.svelte';
+  import SummaryBanner from '#lib/summary-banner.svelte';
+  import { bundleSummaryMode } from '#lib/resource/subsetted.js';
 
   let { data, params }: PageProps = $props();
 </script>

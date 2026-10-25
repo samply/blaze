@@ -1,5 +1,6 @@
-import { SearchParamType } from '$lib/fhir.js';
-import { defaultCount } from '$lib/util.js';
+import type { ReadonlyURLSearchParams } from '$app/state';
+import { SearchParamType } from '#lib/fhir.js';
+import { defaultCount } from '#lib/util.js';
 
 export interface QueryParam {
   id: number;
@@ -31,7 +32,7 @@ function removeInactiveModifier(name: string): [string, boolean] {
  * `_count` (when at the default) from the rows, because they are managed by
  * dedicated controls or the app itself.
  */
-export function initQueryParams(urlSearchParams: URLSearchParams): {
+export function initQueryParams(urlSearchParams: ReadonlyURLSearchParams): {
   queryParams: QueryParam[];
   queryPlan: boolean;
 } {

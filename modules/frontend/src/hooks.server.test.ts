@@ -1,21 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isRedirect } from '@sveltejs/kit';
 
-vi.mock('$env/dynamic/private', () => ({
-  env: { ORIGIN: 'http://localhost', BACKEND_BASE_URL: 'http://backend:8080' }
+vi.mock('$app/env/private', () => ({
+  BACKEND_BASE_URL: 'http://backend:8080',
+  ORIGIN: 'https://blaze.example.com'
 }));
 const authApi = vi.hoisted(() => ({
   getSession: vi.fn(),
   getAccessToken: vi.fn(),
   refreshToken: vi.fn()
 }));
-vi.mock('$lib/server/auth', () => ({
+vi.mock('#lib/server/auth.js', () => ({
   auth: { api: authApi },
   handle: (input: { event: unknown; resolve: unknown }) =>
     (input.resolve as (e: unknown) => unknown)(input.event)
 }));
 
-const { expireAuthJsCookies, handleAuthorization, handleFetch } = await import('./hooks.server.js');
+const { checkOrigin, expireAuthJsCookies, handleAuthorization, handleFetch, init } =
+  await import('./hooks.server.js');
 
 /**
  * Lets the mocked Better Auth API answer with a session of the user `name`
@@ -55,6 +57,33 @@ async function callHandleAuthorization(event: ReturnType<typeof mockEvent>) {
   const result = await handleAuthorization({ event: event as any, resolve } as any);
   return { result, resolve };
 }
+
+describe('init test', () => {
+  it('warns if ORIGIN is set', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await init();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ORIGIN is no longer supported'));
+    warn.mockRestore();
+  });
+});
+
+describe('checkOrigin test', () => {
+  it('logs an error if the origin of a request differs from ORIGIN and resolves', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const event = { url: new URL('https://frontend:3000/fhir/Patient') };
+    const resolve = vi.fn().mockResolvedValue(new Response('ok'));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await checkOrigin({ event: event as any, resolve } as any);
+
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('https://frontend:3000'));
+    expect(resolve).toHaveBeenCalledWith(event);
+    expect(await result.text()).toBe('ok');
+    error.mockRestore();
+  });
+});
 
 describe('expireAuthJsCookies test', () => {
   function cookieEvent(names: string[]) {
@@ -221,6 +250,79 @@ describe('handleFetch test', () => {
     const request = fetch.mock.calls[0][0] as Request;
     expect(request.url).toBe('http://backend:8080/fhir/Patient');
     expect(request.headers.get('Authorization')).toBe('Bearer token');
+  });
+
+  // The origin of the backend request is the one the adapter derived for the
+  // page request, so swapping exactly that origin keeps the two in step.
+  it('swaps the origin of the page request for the backend base URL', async () => {
+    const event = fetchEvent({
+      accessToken: 'token',
+      url: 'https://blaze.example.com/fhir/Patient'
+    });
+
+    const { fetch } = await callHandleFetch(
+      event,
+      new Response('ok'),
+      'https://blaze.example.com/fhir/Patient?_count=50'
+    );
+
+    const request = fetch.mock.calls[0][0] as Request;
+    expect(request.url).toBe('http://backend:8080/fhir/Patient?_count=50');
+  });
+
+  // Only the origin at the start of the URL is the one of this app. One
+  // further on, for example in a query param, has to stay as it is.
+  it('swaps only the origin at the start of the URL', async () => {
+    const event = fetchEvent({
+      accessToken: 'token',
+      url: 'https://blaze.example.com/fhir/Patient'
+    });
+
+    const { fetch } = await callHandleFetch(
+      event,
+      new Response('ok'),
+      'https://blaze.example.com/fhir/Patient?url=https://blaze.example.com/fhir'
+    );
+
+    const request = fetch.mock.calls[0][0] as Request;
+    expect(request.url).toBe('http://backend:8080/fhir/Patient?url=https://blaze.example.com/fhir');
+  });
+
+  // A request to another origin isn't a backend request, so it must neither
+  // be rewritten nor carry the access token.
+  it.each([
+    'https://other.host/x?redirect=https://blaze.example.com/fhir',
+    'https://blaze.example.com.evil.org/fhir/Patient'
+  ])('leaves the request to %s as it is', async (requestUrl) => {
+    const event = fetchEvent({
+      accessToken: 'token',
+      url: 'https://blaze.example.com/fhir/Patient'
+    });
+
+    const { fetch } = await callHandleFetch(event, new Response('ok'), requestUrl);
+
+    const request = fetch.mock.calls[0][0] as Request;
+    expect(request.url).toBe(requestUrl);
+    expect(request.headers.get('Authorization')).toBeNull();
+    expect(request.headers.get('Forwarded')).toBeNull();
+  });
+
+  // The backend builds its links from the `Forwarded` header, so they have to
+  // point at the origin the browser uses, which is the one of the page request.
+  it('forwards the host and protocol of the page request', async () => {
+    const event = fetchEvent({
+      accessToken: 'token',
+      url: 'https://blaze.example.com/fhir/Patient'
+    });
+
+    const { fetch } = await callHandleFetch(
+      event,
+      new Response('ok'),
+      'https://blaze.example.com/fhir/Patient'
+    );
+
+    const request = fetch.mock.calls[0][0] as Request;
+    expect(request.headers.get('Forwarded')).toBe('host=blaze.example.com;proto=https');
   });
 
   // The status is repeated inside the body because a request made from a

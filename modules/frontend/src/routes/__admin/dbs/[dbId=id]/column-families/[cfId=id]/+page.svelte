@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { PageProps } from './$types';
 
-  import SimpleStats from '$lib/tailwind/stats/simple.svelte';
+  import SimpleStats from '#lib/tailwind/stats/simple.svelte';
   import LevelsCard from './level-table.svelte';
-  import { toTitleCase } from '$lib/util.js';
+  import { toTitleCase } from '#lib/util.js';
   import { descriptions } from './util.js';
   import { resolve } from '$app/paths';
   import { pascalCase } from 'change-case';
