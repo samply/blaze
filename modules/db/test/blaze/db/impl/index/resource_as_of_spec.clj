@@ -40,9 +40,7 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle
-  :args (s/cat :snapshot :blaze.db.kv/snapshot
-               :t :blaze.db/t
-               :since-t :blaze.db/t
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :id :blaze.resource/id)
   :ret (s/nilable :blaze.db/resource-handle))

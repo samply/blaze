@@ -7,3 +7,8 @@
 
 (s/fdef system/init!
   :args (s/cat :env any?))
+
+(s/fdef system/merge-features
+  :args (s/cat :blaze-edn map? :env (s/map-of string? string?)
+               :bind-map (s/map-of symbol? any?))
+  :ret map?)

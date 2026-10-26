@@ -8,7 +8,6 @@
    [blaze.fhir.structure-definition-repo]
    [blaze.jepsen.util :as u]
    [clojure.tools.logging :refer [info]]
-   [hato.client :as hc]
    [jepsen.checker :as checker]
    [jepsen.cli :as cli]
    [jepsen.client :as client]
@@ -66,11 +65,7 @@
   client/Client
   (open! [this _test node]
     (info "Open client on node" node)
-    (update this :context assoc
-            :base-uri (str "http://" node "/fhir")
-            :http-client (hc/build-http-client {:connect-timeout 10000})
-            :parsing-context (:blaze.fhir/parsing-context u/system)
-            :writing-context (:blaze.fhir/writing-context u/system)))
+    (update this :context merge (u/client-context node)))
 
   (setup! [this _test]
     this)

@@ -91,7 +91,7 @@ Blaze performance scales directly with CPU core count (vertical scaling). Transa
 
 Blaze uses three main memory regions, namely the JVM heap memory, the RocksDB block cache, and the OS page cache. 
 
-* The <span class="text-emerald">JVM heap memory</span> is used for general operation and specifically for the resource cache which caches resources in their ready to use object form. 
+* The <span class="text-emerald">JVM heap memory</span> is used for general operation and specifically for the resource cache which caches resources in their ready to use object form and the resource handle cache which caches the resource handles of the newest versions of resources. By default, they take up to 25% and 10% of the heap. 
 * The <span class="text-blue">RocksDB block cache</span> is separate from the JVM heap memory because it's implemented as an off-heap memory region. The block cache stores resources and index segments in uncompressed blob form. After the resource cache, it functions as a second-level cache which stores resources in a more compact form and is not subject to JVM garbage collection. 
 * The <span class="text-purple">OS page cache</span> functions as a third level of caching because it contains all recently accessed database files. The database files are compressed and so store data in an even more compact form.
 

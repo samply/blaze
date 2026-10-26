@@ -42,6 +42,10 @@
                :resource-handle :blaze.db/resource-handle)
   :ret byte-buffer?)
 
+(s/fdef rh/with-id
+  :args (s/cat :resource-handle :blaze.db/resource-handle :id :blaze.resource/id)
+  :ret :blaze.db/resource-handle)
+
 (s/fdef rh/deleted?
   :args (s/cat :resource-handle :blaze.db/resource-handle)
   :ret boolean?)

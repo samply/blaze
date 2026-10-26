@@ -8,7 +8,7 @@
 | LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB | 3.2 TB Intel P5600 over vSAN  |
 | LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB | 3.2 TB Intel P5600 over vSAN  |
-| LEA79  | on-prem  | EPYC 9555   |   128 | 768 GiB | 12.8 TB Huawei OceanDisk 300P |
+| LEA79  | on-prem  | EPYC 9555   |   128 | 512 GiB | 12.8 TB Huawei OceanDisk 300P |
 | A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB | 4 TB Samsung 990 Pro          |
 
 All systems were configured according to the [Production Configuration](../production-configuration.md) guide.

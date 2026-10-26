@@ -66,7 +66,8 @@
 
 (declare new-batch-db)
 
-(defrecord BatchDb [node kv-store snapshot basis-t t since-t]
+(defrecord BatchDb [node kv-store resource-handle-cache snapshot basis-t t
+                    since-t]
   p/Db
   (-node [_]
     node)
@@ -88,8 +89,8 @@
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource-handle [_ tid id]
-    (rao/resource-handle snapshot t since-t tid id))
+  (-resource-handle [db tid id]
+    (rao/resource-handle db tid id))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -302,6 +303,6 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
-  [{:keys [kv-store] :as node} basis-t t since-t]
+  [{:keys [kv-store resource-handle-cache] :as node} basis-t t since-t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node kv-store snapshot basis-t t since-t)))
+    (->BatchDb node kv-store resource-handle-cache snapshot basis-t t since-t)))

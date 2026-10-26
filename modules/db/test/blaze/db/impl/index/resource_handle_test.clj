@@ -97,6 +97,23 @@
              bb/get-int!
              (bit-and 0xFFFFFFFF))))))
 
+(deftest with-id-test
+  (satisfies-prop 100
+    (prop/for-all [type (sg/elements ["Patient" "Observation" "Condition"])
+                   id (s/gen :blaze.resource/id)
+                   t (s/gen :blaze.db/t)
+                   hash (s/gen :blaze.resource/hash)]
+      (let [handle (resource-handle type id t hash)
+            ;; an equal id that is another instance
+            id (String. ^String id)
+            result (rh/with-id handle id)]
+        (and (identical? id (:id result))
+             (= (:tid handle) (:tid result))
+             (= t (:t result))
+             (= hash (:hash result))
+             (= (:num-changes handle) (:num-changes result))
+             (= (:op handle) (:op result)))))))
+
 (deftest equals-test
   (satisfies-prop 100
     (prop/for-all [type (sg/elements ["Patient" "Observation" "Condition"])
@@ -120,3 +137,4 @@
 
       (= (format "%s[id = %s, t = %d]" type id t)
          (str (resource-handle type id t))))))
+

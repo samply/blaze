@@ -12,6 +12,8 @@
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.fhir.hash :as hash])
   (:import
+   [blaze.db.impl.index ResourceHandle]
+   [blaze.fhir Hash]
    [clojure.lang Numbers]))
 
 (set! *warn-on-reflection* true)
@@ -44,6 +46,13 @@
   "Returns the index entries of the resource version with `tid`, `id` and `t`."
   [tid id t hash num-changes op]
   (index-entries* tid id t (encode-value hash num-changes op)))
+
+(defn resource-handle
+  "Returns the resource handle of the resource version with `tid`, `id`, `t`,
+  `hash`, `num-changes` and `op`, the one a reader decodes from the entries of
+  `index-entries`."
+  [tid id t hash num-changes op]
+  (ResourceHandle. tid ^String id t ^Hash hash (state num-changes op)))
 
 (defn purge-index-entries
   "Returns the index entries of the resource version of `resource-handle` with
