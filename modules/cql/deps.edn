@@ -35,10 +35,10 @@
   {:mvn/version "1.15.0"}
 
   systems.uom/systems-quantity
-  {:mvn/version "2.2"}
+  {:mvn/version "2.2.1"}
 
   systems.uom/systems-ucum
-  {:mvn/version "2.2"
+  {:mvn/version "2.2.1"
    :exclusions [si.uom/si-quantity]}}
 
  :aliases
