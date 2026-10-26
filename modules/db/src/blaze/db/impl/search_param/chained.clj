@@ -86,14 +86,21 @@
    compiled-values))
 
 (defn- compiled-ref-values
+  "Returns a non-empty vector of compiled ref values or nil.
+
+  Only used in ordered index handle mode, so the number of ref values is
+  limited to `max-number-of-refs`."
   [search-param batch-db ref-tid compile-ref-value modifier compiled-values]
-  (->> (ref-resource-handles search-param batch-db ref-tid modifier
-                             compiled-values)
-       (map compile-ref-value)
-       (seq)))
+  (not-empty
+   (into
+    []
+    (map compile-ref-value)
+    (ref-resource-handles search-param batch-db ref-tid modifier
+                          compiled-values))))
 
 (defn- num-ref-resource-handles-small? [ref-resource-handles]
-  (<= (count (take (inc max-number-of-refs) ref-resource-handles)) max-number-of-refs))
+  (<= (count (coll/eduction (take (inc max-number-of-refs)) ref-resource-handles))
+      max-number-of-refs))
 
 (defrecord ChainedSearchParam [search-param ref-search-param ref-c-hash ref-tid
                                code compile-ref-value]
@@ -106,11 +113,12 @@
 
   (-estimated-scan-size [_ batch-db tid modifier compiled-value]
     (transduce
-     (comp (map #(p/-estimated-scan-size ref-search-param batch-db tid nil %))
+     (comp (map compile-ref-value)
+           (map #(p/-estimated-scan-size ref-search-param batch-db tid nil %))
            (halt-when ba/anomaly?))
      +
-     (compiled-ref-values search-param batch-db ref-tid compile-ref-value
-                          modifier [compiled-value])))
+     (ref-resource-handles search-param batch-db ref-tid modifier
+                           [compiled-value])))
 
   (-supports-ordered-index-handles
     [_ batch-db _ modifier compiled-values]

@@ -65,6 +65,26 @@
     (is (false? (coll/empty? [1])))
     (is (false? (coll/empty? [nil])))))
 
+(defn- counting-completions
+  "Returns a transducer that counts its completions in the volatile
+  `completions`."
+  [completions]
+  (fn [rf]
+    (fn
+      ([result]
+       (vswap! completions inc)
+       (rf result))
+      ([result input]
+       (rf result input)))))
+
+(defn- throwing-completion []
+  (fn [rf]
+    (fn
+      ([_]
+       (throw (Exception. "completion failed")))
+      ([result input]
+       (rf result input)))))
+
 (deftest eduction-test
   (testing "eductions are sequential"
     (is (sequential? (coll/eduction identity [1]))))
@@ -102,6 +122,58 @@
            ^Iterable (coll/eduction identity)
            ^AutoCloseable (.iterator)
            (.close))
+      (is @closed)))
+
+  (testing "closing an unfinished iterator completes the transducer"
+    (let [completions (volatile! 0)
+          iter (.iterator ^Iterable (coll/eduction (counting-completions completions) [1 2]))]
+      (is (= 1 (.next ^Iterator iter)))
+      (.close ^AutoCloseable iter)
+      (is (= 1 @completions))))
+
+  (testing "closing an unconsumed iterator completes the transducer"
+    (let [completions (volatile! 0)]
+      (.close ^AutoCloseable (.iterator ^Iterable (coll/eduction (counting-completions completions) [1 2])))
+      (is (= 1 @completions))))
+
+  (testing "closing a finished iterator doesn't complete the transducer again"
+    (let [completions (volatile! 0)
+          iter (.iterator ^Iterable (coll/eduction (counting-completions completions) [1]))]
+      (is (= 1 (.next ^Iterator iter)))
+      (is (false? (.hasNext ^Iterator iter)))
+      (.close ^AutoCloseable iter)
+      (is (= 1 @completions))))
+
+  (testing "closing an iterator doesn't complete the transducer again if the completion threw on exhaustion"
+    (let [completions (volatile! 0)
+          iter (.iterator ^Iterable (coll/eduction (comp (counting-completions completions)
+                                                         (throwing-completion))
+                                                   []))]
+      (is (thrown? Exception (.hasNext ^Iterator iter)))
+      (.close ^AutoCloseable iter)
+      (is (= 1 @completions))))
+
+  (testing "closing an iterator doesn't complete the transducer again if the completion threw on reduced"
+    (let [completions (volatile! 0)
+          iter (.iterator ^Iterable (coll/eduction (comp (counting-completions completions)
+                                                         (take 1)
+                                                         (throwing-completion))
+                                                   [1 2]))]
+      (is (thrown? Exception (.hasNext ^Iterator iter)))
+      (.close ^AutoCloseable iter)
+      (is (= 1 @completions))))
+
+  (testing "closing an iterator closes the source iterator even if the completion throws"
+    (let [closed (volatile! false)]
+      (is (thrown? Exception
+                   (->> (reify Iterable
+                          (iterator [_]
+                            (reify Iterator AutoCloseable
+                              (hasNext [_] false)
+                              (close [_] (vreset! closed true)))))
+                        ^Iterable (coll/eduction (throwing-completion))
+                        ^AutoCloseable (.iterator)
+                        (.close))))
       (is @closed))))
 
 (defn- chunks
@@ -283,6 +355,14 @@
     (testing "counting"
       (is (= 1 (count (coll/intersection compare merge-first [1 2] [2 3])))))
 
+    (testing "stopping early completes the transducers of eductions"
+      (let [completions (volatile! 0)
+            xf (counting-completions completions)]
+        (is (= 1 (coll/first (coll/intersection compare merge-first
+                                                (coll/eduction xf [1 2])
+                                                (coll/eduction xf [1 2])))))
+        (is (= 2 @completions))))
+
     (testing "mergeable items"
       (are [c1 c2 r] (= r (coll/intersection
                            (fn [[n1] [n2]] (compare n1 n2))
@@ -336,6 +416,14 @@
 
     (testing "counting"
       (is (= 3 (count (coll/union compare merge-first [1 2] [2 3])))))
+
+    (testing "stopping early completes the transducers of eductions"
+      (let [completions (volatile! 0)
+            xf (counting-completions completions)]
+        (is (= 1 (coll/first (coll/union compare merge-first
+                                         (coll/eduction xf [1 2])
+                                         (coll/eduction xf [1 2])))))
+        (is (= 2 @completions))))
 
     (testing "mergeable items"
       (are [c1 c2 r] (= r (coll/union

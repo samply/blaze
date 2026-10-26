@@ -2,6 +2,8 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.byte-string-spec]
+   [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
@@ -9,7 +11,7 @@
    [blaze.db.impl.search-param.chained-spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
-   [blaze.db.test-util :as dtu]
+   [blaze.db.test-util :as dtu :refer [with-system-data]]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
@@ -30,6 +32,26 @@
       (is (false? (p/-supports-ordered-compartment-index-handles search-param nil nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil)))
       (is (ba/unsupported? (p/-ordered-compartment-index-handles search-param nil nil nil nil nil nil))))))
+
+(def ^:private unsupported-estimation-search-param
+  (reify p/SearchParam
+    (-estimated-scan-size [_ _ _ _ _]
+      (ba/unsupported))))
+
+(deftest estimated-scan-size-test
+  (testing "returns all iterators if the estimation stops early"
+    (with-system-data [{:blaze.db/keys [node] search-param-registry ::dtu/search-param-registry} dtu/config]
+      [(mapv
+        (fn [i] [:put {:fhir/type :fhir/Patient :id (str i) :gender #fhir/code "male"}])
+        (range 100))]
+
+      (let [[search-param] (sr/parse search-param-registry "Observation" "subject:Patient.gender")
+            search-param (assoc search-param :ref-search-param unsupported-estimation-search-param)
+            compiled-value @(p/-compile-value search-param nil "male")]
+        (with-open [batch-db (d/new-batch-db (d/db node))]
+          (is (ba/unsupported? (p/-estimated-scan-size search-param batch-db (codec/tid "Observation") nil compiled-value)))
+
+          (is (empty? (dtu/borrowed-iterators batch-db))))))))
 
 (deftest validate-modifier-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]

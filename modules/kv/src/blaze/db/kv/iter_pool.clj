@@ -95,8 +95,10 @@
 
   AutoCloseable
   (close [_]
-    (set! closed? true)
-    (State/returnIterator pool column-family iter)))
+    ;; returning the iterator twice would hand it out to two borrowers
+    (when-not closed?
+      (set! closed? true)
+      (State/returnIterator pool column-family iter))))
 
 (deftype PoolingSnapshot [snapshot pool]
   p/KvSnapshot

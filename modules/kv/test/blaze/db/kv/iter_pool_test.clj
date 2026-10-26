@@ -116,6 +116,18 @@
         (given (curr-orig-snapshot-state snapshot)
           :closed := true))))
 
+  (testing "closing an iterator twice returns it only once"
+    (let [snapshot (ip/pooling-snapshot (snapshot))
+          pooled-iter (p/-new-iterator snapshot :a)]
+
+      (close pooled-iter)
+      (close pooled-iter)
+
+      (given (curr-state snapshot)
+        count := 1
+        [:a borrowed] := []
+        [:a returned] := [(orig-iter pooled-iter)])))
+
   (testing "borrowing and closing two iterators"
     (let [snapshot (ip/pooling-snapshot (snapshot))
           pooled-iter-1 (p/-new-iterator snapshot :a)
