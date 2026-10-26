@@ -5,4 +5,4 @@
 | LEA79 | laboratory | 123.7 |
 | LEA79 | vital-signs | 110.9 |
 | A5N46 | laboratory | 150.8 |
-| A5N46 | vital-signs | 76.9 |
+| A5N46 | vital-signs | 80.0 |

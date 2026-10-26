@@ -972,6 +972,7 @@
     :opts
     {:sync? true
      :wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
+     :use-direct-reads? #blaze/cfg ["RESOURCE_DB_DIRECT_READS" boolean? false]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :max-subcompactions #blaze/cfg ["DB_MAX_SUBCOMPACTIONS" int? 1]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}

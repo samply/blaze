@@ -21,6 +21,8 @@ All systems were configured according to the [Production Configuration](../produ
 
 On all systems, the heap memory and the block cache were each configured to use 1/4 of the total available RAM. Consequently, the Blaze process itself uses about half of the available system memory, leaving the remainder for the file system cache.
 
+On A5N46, the measurements were done with [direct reads](../deployment/environment-variables.md#resource-db-direct-reads) in the resource database (`RESOURCE_DB_DIRECT_READS=true` and `DB_RESOURCE_STORE_KV_THREADS=64`), because its RAM is too small to keep both the index and the resource contents in the page cache. Without direct reads, downloads of large result sets push the index out of the page cache, so that their duration varies between measurements. In addition, the heap was fixed with `-Xms24g`, so that the memory left for the page cache doesn't change while the JVM grows and shrinks its heap.
+
 ## Datasets
 
 The following datasets were used:
@@ -55,18 +57,18 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 100k    | 8310-5  |  115 k |     0.07 |  0.002 |  1.64 M |
 | LEA58  | 100k    | 55758-7 |  1.0 M |     0.54 |  0.020 |  1.85 M |
 | LEA58  | 100k    | 72514-3 |  2.7 M |     1.43 |  0.045 |  1.89 M |
-| LEA47  | 1M      | 8310-5  |  1.1 M |     0.42 |  0.010 |   2.8 M |
+| LEA47  | 1M      | 8310-5  |  1.2 M |     0.42 |  0.010 |   2.8 M |
 | LEA47  | 1M      | 55758-7 | 10.1 M |     3.85 |  0.068 |   2.6 M |
 | LEA47  | 1M      | 72514-3 | 27.3 M |     8.96 |  0.098 |   3.0 M |
-| LEA58  | 1M      | 8310-5  |  1.1 M |     0.39 |  0.009 |   3.0 M |
+| LEA58  | 1M      | 8310-5  |  1.2 M |     0.39 |  0.009 |   3.0 M |
 | LEA58  | 1M      | 55758-7 | 10.1 M |     2.84 |  0.026 |   3.6 M |
 | LEA58  | 1M      | 72514-3 | 27.3 M |     7.52 |  0.138 |   3.6 M |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     0.19 |  0.002 |   6.1 M |
+| LEA79  | 1M      | 8310-5  |  1.2 M |     0.19 |  0.002 |   6.1 M |
 | LEA79  | 1M      | 55758-7 | 10.1 M |     1.46 |  0.023 |   6.9 M |
 | LEA79  | 1M      | 72514-3 | 27.3 M |     3.95 |  0.018 |   6.9 M |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     0.18 |  0.010 |   6.3 M |
-| A5N46  | 1M      | 55758-7 | 10.1 M |     2.47 |  0.420 |   4.1 M |
-| A5N46  | 1M      | 72514-3 | 27.3 M |     4.12 |  0.093 |   6.6 M |
+| A5N46  | 1M      | 8310-5  |  1.2 M |     0.25 |  0.009 |   4.7 M |
+| A5N46  | 1M      | 55758-7 | 10.1 M |     1.94 |  0.034 |   5.2 M |
+| A5N46  | 1M      | 72514-3 | 27.3 M |     4.06 |  0.277 |   6.7 M |
 
 ¹ resources per second
 
@@ -89,18 +91,18 @@ The script `simple-code-search.sh` is used.
 | LEA58  | 100k    | 8310-5  |  115 k |     1.96 |  0.039 | 58.67 k |  
 | LEA58  | 100k    | 55758-7 |  1.0 M |    16.61 |  0.161 | 60.20 k |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    43.84 |  0.124 | 61.59 k |         
-| LEA47  | 1M      | 8310-5  |  1.1 M |    19.08 |  0.095 |  60.7 k |         
+| LEA47  | 1M      | 8310-5  |  1.2 M |    19.08 |  0.095 |  60.7 k |         
 | LEA47  | 1M      | 55758-7 | 10.1 M |   296.37 | 46.454 |  34.2 k |         
 | LEA47  | 1M      | 72514-3 | 27.3 M |   658.56 |  6.587 |  41.5 k |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    20.70 |  0.320 |  56.0 k |         
+| LEA58  | 1M      | 8310-5  |  1.2 M |    20.70 |  0.320 |  56.0 k |         
 | LEA58  | 1M      | 55758-7 | 10.1 M |   171.60 |  4.241 |  59.1 k |         
 | LEA58  | 1M      | 72514-3 | 27.3 M |   497.29 | 26.969 |  55.0 k |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     9.36 |  0.052 | 123.9 k |         
+| LEA79  | 1M      | 8310-5  |  1.2 M |     9.36 |  0.052 | 123.9 k |         
 | LEA79  | 1M      | 55758-7 | 10.1 M |    63.22 |  2.045 | 160.4 k |         
 | LEA79  | 1M      | 72514-3 | 27.3 M |   145.33 |  0.361 | 188.1 k |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     6.03 |  0.054 | 192.2 k |         
-| A5N46  | 1M      | 55758-7 | 10.1 M |    83.25 |  0.142 | 121.8 k |        
-| A5N46  | 1M      | 72514-3 | 27.3 M |   126.34 |  0.880 | 216.4 k |
+| A5N46  | 1M      | 8310-5  |  1.2 M |     6.14 |  0.118 | 188.7 k |
+| A5N46  | 1M      | 55758-7 | 10.1 M |    51.14 |  0.041 | 198.3 k |
+| A5N46  | 1M      | 72514-3 | 27.3 M |   136.11 |  0.104 | 200.9 k |
 
 ¹ resources per second
 
@@ -119,18 +121,18 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA58  | 100k    | 8310-5  |  115 k |     1.28 |  0.017 |  89.84 k |
 | LEA58  | 100k    | 55758-7 |  1.0 M |    10.55 |  0.209 |  94.79 k |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    27.15 |  0.749 |  99.45 k |
-| LEA47  | 1M      | 8310-5  |  1.1 M |    13.67 |  0.204 |   84.8 k |          
+| LEA47  | 1M      | 8310-5  |  1.2 M |    13.67 |  0.204 |   84.8 k |          
 | LEA47  | 1M      | 55758-7 | 10.1 M |   338.50 |  7.638 |   30.0 k |          
 | LEA47  | 1M      | 72514-3 | 27.3 M |   546.44 |  7.829 |   50.0 k |
-| LEA58  | 1M      | 8310-5  |  1.1 M |    15.42 |  0.208 |   75.1 k |          
+| LEA58  | 1M      | 8310-5  |  1.2 M |    15.42 |  0.208 |   75.1 k |          
 | LEA58  | 1M      | 55758-7 | 10.1 M |   124.03 |  1.024 |   81.8 k |          
 | LEA58  | 1M      | 72514-3 | 27.3 M |   343.16 |  1.412 |   79.7 k |
-| LEA79  | 1M      | 8310-5  |  1.1 M |     8.80 |  0.051 |  131.7 k |          
+| LEA79  | 1M      | 8310-5  |  1.2 M |     8.80 |  0.051 |  131.7 k |          
 | LEA79  | 1M      | 55758-7 | 10.1 M |    61.08 |  0.428 |  166.0 k |          
 | LEA79  | 1M      | 72514-3 | 27.3 M |   143.01 |  0.529 |  191.2 k |
-| A5N46  | 1M      | 8310-5  |  1.1 M |     5.53 |  0.050 |  209.6 k |          
-| A5N46  | 1M      | 55758-7 | 10.1 M |    55.03 |  0.039 |  184.3 k |          
-| A5N46  | 1M      | 72514-3 | 27.3 M |   121.83 |  0.050 |  224.4 k |          
+| A5N46  | 1M      | 8310-5  |  1.2 M |     5.85 |  0.020 |  198.0 k |
+| A5N46  | 1M      | 55758-7 | 10.1 M |    51.01 |  0.082 |  198.8 k |
+| A5N46  | 1M      | 72514-3 | 27.3 M |   135.77 |  0.007 |  201.4 k |
 
 ¹ resources per second
 
@@ -155,8 +157,8 @@ The script `multiple-codes-search.sh` is used.
 | LEA47  | 1M      | 100   | 36.3 M |    19.32 |  0.067 |   1.9 M |
 | LEA79  | 1M      | 10    | 29.1 M |     6.41 |  0.026 |   4.5 M |
 | LEA79  | 1M      | 100   | 36.3 M |     9.86 |  0.044 |   3.7 M |
-| A5N46  | 1M      | 10    | 29.1 M |     5.90 |  0.117 |   4.9 M |
-| A5N46  | 1M      | 100   | 36.3 M |     9.41 |  0.051 |   3.8 M |
+| A5N46  | 1M      | 10    | 29.1 M |     4.94 |  0.218 |   5.9 M |
+| A5N46  | 1M      | 100   | 36.3 M |     7.90 |  0.130 |   4.6 M |
 
 ¹ resources per second
 
@@ -174,8 +176,8 @@ The script `multiple-codes-search.sh` is used.
 | LEA47  | 1M      | 100   | 36.3 M |  1663.36 |  1.855 |  21.8 k |
 | LEA79  | 1M      | 10    | 29.1 M |   162.51 |  1.068 | 178.9 k |
 | LEA79  | 1M      | 100   | 36.3 M |   276.96 |  0.693 | 131.2 k |
-| A5N46  | 1M      | 10    | 29.1 M |   136.98 |  0.230 | 212.2 k |
-| A5N46  | 1M      | 100   | 36.3 M |   264.83 |  0.417 | 137.2 k |
+| A5N46  | 1M      | 10    | 29.1 M |   147.45 |  0.131 | 197.1 k |
+| A5N46  | 1M      | 100   | 36.3 M |   264.13 |  0.249 | 137.5 k |
 
 ¹ resources per second
 
@@ -242,7 +244,7 @@ The script `observation-final-category-multiple-codes-search.sh` is used.
 | LEA79  | 1M      | laboratory  | top-5 | 90.3 M |   192.58 |  0.744 | 468.7 k |
 | LEA79  | 1M      | vital-signs | low-5 |  3.5 M |     0.78 |  0.003 |   4.5 M |
 | A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   209.64 |  0.462 | 430.6 k |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |     2.68 |  0.042 |   1.3 M |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |     2.54 |  0.008 |   1.4 M |
 
 ¹ resources per second
 
@@ -263,7 +265,7 @@ The script `observation-final-category-multiple-codes-search.sh` is used.
 | LEA79  | 1M      | laboratory  | top-5 | 90.3 M |   729.98 |   0.403 | 123.7 k |
 | LEA79  | 1M      | vital-signs | low-5 |  3.5 M |    31.78 |   0.212 | 110.9 k |
 | A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   598.44 |   3.996 | 150.8 k |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    45.85 |   0.840 |  76.9 k |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    44.05 |   0.321 |  80.0 k |
 
 ¹ resources per second
 
@@ -280,7 +282,7 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | laboratory  | top-5 | 90.3 M |   715.55 |  12.516 | 126.2 k |
 | LEA79  | 1M      | vital-signs | low-5 |  3.5 M |    31.15 |   0.567 | 113.1 k |
 | A5N46  | 1M      | laboratory  | top-5 | 90.3 M |   586.63 |  10.563 | 153.9 k |
-| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    44.97 |   0.942 |  78.4 k |
+| A5N46  | 1M      | vital-signs | low-5 |  3.5 M |    43.97 |   0.112 |  80.1 k |
 
 ¹ resources per second
 
@@ -549,9 +551,9 @@ The script `code-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    943 |     0.02 |  0.002 |  59.3 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.06 |  0.002 | 442.0 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.16 |  0.000 | 704.4 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.002 |  79.3 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.05 |  0.001 | 564.6 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.12 |  0.002 | 907.4 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.001 |  76.3 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.05 |  0.001 | 592.7 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.12 |  0.001 | 912.2 k |
 
 ¹ resources per second
 
@@ -574,9 +576,9 @@ The script `code-patient-search.sh` is used.
 | LEA79  | 1M      | 8310-5  |    943 |     0.03 |  0.000 |  31.4 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.26 |  0.012 | 106.7 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.75 |  0.005 | 151.4 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.02 |  0.000 |  47.2 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.20 |  0.005 | 138.5 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.59 |  0.012 | 192.9 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.03 |  0.003 |  32.6 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.23 |  0.006 | 122.4 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.75 |  0.023 | 150.5 k |
 
 ¹ resources per second
 
@@ -595,9 +597,9 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | 8310-5  |    943 |     0.02 |  0.000 |  47.2 k |
 | LEA79  | 1M      | 55758-7 |   28 k |     0.24 |  0.000 | 117.1 k |
 | LEA79  | 1M      | 72514-3 |  113 k |     0.69 |  0.008 | 163.9 k |
-| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.005 |  70.8 k |
-| A5N46  | 1M      | 55758-7 |   28 k |     0.19 |  0.005 | 150.9 k |
-| A5N46  | 1M      | 72514-3 |  113 k |     0.56 |  0.008 | 202.0 k |
+| A5N46  | 1M      | 8310-5  |    944 |     0.02 |  0.000 |  48.8 k |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.20 |  0.003 | 139.4 k |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.70 |  0.007 | 160.9 k |
 
 ¹ resources per second
 
@@ -751,13 +753,13 @@ The script `simple-date-search.sh` is used.
 | LEA58  | 100k    | 2013 |  3.1 M |     2.22 |  0.071 |    0.71 |
 | LEA58  | 100k    | 2019 |  6.0 M |     4.19 |  0.056 |    0.70 |
 | LEA47  | 1M      | 2013 | 31.1 M |   108.65 |  0.558 | 286.0 k |
-| LEA47  | 1M      | 2019 | 60.0 M |   209.27 |  1.670 | 287.0 k |
+| LEA47  | 1M      | 2019 | 60.1 M |   209.27 |  1.670 | 287.0 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   107.81 |  1.260 | 288.2 k |
-| LEA58  | 1M      | 2019 | 60.0 M |   210.81 |  0.364 | 284.9 k |
+| LEA58  | 1M      | 2019 | 60.1 M |   210.81 |  0.364 | 284.9 k |
 | LEA79  | 1M      | 2013 | 31.1 M |    72.72 |  0.721 | 427.3 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   146.16 |  0.772 | 410.9 k |
-| A5N46  | 1M      | 2013 | 31.1 M |    56.16 |  0.412 | 553.3 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   109.51 |  0.276 | 548.4 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   146.16 |  0.772 | 410.9 k |
+| A5N46  | 1M      | 2013 | 31.1 M |    53.90 |  0.234 | 576.5 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   105.48 |  0.227 | 569.3 k |
 
 ¹ resources per second
 
@@ -766,7 +768,7 @@ The script `simple-date-search.sh` is used.
 <BarChart src="fhir-search/chart-data/simple-date-search-download-1M.txt"
   title="Simple Date Search - Download - Dataset 1M"
   x-label="System" :x-col="2"
-  y-label="Resources/s" :y-col="4" :y-max="200"
+  y-label="Resources/s" :y-col="4" :y-max="250"
   :series="['2013', '2019']" />
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | Res/s ¹ |
@@ -778,13 +780,13 @@ The script `simple-date-search.sh` is used.
 | LEA58  | 100k    | 2013 |  3.1 M |    53.07 |  0.090 |   16.98 |
 | LEA58  | 100k    | 2019 |  6.0 M |   100.73 |  0.473 |   16.84 |
 | LEA47  | 1M      | 2013 | 31.1 M |   819.06 |  1.965 |  37.9 k |
-| LEA47  | 1M      | 2019 | 60.0 M |  1634.48 | 16.647 |  36.7 k |
+| LEA47  | 1M      | 2019 | 60.1 M |  1634.48 | 16.647 |  36.7 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   596.05 | 18.812 |  52.1 k |
-| LEA58  | 1M      | 2019 | 60.0 M |  1451.13 | 77.328 |  41.4 k |
+| LEA58  | 1M      | 2019 | 60.1 M |  1451.13 | 77.328 |  41.4 k |
 | LEA79  | 1M      | 2013 | 31.1 M |   223.08 |  0.350 | 139.3 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   418.19 |  1.132 | 143.6 k |
-| A5N46  | 1M      | 2013 | 31.1 M |   165.53 |  0.192 | 187.7 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   308.48 |  1.132 | 194.7 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   418.19 |  1.132 | 143.6 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   155.51 |  0.172 | 199.8 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   299.21 |  0.362 | 200.7 k |
 
 ¹ resources per second
 
@@ -801,13 +803,13 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA58  | 100k    | 2013 |  3.1 M |    32.43 |  0.340 |   10.37 |
 | LEA58  | 100k    | 2019 |  6.0 M |    62.14 |  0.488 |   10.39 |
 | LEA47  | 1M      | 2013 | 31.1 M |   627.50 |  9.911 |  49.5 k |
-| LEA47  | 1M      | 2019 | 60.0 M |  1282.05 |  4.997 |  46.8 k |
+| LEA47  | 1M      | 2019 | 60.1 M |  1282.05 |  4.997 |  46.8 k |
 | LEA58  | 1M      | 2013 | 31.1 M |   439.48 |  1.237 |  70.7 k |
-| LEA58  | 1M      | 2019 | 60.0 M |  1238.84 |  3.080 |  48.5 k |
+| LEA58  | 1M      | 2019 | 60.1 M |  1238.84 |  3.080 |  48.5 k |
 | LEA79  | 1M      | 2013 | 31.1 M |   212.76 |  0.298 | 146.0 k |
-| LEA79  | 1M      | 2019 | 60.0 M |   390.01 |  5.077 | 154.0 k |
-| A5N46  | 1M      | 2013 | 31.1 M |   158.33 |  0.079 | 196.2 k |
-| A5N46  | 1M      | 2019 | 60.0 M |   300.27 |  0.685 | 200.0 k |
+| LEA79  | 1M      | 2019 | 60.1 M |   390.01 |  5.077 | 154.0 k |
+| A5N46  | 1M      | 2013 | 31.1 M |   154.84 |  0.434 | 200.7 k |
+| A5N46  | 1M      | 2019 | 60.1 M |   296.77 |  0.713 | 202.4 k |
 
 ¹ resources per second
 
@@ -831,10 +833,10 @@ The script `patient-date-search.sh` is used.
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     0.69 |  0.006 | 330.2 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     2.16 |  0.035 | 357.9 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     2.18 |  0.014 | 353.8 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.51 |  0.003 | 442.9 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.51 |  0.003 | 443.0 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     1.53 |  0.017 | 503.8 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     1.51 |  0.004 | 513.2 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     0.50 |  0.001 | 454.3 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     0.51 |  0.002 | 445.5 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     1.56 |  0.037 | 496.8 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     1.53 |  0.011 | 505.0 k |
 
 ¹ resources per second
 
@@ -856,10 +858,10 @@ The script `patient-date-search.sh` is used.
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     2.40 |  0.049 |  94.7 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     8.18 |  0.012 |  94.4 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     8.08 |  0.036 |  95.6 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.95 |  0.025 | 116.8 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.95 |  0.029 | 116.8 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     6.60 |  0.012 | 117.0 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     6.52 |  0.012 | 118.4 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     2.00 |  0.025 | 113.4 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     2.02 |  0.035 | 112.4 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     6.47 |  0.037 | 119.4 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     6.50 |  0.062 | 118.9 k |
 
 ¹ resources per second
 
@@ -877,10 +879,10 @@ If only a subset of a resource's information is needed, the `_elements` search p
 | LEA79  | 1M      | ge1998-04-10 |  227 k |     1.91 |  0.005 | 118.8 k |
 | LEA79  | 1M      | lt1998-04-10 |  773 k |     6.15 |  0.042 | 125.7 k |
 | LEA79  | 1M      | le1998-04-10 |  773 k |     6.13 |  0.029 | 126.1 k |
-| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.41 |  0.008 | 161.2 k |
-| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.43 |  0.000 | 159.0 k |
-| A5N46  | 1M      | lt1998-04-10 |  773 k |     4.57 |  0.017 | 169.2 k |
-| A5N46  | 1M      | le1998-04-10 |  773 k |     4.50 |  0.012 | 171.6 k |
+| A5N46  | 1M      | gt1998-04-10 |  227 k |     1.43 |  0.002 | 159.0 k |
+| A5N46  | 1M      | ge1998-04-10 |  227 k |     1.45 |  0.017 | 156.6 k |
+| A5N46  | 1M      | lt1998-04-10 |  773 k |     4.44 |  0.038 | 174.0 k |
+| A5N46  | 1M      | le1998-04-10 |  773 k |     4.42 |  0.033 | 174.7 k |
 
 ¹ resources per second
 

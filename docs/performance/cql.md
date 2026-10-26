@@ -21,6 +21,8 @@ All systems were configured according to the [Production Configuration](../produ
 
 On all systems, the heap memory and the block cache were each configured to use 1/4 of the total available RAM. Consequently, the Blaze process itself uses about half of the available system memory, leaving the remainder for the file system cache.
 
+On A5N46, the measurements were done with [direct reads](../deployment/environment-variables.md#resource-db-direct-reads) in the resource database (`RESOURCE_DB_DIRECT_READS=true` and `DB_RESOURCE_STORE_KV_THREADS=64`), because its RAM is too small to keep both the index and the resource contents in the page cache. In addition, the heap was fixed with `-Xms24g`, so that the memory left for the page cache doesn't change while the JVM grows and shrinks its heap.
+
 ## Datasets
 
 The following datasets were used:
@@ -124,9 +126,9 @@ The third bar chart shows the results for the 1M dataset. For the two bigger sys
 | 1M      | LEA79  | 17861-6 |   25 k |     0.29 |  0.006 | 3.473 M |
 | 1M      | LEA79  | 8310-5  |  603 k |     0.40 |  0.005 | 2.499 M | 
 | 1M      | LEA79  | 72514-3 |  998 k |     0.43 |  0.011 | 2.304 M |
-| 1M      | A5N46  | 17861-6 |   25 k |     0.21 |  0.009 | 4.692 M |
-| 1M      | A5N46  | 8310-5  |  603 k |     0.33 |  0.005 | 3.045 M | 
-| 1M      | A5N46  | 72514-3 |  998 k |     1.68 |  0.009 | 596.2 k |
+| 1M      | A5N46  | 17861-6 |   25 k |     0.23 |  0.007 | 4.353 M |
+| 1M      | A5N46  | 8310-5  |  603 k |     0.34 |  0.002 | 2.977 M |
+| 1M      | A5N46  | 72514-3 |  998 k |     1.61 |  0.003 | 621.5 k |
 
 ### Example CQL Query
 
@@ -204,9 +206,9 @@ The second chart shows the results for the 1M dataset. Here the performance of t
 | 1M      | LEA79  | 29463-7 | 13.6 kg |   99 k |     0.35 |  0.011 | 2.831 M |  
 | 1M      | LEA79  | 29463-7 | 75.3 kg |  500 k |     0.41 |  0.010 | 2.422 M | 
 | 1M      | LEA79  | 29463-7 |  185 kg |  998 k |     0.47 |  0.014 | 2.144 M |
-| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.22 |  0.013 | 4.464 M | 
-| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.37 |  0.020 | 2.678 M |
-| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.73 |  0.051 | 577.3 k |
+| 1M      | A5N46  | 29463-7 | 13.6 kg |   99 k |     0.29 |  0.002 | 3.476 M |
+| 1M      | A5N46  | 29463-7 | 75.3 kg |  500 k |     0.38 |  0.001 | 2.635 M |
+| 1M      | A5N46  | 29463-7 |  185 kg |  998 k |     1.64 |  0.003 | 610.0 k |
 
 ### CQL Query
 
@@ -290,8 +292,8 @@ The third chart shows the results for the 1M dataset. As with the Code Value Sea
 | 1M      | LEA58  |  954 k |     0.53 |  0.015 | 1.897 M |
 | 1M      | LEA79  |    4 k |     0.28 |  0.004 | 3.521 M |
 | 1M      | LEA79  |  954 k |     0.41 |  0.016 | 2.419 M |
-| 1M      | A5N46  |    4 k |     0.20 |  0.010 | 5.003 M |
-| 1M      | A5N46  |  954 k |     0.41 |  0.002 | 2.442 M |
+| 1M      | A5N46  |    4 k |     0.23 |  0.003 | 4.291 M |
+| 1M      | A5N46  |  954 k |     0.40 |  0.000 | 2.472 M |
 
 ### CQL Query Frequent
 
@@ -359,6 +361,8 @@ In this section, CQL queries for selecting patients which have conditions with o
 |---------|--------|-------:|---------:|-------:|--------:|
 | 1M      | LEA47  |    4 k |     0.45 |  0.005 | 2.227 M |
 | 1M      | LEA47  |  954 k |     2.53 |  0.007 | 394.9 k |
+| 1M      | A5N46  |    4 k |     0.22 |  0.009 | 4.565 M |
+| 1M      | A5N46  |  954 k |     1.40 |  0.002 | 714.6 k |
 
 ### CQL Query Frequent
 
@@ -423,7 +427,7 @@ cql/search.sh condition-ten-rare-vs
 | 1M      | LEA47  |  995 k |     0.89 |  0.011 | 1.120 M |
 | 1M      | LEA58  |  995 k |     0.60 |  0.018 | 1.674 M |
 | 1M      | LEA79  |  995 k |     0.38 |  0.003 | 2.667 M |
-| 1M      | A5N46  |  995 k |     0.44 |  0.002 | 2.260 M |
+| 1M      | A5N46  |  995 k |     0.46 |  0.002 | 2.188 M |
 
 ### CQL Query
 
@@ -470,7 +474,7 @@ cql/search.sh condition-all
 | 1M      | LEA47  |   16 k |     1.24 |  0.008 | 805.0 k |
 | 1M      | LEA58  |   16 k |     0.68 |  0.018 | 1.478 M |
 | 1M      | LEA79  |   16 k |     0.45 |  0.002 | 2.206 M |
-| 1M      | A5N46  |   16 k |     0.57 |  0.003 | 1.741 M |
+| 1M      | A5N46  |   16 k |     0.62 |  0.006 | 1.613 M |
 
 ### CQL Query
 
@@ -563,7 +567,7 @@ The measurement was done with the [CQL expression cache](../deployment/environme
 |---------|--------|-------:|---------:|-------:|--------:|
 | 1M      | LEA47  |    1 k |   196.60 | 54.510 |   5.1 k |
 | 1M      | LEA79  |    1 k |     0.95 |  0.011 | 1.048 M |
-| 1M      | A5N46  |    1 k |    44.65 |  0.513 |  22.4 k |
+| 1M      | A5N46  |    1 k |    49.83 |  0.096 |  20.1 k |
 
 ### CQL Query
 

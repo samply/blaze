@@ -44,11 +44,15 @@
 (s/def ::db-options/compaction-readahead-size
   (s/nilable nat-int?))
 
+(s/def ::db-options/use-direct-reads?
+  boolean?)
+
 (s/def ::rocksdb/db-options
   (s/keys :opt-un [::db-options/wal-dir
                    ::db-options/max-background-jobs
                    ::db-options/max-subcompactions
-                   ::db-options/compaction-readahead-size]))
+                   ::db-options/compaction-readahead-size
+                   ::db-options/use-direct-reads?]))
 
 (s/def ::write-options/sync?
   boolean?)

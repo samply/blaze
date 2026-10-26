@@ -94,6 +94,18 @@ The directory were the resource write ahead log (WAL) files are stored.
 
 **Default:** Same dir as resource database files.
 
+#### `RESOURCE_DB_DIRECT_READS` <Badge type="warning" text="Since 1.13.0"/>
+
+Enables [direct reads][10] in the resource database, so that reading resource contents bypasses the page cache of the operating system. The resource database has no block cache, so with this option, every read of a resource that isn't in the resource cache goes to the disk.
+
+This option can help if the database is much larger than the available RAM, the database is stored on a fast SSD and many resources are accessed. Without direct reads, the contents of these resources fill the page cache and push out the blocks of the index database, so that the index has to be read from disk again. With direct reads, the page cache is left to the index database. The option doesn't help if the whole database fits into the page cache, and it makes reading the same resources repeatedly slower, because they are no longer cached by the operating system.
+
+With this option, every resource read waits for the disk, so [`DB_RESOURCE_STORE_KV_THREADS`](#db-resource-store-kv-threads) determines how many reads are in flight at the same time. Set it high enough to keep the SSD busy, like 64 for a fast NVMe SSD. More threads than the SSD can serve in parallel don't increase the throughput.
+
+Compactions of the resource database also read with direct I/O if this option is enabled. Because compaction reads no longer benefit from the readahead of the operating system, RocksDB reads ahead itself in chunks of `DB_COMPACTION_READAHEAD_SIZE` (RocksDB default 2 MiB). Don't set it to 0 together with this option.
+
+**Default:** false
+
 #### `DB_BLOCK_CACHE_SIZE` <Badge type="warning" text="Since 0.8"/>
 
 The size of the [block cache][2] of the DB in MiB. This cache is outside of the JVM heap.
@@ -147,6 +159,8 @@ The number of resources which are indexed in a batch. (Deprecated)
 #### `DB_RESOURCE_STORE_KV_THREADS` <Badge type="warning" text="Since 0.17"/>
 
 The number of threads used for reading and writing resources. It should be set to the maximum expected transaction concurrency. See also: [Production Configuration](../production-configuration.md#resource-store-write-concurrency).
+
+More threads than the disk can serve in parallel don't increase the throughput.
 
 **Default:** 4
 
@@ -225,6 +239,8 @@ The number of resources which are indexed in a batch. (Deprecated)
 #### `DB_RESOURCE_STORE_KV_THREADS` <Badge type="warning" text="Since 0.17"/>
 
 The number of threads used for reading and writing resources. It should be set to the maximum expected transaction concurrency. See also: [Production Configuration](../production-configuration.md#resource-store-write-concurrency).
+
+More threads than the disk can serve in parallel don't increase the throughput.
 
 **Default:** 4
 
@@ -666,3 +682,4 @@ The password for the PKCS #12 trust store.
 [7]: https://hub.docker.com/_/eclipse-temurin#can-i-add-my-internal-ca-certificates-to-the-truststore
 [8]: <https://github.com/medizininformatik-initiative/mii-fhir-validator>
 [9]: <https://github.com/facebook/rocksdb/wiki/Subcompaction>
+[10]: <https://github.com/facebook/rocksdb/wiki/Direct-IO>
