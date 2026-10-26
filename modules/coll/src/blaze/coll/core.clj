@@ -39,14 +39,16 @@
           (.hasNext iter)
           (let [res (rf nil (.next iter))]
             (when (reduced? res)
-              (rf nil)
-              (set! completed true))
+              ;; set completed first, so that `close` doesn't complete again
+              ;; if the completion throws
+              (set! completed true)
+              (rf nil))
             (recur))
 
           :else
           (do
-            (rf nil)
             (set! completed true)
+            (rf nil)
             (recur)))
         true)))
   (next [i]
@@ -54,11 +56,20 @@
     (.remove buffer))
   AutoCloseable
   (close [_]
-    (when (instance? AutoCloseable iter) (.close ^AutoCloseable iter))))
+    (try
+      ;; completes stateful transducers holding resources, like iterators,
+      ;; if the iteration stopped before the source ran dry
+      (when-not completed
+        (set! completed true)
+        (rf nil))
+      (finally
+        (when (instance? AutoCloseable iter) (.close ^AutoCloseable iter))))))
 
 (defn eduction
   "Like `clojure.core/eduction` but implements Counted on top of IReduceInit and
-  uses a TransformerIterator that closes closeable iterators."
+  uses a TransformerIterator that closes closeable iterators.
+
+  Closing the TransformerIterator completes `xform` if it wasn't already."
   [xform coll]
   (reify
     Sequential

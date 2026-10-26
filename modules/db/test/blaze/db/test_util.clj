@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
+   [blaze.db.kv.protocols :as kv-p]
    [blaze.db.node :as node]
    [blaze.db.resource-handle-cache]
    [blaze.db.resource-store :as rs]
@@ -20,7 +21,12 @@
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
    [integrant.core :as ig]
-   [java-time.api :as time]))
+   [java-time.api :as time])
+  (:import
+   [blaze.db.kv.iter_pool PoolingSnapshot State]
+   [java.lang AutoCloseable]))
+
+(set! *warn-on-reflection* true)
 
 (def root-system
   "Root part of the system initialized for performance reasons."
@@ -171,3 +177,43 @@
   `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
+
+(defn- snapshot-borrowed-iterators [snapshot]
+  (into
+   {}
+   (keep
+    (fn [[column-family state]]
+      (let [n (count (.borrowed ^State state))]
+        (when (pos? n) [column-family n]))))
+   (.-pool ^PoolingSnapshot snapshot)))
+
+(defn borrowed-iterators
+  "Returns a map of column family to the number of iterators borrowed from the
+  snapshot of `batch-db` and not returned yet.
+
+  Iterators that are never returned pin the snapshot."
+  [{:keys [snapshot]}]
+  (snapshot-borrowed-iterators snapshot))
+
+(defn borrowed-iterators-on-close
+  "Calls `f` and returns a vector of the borrowed iterators, like
+  `borrowed-iterators` returns them, of each snapshot at the time it was closed
+  during the call."
+  [f]
+  (let [result (atom [])
+        new-snapshot kv/new-snapshot]
+    (with-redefs [kv/new-snapshot
+                  (fn [store]
+                    (let [snapshot (new-snapshot store)]
+                      (reify
+                        kv-p/KvSnapshot
+                        (-new-iterator [_ column-family]
+                          (kv-p/-new-iterator snapshot column-family))
+                        (-snapshot-get [_ column-family key]
+                          (kv-p/-snapshot-get snapshot column-family key))
+                        AutoCloseable
+                        (close [_]
+                          (swap! result conj (snapshot-borrowed-iterators snapshot))
+                          (.close ^AutoCloseable snapshot)))))]
+      (f))
+    @result))

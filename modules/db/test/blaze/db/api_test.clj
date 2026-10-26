@@ -20,8 +20,8 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :refer [config non-referential-integrity-config wait-for
-                               with-system-data]]
+   [blaze.db.test-util :as dtu :refer [config non-referential-integrity-config
+                                       wait-for with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
    [blaze.db.tx-log.local-spec]
@@ -8908,6 +8908,48 @@
           ::anom/category := ::anom/incorrect
           ::anom/message := (format "Error in search parameter `%s`: Invalid resource id `%s`." code id))))))
 
+(deftest type-query-returns-all-iterators-test
+  (testing "stopping early on a union of lists"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]
+        [:put {:fhir/type :fhir/Patient :id "3"}]
+        [:put {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/1"}}]}]
+        [:put {:fhir/type :fhir/List :id "1"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/2"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference {:reference #fhir/string "Patient/3"}}]}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given (coll/first @(d/type-query batch-db "Patient" [["_list" "0" "1"]]))
+          :id := "0")
+
+        (is (empty? (dtu/borrowed-iterators batch-db))))))
+
+  (testing "chained search with more references than handled in ordered mode"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [(conj
+        (mapv
+         (fn [i] [:put {:fhir/type :fhir/Patient :id (str i) :gender #fhir/code "male"}])
+         (range 10100))
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference {:reference #fhir/string "Patient/0"}}])]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given (vec @(d/type-query batch-db "Observation" [["subject:Patient.gender" "male"]]))
+          count := 1
+          [0 :id] := "0")
+
+        (is (empty? (dtu/borrowed-iterators batch-db)))))))
+
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
    :identifier [(type/identifier {:value (type/string (str i))})]})
@@ -9612,6 +9654,20 @@
   #fhir/Extension
    {:url "http://hl7.org/fhir/StructureDefinition/data-absent-reason"
     :value #fhir/code "unknown"})
+
+(deftest matcher-transducer-test
+  (testing "completes the matcher before closing its database"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+      (let [matcher @(d/compile-type-matcher node "Patient" [["active" "true"]])
+            db (d/db node)
+            xform (d/matcher-transducer db matcher)]
+        (given (dtu/borrowed-iterators-on-close
+                #(into [] xform (d/type-list db "Patient")))
+          count := 2
+          [0] := {}
+          [1] := {})))))
 
 (deftest compile-type-matcher-test
   (testing "token search params"

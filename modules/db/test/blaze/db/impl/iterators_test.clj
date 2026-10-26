@@ -7,12 +7,14 @@
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
+   [blaze.db.test-util :as dtu]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [ba]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]])
   (:import
-   [java.lang AutoCloseable]))
+   [java.lang AutoCloseable]
+   [java.util Iterator]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -135,6 +137,26 @@
                                  (map #(mapv bs/from-byte-buffer! %))
                                  #blaze/byte-string"00")))))))))
 
+(defn- counting-completions
+  "Returns a transducer that counts its completions in the volatile
+  `completions`."
+  [completions]
+  (fn [rf]
+    (fn
+      ([result]
+       (vswap! completions inc)
+       (rf result))
+      ([result input]
+       (rf result input)))))
+
+(defn- throwing-completion []
+  (fn [rf]
+    (fn
+      ([_]
+       (throw (Exception. "completion failed")))
+      ([result input]
+       (rf result input)))))
+
 (deftest prefix-keys-xf-test
   (with-system [{kv-store ::kv/mem} config]
     (kv/put!
@@ -157,7 +179,39 @@
                (vec (i/prefix-keys-xf snapshot :default
                                       (comp (map bs/from-byte-buffer!)
                                             (partition-all 3))
-                                      1 #blaze/byte-string"01"))))))))
+                                      1 #blaze/byte-string"01")))))
+
+      (testing "closing an iterator twice"
+        (let [completions (volatile! 0)
+              iter (.iterator ^Iterable (i/prefix-keys-xf
+                                         snapshot :default
+                                         (comp (map bs/from-byte-buffer!)
+                                               (counting-completions completions))
+                                         1 #blaze/byte-string"01"))]
+          (is (= #blaze/byte-string"0100" (.next ^Iterator iter)))
+          (.close ^AutoCloseable iter)
+          (.close ^AutoCloseable iter)
+
+          (testing "completes the transducer only once"
+            (is (= 1 @completions)))
+
+          (testing "returns the kv iterator only once"
+            (with-open [iter-1 (kv/new-iterator snapshot :default)
+                        iter-2 (kv/new-iterator snapshot :default)]
+              (kv/seek-to-first! iter-1)
+              (kv/seek-to-last! iter-2)
+              (is (= #blaze/byte-string"0000"
+                     (bs/from-byte-array (kv/key iter-1))))))))
+
+      (testing "closing an iterator closes the kv iterator even if the completion throws"
+        (let [iter (.iterator ^Iterable (i/prefix-keys-xf
+                                         snapshot :default
+                                         (comp (map bs/from-byte-buffer!)
+                                               (throwing-completion))
+                                         1 #blaze/byte-string"01"))]
+          (is (= #blaze/byte-string"0100" (.next ^Iterator iter)))
+          (is (thrown? Exception (.close ^AutoCloseable iter)))
+          (is (empty? (dtu/borrowed-iterators {:snapshot snapshot}))))))))
 
 (deftest prefix-keys-prev-xf-test
   (with-system [{kv-store ::kv/mem} config]

@@ -113,8 +113,11 @@
             rf ((p/-matcher-transducer batch-db clauses) rf)]
         (fn
           ([result]
-           (.close ^AutoCloseable batch-db)
-           (rf result))
+           ;; complete first, so that the matcher can return its iterators
+           (try
+             (rf result)
+             (finally
+               (.close ^AutoCloseable batch-db))))
           ([result input]
            (rf result input))))))
 

@@ -15,7 +15,7 @@
   (:import
    [clojure.lang Counted IReduceInit]
    [java.lang AutoCloseable]
-   [java.util ArrayDeque Iterator Queue]))
+   [java.util Iterator]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -195,36 +195,31 @@
           (do (advance-fn iter) (recur ret))))
       (rf ret))))
 
-(deftype CollIterator [rf iter ^Queue buffer ^:volatile-mutable completed]
+(deftype KvEntryIterator [iter ^:unsynchronized-mutable advance]
   Iterator
   (hasNext [_]
-    (loop []
-      (if (.isEmpty buffer)
-        (cond
-          completed false
-
-          (kv/valid? iter)
-          (let [res (rf nil iter)]
-            (if (reduced? res)
-              (do
-                (rf nil)
-                (set! completed true))
-              (kv/next! iter))
-            (recur))
-
-          :else
-          (do
-            (rf nil)
-            (set! completed true)
-            (recur)))
-        true)))
+    ;; advances only on the next call, because the transducer reads the
+    ;; current entry from `iter` after `next` returned it
+    (when advance
+      (set! advance false)
+      (kv/next! iter))
+    (kv/valid? iter))
   (next [_]
-    (.remove buffer))
+    (set! advance true)
+    iter)
   AutoCloseable
   (close [_]
-    (when-not completed
-      (rf nil))
     (.close ^AutoCloseable iter)))
+
+(defn- kv-iterable
+  "Returns an iterable whose iterators return the kv iterator itself, positioned
+  at successive entries starting with `start-key`."
+  [snapshot column-family start-key]
+  (reify Iterable
+    (iterator [_]
+      (let [iter (kv/new-iterator snapshot column-family)]
+        (kv/seek! iter (bs/to-byte-array start-key))
+        (->KvEntryIterator iter false)))))
 
 (defn- coll
   ([snapshot column-family xform]
@@ -249,11 +244,7 @@
        (.reduce coll coll/inc-rf 0))
      Iterable
      (iterator [_]
-       (let [iter (kv/new-iterator snapshot column-family)
-             buffer (ArrayDeque.)
-             rf (xform (fn ([r] r) ([r x] (.add buffer x) r)))]
-         (kv/seek! iter (bs/to-byte-array start-key))
-         (->CollIterator rf iter buffer false))))))
+       (.iterator ^Iterable (coll/eduction xform (kv-iterable snapshot column-family start-key)))))))
 
 (defn- coll-prev [snapshot column-family xform start-key]
   (reify IReduceInit
