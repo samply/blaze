@@ -18,6 +18,10 @@
   :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
   :ret boolean?)
 
+(s/fdef coll/count-reducible
+  :args (s/cat :coll #(instance? IReduceInit %))
+  :ret nat-int?)
+
 (s/fdef coll/eduction
   :args (s/cat :xform ifn? :coll any?))
 

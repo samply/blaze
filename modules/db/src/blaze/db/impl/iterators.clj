@@ -231,7 +231,7 @@
          (reduce-iter! iter kv/next! (xform (completing rf)) init)))
      Counted
      (count [coll]
-       (.reduce coll coll/inc-rf 0))))
+       (coll/count-reducible coll))))
   ([snapshot column-family xform start-key]
    (reify
      IReduceInit
@@ -241,7 +241,7 @@
          (reduce-iter! iter kv/next! (xform (completing rf)) init)))
      Counted
      (count [coll]
-       (.reduce coll coll/inc-rf 0))
+       (coll/count-reducible coll))
      Iterable
      (iterator [_]
        (.iterator ^Iterable (coll/eduction xform (kv-iterable snapshot column-family start-key)))))))

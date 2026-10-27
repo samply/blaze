@@ -303,6 +303,13 @@
     [::x] 1
     [::x ::y] 2))
 
+(deftest count-reducible-test
+  (are [coll n] (= n (coll/count-reducible coll))
+    [] 0
+    [::x] 1
+    [::x ::y] 2
+    (coll/eduction (filter odd?) (range 10)) 5))
+
 (deftest nth-test
   (are [coll n x] (and (= x (coll/nth coll n))
                        (= x (apply coll/nth coll [n])))
