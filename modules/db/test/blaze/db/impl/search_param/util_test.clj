@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.util-test
   (:refer-clojure :exclude [hash])
   (:require
+   [blaze.coll.core :as coll]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle-spec]
    [blaze.db.impl.index.single-version-id :as svi]
@@ -147,3 +148,37 @@
                 [(svi/single-version-id id-0 hash)
                  (svi/single-version-id id-1 hash)])
                id-0))))))
+
+(deftest distinct-by-id-test
+  (testing "empty input"
+    (is (empty? (into [] u/distinct-by-id []))))
+
+  (testing "distinct ids are kept in order"
+    (is (= [{:id "1"} {:id "0"}]
+           (into [] u/distinct-by-id [{:id "1"} {:id "0"}]))))
+
+  (testing "only the first one of the same id is kept"
+    (is (= [{:id "0" :t 1} {:id "1" :t 1}]
+           (into [] u/distinct-by-id [{:id "0" :t 1} {:id "1" :t 1}
+                                      {:id "0" :t 2}]))))
+
+  (testing "each reduction starts with no ids seen"
+    (let [coll (coll/eduction u/distinct-by-id [{:id "0"} {:id "0"}])]
+      (testing "reduce"
+        (is (= [{:id "0"}] (into [] coll)))
+        (is (= [{:id "0"}] (into [] coll))))
+
+      (testing "iterator"
+        (is (= [{:id "0"}] (seq coll)))
+        (is (= [{:id "0"}] (seq coll))))))
+
+  (testing "init delegates to the reducing function"
+    (is (= [] ((u/distinct-by-id conj)))))
+
+  (testing "works with reduced values"
+    (is (= {:id "0"}
+           (transduce
+            u/distinct-by-id
+            (completing (fn [_ x] (reduced x)))
+            nil
+            [{:id "0"} {:id "1"}])))))

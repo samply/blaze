@@ -15,6 +15,7 @@
    [clojure.string :as str])
   (:import
    [blaze.db.impl.index ByIdGrouper]
+   [java.util HashSet]
    [org.apache.commons.codec.language Soundex]))
 
 (set! *warn-on-reflection* true)
@@ -163,3 +164,20 @@
 
 (defn drop-while-not-start-id [start-id]
   (drop-while #(not= start-id (:id %))))
+
+(def distinct-by-id
+  "A stateful transducer which removes resource handles with an id it has
+  already seen.
+
+  Removes the same resource handles as `distinct` for resource handles of a
+  single type, because each id has only one current version. Uses a mutable
+  set, so that each reduction has to stay on one thread."
+  (fn [rf]
+    (let [seen (HashSet.)]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result resource-handle]
+         (if (.add seen (:id resource-handle))
+           (rf result resource-handle)
+           result))))))
