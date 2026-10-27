@@ -7,17 +7,17 @@
 # make test) depend on. This installs them, pinning the tool versions used by
 # CI (.github/workflows/build.yml and .github/scripts/install-actionlint.sh).
 #
-# In the remote sandbox all github.com traffic goes through a GitHub proxy that
-# is scoped to the repositories granted to the session, so GitHub release
-# assets of other repositories are not downloadable (403 before the redirect to
-# the signed release-assets.githubusercontent.com URL is ever issued). Hosts
-# other than github.com / api.github.com / codeload.github.com are not scoped
-# by that proxy, so every tool is installed from such a source:
+# Depending on the environment, github.com traffic may go through a GitHub
+# proxy that is scoped to the repositories granted to the session, so GitHub
+# release assets of other repositories are not reliably downloadable. Most
+# tools are therefore installed from sources other than github.com:
 #
 # * Eclipse Temurin JDK: Adoptium apt repository (packages.adoptium.net)
 # * Clojure CLI: official tools tarball from download.clojure.org
-# * clj-kondo: native binary extracted from the official Docker image on
-#   Docker Hub (registry-1.docker.io)
+# * clj-kondo: native binary from the official GitHub release zip, verified
+#   against the release's .sha256 asset; falls back to extracting it from the
+#   official Docker image on Docker Hub (registry-1.docker.io), whose anonymous
+#   pulls are rate limited (HTTP 429) on shared egress IPs
 # * cljfmt: native binary from the Homebrew bottle on ghcr.io
 # * actionlint: native binary from the Homebrew bottle on ghcr.io
 # * rlwrap, ShellCheck: Ubuntu apt archive
@@ -105,24 +105,42 @@ install_clojure_cli() {
   return ${status}
 }
 
+# Downloads the linux/amd64 clj-kondo release zip from GitHub and verifies it
+# against the SHA-256 checksum published as a separate release asset.
+install_clj_kondo_from_github() {
+  local tmp url status
+  url="https://github.com/clj-kondo/clj-kondo/releases/download/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-amd64.zip"
+  tmp="$(mktemp -d)" || return 1
+  curl -sSfL -o "${tmp}/clj-kondo.zip" "${url}" &&
+    curl -sSfL -o "${tmp}/clj-kondo.zip.sha256" "${url}.sha256" &&
+    echo "$(cat "${tmp}/clj-kondo.zip.sha256")  ${tmp}/clj-kondo.zip" | sha256sum -c --quiet &&
+    unzip -q "${tmp}/clj-kondo.zip" clj-kondo -d "${tmp}" &&
+    install -m 0755 "${tmp}/clj-kondo" "${BIN_DIR}/clj-kondo"
+  status=$?
+  rm -rf "${tmp}"
+  return ${status}
+}
+
 # Extracts the clj-kondo binary from the linux/amd64 variant of the official
-# cljkondo/clj-kondo Docker image, pulled directly via the registry API.
-install_clj_kondo() {
+# cljkondo/clj-kondo Docker image, pulled directly via the registry API. The
+# requests are retried, because curl treats the HTTP 429 of the rate limit as
+# a transient error.
+install_clj_kondo_from_docker_hub() {
   local tmp token digest layers layer status=1
   tmp="$(mktemp -d)" || return 1
-  if token="$(curl -sf "https://auth.docker.io/token?service=registry.docker.io&scope=repository:cljkondo/clj-kondo:pull" |
+  if token="$(curl -sf --retry 3 "https://auth.docker.io/token?service=registry.docker.io&scope=repository:cljkondo/clj-kondo:pull" |
     jq -re .token)" &&
-    digest="$(curl -sf -H "Authorization: Bearer ${token}" \
+    digest="$(curl -sf --retry 3 -H "Authorization: Bearer ${token}" \
       -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json" \
       "https://registry-1.docker.io/v2/cljkondo/clj-kondo/manifests/${CLJ_KONDO_VERSION}" |
       jq -re 'first(.manifests[] | select(.platform.architecture == "amd64" and .platform.os == "linux")).digest')" &&
-    layers="$(curl -sf -H "Authorization: Bearer ${token}" \
+    layers="$(curl -sf --retry 3 -H "Authorization: Bearer ${token}" \
       -H "Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json" \
       "https://registry-1.docker.io/v2/cljkondo/clj-kondo/manifests/${digest}" |
       jq -re '.layers[].digest')"; then
     # The binary sits in one of the image layers, most likely the last one.
     for layer in $(printf '%s\n' "${layers}" | tac); do
-      if curl -sfL -H "Authorization: Bearer ${token}" -o "${tmp}/layer.tar.gz" \
+      if curl -sfL --retry 3 -H "Authorization: Bearer ${token}" -o "${tmp}/layer.tar.gz" \
         "https://registry-1.docker.io/v2/cljkondo/clj-kondo/blobs/${layer}" &&
         tar -xzf "${tmp}/layer.tar.gz" -C "${tmp}" usr/bin/clj-kondo 2>/dev/null; then
         break
@@ -229,9 +247,13 @@ fi
 
 # clj-kondo (used by `make lint`).
 if ! command -v clj-kondo >/dev/null 2>&1; then
-  echo "Installing clj-kondo ${CLJ_KONDO_VERSION} from Docker Hub..."
-  install_clj_kondo ||
-    warn "could not install clj-kondo (make lint unavailable)"
+  echo "Installing clj-kondo ${CLJ_KONDO_VERSION} from GitHub releases..."
+  install_clj_kondo_from_github || {
+    warn "could not install clj-kondo from GitHub releases; trying Docker Hub"
+    install_clj_kondo_from_docker_hub
+  } || warn "could not install clj-kondo from Docker Hub"
+  command -v clj-kondo >/dev/null 2>&1 ||
+    warn "clj-kondo is not on PATH (make lint and the pre-commit hook unavailable)"
 else
   echo "clj-kondo already installed: $(clj-kondo --version 2>&1)"
 fi
