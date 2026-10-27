@@ -7873,6 +7873,49 @@
         count := 1
         [0 :id] := "1"))))
 
+(deftest type-query-date-multiple-values-start-id-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Goal :id "0"
+             :target [{:fhir/type :fhir.Goal/target
+                       :due #fhir/date #system/date "2020-01-15"}]}]
+      [:put {:fhir/type :fhir/Goal :id "1"
+             :target [{:fhir/type :fhir.Goal/target
+                       :due #fhir/date #system/date "2010-05-01"}
+                      {:fhir/type :fhir.Goal/target
+                       :due #fhir/date #system/date "2020-06-15"}]}]
+      [:put {:fhir/type :fhir/Goal :id "2"
+             :target [{:fhir/type :fhir.Goal/target
+                       :due #fhir/date #system/date "2020-12-01"}]}]
+      [:put {:fhir/type :fhir/Goal :id "3"
+             :target [{:fhir/type :fhir.Goal/target
+                       :due #fhir/date #system/date "2015-03-01"}]}]]]
+
+    (doseq [[value ids]
+            [["2020" ["0" "1" "2"]]
+             ["ne2010-05-01" ["3" "0" "1" "2"]]
+             ["sa2019" ["0" "1" "2"]]
+             ["ge2000" ["1" "3" "0" "2"]]
+             ["ge2020" ["0" "1" "2"]]
+             ["gt2019" ["0" "1" "2"]]
+             ["ap2020" ["0" "1" "2"]]
+             ["lt2021" ["2" "1" "0" "3"]]
+             ["le2016" ["1" "3"]]
+             ["eb2016" ["1" "3"]]]]
+      (testing value
+        (let [clauses [["target-date" value]]]
+          (is (= ids (mapv :id (pull-type-query node "Goal" clauses))))
+
+          (doseq [start-id ids]
+            (testing (str "starting with Goal " start-id " continues the full result")
+              (is (= (drop-while #(not= start-id %) ids)
+                     (mapv :id (pull-type-query node "Goal" clauses start-id)))))))))
+
+    (testing "starting with a non-matching Goal returns an empty collection"
+      (is (empty? (pull-type-query node "Goal" [["target-date" "ge2020"]] "3"))))
+
+    (testing "starting with a non-existing Goal returns an empty collection"
+      (is (empty? (pull-type-query node "Goal" [["target-date" "ge2020"]] "4"))))))
+
 (deftest type-query-date-encounter-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Encounter :id "E1"

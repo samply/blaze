@@ -51,29 +51,20 @@
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "date")))
 
-(defn- resource-value
-  "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash`."
-  {:arglists '([batch-db c-hash tid id])}
-  [{:keys [snapshot] :as batch-db} c-hash tid id]
-  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash))
-
 (defn- all-keys
   "Returns a reducible collection of `[value single-version-id]` tuples of the
-  whole range prefixed with `c-hash` and `tid` starting with `start-id`
-  (optional)."
+  whole range prefixed with `c-hash` and `tid` starting with `start-value` and
+  `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid]
    (sp-vr/all-keys snapshot c-hash tid))
-  ([{:keys [snapshot] :as batch-db} c-hash tid start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id)]
-     (sp-vr/all-keys snapshot c-hash tid start-value start-id))))
+  ([{:keys [snapshot]} c-hash tid start-value start-id]
+   (sp-vr/all-keys snapshot c-hash tid start-value start-id)))
 
 (defn- all-keys-prev
   ([{:keys [snapshot]} c-hash tid]
    (sp-vr/all-keys-prev snapshot c-hash tid))
-  ([{:keys [snapshot] :as batch-db} c-hash tid start-id]
-   (sp-vr/all-keys-prev snapshot c-hash tid (resource-value batch-db c-hash tid start-id)
-                        start-id)))
+  ([{:keys [snapshot]} c-hash tid start-value start-id]
+   (sp-vr/all-keys-prev snapshot c-hash tid start-value start-id)))
 
 (def ^:private drop-value
   (map #(nth % 1)))
@@ -98,7 +89,7 @@
 (defn- eq-handles
   "Returns a reducible collection of index handles of all keys were the
   parameter value interval `[param-lb param-ub]` fully contains the resource
-  value interval starting at `start-id` (optional)."
+  value interval starting at `start-value` and `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (eq-stop param-ub)
@@ -106,13 +97,13 @@
           drop-value
           u/by-id-grouper)
     (sp-vr/prefix-keys-value snapshot c-hash tid param-lb)))
-  ([batch-db c-hash tid _param-lb param-ub start-id]
+  ([batch-db c-hash tid param-ub start-value start-id]
    (coll/eduction
     (comp (eq-stop param-ub)
           (eq-filter param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- not-equal? [value param-lb param-ub]
   (not (equal? value param-lb param-ub)))
@@ -130,12 +121,12 @@
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-lb param-ub start-id]
+  ([batch-db c-hash tid param-lb param-ub start-value start-id]
    (coll/eduction
     (comp (ne-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- greater-than? [param-ub value]
   (bs/< param-ub (codec-date/upper-bound-bytes value)))
@@ -148,19 +139,19 @@
 (defn- gt-handles
   "Returns a reducible collection of index handles of all keys with overlapping
   date/time intervals with the interval specified by `param-ub` and an infinite
-  upper bound starting at `start-id` (optional)."
+  upper bound starting at `start-value` and `start-id` (optional)."
   ([batch-db c-hash tid param-ub]
    (coll/eduction
     (comp (gt-filter param-ub)
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-ub start-id]
+  ([batch-db c-hash tid param-ub start-value start-id]
    (coll/eduction
     (comp (gt-filter param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- less-than? [value param-lb]
   (bs/< (codec-date/lower-bound-bytes value) param-lb))
@@ -168,17 +159,17 @@
 (defn- lt-handles
   "Returns a reducible collection of index handles of all keys with overlapping
   date/time intervals with the interval specified by an infinite lower bound and
-  `param-lb` starting at `start-id` (optional)."
+  `param-lb` starting at `start-value` and `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid param-lb]
    (coll/eduction
     (comp drop-value
           u/by-id-grouper)
     (sp-vr/prefix-keys-value-prev snapshot c-hash tid param-lb)))
-  ([batch-db c-hash tid _param-lb start-id]
+  ([batch-db c-hash tid start-value start-id]
    (coll/eduction
     (comp drop-value
           u/by-id-grouper)
-    (all-keys-prev batch-db c-hash tid start-id))))
+    (all-keys-prev batch-db c-hash tid start-value start-id))))
 
 (defn- greater-equal?
   "The range above the parameter value intersects (i.e. overlaps) with the range
@@ -196,19 +187,19 @@
 (defn- ge-handles
   "Returns a reducible collection of index handles of all keys with overlapping
   date/time intervals with the interval specified by `param-lb` and an infinite
-  upper bound starting at `start-id` (optional)."
+  upper bound starting at `start-value` and `start-id` (optional)."
   ([batch-db c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (ge-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-lb param-ub start-id]
+  ([batch-db c-hash tid param-lb param-ub start-value start-id]
    (coll/eduction
     (comp (ge-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- less-equal? [value param-lb param-ub]
   (or (bs/<= (codec-date/lower-bound-bytes value) param-lb)
@@ -222,19 +213,19 @@
 (defn- le-handles
   "Returns a reducible collection of index handles of all keys with overlapping
   date/time intervals with the interval specified by an infinite lower bound and
-  `param-ub` starting at `start-id` (optional)."
+  `param-ub` starting at `start-value` and `start-id` (optional)."
   ([batch-db c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (le-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-lb param-ub start-id]
+  ([batch-db c-hash tid param-lb param-ub start-value start-id]
    (coll/eduction
     (comp (le-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- starts-after? [param-ub value]
   (bs/<= param-ub (codec-date/lower-bound-bytes value)))
@@ -246,11 +237,11 @@
     (comp drop-value
           u/by-id-grouper)
     (sp-vr/prefix-keys-value snapshot c-hash tid param-ub)))
-  ([batch-db c-hash tid _param-ub start-id]
+  ([batch-db c-hash tid start-value start-id]
    (coll/eduction
     (comp drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- ends-before? [value param-lb]
   (bs/<= (codec-date/upper-bound-bytes value) param-lb))
@@ -268,12 +259,12 @@
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-lb start-id]
+  ([batch-db c-hash tid param-lb start-value start-id]
    (coll/eduction
     (comp (eb-filter param-lb)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
 
 (defn- approximately?
   "Returns true if the interval `v` overlaps with the interval `q`."
@@ -292,19 +283,67 @@
 (defn- ap-handles
   "Returns a reducible collection of index handles of all keys with overlapping
   date/time intervals with the interval specified by `param-lb` and `param-ub`
-  starting at `start-id` (optional)."
+  starting at `start-value` and `start-id` (optional)."
   ([batch-db c-hash tid param-lb param-ub]
    (coll/eduction
     (comp (ap-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
     (all-keys batch-db c-hash tid)))
-  ([batch-db c-hash tid param-lb param-ub start-id]
+  ([batch-db c-hash tid param-lb param-ub start-value start-id]
    (coll/eduction
     (comp (ap-filter param-lb param-ub)
           drop-value
           u/by-id-grouper)
-    (all-keys batch-db c-hash tid start-id))))
+    (all-keys batch-db c-hash tid start-value start-id))))
+
+(defn- matches?
+  "Returns true if the resource `value` matches the `compiled-value`."
+  [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
+  (case op
+    :eq (equal? value param-lb param-ub)
+    :ne (not-equal? value param-lb param-ub)
+    :gt (greater-than? param-ub value)
+    :lt (less-than? value param-lb)
+    :ge (greater-equal? param-lb param-ub value)
+    :le (less-equal? value param-lb param-ub)
+    :sa (starts-after? param-ub value)
+    :eb (ends-before? value param-lb)
+    :ap (approximately? value param-lb param-ub)))
+
+(defn- first-value
+  "Returns the value of the resource with `tid` and `id` according to the
+  search parameter with `c-hash` the scan for `compiled-value` finds the
+  resource with first or nil if there is none.
+
+  Resources can have more than one value per search parameter. The scan finds
+  the resource with the first value matching `compiled-value` in scan order.
+  The scan of the `lt` operator is in reverse order, so it finds the resource
+  with the last matching value."
+  [{:keys [snapshot] :as batch-db} c-hash tid id {:keys [op] :as compiled-value}]
+  (when-let [{:keys [hash-prefix]} (p/-resource-handle batch-db tid id)]
+    (let [values (coll/eduction
+                  (filter #(matches? % compiled-value))
+                  (r-sp-v/prefix-keys snapshot tid id hash-prefix c-hash))]
+      (if (identical? :lt op)
+        (reduce (fn [_ value] value) nil values)
+        (coll/first values)))))
+
+(defn- remove-found-before-start
+  "Returns a stateful transducer which removes index handles of resources found
+  before the scan position of `start-value` and `start-id`.
+
+  Resources with more than one value matching `compiled-value` are found again
+  at their later values. Starting the scan at `start-value` and `start-id`
+  skips their first values, so their later values have to be removed."
+  [batch-db c-hash tid {:keys [op] :as compiled-value} start-value start-id]
+  (let [start-key (sp-vr/encode-seek-key c-hash tid start-value start-id)
+        before? (if (identical? :lt op) bs/> bs/<)]
+    (remove
+     (fn [index-handle]
+       (let [id (ih/id index-handle)]
+         (when-let [value (first-value batch-db c-hash tid id compiled-value)]
+           (before? (sp-vr/encode-seek-key c-hash tid value id) start-key)))))))
 
 (defn- index-handles
   "Returns a reducible collection of index handles."
@@ -321,49 +360,34 @@
      :eb (eb-handles batch-db c-hash tid param-lb)
      :ap (ap-handles batch-db c-hash tid param-lb param-ub)))
   ([batch-db c-hash tid
-    {:keys [op] param-lb :lower-bound param-ub :upper-bound}
+    {:keys [op] param-lb :lower-bound param-ub :upper-bound :as compiled-value}
     start-id]
-   (case op
-     :eq (eq-handles batch-db c-hash tid param-lb param-ub start-id)
-     :ne (ne-handles batch-db c-hash tid param-lb param-ub start-id)
-     :gt (gt-handles batch-db c-hash tid param-ub start-id)
-     :lt (lt-handles batch-db c-hash tid param-lb start-id)
-     :ge (ge-handles batch-db c-hash tid param-lb param-ub start-id)
-     :le (le-handles batch-db c-hash tid param-lb param-ub start-id)
-     :sa (sa-handles batch-db c-hash tid param-ub start-id)
-     :eb (eb-handles batch-db c-hash tid param-lb start-id)
-     :ap (ap-handles batch-db c-hash tid param-lb param-ub start-id))))
+   (if-let [start-value (first-value batch-db c-hash tid start-id compiled-value)]
+     (coll/eduction
+      (remove-found-before-start batch-db c-hash tid compiled-value start-value
+                                 start-id)
+      (case op
+        :eq (eq-handles batch-db c-hash tid param-ub start-value start-id)
+        :ne (ne-handles batch-db c-hash tid param-lb param-ub start-value start-id)
+        :gt (gt-handles batch-db c-hash tid param-ub start-value start-id)
+        :lt (lt-handles batch-db c-hash tid start-value start-id)
+        :ge (ge-handles batch-db c-hash tid param-lb param-ub start-value start-id)
+        :le (le-handles batch-db c-hash tid param-lb param-ub start-value start-id)
+        :sa (sa-handles batch-db c-hash tid start-value start-id)
+        :eb (eb-handles batch-db c-hash tid param-lb start-value start-id)
+        :ap (ap-handles batch-db c-hash tid param-lb param-ub start-value start-id)))
+     [])))
 
 (defn- matcher [{:keys [snapshot]} c-hash values]
   (r-sp-v/value-filter
    snapshot (r-sp-v/resource-handle-search-param-encoder c-hash)
-   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-     (case op
-       :eq (equal? value param-lb param-ub)
-       :ne (not-equal? value param-lb param-ub)
-       :gt (greater-than? param-ub value)
-       :lt (less-than? value param-lb)
-       :ge (greater-equal? param-lb param-ub value)
-       :le (less-equal? value param-lb param-ub)
-       :sa (starts-after? param-ub value)
-       :eb (ends-before? value param-lb)
-       :ap (approximately? value param-lb param-ub)))
+   matches?
    values))
 
 (defn- single-version-id-matcher [{:keys [snapshot]} tid c-hash compiled-values]
   (r-sp-v/value-filter
    snapshot (r-sp-v/single-version-id-search-param-encoder tid c-hash)
-   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-     (case op
-       :eq (equal? value param-lb param-ub)
-       :ne (not-equal? value param-lb param-ub)
-       :gt (greater-than? param-ub value)
-       :lt (less-than? value param-lb)
-       :ge (greater-equal? param-lb param-ub value)
-       :le (less-equal? value param-lb param-ub)
-       :sa (starts-after? param-ub value)
-       :eb (ends-before? value param-lb)
-       :ap (approximately? value param-lb param-ub)))
+   matches?
    compiled-values))
 
 (defn- invalid-date-time-value-msg [value]
