@@ -3,7 +3,7 @@
   (:require
    [clojure.core.protocols])
   (:import
-   [blaze.coll IntersectionIterator PartitionAll UnionIterator]
+   [blaze.coll Counter IntersectionIterator PartitionAll UnionIterator]
    [clojure.lang Counted IReduceInit Indexed Sequential]
    [java.lang AutoCloseable]
    [java.util ArrayDeque Iterator Queue]))
@@ -26,7 +26,12 @@
   [coll]
   (identical? ::empty (reduce #(reduced %2) ::empty coll)))
 
-(defn inc-rf [sum _] (inc (long sum)))
+(defn count-reducible
+  "Returns the number of items of the reducible `coll`.
+
+  Counts in a primitive long, so it doesn't allocate per item."
+  [^IReduceInit coll]
+  (Counter/count coll))
 
 (deftype TransformerIterator [rf ^Iterator iter ^Queue buffer ^:volatile-mutable completed]
   Iterator
@@ -78,7 +83,7 @@
       (transduce xform (completing f) init coll))
     Counted
     (count [coll]
-      (.reduce coll inc-rf 0))
+      (count-reducible coll))
     Iterable
     (iterator [_]
       (let [buffer (ArrayDeque.)
@@ -158,7 +163,7 @@
          (reduce rf# init# ~coll)))
      Counted
      (count [coll#]
-       (.reduce coll# inc-rf 0))))
+       (count-reducible coll#))))
 
 (defn intersection
   "Returns a reducible and iterable collection of the intersection of `colls`.
@@ -180,7 +185,7 @@
          (clojure.core.protocols/iterator-reduce! iter rf init)))
      Counted
      (count [coll]
-       (.reduce coll inc-rf 0))
+       (count-reducible coll))
      Iterable
      (iterator [_]
        (IntersectionIterator. comparator merge (.iterator ^Iterable c1)
@@ -217,7 +222,7 @@
          (clojure.core.protocols/iterator-reduce! iter rf init)))
      Counted
      (count [coll]
-       (.reduce coll inc-rf 0))
+       (count-reducible coll))
      Iterable
      (iterator [_]
        (UnionIterator. comparator merge (.iterator ^Iterable c1)
