@@ -8,6 +8,7 @@
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.single-version-id :as svi]
    [blaze.db.impl.protocols :as p]
    [blaze.fhir.util :as fu]
@@ -52,6 +53,16 @@
   (when-let [handle (p/-resource-handle batch-db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
+
+(defn resource-value
+  "Returns the value of the resource with `tid` and `id` according to the
+  search parameter with `c-hash` starting with `prefix`.
+
+  The `prefix` is important, because resources can have more than one value per
+  search parameter and only values starting with `prefix` match."
+  [{:keys [snapshot] :as batch-db} c-hash tid id prefix]
+  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash
+                     (bs/size prefix) prefix))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives index handles and emits resource

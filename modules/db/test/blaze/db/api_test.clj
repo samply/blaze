@@ -3194,6 +3194,58 @@
               count := 1
               [0 :id] := "2"))))))
 
+  (testing "Patient name with start-id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :name [#fhir/HumanName{:family #fhir/string "Frank"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :name [#fhir/HumanName{:family #fhir/string "Fred"
+                                      :given [#fhir/string "Bob"]}]}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :name [#fhir/HumanName{:family #fhir/string "Fritz"}]}]
+        [:put {:fhir/type :fhir/Patient :id "3"
+               :name [#fhir/HumanName{:family #fhir/string "Bobby"}]}]]]
+
+      (let [clauses [["name" "fr"]]]
+        (given-type-query node "Patient" clauses
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2")))))
+
+  (testing "Patient name with start-id having several matching values"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :name [#fhir/HumanName{:family #fhir/string "Fra"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :name [#fhir/HumanName{:family #fhir/string "Fred"
+                                      :given [#fhir/string "Frank"]}]}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :name [#fhir/HumanName{:family #fhir/string "Frieda"}]}]
+        [:put {:fhir/type :fhir/Patient :id "3"
+               :name [#fhir/HumanName{:family #fhir/string "Franz"}]}]]]
+
+      (let [clauses [["name" "fr"]]]
+        (given-type-query node "Patient" clauses
+          count := 4
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "3"
+          [3 :id] := "2")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" clauses "1")
+            count := 3
+            [0 :id] := "1"
+            [1 :id] := "3"
+            [2 :id] := "2")))))
+
   (testing "Patient phonetic"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"

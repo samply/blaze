@@ -55,23 +55,16 @@
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "string")))
 
-(defn- resource-value
-  "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash`."
-  {:arglists '([batch-db c-hash tid id])}
-  [{:keys [snapshot] :as batch-db} c-hash tid id]
-  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash))
-
 (defn- index-handles
-  "Returns a reducible collection of index handles starting at `start-id`
-  (optional)."
+  "Returns a reducible collection of index handles of values starting with
+  `value` starting at `start-id` (optional)."
   {:arglists '([batch-db c-hash tid value] [batch-db c-hash tid value start-id])}
   ([{:keys [snapshot]} c-hash tid value]
    (sp-vr/index-handles snapshot c-hash tid (bs/size value) value))
-  ([{:keys [snapshot] :as batch-db} c-hash tid _value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id)]
+  ([{:keys [snapshot] :as batch-db} c-hash tid value start-id]
+   (let [start-value (u/resource-value batch-db c-hash tid start-id value)]
      (assert start-value)
-     (sp-vr/index-handles snapshot c-hash tid (bs/size start-value) start-value
+     (sp-vr/index-handles snapshot c-hash tid (bs/size value) start-value
                           start-id))))
 
 (defrecord SearchParamString [name type base code c-hash expression normalize]
