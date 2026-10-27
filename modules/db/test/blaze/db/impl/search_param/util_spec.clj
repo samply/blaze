@@ -23,6 +23,10 @@
   :args (s/cat :rf ifn?)
   :ret ifn?)
 
+(s/fdef u/distinct-by-id
+  :args (s/cat :rf ifn?)
+  :ret ifn?)
+
 (s/fdef u/reference-resource-handle-mapper
   :args (s/cat :batch-db :blaze.db.impl/batch-db))
 

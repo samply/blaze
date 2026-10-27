@@ -285,14 +285,14 @@
   ([batch-db tid [first-clause & other-clauses :as clauses]]
    (coll/eduction
     (comp (resource-handle-mapper batch-db tid clauses other-clauses)
-          (distinct))
+          u/distinct-by-id)
     (index-handles batch-db tid first-clause)))
   ([batch-db tid [first-clause & other-clauses :as clauses] start-id]
    (if (and (= 1 (count first-clause))
             (= 1 (count (peek (first first-clause)))))
      (coll/eduction
       (comp (resource-handle-mapper batch-db tid clauses other-clauses)
-            (distinct))
+            u/distinct-by-id)
       (index-handles* batch-db tid (first first-clause) start-id))
      (coll/eduction
       (u/drop-while-not-start-id start-id)
@@ -306,7 +306,7 @@
    (if sort-clause
      (coll/eduction
       (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
-            (distinct))
+            u/distinct-by-id)
       (sorted-index-handles batch-db tid sort-clause))
      (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
        (if (seq scan-clauses)
@@ -316,7 +316,7 @@
    (if sort-clause
      (coll/eduction
       (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
-            (distinct)
+            u/distinct-by-id
             (u/drop-while-not-start-id start-id))
       (sorted-index-handles batch-db tid sort-clause start-id))
      (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]

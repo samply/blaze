@@ -82,7 +82,7 @@
   (coll/eduction
    (comp (mapcat #(p/-index-handles search-param batch-db ref-tid modifier %))
          (u/resource-handle-xf batch-db ref-tid)
-         (distinct))
+         u/distinct-by-id)
    compiled-values))
 
 (defn- compiled-ref-values
@@ -152,7 +152,7 @@
   (-index-handles [this batch-db tid modifier compiled-value start-id]
     (coll/eduction
      (comp (u/resource-handle-xf batch-db tid)
-           (distinct)
+           u/distinct-by-id
            (u/drop-while-not-start-id start-id)
            (map ih/from-resource-handle))
      (p/-index-handles this batch-db tid modifier compiled-value)))
