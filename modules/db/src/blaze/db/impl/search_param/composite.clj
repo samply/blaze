@@ -30,9 +30,23 @@
     (assoc component :expression expr)
     #(assoc % :expression expression)))
 
-(defn- compile-expressions [components]
+(defn- fix-expr
+  "The date component of `code-value-date` uses the type specifier `DateTime`
+  instead of the FHIR type `dateTime`.
+
+  https://github.com/samply/blaze/issues/4505"
+  [url {:keys [expression] :as component}]
+  (case url
+    "http://hl7.org/fhir/SearchParameter/Observation-code-value-date"
+    (cond-> component
+      (= "value.as(DateTime) | value.as(Period)" expression)
+      (assoc :expression "value.as(dateTime) | value.as(Period)"))
+    component))
+
+(defn- compile-expressions [url components]
   (transduce
-   (comp (map compile-expression)
+   (comp (map (partial fix-expr url))
+         (map compile-expression)
          (halt-when ba/anomaly?))
    conj
    components))
@@ -42,16 +56,16 @@
     (and (= "token" (:type (:search-param c1)))
          (#{"token" "quantity" "date"} (:type (:search-param c2))))))
 
-(defn- prepare-components [index components]
+(defn- prepare-components [index url components]
   (when-ok [components (resolve-search-params index components)]
     (if (supported? components)
-      (compile-expressions components)
+      (compile-expressions url components)
       {::anom/category ::anom/unsupported})))
 
 (defn- create-search-param
   [index {:keys [name url type base code] main-expression :expression
           components :component}]
-  (when-ok [components (prepare-components index components)]
+  (when-ok [components (prepare-components index url components)]
     (when-ok [main-expression (fhir-path/compile main-expression)]
       (let [[c1 c2] components]
         (case (:type (:search-param c2))

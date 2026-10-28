@@ -6161,6 +6161,71 @@
                   count := 1
                   [0 :id] := "id-1")))))))))
 
+(defn- observation-code-value [id status code value]
+  {:fhir/type :fhir/Observation :id id
+   :status (type/code status)
+   :code
+   (type/codeable-concept
+    {:coding
+     [(type/coding
+       {:system #fhir/uri "http://loinc.org"
+        :code (type/code code)})]})
+   :value value})
+
+(deftest type-query-observation-code-value-date-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put (observation-code-value
+             "0" "final" "21112-8"
+             #fhir/dateTime #system/date-time "1990-01-15")]
+      [:put (observation-code-value
+             "1" "final" "21112-8"
+             #fhir/Period
+              {:start #fhir/dateTime #system/date-time "2001-02-01"
+               :end #fhir/dateTime #system/date-time "2001-02-28"})]
+      [:put (observation-code-value
+             "2" "preliminary" "21112-8"
+             #fhir/dateTime #system/date-time "2005-06-01")]
+      [:put (observation-code-value
+             "3" "final" "8480-6"
+             #fhir/dateTime #system/date-time "1990-01-15")]
+      [:put (observation-code-value
+             "4" "final" "21112-8"
+             #fhir/Quantity
+              {:value #fhir/decimal 130M
+               :code #fhir/code "mm[Hg]"
+               :system #fhir/uri "http://unitsofmeasure.org"})]]]
+
+    (testing "as first clause"
+      (doseq [[value ids]
+              [["21112-8$1990" ["0"]]
+               ["http://loinc.org|21112-8$2001-02" ["1"]]
+               ["21112-8$ge2000" ["1" "2"]]
+               ["21112-8$lt2000" ["0"]]
+               ["8480-6$1990" ["3"]]
+               ["21112-8$2010" []]]]
+        (testing value
+          (let [clauses [["code-value-date" value]]]
+            (is (= ids (mapv :id (pull-type-query node "Observation" clauses))))
+            (is (= (count ids) (count-type-query node "Observation" clauses)))))))
+
+    (testing "as second clause"
+      (doseq [[value ids]
+              [["21112-8$1990" ["0"]]
+               ["http://loinc.org|21112-8$2001-02" ["1"]]
+               ["21112-8$ge2000" ["1"]]
+               ["21112-8$2005" []]]]
+        (testing value
+          (given-type-query node "Observation" [["status" "final"]
+                                                ["code-value-date" value]]
+            count := (count ids)
+            [(partial mapv :id)] := ids))))
+
+    (testing "with matcher"
+      (let [matcher @(d/compile-type-matcher node "Observation" [["code-value-date" "21112-8$ge2000"]])
+            db (d/db node)
+            xform (d/matcher-transducer db matcher)]
+        (is (= ["1" "2"] (mapv :id (into [] xform (d/type-list db "Observation")))))))))
+
 (deftest type-query-observation-code-value-concept-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Observation :id "0"

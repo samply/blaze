@@ -68,7 +68,7 @@ When searching for date/time with a search parameter value without timezone like
 
 Blaze supports composite search parameters with two components, where the first component is of type `token` and the second component is of type `token`, `quantity` or `date` <Badge type="warning" text="Since 1.13.0"/>. Search values combine both component values with a `$`, like in `http://loinc.org|8480-6$ge140|mm[Hg]` for `code-value-quantity`. The date component supports all prefixes of the `date` type, so a search value of `[token]$ge2024` finds resources having a value with the token and a date on or after 2024 in the same element. Composite search parameters with other component types are not supported.
 
-The standard search parameter `code-value-date` of Observation is not supported, because the FHIRPath expression of its date component can't be compiled.
+The standard search parameter `code-value-date` of Observation is supported <Badge type="warning" text="Since 1.13.0"/>. Observations stored with an earlier version of Blaze are only found by `code-value-date` after re-indexing the search parameter `http://hl7.org/fhir/SearchParameter/Observation-code-value-date` with the [(Re)Index a Search Parameter](../../frontend.md#job-system) job.
 
 ## Geopositional Search
 
