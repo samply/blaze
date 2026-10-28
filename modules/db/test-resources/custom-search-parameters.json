@@ -1,0 +1,67 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-code",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionCode",
+        "status": "active",
+        "code": "provision-provision-code",
+        "base": [
+          "Consent"
+        ],
+        "type": "token",
+        "expression": "Consent.provision.provision.code"
+      }
+    },
+    {
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-type",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-type",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-type",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionType",
+        "status": "active",
+        "code": "provision-provision-type",
+        "base": [
+          "Consent"
+        ],
+        "type": "token",
+        "expression": "Consent.provision.provision.type"
+      }
+    },
+    {
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code-type",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-code-type",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code-type",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionCodeType",
+        "status": "active",
+        "code": "provision-provision-code-type",
+        "base": [
+          "Consent"
+        ],
+        "type": "composite",
+        "expression": "Consent.provision.provision",
+        "component": [
+          {
+            "definition": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code",
+            "expression": "code"
+          },
+          {
+            "definition": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-type",
+            "expression": "type"
+          }
+        ]
+      }
+    }
+  ]
+}

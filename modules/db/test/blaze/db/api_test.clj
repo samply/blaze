@@ -29,6 +29,7 @@
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.metrics.core :as metrics]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
@@ -5081,6 +5082,153 @@
         count := 1
         [0 :fhir/type] := :fhir/Condition
         [0 :id] := "1"))))
+
+(def ^:private custom-search-param-config
+  (-> config
+      (dissoc ::dtu/search-param-registry)
+      (assoc-in [:blaze.db/node :search-param-registry]
+                (ig/ref :blaze.db/search-param-registry))
+      (assoc-in [::node/resource-indexer :search-param-registry]
+                (ig/ref :blaze.db/search-param-registry))
+      (assoc
+       :blaze.db/search-param-registry
+       {:structure-definition-repo structure-definition-repo
+        :terminology-service (ig/ref ::ts/not-available)
+        :extra-bundle-file "test-resources/custom-search-parameters.json"}
+       ::ts/not-available {})))
+
+(deftest type-query-consent-test
+  (let [nested-provision
+        {:fhir/type :fhir.Consent/provision
+         :provision
+         [{:fhir/type :fhir.Consent/provision
+           :type #fhir/code "permit"
+           :code
+           [#fhir/CodeableConcept
+             {:coding
+              [#fhir/Coding
+                {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+                 :code #fhir/code "2.16.840.1.113883.3.1937.777.24.5.3.6"}
+               #fhir/Coding
+                {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+                 :code #fhir/code "2.16.840.1.113883.3.1937.777.24.5.3.8"}]}]}]}]
+    (with-system-data [{:blaze.db/keys [node]} custom-search-param-config]
+      [[[:put {:fhir/type :fhir/Consent :id "0"
+               :provision nested-provision}]
+        [:put {:fhir/type :fhir/Consent :id "1"
+               :provision nested-provision}]
+        [:put {:fhir/type :fhir/Consent :id "2"
+               :provision
+               {:fhir/type :fhir.Consent/provision
+                :type #fhir/code "permit"
+                :code
+                [#fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+                      :code #fhir/code "2.16.840.1.113883.3.1937.777.24.5.3.8"}]}]}}]
+        [:put {:fhir/type :fhir/Consent :id "3"}]
+        [:put {:fhir/type :fhir/Consent :id "4"
+               :provision
+               {:fhir/type :fhir.Consent/provision
+                :provision
+                [{:fhir/type :fhir.Consent/provision
+                  :type #fhir/code "deny"
+                  :code
+                  [#fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+                        :code #fhir/code "2.16.840.1.113883.3.1937.777.24.5.3.8"}]}]}
+                 {:fhir/type :fhir.Consent/provision
+                  :type #fhir/code "permit"
+                  :code
+                  [#fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+                        :code #fhir/code "2.16.840.1.113883.3.1937.777.24.5.3.5"}]}]}]}}]]]
+
+      (testing "custom search param with expression Consent.provision.provision.code"
+        (testing "using code"
+          (given-type-query node "Consent" [["provision-provision-code" "2.16.840.1.113883.3.1937.777.24.5.3.8"]]
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "4")
+
+          (testing "it is possible to start with the second consent"
+            (given (pull-type-query node "Consent" [["provision-provision-code" "2.16.840.1.113883.3.1937.777.24.5.3.8"]] "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "4")))
+
+        (testing "using system|code"
+          (given-type-query node "Consent" [["provision-provision-code" "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3|2.16.840.1.113883.3.1937.777.24.5.3.8"]]
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "4")
+
+          (testing "it is possible to start with the second consent"
+            (given (pull-type-query node "Consent" [["provision-provision-code" "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3|2.16.840.1.113883.3.1937.777.24.5.3.8"]] "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "4")))
+
+        (testing "not matching code"
+          (given-type-query node "Consent" [["provision-provision-code" "2.16.840.1.113883.3.1937.777.24.5.3.7"]]
+            count := 0)))
+
+      (testing "custom search param with expression Consent.provision.provision.type"
+        (given-type-query node "Consent" [["provision-provision-type" "permit"]]
+          count := 3
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "4")
+
+        (testing "it is possible to start with the second consent"
+          (given (pull-type-query node "Consent" [["provision-provision-type" "permit"]] "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "4"))
+
+        (testing "deny"
+          (given-type-query node "Consent" [["provision-provision-type" "deny"]]
+            count := 1
+            [0 :id] := "4")))
+
+      (testing "custom composite search param of code and type"
+        (testing "using code"
+          (given-type-query node "Consent" [["provision-provision-code-type" "2.16.840.1.113883.3.1937.777.24.5.3.8$permit"]]
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
+
+          (testing "it is possible to start with the second consent"
+            (given (pull-type-query node "Consent" [["provision-provision-code-type" "2.16.840.1.113883.3.1937.777.24.5.3.8$permit"]] "1")
+              count := 1
+              [0 :id] := "1")))
+
+        (testing "using system|code"
+          (given-type-query node "Consent" [["provision-provision-code-type" "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3|2.16.840.1.113883.3.1937.777.24.5.3.8$permit"]]
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
+
+          (testing "it is possible to start with the second consent"
+            (given (pull-type-query node "Consent" [["provision-provision-code-type" "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3|2.16.840.1.113883.3.1937.777.24.5.3.8$permit"]] "1")
+              count := 1
+              [0 :id] := "1")))
+
+        (testing "code and type of the same provision"
+          (given-type-query node "Consent" [["provision-provision-code-type" "2.16.840.1.113883.3.1937.777.24.5.3.8$deny"]]
+            count := 1
+            [0 :id] := "4"))
+
+        (testing "code and type of different provisions don't match"
+          (given-type-query node "Consent" [["provision-provision-code-type" "2.16.840.1.113883.3.1937.777.24.5.3.5$deny"]]
+            count := 0))))))
 
 (deftest type-query-measure-report-test
   (with-system-data [{:blaze.db/keys [node]} config]
