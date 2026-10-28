@@ -65,6 +65,10 @@ Rigorous adherence to these patterns is required:
 
 * **Downloading search results:** In integration test scripts (`.github/scripts`, `.github/integration-test-*`), use `blazectl download` to fetch all resources matching a FHIR search — blazectl performs paging. Do **not** use `curl` with a large `_count` value, which silently truncates the result at one page.
 
+## Monitoring
+
+* **Dashboard:** Every new metric must be charted in the Grafana dashboard. Add a panel to the row of the component exporting the metric in `modules/monitoring/dashboard.edn` (not the generated JSON), with a description stating what the metric means and which values are expected, and update the panel and id counts in `modules/monitoring/test/blaze/monitoring/dashboard_test.clj`. A metric with labels exports no samples until its first use. If the integration test doesn't exercise it, add it with a comment to the allowlist in `.github/scripts/check-dashboard-metrics.sh`, so that the dashboard metrics check doesn't fail.
+
 ## Documentation
 
 * **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
