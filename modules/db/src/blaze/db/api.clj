@@ -601,8 +601,11 @@
 (defn new-batch-db
   "Returns a variant of this `db` which is optimized for batch processing.
 
-  The batch database has to be closed after usage, because it holds resources
-  that have to be freed."
+  The batch database can be used from several threads at once. It has to be
+  closed after usage, because it holds resources that have to be freed, but
+  only after all work using it is done. Lazy results have to be reduced and
+  futures using it have to be completed before closing it, because using the
+  batch database after close fails."
   ^AutoCloseable
   [db]
   (p/-new-batch-db db))

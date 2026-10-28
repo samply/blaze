@@ -12,7 +12,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]])
   (:import
-   [java.lang AutoCloseable]))
+   [blaze.db.kv KvCloseable]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -25,7 +25,7 @@
 (defn- iterator-counting-snapshot
   "Returns a pooling snapshot of `kv-store` that increments `num-iterators` for
   each iterator newly created because the pool had none available."
-  ^AutoCloseable
+  ^KvCloseable
   [kv-store num-iterators]
   (let [snapshot (kv-p/-new-snapshot kv-store)]
     (ip/pooling-snapshot
@@ -34,11 +34,9 @@
        (-new-iterator [_ column-family]
          (swap! num-iterators inc)
          (kv-p/-new-iterator snapshot column-family))
-       (-snapshot-get [_ column-family key]
-         (kv-p/-snapshot-get snapshot column-family key))
-       AutoCloseable
+       KvCloseable
        (close [_]
-         (.close ^AutoCloseable snapshot))))))
+         (.close ^KvCloseable snapshot))))))
 
 (defn- last-change-ts [snapshot t handles]
   (into

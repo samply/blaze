@@ -28,6 +28,7 @@
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
   (:import
+   [blaze.db.kv KvCloseable]
    [clojure.lang IDeref]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.lang AutoCloseable]
@@ -70,9 +71,9 @@
             (-seek-to-last [_])
             (-seek [_ _])
             (-valid [_] false)
-            AutoCloseable
+            KvCloseable
             (close [_])))
-        AutoCloseable
+        KvCloseable
         (close [_])))
     (-put [_ _]
       (throw (Exception. "put-error")))))

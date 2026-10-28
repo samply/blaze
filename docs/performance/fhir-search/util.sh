@@ -44,8 +44,7 @@ restart() {
     return
   fi
 
-  docker compose -f "$1" restart
-  sleep 30
+  docker compose -f "$1" up --force-recreate --wait
 }
 
 async-profiler-home() {
@@ -151,8 +150,7 @@ profile() {
   fi
 
   if [[ -n "${pending_restart:-}" ]]; then
-    docker compose -f "$pending_restart" restart
-    sleep 30
+    docker compose -f "$pending_restart" up --force-recreate --wait
     pending_restart=""
   fi
 

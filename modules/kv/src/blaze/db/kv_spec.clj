@@ -52,11 +52,6 @@
   :args (s/cat :snapshot ::kv/snapshot :column-family simple-keyword?)
   :ret ::kv/iterator)
 
-(s/fdef kv/snapshot-get
-  :args (s/cat :snapshot ::kv/snapshot :column-family simple-keyword?
-               :key bytes?)
-  :ret (s/nilable bytes?))
-
 (s/fdef kv/new-snapshot
   :args (s/cat :kv-store :blaze.db/kv-store)
   :ret ::kv/snapshot)

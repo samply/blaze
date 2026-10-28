@@ -23,6 +23,8 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
+   [blaze.db.kv KvCloseable]
+   [java.lang AutoCloseable]
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]))
 
@@ -570,17 +572,35 @@
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
 
-(deftest snapshot-get-test
+(deftest new-snapshot-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[:default (ba 0x00) (ba 0x01)]]
 
-    (with-open [snapshot (kv/new-snapshot db)]
+    (testing "snapshots and iterators can be closed without checked exceptions"
+      (with-open [snapshot (kv/new-snapshot db)
+                  iter (kv/new-iterator snapshot :default)]
+        (is (instance? KvCloseable snapshot))
+        (is (instance? KvCloseable iter))))
 
-      (testing "returns found value"
-        (is (bytes= (ba 0x01) (kv/snapshot-get snapshot :default (ba 0x00)))))
+    (testing "using a borrowed iterator after closing the snapshot throws a fault"
+      (let [snapshot (kv/new-snapshot db)
+            iter (kv/new-iterator snapshot :default)]
+        (.close ^AutoCloseable snapshot)
 
-      (testing "returns nil on not found value"
-        (is (nil? (kv/snapshot-get snapshot :default (ba 0x01))))))))
+        (given (ba/try-anomaly (kv/seek-to-first! iter))
+          ::anom/category := ::anom/fault
+          ::anom/message := "The snapshot is closed.")
+
+        (testing "closing the iterator afterwards doesn't throw"
+          (is (nil? (.close ^AutoCloseable iter))))))
+
+    (testing "borrowing an iterator after close throws a fault"
+      (let [snapshot (kv/new-snapshot db)]
+        (.close ^AutoCloseable snapshot)
+
+        (given (ba/try-anomaly (kv/new-iterator snapshot :default))
+          ::anom/category := ::anom/fault
+          ::anom/message := "The snapshot is closed.")))))
 
 (deftest get-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]

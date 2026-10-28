@@ -17,7 +17,7 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
-   [java.lang AutoCloseable]
+   [blaze.db.kv KvCloseable]
    [java.util Arrays Comparator]))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +51,7 @@
   (when-not (p/-valid iter)
     (throw-anom iterator-invalid-anom)))
 
-(deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
+(deftype MemKvIterator [db cursor ^:unsynchronized-mutable ^boolean closed?]
   p/KvIterator
   (-valid [_]
     (when closed? (throw-anom iterator-closed-anom))
@@ -109,9 +109,9 @@
     (check-valid iter)
     (put buf (val (@cursor :first))))
 
-  AutoCloseable
+  KvCloseable
   (close [_]
-    (set! closed? true)))
+    (set! closed? (boolean true))))
 
 (defn- column-family-not-found-msg [column-family]
   (format "Column family `%s` not found." (name column-family)))
@@ -126,10 +126,7 @@
       (->MemKvIterator db (atom {:rest (seq db)}) false)
       (throw-anom (column-family-not-found-anom column-family))))
 
-  (-snapshot-get [_ column-family k]
-    (some-> (get-in db [column-family k]) (copy)))
-
-  AutoCloseable
+  KvCloseable
   (close [_]))
 
 (defn- assoc-copy [m column-family k v]
@@ -167,7 +164,7 @@
     (->MemKvSnapshot @db))
 
   (-get [_ column-family k]
-    (kv/snapshot-get (->MemKvSnapshot @db) column-family k))
+    (some-> (get-in @db [column-family k]) (copy)))
 
   (-put [_ entries]
     (swap! db put-entries entries)
