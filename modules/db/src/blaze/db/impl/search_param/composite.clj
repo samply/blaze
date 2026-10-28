@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.search-param.composite.token-date :as td]
    [blaze.db.impl.search-param.composite.token-quantity :as tq]
    [blaze.db.impl.search-param.composite.token-token :as tt]
    [blaze.db.impl.search-param.core :as sc]
@@ -39,7 +40,7 @@
 (defn- supported? [[c1 c2 & more]]
   (when-not (seq more)
     (and (= "token" (:type (:search-param c1)))
-         (#{"token" "quantity"} (:type (:search-param c2))))))
+         (#{"token" "quantity" "date"} (:type (:search-param c2))))))
 
 (defn- prepare-components [index components]
   (when-ok [components (resolve-search-params index components)]
@@ -61,7 +62,11 @@
           "quantity"
           (tq/->SearchParamCompositeTokenQuantity name url type base code
                                                   (codec/c-hash code)
-                                                  main-expression c1 c2))))))
+                                                  main-expression c1 c2)
+          "date"
+          (td/->SearchParamCompositeTokenDate name url type base code
+                                              (codec/c-hash code)
+                                              main-expression c1 c2))))))
 
 (defn- handle-anomaly [{:keys [url type]} anomaly]
   (log/warn (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))

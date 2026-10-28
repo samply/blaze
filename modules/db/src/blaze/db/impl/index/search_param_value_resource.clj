@@ -145,6 +145,26 @@
    base-key-size
    (encode-seek-key c-hash tid value-prefix)))
 
+(defn- value-prefix-keys* [snapshot prefix-length start-key]
+  (i/prefix-keys
+   snapshot
+   :search-param-value-index
+   decode-value-single-version-id
+   (+ base-key-size (long prefix-length))
+   start-key))
+
+(defn value-prefix-keys
+  "Returns a reducible collection of decoded `[value single-version-id]` tuples
+  from keys starting at `start-value` and optional `start-id` and ending when
+  `prefix-length` bytes of `start-value` is no longer a prefix of the values
+  processed."
+  ([snapshot c-hash tid prefix-length start-value]
+   (value-prefix-keys* snapshot prefix-length
+                       (encode-seek-key c-hash tid start-value)))
+  ([snapshot c-hash tid prefix-length start-value start-id]
+   (value-prefix-keys* snapshot prefix-length
+                       (encode-seek-key c-hash tid start-value start-id))))
+
 (defn decode-single-version-id
   "Decodes a single-version-id from `buf`."
   [buf]

@@ -334,36 +334,30 @@
      :eb (eb-handles batch-db c-hash tid param-lb start-id)
      :ap (ap-handles batch-db c-hash tid param-lb param-ub start-id))))
 
+(defn matches?
+  "Returns true if the encoded date range `value` matches `compiled-value`."
+  [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
+  (case op
+    :eq (equal? value param-lb param-ub)
+    :ne (not-equal? value param-lb param-ub)
+    :gt (greater-than? param-ub value)
+    :lt (less-than? value param-lb)
+    :ge (greater-equal? param-lb param-ub value)
+    :le (less-equal? value param-lb param-ub)
+    :sa (starts-after? param-ub value)
+    :eb (ends-before? value param-lb)
+    :ap (approximately? value param-lb param-ub)))
+
 (defn- matcher [{:keys [snapshot]} c-hash values]
   (r-sp-v/value-filter
    snapshot (r-sp-v/resource-handle-search-param-encoder c-hash)
-   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-     (case op
-       :eq (equal? value param-lb param-ub)
-       :ne (not-equal? value param-lb param-ub)
-       :gt (greater-than? param-ub value)
-       :lt (less-than? value param-lb)
-       :ge (greater-equal? param-lb param-ub value)
-       :le (less-equal? value param-lb param-ub)
-       :sa (starts-after? param-ub value)
-       :eb (ends-before? value param-lb)
-       :ap (approximately? value param-lb param-ub)))
+   matches?
    values))
 
 (defn- single-version-id-matcher [{:keys [snapshot]} tid c-hash compiled-values]
   (r-sp-v/value-filter
    snapshot (r-sp-v/single-version-id-search-param-encoder tid c-hash)
-   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-     (case op
-       :eq (equal? value param-lb param-ub)
-       :ne (not-equal? value param-lb param-ub)
-       :gt (greater-than? param-ub value)
-       :lt (less-than? value param-lb)
-       :ge (greater-equal? param-lb param-ub value)
-       :le (less-equal? value param-lb param-ub)
-       :sa (starts-after? param-ub value)
-       :eb (ends-before? value param-lb)
-       :ap (approximately? value param-lb param-ub)))
+   matches?
    compiled-values))
 
 (defn- invalid-date-time-value-msg [value]
