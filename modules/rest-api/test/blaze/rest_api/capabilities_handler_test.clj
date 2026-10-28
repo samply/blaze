@@ -389,7 +389,7 @@
         [:rest 0 :resource 0 :searchParam (search-param "marital-status") :type]
         := #fhir/code "token"
         [:rest 0 :resource 0 :searchParam (search-param "marital-status") :definition]
-        := #fhir/canonical "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status"
+        := #fhir/canonical "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status"
         [:rest 0 :resource 0 :searchParam (search-param "PatientMaritalStatus")] := nil))))
 
 (def ^:private observation-read-interaction-config

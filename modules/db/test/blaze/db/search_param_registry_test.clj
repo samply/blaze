@@ -112,7 +112,7 @@
       (testing "marital-status"
         (given (sr/get search-param-registry "marital-status" "Patient")
           :type := "token"
-          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status"
+          :url := "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status"
           :name := "PatientMaritalStatus"
           :code := "marital-status")))))
 
@@ -130,9 +130,9 @@
   (testing "with extra bundle file"
     (with-system [{:blaze.db/keys [search-param-registry]} config-extra]
       (testing "marital-status"
-        (given (sr/get-by-url search-param-registry "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")
+        (given (sr/get-by-url search-param-registry "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status")
           :type := "token"
-          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")))))
+          :url := "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status")))))
 
 (deftest list-by-target-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

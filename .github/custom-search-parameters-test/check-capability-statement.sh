@@ -8,7 +8,7 @@ base="http://localhost:8080/fhir"
 capability_statement=$(curl -sfH 'Accept: application/fhir+json' "$base/metadata")
 
 name() {
-  echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "Patient") .searchParam[] | select(.definition == "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status") .name'
+  echo "$capability_statement" | jq -r '.rest[0].resource[] | select(.type == "Patient") .searchParam[] | select(.definition == "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status") .name'
 }
 
 test "Patient marital-status search param name" "$(name)" "marital-status"
