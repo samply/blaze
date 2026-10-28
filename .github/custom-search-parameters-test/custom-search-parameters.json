@@ -18,6 +18,67 @@
         "type": "token",
         "expression": "Patient.maritalStatus"
       }
+    },
+    {
+      "fullUrl": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-code",
+        "url": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionCode",
+        "status": "active",
+        "code": "provision-provision-code",
+        "base": [
+          "Consent"
+        ],
+        "type": "token",
+        "expression": "Consent.provision.provision.code"
+      }
+    },
+    {
+      "fullUrl": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-period",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-period",
+        "url": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-period",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionPeriod",
+        "status": "active",
+        "code": "provision-provision-period",
+        "base": [
+          "Consent"
+        ],
+        "type": "date",
+        "expression": "Consent.provision.provision.period"
+      }
+    },
+    {
+      "fullUrl": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code-period",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-code-period",
+        "url": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code-period",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionCodePeriod",
+        "status": "active",
+        "code": "provision-provision-code-period",
+        "base": [
+          "Consent"
+        ],
+        "type": "composite",
+        "expression": "Consent.provision.provision",
+        "component": [
+          {
+            "definition": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code",
+            "expression": "code"
+          },
+          {
+            "definition": "https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-period",
+            "expression": "period"
+          }
+        ]
+      }
     }
   ]
 }

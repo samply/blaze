@@ -62,6 +62,50 @@
           }
         ]
       }
+    },
+    {
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-period",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-period",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-period",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionPeriod",
+        "status": "active",
+        "code": "provision-provision-period",
+        "base": [
+          "Consent"
+        ],
+        "type": "date",
+        "expression": "Consent.provision.provision.period"
+      }
+    },
+    {
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code-period",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "Consent-provision-provision-code-period",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code-period",
+        "version": "0.1.0",
+        "name": "ConsentProvisionProvisionCodePeriod",
+        "status": "active",
+        "code": "provision-provision-code-period",
+        "base": [
+          "Consent"
+        ],
+        "type": "composite",
+        "expression": "Consent.provision.provision",
+        "component": [
+          {
+            "definition": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code",
+            "expression": "code"
+          },
+          {
+            "definition": "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-period",
+            "expression": "period"
+          }
+        ]
+      }
     }
   ]
 }

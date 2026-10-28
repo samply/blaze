@@ -13,13 +13,15 @@
    [blaze.db.impl.db-spec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
-   [blaze.db.search-param-registry]
+   [blaze.db.search-param-registry :as sr]
    [blaze.db.test-util :as dtu :refer [config non-referential-integrity-config
                                        wait-for with-system-data]]
    [blaze.db.tx-log :as tx-log]
@@ -5229,6 +5231,196 @@
         (testing "code and type of different provisions don't match"
           (given-type-query node "Consent" [["provision-provision-code-type" "2.16.840.1.113883.3.1937.777.24.5.3.5$deny"]]
             count := 0))))))
+
+(defn- consent-provision [code start end]
+  {:fhir/type :fhir.Consent/provision
+   :type #fhir/code "permit"
+   :period
+   (type/period
+    {:start (type/dateTime (system/parse-date-time start))
+     :end (type/dateTime (system/parse-date-time end))})
+   :code
+   [(type/codeable-concept
+     {:coding
+      [(type/coding
+        {:system #fhir/uri "urn:oid:2.16.840.1.113883.3.1937.777.24.5.3"
+         :code (type/code code)})]})]})
+
+(defn- consent-with-nested-provisions [id & provisions]
+  {:fhir/type :fhir/Consent :id id
+   :provision
+   {:fhir/type :fhir.Consent/provision
+    :provision (vec provisions)}})
+
+(deftest type-query-consent-code-period-test
+  (with-system-data [{:blaze.db/keys [node]} custom-search-param-config]
+    [[[:put (consent-with-nested-provisions
+             "0"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2020-01-01" "2020-12-31"))]
+      [:put (consent-with-nested-provisions
+             "1"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2021-01-01" "2021-12-31")
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.5"
+                                "2020-01-01" "2020-12-31"))]
+      [:put (consent-with-nested-provisions
+             "2"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2019-01-01" "2019-12-31")
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2022-01-01" "2022-12-31"))]
+      [:put {:fhir/type :fhir/Consent :id "3"
+             :provision
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2020-01-01" "2020-12-31")}]
+      [:put (consent-with-nested-provisions
+             "4"
+             (dissoc (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                        "2020-01-01" "2020-12-31")
+                     :period))]]]
+
+    (testing "missing second value part"
+      (given-failed-future (d/type-query (d/db node) "Consent" [["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8"]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Error in search parameter `provision-provision-code-period`: Miss the second part is composite search value `2.16.840.1.113883.3.1937.777.24.5.3.8`."))
+
+    (testing "invalid date"
+      (given-failed-future (d/type-query (d/db node) "Consent" [["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8$invalid"]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Error in search parameter `provision-provision-code-period`: Invalid date-time value `invalid`."))
+
+    (testing "as first clause"
+      (doseq [[value ids]
+              [["2.16.840.1.113883.3.1937.777.24.5.3.8$2020" ["0"]]
+               ["urn:oid:2.16.840.1.113883.3.1937.777.24.5.3|2.16.840.1.113883.3.1937.777.24.5.3.8$2020" ["0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ne2020" ["2" "1"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ge2021" ["1" "2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$gt2020" ["1" "2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$le2020" ["2" "0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$lt2020" ["2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$sa2020" ["1" "2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$eb2021" ["2" "0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ap2020-06" ["0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ge2019" ["2" "0" "1"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$2023" []]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.5$2020" ["1"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.5$2021" []]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.7$2020" []]]]
+        (testing value
+          (let [clauses [["provision-provision-code-period" value]]]
+            (is (= ids (mapv :id (pull-type-query node "Consent" clauses))))
+            (is (= (count ids) (count-type-query node "Consent" clauses)))
+
+            (doseq [start-id ids]
+              (testing (str "starting with Consent " start-id " continues the full result")
+                (is (= (drop-while #(not= start-id %) ids)
+                       (mapv :id (pull-type-query node "Consent" clauses start-id))))))))))
+
+    (testing "starting with a non-matching Consent returns an empty collection"
+      (is (empty? (pull-type-query node "Consent" [["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8$2020"]] "1"))))
+
+    (testing "starting with a non-existing Consent returns an empty collection"
+      (is (empty? (pull-type-query node "Consent" [["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8$2020"]] "5"))))
+
+    (testing "as second clause"
+      (doseq [[value ids]
+              [["2.16.840.1.113883.3.1937.777.24.5.3.8$2020" ["0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$2022" ["2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ge2021" ["1" "2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$lt2020" ["2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.5$2020" ["1"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.5$2021" []]]]
+        (testing value
+          (given-type-query node "Consent" [["provision-provision-type" "permit"]
+                                            ["provision-provision-code-period" value]]
+            count := (count ids)
+            [(partial mapv :id)] := ids))))
+
+    (testing "with matcher"
+      (doseq [[value ids]
+              [["2.16.840.1.113883.3.1937.777.24.5.3.8$2020" ["0"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$2022" ["2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.8$ge2021" ["1" "2"]]
+               ["2.16.840.1.113883.3.1937.777.24.5.3.5$2021" []]]]
+        (testing value
+          (let [matcher @(d/compile-type-matcher node "Consent" [["provision-provision-code-period" value]])
+                db (d/db node)
+                xform (d/matcher-transducer db matcher)]
+            (is (= ids (mapv :id (into [] xform (d/type-list db "Consent")))))))))))
+
+(defn- delete-index-entries!
+  "Deletes the index entries of `search-param` of the current versions of the
+  resources of `type` with `ids` from `kv-store`, like they would be missing for
+  resources stored before `search-param` was supported."
+  [node kv-store search-param type ids]
+  (let [db (d/db node)]
+    (kv/delete!
+     kv-store
+     (into
+      []
+      (mapcat
+       (fn [id]
+         (let [resource-handle (d/resource-handle db type id)]
+           (map
+            (fn [[column-family key]] [column-family key])
+            (search-param/index-entries search-param [] (:hash resource-handle)
+                                        @(d/pull node resource-handle))))))
+      ids))))
+
+(deftest re-index-consent-code-period-test
+  (with-system-data [{:blaze.db/keys [node search-param-registry]
+                      kv-store [::kv/mem :blaze.db/index-kv-store]}
+                     custom-search-param-config]
+    [[[:put (consent-with-nested-provisions
+             "0"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2020-01-01" "2020-12-31"))]
+      [:put (consent-with-nested-provisions
+             "1"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.5"
+                                "2020-01-01" "2020-12-31"))]
+      [:put (consent-with-nested-provisions
+             "2"
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2019-01-01" "2019-12-31")
+             (consent-provision "2.16.840.1.113883.3.1937.777.24.5.3.8"
+                                "2022-01-01" "2022-12-31"))]]]
+
+    (let [search-param-url "https://blaze-server.org/fhir/SearchParameter/Consent-provision-provision-code-period"
+          clauses [["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8$ge2019"]]]
+
+      (delete-index-entries!
+       node kv-store
+       (sr/get search-param-registry "provision-provision-code-period" "Consent")
+       "Consent" ["0" "1" "2"])
+
+      (testing "without index entries, no Consent is found"
+        (given-type-query node "Consent" clauses
+          count := 0))
+
+      (testing "re-indexing processes all Consents"
+        (with-open-db [db node]
+          (is (= 3 (d/re-index-total db search-param-url)))
+
+          (given @(d/re-index db search-param-url)
+            :num-resources := 3
+            :next := nil)))
+
+      (testing "after re-indexing, the Consents are found"
+        (given-type-query node "Consent" clauses
+          count := 2
+          [(partial mapv :id)] := ["2" "0"])
+
+        (testing "starting with the second Consent"
+          (given (pull-type-query node "Consent" clauses "0")
+            [(partial mapv :id)] := ["0"]))
+
+        (testing "as second clause"
+          (given-type-query node "Consent" [["provision-provision-type" "permit"]
+                                            ["provision-provision-code-period" "2.16.840.1.113883.3.1937.777.24.5.3.8$2022"]]
+            count := 1
+            [0 :id] := "2"))))))
 
 (deftest type-query-measure-report-test
   (with-system-data [{:blaze.db/keys [node]} config]

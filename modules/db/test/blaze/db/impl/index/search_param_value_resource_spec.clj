@@ -4,6 +4,7 @@
    [blaze.byte-string :as bs :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
+   [blaze.coll.spec :as cs]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.iterators-spec]
@@ -28,6 +29,17 @@
                       :start-id (s/? :blaze.resource/id))
                (fn [{:keys [prefix-length start-value]}]
                  (<= prefix-length (bs/size start-value)))))
+
+(s/fdef sp-vr/value-prefix-keys
+  :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
+                      :c-hash :blaze.db/c-hash
+                      :tid :blaze.db/tid
+                      :prefix-length nat-int?
+                      :start-value byte-string?
+                      :start-id (s/? :blaze.resource/id))
+               (fn [{:keys [prefix-length start-value]}]
+                 (<= prefix-length (bs/size start-value))))
+  :ret (cs/coll-of (s/tuple byte-string? some?)))
 
 (s/fdef sp-vr/encode-seek-key
   :args (s/cat :c-hash :blaze.db/c-hash

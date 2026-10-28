@@ -3248,7 +3248,20 @@ jobs:
     - name: Pull Blaze Image
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
-    - name: Run Keycloak and Blaze
+    - name: Run Blaze 1.12.1 without Support of Composite Token-Date Search Params
+      run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml up --wait
+      env:
+        BLAZE_IMAGE: samply/blaze:1.12.1
+
+    - name: Create Consents before the Upgrade
+      run: |
+        .github/custom-search-parameters-test/create-consent.sh 0 2020-01-01 2020-12-31
+        .github/custom-search-parameters-test/create-consent.sh 1 2019-01-01 2019-12-31
+
+    - name: Shut down Blaze 1.12.1
+      run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml down
+
+    - name: Run Latest Blaze
       run: docker compose -f .github/custom-search-parameters-test/docker-compose.yml up --wait
 
     - name: Docker Logs Blaze
@@ -3262,6 +3275,22 @@ jobs:
 
     - name: Search Patient
       run: .github/custom-search-parameters-test/search-patient.sh
+
+    - name: Create Consent after the Upgrade
+      run: .github/custom-search-parameters-test/create-consent.sh 2 2022-01-01 2022-12-31
+
+    - name: Search Consents before Re-Indexing finds only the Consent created after the Upgrade
+      run: .github/custom-search-parameters-test/search-consents.sh ge2019 1
+
+    - name: Re-Index the Composite Token-Date Search Param
+      run: .github/custom-search-parameters-test/re-index.sh https://samply.github.io/blaze/fhir/SearchParameter/Consent-provision-provision-code-period 3
+
+    - name: Search Consents after Re-Indexing
+      run: |
+        .github/custom-search-parameters-test/search-consents.sh ge2019 3
+        .github/custom-search-parameters-test/search-consents.sh 2020 1
+        .github/custom-search-parameters-test/search-consents.sh lt2020 1
+        .github/custom-search-parameters-test/search-consents.sh 2023 0
 
   doc-copy-data-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'

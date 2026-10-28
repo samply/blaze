@@ -1,11 +1,12 @@
 services:
   blaze:
-    image: "blaze:latest"
+    image: "${BLAZE_IMAGE:-blaze:latest}"
     read_only: true
     tmpfs:
     - "/tmp:exec"
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
+      ENABLE_ADMIN_API: "true"
       LOG_LEVEL: trace
     ports:
     - "8080:8080"

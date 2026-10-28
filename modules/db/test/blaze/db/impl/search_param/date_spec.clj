@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.date-spec
   (:require
+   [blaze.byte-string :refer [byte-string?]]
    [blaze.db.impl.index.resource-search-param-value-spec]
    [blaze.db.impl.index.search-param-value-resource-spec]
    [blaze.db.impl.search-param.date :as spd]
@@ -12,3 +13,7 @@
 
 (s/fdef spd/ge-value
   :args (s/cat :date-time :system/date-or-date-time))
+
+(s/fdef spd/matches?
+  :args (s/cat :value byte-string? :compiled-value map?)
+  :ret boolean?)

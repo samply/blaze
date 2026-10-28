@@ -64,6 +64,14 @@ The `in` modifier works only in case either the external or the internal termino
 
 When searching for date/time with a search parameter value without timezone like `2024` or `2024-02-16`, Blaze calculates the range of the search parameter values based on [UTC][2]. That means that a resource with a date/time value staring at `2024-01-01T00:00:00+01:00` will be not found by a search with `2024`. Please comment on [issue #1498](https://github.com/samply/blaze/issues/1498) if you like to have this situation improved.
 
+## Composite Search
+
+Blaze supports composite search parameters with two components, where the first component is of type `token` and the second component is of type `token`, `quantity` or `date` <Badge type="warning" text="Since 1.13.0"/>. Search values combine both component values with a `$`, like in `http://loinc.org|8480-6$ge140|mm[Hg]` for `code-value-quantity`. The date component supports all prefixes of the `date` type, so a search value of `[token]$ge2024` finds resources having a value with the token and a date on or after 2024 in the same element. Composite search parameters with other component types are not supported.
+
+Blaze versions before 1.13.0 skip custom composite search parameters with a `date` component, so they don't index resources for them. After upgrading, resources stored before the upgrade will not be found by such a search parameter until it is re-indexed. More information on re-indexing can be found in the [Frontend Docs](../../frontend.md).
+
+The standard search parameter `code-value-date` of Observation is not supported, because the FHIRPath expression of its date component can't be compiled.
+
 ## Geopositional Search
 
 Blaze implements the [positional](https://hl7.org/fhir/R4/location.html#positional) search parameter `near` for resources with a geospatial position (i.e., Location). The search parameter takes a latitude, longitude, distance and unit as search parameter values in the form `longitude|latitude[|distance[|unit]]`. Defaults for `distance` and `unit` are `1` and `km`. The [Haversine formula](https://en.wikipedia.org/wiki/Haversine_formula) is used to calculate the distance between the search parameter value and the resource's location, which simplifies calculation by assuming a spherical earth and has an error of less than approximately 0.5%.
