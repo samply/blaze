@@ -3,11 +3,11 @@
   "type": "collection",
   "entry": [
     {
-      "fullUrl": "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status",
+      "fullUrl": "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status",
       "resource": {
         "resourceType": "SearchParameter",
         "id": "marital-status",
-        "url": "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status",
+        "url": "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status",
         "version": "0.1.0",
         "name": "PatientMaritalStatus",
         "status": "active",
