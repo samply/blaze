@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 
 RUN set -eux; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl libjemalloc2 wget; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libjemalloc2 wget; \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
