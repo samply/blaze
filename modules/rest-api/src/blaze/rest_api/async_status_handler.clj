@@ -19,13 +19,9 @@
         (ac/then-compose
          (fn [{:keys [status] :as job}]
            (case (:value status)
-             "ready"
+             ("ready" "in-progress" "on-hold")
              (-> (ring/status 202)
-                 (ring/header "X-Progress" "ready")
-                 (ac/completed-future))
-             "in-progress"
-             (-> (ring/status 202)
-                 (ring/header "X-Progress" "in-progress")
+                 (ring/header "X-Progress" (:value status))
                  (ac/completed-future))
              "cancelled"
              (ac/completed-future
