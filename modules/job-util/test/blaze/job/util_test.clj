@@ -379,3 +379,25 @@
     (is (nil? (job-util/response-resource
                {:fhir/type :fhir/Task
                 :code (job-util/type-codeable-concept "foo" "Foo")})))))
+
+(deftest mark-running-test
+  (testing "a job not requested to stop is marked as running"
+    (is (= {"0" false} (job-util/mark-running {} "0"))))
+
+  (testing "a stop request is kept"
+    (are [reason] (= {"0" reason} (job-util/mark-running {"0" reason} "0"))
+      :cancelled
+      :paused
+      :shutdown)))
+
+(deftest stopped-on-hold?-test
+  (testing "a job not requested to stop by being put on-hold"
+    (are [running-jobs] (not (job-util/stopped-on-hold? running-jobs "0"))
+      {}
+      {"0" false}
+      {"0" :cancelled}))
+
+  (testing "a job requested to stop by being put on-hold"
+    (are [reason] (job-util/stopped-on-hold? {"0" reason} "0")
+      :paused
+      :shutdown)))

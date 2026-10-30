@@ -17,8 +17,8 @@
 (s/def ::js/context
   (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
-(s/def ::js/running-jobs
+(s/def ::js/state
   #(instance? IAtom %))
 
 (s/def :blaze/job-scheduler
-  (s/keys :req-un [::js/context ::js/running-jobs]))
+  (s/keys :req-un [::js/context ::js/state]))

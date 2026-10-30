@@ -17,6 +17,7 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.protocols :as jsp]
    [blaze.job.compact :as job-compact]
    [blaze.job.compact-spec]
    [blaze.job.test-util :as jtu]
@@ -29,7 +30,7 @@
    [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
@@ -289,3 +290,13 @@
           job-util/job-number := "1"
           jtu/combined-status := :failed
           job-util/error-msg := "Missing `column-family` parameter.")))))
+
+(deftest on-shutdown-test
+  (with-system [{:blaze.job/keys [compact]} config]
+    (testing "does nothing"
+      (is (nil? (jsp/-on-shutdown compact {:fhir/type :fhir/Task :id "0"}))))))
+
+(deftest on-pause-test
+  (with-system [{:blaze.job/keys [compact]} config]
+    (testing "does nothing"
+      (is (nil? (jsp/-on-pause compact {:fhir/type :fhir/Task :id "0"}))))))

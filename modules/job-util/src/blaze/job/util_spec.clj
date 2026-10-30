@@ -88,6 +88,14 @@
   :args (s/cat :anomaly ::anom/anomaly)
   :ret boolean?)
 
+(s/fdef job-util/mark-running
+  :args (s/cat :running-jobs ::job-util/running-jobs :id string?)
+  :ret ::job-util/running-jobs)
+
+(s/fdef job-util/stopped-on-hold?
+  :args (s/cat :running-jobs ::job-util/running-jobs :id string?)
+  :ret boolean?)
+
 (s/fdef job-util/async-status-url
   :args (s/cat :context ::async-status-url/context
                :request ::async-status-url/request
