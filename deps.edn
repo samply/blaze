@@ -55,6 +55,9 @@
   blaze.operation/patient-purge
   {:local/root "modules/operation-patient-purge"}
 
+  blaze.operation/re-index
+  {:local/root "modules/operation-re-index"}
+
   blaze.operation/totals
   {:local/root "modules/operation-totals"}
 
@@ -223,6 +226,7 @@
     "-d" "modules/operation-measure-evaluate-measure"
     "-d" "modules/operation-patient-everything"
     "-d" "modules/operation-patient-purge"
+    "-d" "modules/operation-re-index"
     "-d" "modules/operation-totals"
     "-d" "modules/operation-value-set-expand"
     "-d" "modules/operation-value-set-validate-code"

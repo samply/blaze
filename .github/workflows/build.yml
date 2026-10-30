@@ -236,6 +236,7 @@ jobs:
         - operation-measure-evaluate-measure
         - operation-patient-everything
         - operation-patient-purge
+        - operation-re-index
         - operation-totals
         - operation-value-set-expand
         - operation-value-set-validate-code
@@ -2840,6 +2841,12 @@ jobs:
 
     - name: Measure Disk Performance
       run: .github/scripts/disk-perf.sh
+
+    - name: Re-Index Unknown Search Param
+      run: .github/scripts/re-index-unknown-search-param.sh
+
+    - name: Re-Index
+      run: .github/scripts/re-index.sh
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had
