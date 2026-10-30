@@ -25,21 +25,25 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
+(defn- build-response [request type id tx-op db-after]
+  (let [[new-handle old-handle] (into [] (take 2) (d/instance-history db-after (name type) id))]
+    (response/build-response
+     (response-context request db-after)
+     tx-op
+     old-handle
+     new-handle)))
+
+(defn- transact [node request type id tx-op]
+  (-> (d/transact node [tx-op])
+      (ac/then-compose
+       #(d/with-sync-db node % (partial build-response request type id tx-op)))))
+
 (defn- update-resource
   [{:keys [node]}
    {{:strs [if-match if-none-match]} :headers :as request}
    {:fhir/keys [type] :keys [id] :as resource}]
-  (if-ok [tx-op (iu/update-tx-op (d/db node) resource if-match if-none-match)]
-    (-> (d/transact node [tx-op])
-        (ac/then-compose
-         (fn [db-after]
-           (let [[new-handle old-handle] (into [] (take 2) (d/instance-history db-after (name type) id))]
-             (response/build-response
-              (response-context request db-after)
-              tx-op
-              old-handle
-              new-handle)))))
-    ac/completed-future))
+  (-> (d/with-db node #(ac/completed-future (iu/update-tx-op % resource if-match if-none-match)))
+      (ac/then-compose (partial transact node request type id))))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully updated but it's content with hash `%s` was not found during response creation."

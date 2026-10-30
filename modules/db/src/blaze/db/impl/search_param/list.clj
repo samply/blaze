@@ -17,28 +17,28 @@
 (def ^:private list-tid (codec/tid "List"))
 (def ^:private item-c-hash (codec/c-hash "item"))
 
-(defn- list-handle [batch-db list-id]
-  (u/non-deleted-resource-handle batch-db list-tid list-id))
+(defn- list-handle [db list-id]
+  (u/non-deleted-resource-handle db list-tid list-id))
 
-(defn- list-hash-prefix [batch-db list-id]
-  (:hash-prefix (list-handle batch-db list-id)))
+(defn- list-hash-prefix [db list-id]
+  (:hash-prefix (list-handle db list-id)))
 
 (defn- referenced-index-handles
   "Returns a reducible collection of index handles of type `tid` that are
   referenced by the list with `list-id` and `list-hash-prefix`, starting with
   `start-id` (optional)."
   {:arglists
-   '([batch-db list-id list-hash-prefix tid]
-     [batch-db list-id list-hash-prefix tid start-id])}
-  ([{:keys [snapshot] :as batch-db} list-id list-hash-prefix tid]
+   '([db list-id list-hash-prefix tid]
+     [db list-id list-hash-prefix tid start-id])}
+  ([{:keys [snapshot] :as db} list-id list-hash-prefix tid]
    (coll/eduction
-    (comp (u/reference-resource-handle-mapper batch-db)
+    (comp (u/reference-resource-handle-mapper db)
           (map ih/from-resource-handle))
     (r-sp-v/prefix-keys snapshot list-tid list-id list-hash-prefix item-c-hash
                         codec/tid-size (codec/tid-byte-string tid))))
-  ([{:keys [snapshot] :as batch-db} list-id list-hash-prefix tid start-id]
+  ([{:keys [snapshot] :as db} list-id list-hash-prefix tid start-id]
    (coll/eduction
-    (comp (u/reference-resource-handle-mapper batch-db)
+    (comp (u/reference-resource-handle-mapper db)
           (map ih/from-resource-handle))
     (r-sp-v/prefix-keys snapshot list-tid list-id list-hash-prefix item-c-hash
                         codec/tid-size (codec/tid-id tid start-id)))))
@@ -58,27 +58,27 @@
     true)
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (p/-index-handles search-param db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param db tid modifier %)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values start-id]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (p/-index-handles search-param db tid modifier (first compiled-values) start-id)
+      (let [index-handles #(p/-index-handles search-param db tid modifier % start-id)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
-  (-index-handles [_ batch-db tid _ list-id]
-    (if-let [hash-prefix (list-hash-prefix batch-db list-id)]
-      (referenced-index-handles batch-db list-id hash-prefix tid)
+  (-index-handles [_ db tid _ list-id]
+    (if-let [hash-prefix (list-hash-prefix db list-id)]
+      (referenced-index-handles db list-id hash-prefix tid)
       []))
 
-  (-index-handles [_ batch-db tid _ list-id start-id]
-    (if-let [hash-prefix (list-hash-prefix batch-db list-id)]
-      (referenced-index-handles batch-db list-id hash-prefix tid start-id)
+  (-index-handles [_ db tid _ list-id start-id]
+    (if-let [hash-prefix (list-hash-prefix db list-id)]
+      (referenced-index-handles db list-id hash-prefix tid start-id)
       []))
 
   (-supports-ordered-compartment-index-handles [_ _ _]

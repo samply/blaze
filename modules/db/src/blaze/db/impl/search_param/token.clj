@@ -255,10 +255,10 @@
   wanted version only matches if the resource has a stored version, tested
   via `version-matches?`.
 
-  Pulls the resource via `batch-db`. Used to post-filter the candidates of a
+  Pulls the resource via `db`. Used to post-filter the candidates of a
   versioned canonical url search, since versions are not held in the index."
-  [batch-db expression version-expression modifier wanted resource-handle]
-  (let [resource @(d/pull batch-db resource-handle)
+  [db expression version-expression modifier wanted resource-handle]
+  (let [resource @(d/pull db resource-handle)
         urls (keep :value (fhir-path/eval noop-resolver expression resource))
         stored-versions (delay (keep :value (fhir-path/eval noop-resolver version-expression resource)))]
     (some
@@ -303,40 +303,40 @@
       :else
       (ac/completed-future (codec/v-hash value))))
 
-  (-estimated-scan-size [_ batch-db tid modifier compiled-value]
+  (-estimated-scan-size [_ db tid modifier compiled-value]
     (let [c-hash (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))]
-      (sp-vr/estimated-scan-size (:kv-store batch-db) c-hash tid compiled-value)))
+      (sp-vr/estimated-scan-size (:kv-store db) c-hash tid compiled-value)))
 
   (-supports-ordered-index-handles [_ _ _ _ _]
     true)
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     (if (= "in" modifier)
       (let [all-compiled-values (flatten compiled-values)]
         (if (empty? all-compiled-values)
           []
-          (p/-ordered-index-handles search-param batch-db tid nil all-compiled-values)))
+          (p/-ordered-index-handles search-param db tid nil all-compiled-values)))
       (if (= 1 (count compiled-values))
-        (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-        (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+        (p/-index-handles search-param db tid modifier (first compiled-values))
+        (let [index-handles #(p/-index-handles search-param db tid modifier %)]
           (u/union-index-handles (map index-handles compiled-values))))))
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values start-id]
     (if (= "in" modifier)
-      (p/-ordered-index-handles search-param batch-db tid nil (flatten compiled-values) start-id)
+      (p/-ordered-index-handles search-param db tid nil (flatten compiled-values) start-id)
       (if (= 1 (count compiled-values))
-        (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-        (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+        (p/-index-handles search-param db tid modifier (first compiled-values) start-id)
+        (let [index-handles #(p/-index-handles search-param db tid modifier % start-id)]
           (u/union-index-handles (map index-handles compiled-values))))))
 
-  (-index-handles [_ batch-db tid modifier compiled-value]
-    (index-handles batch-db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
+  (-index-handles [_ db tid modifier compiled-value]
+    (index-handles db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
                    compiled-value))
 
-  (-index-handles [_ batch-db tid modifier compiled-value start-id]
-    (index-handles batch-db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
+  (-index-handles [_ db tid modifier compiled-value start-id]
+    (index-handles db (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier)) tid
                    compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ modifier values]
@@ -345,39 +345,39 @@
    ;; with in-modifier, a ValueSet expansion contains always systems
     (or (= :code expression-type) (every? has-system? values) (= "in" modifier)))
 
-  (-ordered-compartment-index-handles [search-param batch-db compartment tid modifier compiled-values]
+  (-ordered-compartment-index-handles [search-param db compartment tid modifier compiled-values]
     (if (= "in" modifier)
       (let [all-compiled-values (flatten compiled-values)]
         (if (empty? all-compiled-values)
           []
-          (p/-ordered-compartment-index-handles search-param batch-db compartment tid nil all-compiled-values)))
+          (p/-ordered-compartment-index-handles search-param db compartment tid nil all-compiled-values)))
       (if (= 1 (count compiled-values))
-        (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid (first compiled-values))
-        (let [index-handles #(c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid %)]
+        (c-sp-vr/index-handles (:snapshot db) compartment c-hash tid (first compiled-values))
+        (let [index-handles #(c-sp-vr/index-handles (:snapshot db) compartment c-hash tid %)]
           (u/union-index-handles (map index-handles compiled-values))))))
 
-  (-ordered-compartment-index-handles [search-param batch-db compartment tid modifier compiled-values start-id]
+  (-ordered-compartment-index-handles [search-param db compartment tid modifier compiled-values start-id]
     (if (= "in" modifier)
-      (p/-ordered-compartment-index-handles search-param batch-db compartment tid nil (flatten compiled-values) start-id)
+      (p/-ordered-compartment-index-handles search-param db compartment tid nil (flatten compiled-values) start-id)
       (if (= 1 (count compiled-values))
-        (c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid (first compiled-values) start-id)
-        (let [index-handles #(c-sp-vr/index-handles (:snapshot batch-db) compartment c-hash tid % start-id)]
+        (c-sp-vr/index-handles (:snapshot db) compartment c-hash tid (first compiled-values) start-id)
+        (let [index-handles #(c-sp-vr/index-handles (:snapshot db) compartment c-hash tid % start-id)]
           (u/union-index-handles (map index-handles compiled-values))))))
 
-  (-matcher [_ batch-db modifier compiled-values]
+  (-matcher [_ db modifier compiled-values]
     (r-sp-v/value-prefix-filter
-     (:snapshot batch-db) (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
+     (:snapshot db) (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
-  (-single-version-id-matcher [_ batch-db tid modifier compiled-values]
+  (-single-version-id-matcher [_ db tid modifier compiled-values]
     (r-sp-v/single-version-id-value-prefix-filter
-     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
+     (:snapshot db) tid (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
-  (-postprocess-matches [_ batch-db modifier values _]
+  (-postprocess-matches [_ db modifier values _]
     (when (and (= :canonical-url expression-type) (some #(str/includes? % "|") values))
       (let [wanted (into #{} (map parse-canonical-value) values)]
-        (filter (partial matches-canonical-value? batch-db expression
+        (filter (partial matches-canonical-value? db expression
                          version-expression modifier wanted)))))
 
   (-compartment-ids [_ resolver resource]
@@ -431,25 +431,25 @@
     true)
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (p/-index-handles search-param db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param db tid modifier %)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values start-id]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values) start-id)
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier % start-id)]
+      (p/-index-handles search-param db tid modifier (first compiled-values) start-id)
+      (let [index-handles #(p/-index-handles search-param db tid modifier % start-id)]
         (u/union-index-handles (map index-handles compiled-values)))))
 
-  (-index-handles [_ batch-db tid modifier compiled-value]
-    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+  (-index-handles [_ db tid modifier compiled-value]
+    (index-handles db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value))
 
-  (-index-handles [_ batch-db tid modifier compiled-value start-id]
-    (index-handles batch-db (c-hash-w-modifier c-hash code modifier) tid
+  (-index-handles [_ db tid modifier compiled-value start-id]
+    (index-handles db (c-hash-w-modifier c-hash code modifier) tid
                    compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
@@ -461,18 +461,18 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db modifier compiled-values]
+  (-matcher [_ db modifier compiled-values]
     (r-sp-v/value-prefix-filter
-     (:snapshot batch-db) (c-hash-w-modifier c-hash code modifier)
+     (:snapshot db) (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
-  (-single-version-id-matcher [_ batch-db tid modifier compiled-values]
+  (-single-version-id-matcher [_ db tid modifier compiled-values]
     (r-sp-v/single-version-id-value-prefix-filter
-     (:snapshot batch-db) tid (c-hash-w-modifier c-hash code modifier)
+     (:snapshot db) tid (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
-  (-postprocess-matches [_ batch-db _ values _]
-    (filter (partial matches-identifier-values? batch-db expression (set values))))
+  (-postprocess-matches [_ db _ values _]
+    (filter (partial matches-identifier-values? db expression (set values))))
 
   (-compartment-ids [_ _ _])
 
@@ -498,41 +498,41 @@
     true)
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     (if (= 1 (count compiled-values))
-      (p/-index-handles search-param batch-db tid modifier (first compiled-values))
-      (let [index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+      (p/-index-handles search-param db tid modifier (first compiled-values))
+      (let [index-handles #(p/-index-handles search-param db tid modifier %)]
         (coll/eduction (mapcat index-handles) (sort compiled-values)))))
 
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values start-id]
     (let [compiled-values (drop-while #(not= start-id %) (sort compiled-values))
-          index-handles #(p/-index-handles search-param batch-db tid modifier %)]
+          index-handles #(p/-index-handles search-param db tid modifier %)]
       (condp = (count compiled-values)
         0 []
         1 (index-handles (first compiled-values))
         (coll/eduction (mapcat index-handles) compiled-values))))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
-    (or (some-> (u/non-deleted-resource-handle batch-db tid compiled-value)
+  (-index-handles [_ db tid _ compiled-value]
+    (or (some-> (u/non-deleted-resource-handle db tid compiled-value)
                 (ih/from-resource-handle)
                 (vector))
         []))
 
-  (-index-handles [sp batch-db tid modifier compiled-value start-id]
+  (-index-handles [sp db tid modifier compiled-value start-id]
     (if (<= (compare start-id compiled-value) 0)
-      (p/-index-handles sp batch-db tid modifier compiled-value)
+      (p/-index-handles sp db tid modifier compiled-value)
       []))
 
-  (-sorted-index-handles [_ batch-db tid _]
+  (-sorted-index-handles [_ db tid _]
     (coll/eduction
      (map ih/from-resource-handle)
-     (rao/type-list batch-db tid)))
+     (rao/type-list db tid)))
 
-  (-sorted-index-handles [_ batch-db tid _ start-id]
+  (-sorted-index-handles [_ db tid _ start-id]
     (coll/eduction
      (map ih/from-resource-handle)
-     (rao/type-list batch-db tid start-id)))
+     (rao/type-list db tid start-id)))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)

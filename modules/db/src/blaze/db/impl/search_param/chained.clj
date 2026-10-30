@@ -24,16 +24,16 @@
   Example: a patient that is referenced by an observation via the subject search
   param."
   {:arglists
-   '([batch-db resource-handle c-hash]
-     [batch-db resource-handle c-hash target-tid])}
-  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash]
+   '([db resource-handle c-hash]
+     [db resource-handle c-hash target-tid])}
+  ([{:keys [snapshot] :as db} {:keys [tid id hash-prefix]} c-hash]
    (coll/eduction
-    (u/reference-resource-handle-mapper batch-db)
+    (u/reference-resource-handle-mapper db)
     (r-sp-v/prefix-keys snapshot tid id hash-prefix c-hash)))
-  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash-prefix]} c-hash
+  ([{:keys [snapshot] :as db} {:keys [tid id hash-prefix]} c-hash
     target-tid]
    (coll/eduction
-    (u/reference-resource-handle-mapper batch-db)
+    (u/reference-resource-handle-mapper db)
     (let [start-value (codec/tid-byte-string target-tid)]
       (r-sp-v/prefix-keys snapshot tid id hash-prefix c-hash
                           (bs/size start-value) start-value)))))
@@ -46,7 +46,7 @@
   Example: a patient that is referenced by an observation via the subject search
   param."
   {:arglists
-   '([batch-db resource-handle c-hash target-tid])}
+   '([db resource-handle c-hash target-tid])}
   [{:keys [snapshot]} {:keys [tid id hash-prefix]} c-hash target-tid]
   (coll/eduction
    u/reference-id-mapper
@@ -58,10 +58,10 @@
   "Returns a reducible collection of single-version-ids that are referenced by
   `single-version-id` via a search-param with `c-hash` having a type with
   `target-tid`."
-  {:arglists '([batch-db tid single-version-id c-hash target-tid])}
-  [{:keys [snapshot] :as batch-db} tid single-version-id c-hash target-tid]
+  {:arglists '([db tid single-version-id c-hash target-tid])}
+  [{:keys [snapshot] :as db} tid single-version-id c-hash target-tid]
   (coll/eduction
-   (comp (u/reference-resource-handle-mapper batch-db)
+   (comp (u/reference-resource-handle-mapper db)
          (map svi/from-resource-handle))
    (let [start-value (codec/tid-byte-string target-tid)]
      (r-sp-v/prefix-keys snapshot tid (svi/id single-version-id)
@@ -78,10 +78,10 @@
 (defn- ref-resource-handles
   "Returns an unordered reducible collection of reference resource handles of
   all `compiled-values`."
-  [search-param batch-db ref-tid modifier compiled-values]
+  [search-param db ref-tid modifier compiled-values]
   (coll/eduction
-   (comp (mapcat #(p/-index-handles search-param batch-db ref-tid modifier %))
-         (u/resource-handle-xf batch-db ref-tid)
+   (comp (mapcat #(p/-index-handles search-param db ref-tid modifier %))
+         (u/resource-handle-xf db ref-tid)
          u/distinct-by-id)
    compiled-values))
 
@@ -90,12 +90,12 @@
 
   Only used in ordered index handle mode, so the number of ref values is
   limited to `max-number-of-refs`."
-  [search-param batch-db ref-tid compile-ref-value modifier compiled-values]
+  [search-param db ref-tid compile-ref-value modifier compiled-values]
   (not-empty
    (into
     []
     (map compile-ref-value)
-    (ref-resource-handles search-param batch-db ref-tid modifier
+    (ref-resource-handles search-param db ref-tid modifier
                           compiled-values))))
 
 (defn- num-ref-resource-handles-small? [ref-resource-handles]
@@ -111,51 +111,51 @@
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
-  (-estimated-scan-size [_ batch-db tid modifier compiled-value]
+  (-estimated-scan-size [_ db tid modifier compiled-value]
     (transduce
      (comp (map compile-ref-value)
-           (map #(p/-estimated-scan-size ref-search-param batch-db tid nil %))
+           (map #(p/-estimated-scan-size ref-search-param db tid nil %))
            (halt-when ba/anomaly?))
      +
-     (ref-resource-handles search-param batch-db ref-tid modifier
+     (ref-resource-handles search-param db ref-tid modifier
                            [compiled-value])))
 
   (-supports-ordered-index-handles
-    [_ batch-db _ modifier compiled-values]
-    (-> (ref-resource-handles search-param batch-db ref-tid modifier
+    [_ db _ modifier compiled-values]
+    (-> (ref-resource-handles search-param db ref-tid modifier
                               compiled-values)
         (num-ref-resource-handles-small?)))
 
   (-ordered-index-handles
-    [_ batch-db tid modifier compiled-values]
-    (if-some [values (compiled-ref-values search-param batch-db ref-tid
+    [_ db tid modifier compiled-values]
+    (if-some [values (compiled-ref-values search-param db ref-tid
                                           compile-ref-value modifier
                                           compiled-values)]
-      (p/-ordered-index-handles ref-search-param batch-db tid nil values)
+      (p/-ordered-index-handles ref-search-param db tid nil values)
       []))
 
   (-ordered-index-handles
-    [_ batch-db tid modifier compiled-values start-id]
-    (if-some [values (compiled-ref-values search-param batch-db ref-tid
+    [_ db tid modifier compiled-values start-id]
+    (if-some [values (compiled-ref-values search-param db ref-tid
                                           compile-ref-value modifier
                                           compiled-values)]
-      (p/-ordered-index-handles ref-search-param batch-db tid nil values start-id)
+      (p/-ordered-index-handles ref-search-param db tid nil values start-id)
       []))
 
-  (-index-handles [_ batch-db tid modifier compiled-value]
+  (-index-handles [_ db tid modifier compiled-value]
     (coll/eduction
-     (comp (u/resource-handle-xf batch-db ref-tid)
+     (comp (u/resource-handle-xf db ref-tid)
            (map compile-ref-value)
-           (mapcat #(p/-index-handles ref-search-param batch-db tid modifier %)))
-     (p/-index-handles search-param batch-db ref-tid modifier compiled-value)))
+           (mapcat #(p/-index-handles ref-search-param db tid modifier %)))
+     (p/-index-handles search-param db ref-tid modifier compiled-value)))
 
-  (-index-handles [this batch-db tid modifier compiled-value start-id]
+  (-index-handles [this db tid modifier compiled-value start-id]
     (coll/eduction
-     (comp (u/resource-handle-xf batch-db tid)
+     (comp (u/resource-handle-xf db tid)
            u/distinct-by-id
            (u/drop-while-not-start-id start-id)
            (map ih/from-resource-handle))
-     (p/-index-handles this batch-db tid modifier compiled-value)))
+     (p/-index-handles this db tid modifier compiled-value)))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -166,23 +166,23 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db modifier values]
+  (-matcher [_ db modifier values]
     (filter
      (fn [resource-handle]
        (transduce
-        (p/-matcher search-param batch-db modifier values)
+        (p/-matcher search-param db modifier values)
         (fn ([r] r) ([_ _] (reduced true)))
         nil
-        (targets batch-db resource-handle ref-c-hash ref-tid)))))
+        (targets db resource-handle ref-c-hash ref-tid)))))
 
-  (-single-version-id-matcher [_ batch-db tid modifier values]
+  (-single-version-id-matcher [_ db tid modifier values]
     (filter
      (fn [single-version-id]
        (transduce
-        (p/-single-version-id-matcher search-param batch-db ref-tid modifier values)
+        (p/-single-version-id-matcher search-param db ref-tid modifier values)
         (fn ([r] r) ([_ _] (reduced true)))
         nil
-        (single-version-id-targets batch-db tid single-version-id ref-c-hash ref-tid)))))
+        (single-version-id-targets db tid single-version-id ref-c-hash ref-tid)))))
 
   (-postprocess-matches [_ _ _ _ _]))
 

@@ -5,7 +5,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -81,8 +81,9 @@
   (when-let [display (display code)]
     {:code (type/code code) :display display :system url :version version}))
 
-(defn- bcp-47-query [db]
-  (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:47"]]))
+(defn- bcp-47-handle [db]
+  (do-sync [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:47"]])]
+    (coll/first handles)))
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create BCP-47 code system...")
@@ -91,9 +92,9 @@
 (defn ensure-code-system
   "Ensures that the BCP-47 code system is present in the database node."
   [{:keys [node] :as context}]
-  (-> (bcp-47-query (d/db node))
+  (-> (d/with-db node bcp-47-handle)
       (ac/then-compose
-       (fn [handles]
-         (if (coll/first handles)
+       (fn [handle]
+         (if handle
            (ac/completed-future nil)
            (create-code-system context))))))

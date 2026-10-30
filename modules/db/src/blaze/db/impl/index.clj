@@ -49,7 +49,7 @@
 (defn- postprocessing?
   "Returns true if matches of `clause` need postprocessing.
 
-  Postprocess filters are created without a batch-db, because they only close
+  Postprocess filters are created without a db, because they only close
   over it."
   [[search-param modifier values compiled-values]]
   (some? (p/-postprocess-matches search-param nil modifier values
@@ -114,39 +114,39 @@
              (seq search-clauses)
              (assoc :search-clauses search-clauses)))))))
 
-(defn- matcher [batch-db [search-param modifier _ values]]
-  (search-param/matcher search-param batch-db modifier values))
+(defn- matcher [db [search-param modifier _ values]]
+  (search-param/matcher search-param db modifier values))
 
 (defn other-clauses-resource-handle-filter*
-  [batch-db disjunction]
+  [db disjunction]
   (if (= 1 (count disjunction))
-    (matcher batch-db (first disjunction))
-    (coll/disjunction-filter (mapv (partial matcher batch-db) disjunction))))
+    (matcher db (first disjunction))
+    (coll/disjunction-filter (mapv (partial matcher db) disjunction))))
 
 (defn other-clauses-resource-handle-filter
   "Creates a filter transducer over resource handles for all clauses in
   `conjunction` by possibly composing multiple filter transducers for each
   clause."
-  [batch-db conjunction]
+  [db conjunction]
   (transduce
-   (map (partial other-clauses-resource-handle-filter* batch-db))
+   (map (partial other-clauses-resource-handle-filter* db))
    comp
    conjunction))
 
-(defn- single-version-id-matcher [batch-db tid [search-param modifier _ values]]
-  (search-param/single-version-id-matcher search-param batch-db tid modifier values))
+(defn- single-version-id-matcher [db tid [search-param modifier _ values]]
+  (search-param/single-version-id-matcher search-param db tid modifier values))
 
 (defn- other-clauses-single-version-id-filter*
-  [batch-db tid disjunction]
+  [db tid disjunction]
   (if (= 1 (count disjunction))
-    (single-version-id-matcher batch-db tid (first disjunction))
+    (single-version-id-matcher db tid (first disjunction))
     (coll/disjunction-filter
-     (mapv (partial single-version-id-matcher batch-db tid) disjunction))))
+     (mapv (partial single-version-id-matcher db tid) disjunction))))
 
 (defn- other-clauses-single-version-id-filter
-  [batch-db tid conjunction]
+  [db tid conjunction]
   (transduce
-   (map (partial other-clauses-single-version-id-filter* batch-db tid))
+   (map (partial other-clauses-single-version-id-filter* db tid))
    comp
    conjunction))
 
@@ -154,87 +154,87 @@
   "Creates a filter transducer over index handles for all clauses in
   `conjunction` by possibly composing multiple filter transducers for each
   clause."
-  [batch-db tid conjunction]
+  [db tid conjunction]
   (comp
    (mapcat ih/to-single-version-ids)
-   (other-clauses-single-version-id-filter batch-db tid conjunction)
+   (other-clauses-single-version-id-filter db tid conjunction)
    u/by-id-grouper))
 
 (defn- index-handles*
-  ([batch-db tid [search-param modifier _ compiled-values]]
-   (search-param/index-handles search-param batch-db tid modifier
+  ([db tid [search-param modifier _ compiled-values]]
+   (search-param/index-handles search-param db tid modifier
                                compiled-values))
-  ([batch-db tid [search-param modifier _ compiled-values] start-id]
-   (search-param/index-handles search-param batch-db tid modifier
+  ([db tid [search-param modifier _ compiled-values] start-id]
+   (search-param/index-handles search-param db tid modifier
                                compiled-values start-id)))
 
-(defn- index-handles [batch-db tid clauses]
+(defn- index-handles [db tid clauses]
   (if (= 1 (count clauses))
-    (index-handles* batch-db tid (first clauses))
+    (index-handles* db tid (first clauses))
     (coll/eduction
-     (mapcat (partial index-handles* batch-db tid))
+     (mapcat (partial index-handles* db tid))
      clauses)))
 
 (defn- sorted-index-handles
-  ([batch-db tid [search-param modifier]]
+  ([db tid [search-param modifier]]
    (condp = modifier
-     "asc" (search-param/sorted-index-handles search-param batch-db tid :asc)
-     "desc" (search-param/sorted-index-handles search-param batch-db tid :desc)))
-  ([batch-db tid [search-param modifier] start-id]
+     "asc" (search-param/sorted-index-handles search-param db tid :asc)
+     "desc" (search-param/sorted-index-handles search-param db tid :desc)))
+  ([db tid [search-param modifier] start-id]
    (condp = modifier
-     "asc" (search-param/sorted-index-handles search-param batch-db tid :asc start-id)
-     "desc" (search-param/sorted-index-handles search-param batch-db tid :desc start-id))))
+     "asc" (search-param/sorted-index-handles search-param db tid :asc start-id)
+     "desc" (search-param/sorted-index-handles search-param db tid :desc start-id))))
 
 (defn- ordered-index-handles**
-  ([batch-db tid [search-param modifier _ compiled-values]]
-   (search-param/ordered-index-handles search-param batch-db tid modifier
+  ([db tid [search-param modifier _ compiled-values]]
+   (search-param/ordered-index-handles search-param db tid modifier
                                        compiled-values))
-  ([batch-db tid [search-param modifier _ compiled-values] start-id]
-   (search-param/ordered-index-handles search-param batch-db tid modifier
+  ([db tid [search-param modifier _ compiled-values] start-id]
+   (search-param/ordered-index-handles search-param db tid modifier
                                        compiled-values start-id)))
 
 (defn- ordered-index-handles*
-  ([batch-db tid disjunction]
+  ([db tid disjunction]
    (if (= 1 (count disjunction))
-     (ordered-index-handles** batch-db tid (first disjunction))
-     (let [f #(ordered-index-handles** batch-db tid %)]
+     (ordered-index-handles** db tid (first disjunction))
+     (let [f #(ordered-index-handles** db tid %)]
        (u/union-index-handles (map f disjunction)))))
-  ([batch-db tid disjunction start-id]
+  ([db tid disjunction start-id]
    (if (= 1 (count disjunction))
-     (ordered-index-handles** batch-db tid (first disjunction) start-id)
-     (let [f #(ordered-index-handles** batch-db tid % start-id)]
+     (ordered-index-handles** db tid (first disjunction) start-id)
+     (let [f #(ordered-index-handles** db tid % start-id)]
        (u/union-index-handles (map f disjunction))))))
 
 (defn- ordered-index-handles
-  ([batch-db tid conjunction]
+  ([db tid conjunction]
    (if (= 1 (count conjunction))
-     (ordered-index-handles* batch-db tid (first conjunction))
-     (let [f #(ordered-index-handles* batch-db tid %)]
+     (ordered-index-handles* db tid (first conjunction))
+     (let [f #(ordered-index-handles* db tid %)]
        (u/intersection-index-handles (map f conjunction)))))
-  ([batch-db tid conjunction start-id]
+  ([db tid conjunction start-id]
    (if (= 1 (count conjunction))
-     (ordered-index-handles* batch-db tid (first conjunction) start-id)
-     (let [f #(ordered-index-handles* batch-db tid % start-id)]
+     (ordered-index-handles* db tid (first conjunction) start-id)
+     (let [f #(ordered-index-handles* db tid % start-id)]
        (u/intersection-index-handles (map f conjunction))))))
 
-(defn- postprocess-matches** [batch-db [search-param modifier values compiled-values]]
-  (p/-postprocess-matches search-param batch-db modifier values compiled-values))
+(defn- postprocess-matches** [db [search-param modifier values compiled-values]]
+  (p/-postprocess-matches search-param db modifier values compiled-values))
 
-(defn- postprocess-matches* [batch-db disjunction]
-  (transduce (keep (partial postprocess-matches** batch-db)) comp disjunction))
+(defn- postprocess-matches* [db disjunction]
+  (transduce (keep (partial postprocess-matches** db)) comp disjunction))
 
-(defn- postprocess-matches [batch-db conjunction]
-  (transduce (keep (partial postprocess-matches* batch-db)) comp conjunction))
+(defn- postprocess-matches [db conjunction]
+  (transduce (keep (partial postprocess-matches* db)) comp conjunction))
 
 (defn- supports-ordered-index-handles
-  [batch-db tid [search-param modifier _ compiled-values]]
-  (p/-supports-ordered-index-handles search-param batch-db tid modifier
+  [db tid [search-param modifier _ compiled-values]]
+  (p/-supports-ordered-index-handles search-param db tid modifier
                                      compiled-values))
 
 (defn- group-by-ordered-index-handle-support
   "Returns two groups, true and false."
-  [batch-db tid clauses]
-  (group-by (partial every? (partial supports-ordered-index-handles batch-db tid)) clauses))
+  [db tid clauses]
+  (group-by (partial every? (partial supports-ordered-index-handles db tid)) clauses))
 
 (defn- type-query-plan*
   "Splits `clauses` into two groups. The first group of clauses should be
@@ -242,16 +242,16 @@
 
   For the scan clauses, statistics are used. Clauses with a large estimated scan
   sizes are promoted to seek."
-  [batch-db tid clauses]
+  [db tid clauses]
   (let [{ordered-support-clauses true other-clauses false}
-        (group-by-ordered-index-handle-support batch-db tid clauses)]
+        (group-by-ordered-index-handle-support db tid clauses)]
     (cond
       (= 1 (count ordered-support-clauses))
       [ordered-support-clauses other-clauses]
 
       (seq ordered-support-clauses)
       (let [{small-clauses :small large-clauses :large}
-            (plan/group-by-estimated-scan-size batch-db tid ordered-support-clauses)]
+            (plan/group-by-estimated-scan-size db tid ordered-support-clauses)]
         [small-clauses
          (into (or large-clauses []) other-clauses)])
 
@@ -259,70 +259,70 @@
       [nil other-clauses])))
 
 (defn- resource-handle-mapper*
-  ([batch-db tid all-clauses]
-   (comp (u/resource-handle-xf batch-db tid)
-         (postprocess-matches batch-db all-clauses)))
-  ([batch-db tid all-clauses other-clauses]
-   (comp (other-clauses-index-handle-filter batch-db tid other-clauses)
-         (resource-handle-mapper* batch-db tid all-clauses))))
+  ([db tid all-clauses]
+   (comp (u/resource-handle-xf db tid)
+         (postprocess-matches db all-clauses)))
+  ([db tid all-clauses other-clauses]
+   (comp (other-clauses-index-handle-filter db tid other-clauses)
+         (resource-handle-mapper* db tid all-clauses))))
 
-(defn- resource-handle-mapper [batch-db tid all-clauses other-clauses]
+(defn- resource-handle-mapper [db tid all-clauses other-clauses]
   (if (seq other-clauses)
-    (resource-handle-mapper* batch-db tid all-clauses other-clauses)
-    (resource-handle-mapper* batch-db tid all-clauses)))
+    (resource-handle-mapper* db tid all-clauses other-clauses)
+    (resource-handle-mapper* db tid all-clauses)))
 
 (defn ordered-resource-handles
-  ([batch-db tid scan-clauses other-clauses]
+  ([db tid scan-clauses other-clauses]
    (coll/eduction
-    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-    (ordered-index-handles batch-db tid scan-clauses)))
-  ([batch-db tid scan-clauses other-clauses start-id]
+    (resource-handle-mapper db tid scan-clauses other-clauses)
+    (ordered-index-handles db tid scan-clauses)))
+  ([db tid scan-clauses other-clauses start-id]
    (coll/eduction
-    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-    (ordered-index-handles batch-db tid scan-clauses start-id))))
+    (resource-handle-mapper db tid scan-clauses other-clauses)
+    (ordered-index-handles db tid scan-clauses start-id))))
 
 (defn- unordered-resource-handles
-  ([batch-db tid [first-clause & other-clauses :as clauses]]
+  ([db tid [first-clause & other-clauses :as clauses]]
    (coll/eduction
-    (comp (resource-handle-mapper batch-db tid clauses other-clauses)
+    (comp (resource-handle-mapper db tid clauses other-clauses)
           u/distinct-by-id)
-    (index-handles batch-db tid first-clause)))
-  ([batch-db tid [first-clause & other-clauses :as clauses] start-id]
+    (index-handles db tid first-clause)))
+  ([db tid [first-clause & other-clauses :as clauses] start-id]
    (if (and (= 1 (count first-clause))
             (= 1 (count (peek (first first-clause)))))
      (coll/eduction
-      (comp (resource-handle-mapper batch-db tid clauses other-clauses)
+      (comp (resource-handle-mapper db tid clauses other-clauses)
             u/distinct-by-id)
-      (index-handles* batch-db tid (first first-clause) start-id))
+      (index-handles* db tid (first first-clause) start-id))
      (coll/eduction
       (u/drop-while-not-start-id start-id)
-      (unordered-resource-handles batch-db tid clauses)))))
+      (unordered-resource-handles db tid clauses)))))
 
 (defn type-query
-  "Returns a reducible collection of resource handles from `batch-db` of type
+  "Returns a reducible collection of resource handles from `db` of type
   with `tid` that satisfy `clauses`, optionally starting with `start-id`."
-  {:arglists '([batch-db tid clauses] [batch-db tid clauses start-id])}
-  ([batch-db tid {:keys [sort-clause search-clauses]}]
+  {:arglists '([db tid clauses] [db tid clauses start-id])}
+  ([db tid {:keys [sort-clause search-clauses]}]
    (if sort-clause
      (coll/eduction
-      (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
+      (comp (resource-handle-mapper db tid search-clauses search-clauses)
             u/distinct-by-id)
-      (sorted-index-handles batch-db tid sort-clause))
-     (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
+      (sorted-index-handles db tid sort-clause))
+     (let [[scan-clauses other-clauses] (type-query-plan* db tid search-clauses)]
        (if (seq scan-clauses)
-         (ordered-resource-handles batch-db tid scan-clauses other-clauses)
-         (unordered-resource-handles batch-db tid other-clauses)))))
-  ([batch-db tid {:keys [sort-clause search-clauses]} start-id]
+         (ordered-resource-handles db tid scan-clauses other-clauses)
+         (unordered-resource-handles db tid other-clauses)))))
+  ([db tid {:keys [sort-clause search-clauses]} start-id]
    (if sort-clause
      (coll/eduction
-      (comp (resource-handle-mapper batch-db tid search-clauses search-clauses)
+      (comp (resource-handle-mapper db tid search-clauses search-clauses)
             u/distinct-by-id
             (u/drop-while-not-start-id start-id))
-      (sorted-index-handles batch-db tid sort-clause start-id))
-     (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
+      (sorted-index-handles db tid sort-clause start-id))
+     (let [[scan-clauses other-clauses] (type-query-plan* db tid search-clauses)]
        (if (seq scan-clauses)
-         (ordered-resource-handles batch-db tid scan-clauses other-clauses start-id)
-         (unordered-resource-handles batch-db tid other-clauses start-id))))))
+         (ordered-resource-handles db tid scan-clauses other-clauses start-id)
+         (unordered-resource-handles db tid other-clauses start-id))))))
 
 (defn- clause-stats* [[{:keys [code]} modifier values]]
   {:code code
@@ -333,14 +333,14 @@
   (coll/eduction (map clause-stats*) clauses))
 
 (defn type-query-plan
-  {:arglists '([batch-db tid clauses])}
-  [batch-db tid {:keys [sort-clause search-clauses]}]
+  {:arglists '([db tid clauses])}
+  [db tid {:keys [sort-clause search-clauses]}]
   (if sort-clause
     {:query-type :type
      :scan-type :ordered
      :scan-clauses [(clause-stats* sort-clause)]
      :seek-clauses (into [] (mapcat clause-stats) search-clauses)}
-    (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
+    (let [[scan-clauses other-clauses] (type-query-plan* db tid search-clauses)]
       (if (seq scan-clauses)
         {:query-type :type
          :scan-type :ordered
@@ -369,18 +369,18 @@
 (defn type-query-total
   "Returns a CompletableFuture that will complete with the count of the
   matching resource handles."
-  {:arglists '([batch-db tid clauses])}
-  [batch-db tid search-clauses]
+  {:arglists '([db tid clauses])}
+  [db tid search-clauses]
   (if (seq search-clauses)
-    (let [[scan-clauses other-clauses] (type-query-plan* batch-db tid search-clauses)]
+    (let [[scan-clauses other-clauses] (type-query-plan* db tid search-clauses)]
       (if (seq scan-clauses)
         (sum-future-counts
          (chunk-counter
-          (resource-handle-mapper batch-db tid scan-clauses other-clauses))
-         (ordered-index-handles batch-db tid scan-clauses))
+          (resource-handle-mapper db tid scan-clauses other-clauses))
+         (ordered-index-handles db tid scan-clauses))
         (ac/completed-future
-         (count (unordered-resource-handles batch-db tid other-clauses)))))
-    (ac/completed-future (p/-type-total batch-db tid))))
+         (count (unordered-resource-handles db tid other-clauses)))))
+    (ac/completed-future (p/-type-total db tid))))
 
 (defn compartment-clauses
   [search-param-registry compartment-code search-param-codes type]
@@ -397,49 +397,49 @@
     [scan-clauses other-clauses]))
 
 (defn- ordered-compartment-index-handles**
-  ([batch-db compartment tid [search-param modifier _ compiled-values]]
+  ([db compartment tid [search-param modifier _ compiled-values]]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid modifier compiled-values))
-  ([batch-db compartment tid [search-param modifier _ compiled-values] start-id]
+    search-param db compartment tid modifier compiled-values))
+  ([db compartment tid [search-param modifier _ compiled-values] start-id]
    (search-param/ordered-compartment-index-handles
-    search-param batch-db compartment tid modifier compiled-values start-id)))
+    search-param db compartment tid modifier compiled-values start-id)))
 
 (defn- ordered-compartment-index-handles*
-  ([batch-db compartment tid disjunction]
+  ([db compartment tid disjunction]
    (if (= 1 (count disjunction))
-     (ordered-compartment-index-handles** batch-db compartment tid (first disjunction))
-     (let [f #(ordered-compartment-index-handles** batch-db compartment tid %)]
+     (ordered-compartment-index-handles** db compartment tid (first disjunction))
+     (let [f #(ordered-compartment-index-handles** db compartment tid %)]
        (u/union-index-handles (map f disjunction)))))
-  ([batch-db compartment tid disjunction start-id]
+  ([db compartment tid disjunction start-id]
    (if (= 1 (count disjunction))
-     (ordered-compartment-index-handles** batch-db compartment tid (first disjunction) start-id)
-     (let [f #(ordered-compartment-index-handles** batch-db compartment tid % start-id)]
+     (ordered-compartment-index-handles** db compartment tid (first disjunction) start-id)
+     (let [f #(ordered-compartment-index-handles** db compartment tid % start-id)]
        (u/union-index-handles (map f disjunction))))))
 
 (defn- ordered-compartment-index-handles
-  ([batch-db compartment tid conjunction]
+  ([db compartment tid conjunction]
    (if (= 1 (count conjunction))
-     (ordered-compartment-index-handles* batch-db compartment tid (first conjunction))
-     (let [f #(ordered-compartment-index-handles* batch-db compartment tid %)]
+     (ordered-compartment-index-handles* db compartment tid (first conjunction))
+     (let [f #(ordered-compartment-index-handles* db compartment tid %)]
        (u/intersection-index-handles (map f conjunction)))))
-  ([batch-db compartment tid conjunction start-id]
+  ([db compartment tid conjunction start-id]
    (if (= 1 (count conjunction))
-     (ordered-compartment-index-handles* batch-db compartment tid (first conjunction) start-id)
-     (let [f #(ordered-compartment-index-handles* batch-db compartment tid % start-id)]
+     (ordered-compartment-index-handles* db compartment tid (first conjunction) start-id)
+     (let [f #(ordered-compartment-index-handles* db compartment tid % start-id)]
        (u/intersection-index-handles (map f conjunction))))))
 
 (defn compartment-query
-  "Returns a reducible collection of resource handles from `batch-db` in
+  "Returns a reducible collection of resource handles from `db` in
   `compartment` of type with `tid` that satisfy `scan-clauses` and possible
   empty `other-clauses`, optionally starting with `start-id`."
-  ([batch-db compartment tid scan-clauses other-clauses]
+  ([db compartment tid scan-clauses other-clauses]
    (coll/eduction
-    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-    (ordered-compartment-index-handles batch-db compartment tid scan-clauses)))
-  ([batch-db compartment tid scan-clauses other-clauses start-id]
+    (resource-handle-mapper db tid scan-clauses other-clauses)
+    (ordered-compartment-index-handles db compartment tid scan-clauses)))
+  ([db compartment tid scan-clauses other-clauses start-id]
    (coll/eduction
-    (resource-handle-mapper batch-db tid scan-clauses other-clauses)
-    (ordered-compartment-index-handles batch-db compartment tid scan-clauses start-id))))
+    (resource-handle-mapper db tid scan-clauses other-clauses)
+    (ordered-compartment-index-handles db compartment tid scan-clauses start-id))))
 
 (defn compartment-query-plan [scan-clauses other-clauses]
   (cond->

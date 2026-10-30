@@ -3,11 +3,7 @@
 (defprotocol Db
   (-node [db])
 
-  (-as-of [db t])
-
-  (-basis-t [db])
-
-  (-as-of-t [db])
+  (-t [db])
 
   (-since [db since])
 
@@ -59,9 +55,7 @@
 
   (-re-index-total [db search-param-url])
 
-  (-re-index [db search-param-url] [db search-param-url start-type start-id])
-
-  (-new-batch-db [db]))
+  (-re-index [db search-param-url] [db search-param-url start-type start-id]))
 
 (defprotocol Tx
   (-tx [tx t]))
@@ -84,15 +78,15 @@
   (-compile-compartment-query-lenient [compiler code type clauses]))
 
 (defprotocol Query
-  (-count [query batch-db]
+  (-count [query db]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
-  (-execute [query batch-db] [query batch-db arg1] [query batch-db arg1 arg2])
+  (-execute [query db] [query db arg1] [query db arg1 arg2])
 
   (-query-clauses [query])
 
-  (-query-plan [query batch-db])
+  (-query-plan [query db])
 
   (-query-match-extension-fn [query]
     "Returns a function of a resource matched by `query` that returns its match
@@ -100,7 +94,7 @@
     produces match extensions."))
 
 (defprotocol Matcher
-  (-transducer [matcher batch-db])
+  (-transducer [matcher db])
 
   (-matcher-clauses [matcher]))
 
@@ -119,7 +113,7 @@
     "Returns a CompletableFuture that completes with the compiled value or
     completes exceptionally with an anomaly.")
   (-estimated-scan-size
-    [search-param batch-db tid modifier compiled-value]
+    [search-param db tid modifier compiled-value]
     "Returns a relative estimation of the amount of work to do while scanning
     the index of `search-param` with `compiled-value` under `tid`.
 
@@ -128,19 +122,19 @@
 
     Returns an anomaly on errors.")
   (-index-handles
-    [search-param batch-db tid modifier compiled-value]
-    [search-param batch-db tid modifier compiled-value start-id]
+    [search-param db tid modifier compiled-value]
+    [search-param db tid modifier compiled-value start-id]
     "Returns a reducible collection of unordered index handles.")
   (-supports-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values]
     "Returns true if `search-param` supports ordered index handles.")
   (-ordered-index-handles
-    [search-param batch-db tid modifier compiled-values]
-    [search-param batch-db tid modifier compiled-values start-id]
+    [search-param db tid modifier compiled-values]
+    [search-param db tid modifier compiled-values start-id]
     "Returns a reducible collection of index handles ordered by ID.")
   (-sorted-index-handles
-    [search-param batch-db tid direction]
-    [search-param batch-db tid direction start-id]
+    [search-param db tid direction]
+    [search-param db tid direction start-id]
     "Returns a reducible collection of index handles sorted by the sort clause.
 
     The `start-id` is only a performance hint. Search params are allowed to
@@ -148,13 +142,13 @@
   (-supports-ordered-compartment-index-handles [search-param modifier values]
     "Returns true if `search-param` supports fetching ordered compartment index handles with `values`.")
   (-ordered-compartment-index-handles
-    [search-param batch-db compartment tid modifier compiled-values]
-    [search-param batch-db compartment tid modifier compiled-values start-id]
+    [search-param db compartment tid modifier compiled-values]
+    [search-param db compartment tid modifier compiled-values start-id]
     "Returns a reducible collection.")
-  (-matcher [_ batch-db modifier compiled-values])
-  (-single-version-id-matcher [_ batch-db tid modifier compiled-values])
+  (-matcher [_ db modifier compiled-values])
+  (-single-version-id-matcher [_ db tid modifier compiled-values])
   (-postprocess-matches
-    [search-param batch-db modifier values compiled-values]
+    [search-param db modifier values compiled-values]
     "Returns a transducer that will be applied on every matching resource-handle
      at the end of the query execution. Can also be used to finally remove
      unwanted matches.")

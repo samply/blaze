@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.bcp-13-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.fhir.test-util]
    [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -23,7 +23,7 @@
   (with-system [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock incrementing-rng-fn]} config]
     (let [context {:node node :clock fixed-clock :rng-fn incrementing-rng-fn}]
       (testing "after creation"
-        (let [db @(bcp-13/ensure-code-system context)]
+        (with-db [db node @(bcp-13/ensure-code-system context)]
 
           (testing "the code system is available"
             (is (= 1 (d/type-total db "CodeSystem"))))))

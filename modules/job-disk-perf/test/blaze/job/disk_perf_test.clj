@@ -417,7 +417,7 @@
 
 (defn- pull-job-in-phase*
   [{:blaze.db.admin/keys [node] :as system} id phase]
-  (-> (d/pull node (d/resource-handle (d/db node) "Task" id))
+  (-> (d/with-db node #(d/pull node (d/resource-handle % "Task" id)))
       (ac/then-compose-async
        (fn [job]
          (if (= phase (:value (output-value job "current-phase")))

@@ -73,7 +73,6 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
-   [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
    [blaze.db.impl.index :as index]
@@ -118,13 +117,15 @@
    [blaze.spec]
    [blaze.util :refer [condp-identical conj-vec str]]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [prometheus.alpha :as prom :refer [defcounter defhistogram]]
    [taoensso.timbre :as log])
   (:import
    [clojure.lang PersistentQueue]
-   [java.lang AutoCloseable]))
+   [java.lang AutoCloseable]
+   [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,9 +135,9 @@
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
 
-  Returns a CompletableFuture that will complete with the database after the
-  transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors."
+  Returns a CompletableFuture that will complete with `t` in case of success
+  or will complete exceptionally with an anomaly in case of a transaction error
+  or other errors."
   [node t]
   (np/-tx-result node t))
 
@@ -335,9 +336,16 @@
   [{:keys [in-flight] :as state} t]
   (assoc state :in-flight (reduce disj in-flight (subseq in-flight <= t))))
 
-(defn- index-tx [node-name context tx-data]
+(defn- index-tx
+  "Indexes `tx-data` against the database value at the t of the last
+  successfully indexed transaction, which is held in a scope until indexing
+  completes."
+  [{:keys [node-name state] :as node} context tx-data]
   (with-open [_ (prom/timer duration-seconds node-name "index-transactions")]
-    (ba/try-anomaly (ac/join (tx-indexer/index-tx context tx-data)))))
+    (ba/try-anomaly
+     (ac/join
+      (db/with-db node (:t @state)
+        #(tx-indexer/index-tx (assoc context :db-before %) tx-data))))))
 
 (defn- swap-state!
   "Applies `f` to `state` and wakes up the publishing loop, so that it examines
@@ -412,8 +420,8 @@
   Starts the type history of `db` at `window-t` and stops it at `since-t`, so
   that only the transactions of that window are examined, independent of the
   wider window of `db`. That's what keeps a subscription that lags behind from
-  widening the transactions examined for an unrelated type, while a single batch
-  database is still sufficient for all of them.
+  widening the transactions examined for an unrelated type, while a single
+  database value is still sufficient for all of them.
 
   Relies on `d/type-history` returning the handles in descending transaction
   order, so the handles can be partitioned by t directly."
@@ -462,7 +470,7 @@
   each subscription of `ready-subscriptions`, a map of type to the ready
   subscriptions of that type.
 
-  Determines the changed handles of all of them with a single batch database of
+  Determines the changed handles of all of them with a single database value of
   the union of their windows, so that a round needs a single snapshot of the
   key-value store, independent of how far the individual subscriptions are
   apart. Examines only the union of the windows of the subscriptions of a type
@@ -477,19 +485,18 @@
   Transactions that didn't change resources of the type of a subscription are
   not published to it."
   [node ready-subscriptions]
-  (let [all-ready (into [] cat (vals ready-subscriptions))
-        window-t (max-window-t all-ready)]
-    (with-open [db (batch-db/new-batch-db node window-t window-t
-                                          (min-since-t all-ready))]
-      (run!
-       (fn [[type ready]]
-         (let [handles (changed-handles db type (min-since-t ready)
-                                        (max-window-t ready))]
-           (run!
-            (fn [{:keys [subscription window-t]}]
-              (sub/publish! subscription window-t handles))
-            ready)))
-       ready-subscriptions))))
+  (let [all-ready (into [] cat (vals ready-subscriptions))]
+    (db/call-with-db node (max-window-t all-ready) (min-since-t all-ready)
+      (fn [db]
+        (run!
+         (fn [[type ready]]
+           (let [handles (changed-handles db type (min-since-t ready)
+                                          (max-window-t ready))]
+             (run!
+              (fn [{:keys [subscription window-t]}]
+                (sub/publish! subscription window-t handles))
+              ready)))
+         ready-subscriptions)))))
 
 (defn- ready-subscription
   "Returns `subscription` together with the window of transactions to publish to
@@ -695,7 +702,7 @@
   Waits on the publish future of the state for new transactions to become
   available. Transactions committed while publishing is in progress are
   coalesced into the next round, so that the changed handles of multiple
-  transactions are determined with a single batch database, independent of the
+  transactions are determined with a single database value, independent of the
   transaction rate. Because this loop is the only thread queueing handles, each
   subscription still receives the transactions in order.
 
@@ -801,9 +808,8 @@
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
-  (let [result (index-tx node-name {:db-before (np/-db node)
-                                    :read-only-matcher read-only-matcher
-                                    :stats @stats} tx-data)]
+  (let [result (index-tx node {:read-only-matcher read-only-matcher
+                               :stats @stats} tx-data)]
     (if (ba/anomaly? result)
       (do
         ;; dropping the chunks left makes the ones dispatched the last ones, so
@@ -1238,23 +1244,41 @@
 
 (defn- compile-system-matcher [search-param-registry clauses]
   (-> (index/resolve-search-params search-param-registry "Resource" clauses false)
-      (ac/then-apply (fn [clauses] (batch-db/->Matcher (:search-clauses clauses))))))
+      (ac/then-apply (fn [clauses] (db/->Matcher (:search-clauses clauses))))))
+
+(defn- sync-timeout-msg [timeout]
+  (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." timeout))
+
+(defn- sync-t-timeout-msg [t timeout]
+  (format "Timeout while trying to acquire the database state with t=%d. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." t timeout))
+
+(defn- or-sync-timeout
+  "Fails `future` with a busy anomaly with the message returned by `msg-fn` if
+  it doesn't complete within `timeout` milliseconds."
+  [future timeout msg-fn]
+  (-> (ac/or-timeout! future timeout TimeUnit/MILLISECONDS)
+      (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (msg-fn))))))
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-handle-cache resource-store sync-fn search-param-registry resource-indexer
                  index-bounds read-only-matcher acquire-in-flight! state stats
-                 poll-timeout queue-capacity index-finished publish-finished]
+                 poll-timeout queue-capacity sync-timeout index-finished
+                 publish-finished]
   np/Node
-  (-db [node]
-    (db/db node (:t @state)))
+  (-with-db [node f]
+    (db/with-db node (:t @state) f))
 
-  (-sync [node]
+  (-with-sync-db [node f]
     (log/trace "sync on last t")
-    (sync-fn node))
+    (-> (sync-fn node)
+        (or-sync-timeout sync-timeout #(sync-timeout-msg sync-timeout))
+        (ac/then-compose #(db/with-db node % f))))
 
-  (-sync [node t]
+  (-with-sync-db [node t f]
     (log/trace "sync on t =" t)
-    (t-future node t #(db/db node %)))
+    (-> (t-future node t identity)
+        (or-sync-timeout sync-timeout #(sync-t-timeout-msg t sync-timeout))
+        (ac/then-compose (fn [_] (db/with-db node t f)))))
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
@@ -1301,7 +1325,7 @@
 
   (-compile-type-matcher [_ type clauses]
     (do-sync [clauses (index/resolve-search-params search-param-registry type clauses false)]
-      (batch-db/->Matcher (:search-clauses clauses))))
+      (db/->Matcher (:search-clauses clauses))))
 
   (-compile-system-query [_ clauses]
     (compile-system-query search-param-registry clauses false))
@@ -1460,20 +1484,27 @@
         (throw (incompatible-kv-store-version-ex actual-kv-store-version
                                                  expected-kv-store-version))))))
 
-(defn- sync-fn [storage]
+(defn- sync-fn
+  "Returns a function that takes a node and returns a CompletableFuture that
+  will complete with the t of the last successfully indexed transaction once
+  all transactions submitted at the time of the call are indexed."
+  [storage]
   (condp-identical storage
     :distributed
     (fn sync-distributed [^Node node]
       (-> (tx-log/last-t (.-tx_log node))
-          (ac/then-compose #(np/-sync node %))))
-    (fn sync-standalone [node]
-      (ac/completed-future (np/-db node)))))
+          (ac/then-compose #(t-future node % identity))))
+    (fn sync-standalone [^Node node]
+      (ac/completed-future (:t @(.-state node))))))
 
 (defn- initial-plc-index-entries [{:keys [state] :as node}]
-  (into
-   [(plc/state-index-entry {:type :current})]
-   (map (fn [{:keys [id]}] (plc/index-entry id (:t @state))))
-   (d/type-list (d/db node) "Patient")))
+  (let [t (:t @state)]
+    (db/call-with-db node t 0
+      (fn [db]
+        (into
+         [(plc/state-index-entry {:type :current})]
+         (map (fn [{:keys [id]}] (plc/index-entry id t)))
+         (d/type-list db "Patient"))))))
 
 (defn build-patient-last-change-index
   [key {:keys [node-name kv-store] :as node}]
@@ -1506,15 +1537,17 @@
     :blaze.db/max-in-flight-transactions
     :blaze.db/resource-handle-cache
     ::poll-timeout
-    ::queue-capacity]))
+    ::queue-capacity
+    ::sync-timeout]))
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache kv-store resource-indexer resource-cache
                resource-handle-cache resource-store search-param-registry
                scheduler poll-timeout
-               queue-capacity max-in-flight-transactions]
+               queue-capacity max-in-flight-transactions sync-timeout]
         :or {poll-timeout (time/seconds 1)
              queue-capacity 16
+             sync-timeout 10000
              max-in-flight-transactions default-max-in-flight-transactions}
         :as config}]
   (init-msg key config)
@@ -1537,6 +1570,7 @@
                      stats
                      poll-timeout
                      queue-capacity
+                     sync-timeout
                      (ac/future)
                      (ac/future))]
     ;; no reader may insert a handle older than the last transaction indexed

@@ -14,8 +14,8 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
-(defn- build-response [db]
-  (let [tx (d/tx db (d/basis-t db))]
+(defn- build-response [node t]
+  (let [tx (d/tx node t)]
     (-> (ring/status 204)
         (ring/header "Last-Modified" (fhir-util/last-modified tx))
         (ring/header "ETag" (fhir-util/etag tx)))))
@@ -27,5 +27,5 @@
   (log/info "Init FHIR delete interaction handler")
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
-    (do-sync [db (d/transact node [[:delete type id]])]
-      (build-response db))))
+    (do-sync [t (d/transact node [[:delete type id]])]
+      (build-response node t))))
