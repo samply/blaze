@@ -21,7 +21,6 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.quantity :refer [quantity]]
-   [blaze.fhir.spec.type.system :as system]
    [blaze.module.test-util :refer [with-system]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -551,8 +550,8 @@
 
           #fhir/instant{:id "foo"} nil
           #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} nil
-          #fhir/instant #system/date-time "2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
-          #fhir/instant #system/date-time "2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
+          #fhir/instant #system/date-time "2021-02-23T15:12:45Z" #system/date-time "2021-02-23T15:12:45Z"
+          #fhir/instant #system/date-time "2021-02-23T15:12:45+01:00" #system/date-time "2021-02-23T15:12:45+01:00"))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -669,20 +668,21 @@
            {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
             :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}
           (interval/interval
-           (system/date-time 2021 2 23 14 12 45)
-           (system/date-time 2021 2 23 15 0 0))
+           #system/date-time "2021-02-23T15:12:45+01:00"
+           #system/date-time "2021-02-23T16:00:00+01:00")
           #fhir/Period
            {:start nil
             :end #fhir/dateTime #system/date-time "2021-02-23T16:00:00+01:00"}
           (interval/interval
            nil
-           (system/date-time 2021 2 23 15 0 0))
+           #system/date-time "2021-02-23T16:00:00+01:00")
           #fhir/Period
            {:start #fhir/dateTime #system/date-time "2021-02-23T15:12:45+01:00"
             :end nil}
           (interval/interval
-           (system/date-time 2021 2 23 14 12 45)
-           date-time/max-date-time)
+           #system/date-time "2021-02-23T15:12:45+01:00"
+           date-time/max-date-time
+           ctu/now)
           #fhir/Period
            {:start nil
             :end nil}

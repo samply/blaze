@@ -201,7 +201,8 @@
   (-to-interval [{:keys [start end]} {:keys [now]}]
     (interval/interval
      (p/to-date-time (:value start) now)
-     (or (p/to-date-time (:value end) now) date-time/max-date-time)))
+     (or (p/to-date-time (:value end) now) date-time/max-date-time)
+     now))
 
   nil
   (-to-interval [_ _]))
