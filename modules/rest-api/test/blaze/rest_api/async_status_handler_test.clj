@@ -50,6 +50,11 @@
 (defn- in-progress-job [authored-on bundle-id t]
   (assoc (job-async/job authored-on bundle-id t) :status #fhir/code "in-progress"))
 
+(defn- on-hold-job [authored-on bundle-id t]
+  (-> (job-async/job authored-on bundle-id t)
+      (assoc :status #fhir/code "on-hold"
+             :statusReason job-util/orderly-shut-down-status-reason)))
+
 (defn- completed-job [authored-on request-bundle-id t response-bundle-id]
   (-> (job-async/job authored-on request-bundle-id t)
       (assoc :status #fhir/code "completed")
@@ -109,6 +114,19 @@
 
         (given headers
           "X-Progress" := "in-progress"))))
+
+  (testing "with on-hold job"
+    (with-handler [handler]
+      [[[:put (assoc (on-hold-job (bt/offset-date-time) "0" 0) :id "0")]
+        [:put (job-async/request-bundle "0" "GET" "Observation/0")]]]
+
+      (let [{:keys [status headers]}
+            @(handler {:path-params {:id "0"}})]
+
+        (is (= 202 status))
+
+        (given headers
+          "X-Progress" := "on-hold"))))
 
   (testing "with completed job"
     (with-handler [handler]
