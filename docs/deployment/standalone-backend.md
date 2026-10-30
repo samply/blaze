@@ -87,5 +87,5 @@ volumes:
 
 The command `wget` is available and can be used for implementing a health check on the `/health` endpoint which is separate from the `/fhir` endpoint.
 
-> [!CAUTION]
-> The command `curl` was never officially available in the Blaze backend image. It will be removed in version 1.6. Please migrate to use `wget`.
+> [!NOTE]
+> The command `curl` is not available in the Blaze backend image. Please use `wget` instead.
