@@ -5,7 +5,9 @@
    [blaze.fhir.structure-definition-repo]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
+   [blaze.fhir.util.spec]
    [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -304,6 +306,29 @@
     (given (fu/coerce-instant #fhir/instant{:id "0"})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing value.")))
+
+(deftest param-specs-spec-test
+  (testing "valid"
+    (are [specs] (s/valid? ::fu/param-specs specs)
+      {}
+      {"a" {}}
+      {"a" {:action :copy}}
+      {"a" {:action :copy :coerce fu/coerce-string :required true}}
+      {"a" {:action :copy :cardinality :many :key :as}}
+      {"a" {:action :copy-complex-type}}
+      {"a" {:action :copy-resource}}))
+
+  (testing "invalid"
+    (are [specs] (not (s/valid? ::fu/param-specs specs))
+      nil
+      {:a {:action :copy}}
+      {"a" nil}
+      {"a" {:action :foo}}
+      {"a" {:action :copy :cardinality :one}}
+      {"a" {:action :copy :coerce "foo"}}
+      {"a" {:action :copy :key "a"}}
+      {"a" {:action :copy :key :a/b}}
+      {"a" {:action :copy :required "true"}})))
 
 (deftest coerce-params-test
   (testing "simple copy"

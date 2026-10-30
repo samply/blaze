@@ -236,6 +236,7 @@ jobs:
         - operation-measure-evaluate-measure
         - operation-patient-everything
         - operation-patient-purge
+        - operation-re-index
         - operation-totals
         - operation-value-set-expand
         - operation-value-set-validate-code
@@ -2818,7 +2819,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e ENABLE_OPERATION_RE_INDEX=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2840,6 +2841,12 @@ jobs:
 
     - name: Measure Disk Performance
       run: .github/scripts/disk-perf.sh
+
+    - name: Re-Index Unknown Search Param
+      run: .github/scripts/re-index-unknown-search-param.sh
+
+    - name: Re-Index
+      run: .github/scripts/re-index.sh
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had

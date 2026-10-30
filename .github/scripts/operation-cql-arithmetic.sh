@@ -20,7 +20,7 @@ cat <<END
 END
 }
 
-result="$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "$(parameters)" "$base/\$cql")"
+result="$(parameters | execute_operation "$base/\$cql")"
 
 test "result resource type" "$(echo "$result" | jq -r '.resourceType')" "Parameters"
 test "result value" "$(echo "$result" | jq -r '.parameter[0].valueInteger')" "2"

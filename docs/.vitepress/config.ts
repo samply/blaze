@@ -125,6 +125,7 @@ const config = defineConfig({
                   { text: "$compact", link: "/api/operation/compact" },
                   { text: "$cql", link: "/api/operation/cql" },
                   { text: "$disk-perf", link: "/api/operation/disk-perf" },
+                  { text: "$re-index", link: "/api/operation/re-index" },
                 ],
               },
               {

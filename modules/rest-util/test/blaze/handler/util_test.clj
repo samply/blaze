@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp-spec]
    [blaze.handler.util :as handler-util]
+   [blaze.handler.util-spec]
    [blaze.luid.spec]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
@@ -24,6 +25,22 @@
              {:blaze/base-url "http://localhost:8080"}
              {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})
             [:headers "Content-Location"])))))
+
+(deftest parameters-body-test
+  (testing "a Parameters resource is returned as is"
+    (given (handler-util/parameters-body {:fhir/type :fhir/Parameters :id "0"})
+      :fhir/type := :fhir/Parameters
+      :id := "0"))
+
+  (testing "a missing body is an empty Parameters resource"
+    (given (handler-util/parameters-body nil)
+      :fhir/type := :fhir/Parameters
+      :parameter := nil))
+
+  (testing "another resource type is an error"
+    (given (handler-util/parameters-body {:fhir/type :fhir/Patient})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Expected Parameters resource but was `Patient` resource.")))
 
 (deftest preference-test
   (testing "return"
