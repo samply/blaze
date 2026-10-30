@@ -1,5 +1,55 @@
 # Changelog
 
+## v1.13.0
+
+### Notes
+
+This release fixes [CVE-2026-111497](https://github.com/samply/blaze/issues/4524) in the backend image. We recommend that everyone running the Blaze Docker image update.
+
+Please check the following changes when updating:
+
+* The frontend no longer uses the environment variable `ORIGIN`. It derives its origin from the `Host` header, or the header named in `HOST_HEADER`, and the header named in `PROTOCOL_HEADER`, with `https` as default protocol. If the frontend runs behind a reverse proxy, make sure these headers are set up as described in the [environment variables](https://blaze-server.org/deployment/environment-variables.html#frontend).
+* The frontend no longer starts if one of `BACKEND_BASE_URL`, `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`, `AUTH_ISSUER` or `AUTH_SECRET` is missing or empty.
+* The frontend now signs users in with Better Auth instead of Auth.js, so users have to sign in again after the update. Its cookies are about 6 KB, so a reverse proxy has to accept request headers of that size.
+* The Blaze backend image no longer contains `curl`. Health checks using `curl` will fail and have to be migrated to `wget`, e.g. `["CMD", "wget", "--spider", "http://localhost:8080/health"]`.
+* The new resource handle cache takes 10% of the JVM heap by default. Use `DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO` to change that.
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Security
+
+* Fix CVE-2026-111497 in the Backend Image ([#4524](https://github.com/samply/blaze/issues/4524))
+
+### Enhancements
+
+* Add Option for Direct Reads in the Resource Store ([#4483](https://github.com/samply/blaze/issues/4483))
+
+### Performance
+
+* Add Resource Handle Cache Keyed by Type and Id ([#4381](https://github.com/samply/blaze/issues/4381))
+* Count Reducible Collections Without Boxing ([#4487](https://github.com/samply/blaze/issues/4487))
+* Deduplicate Search Results by Id With a Mutable Set ([#4488](https://github.com/samply/blaze/issues/4488))
+
+### Bugfixes
+
+* Fix Shared Bloom Filters for Function Calls With the Same Name ([#4430](https://github.com/samply/blaze/issues/4430))
+* Fix CQL Expressions Without Form ([#4459](https://github.com/samply/blaze/issues/4459))
+* Close Iterators of Abandoned Transducers ([#4485](https://github.com/samply/blaze/issues/4485))
+
+### Maintenance
+
+* Migrate Frontend to SvelteKit 3 ([#4469](https://github.com/samply/blaze/issues/4469))
+* Replace Auth.js With Better Auth ([#4470](https://github.com/samply/blaze/issues/4470))
+* Pool Iterators per Thread and Fail Use After Close ([#4475](https://github.com/samply/blaze/issues/4475))
+* Replace Deprecated Keycloak Admin Env Vars ([#4479](https://github.com/samply/blaze/issues/4479))
+* Fix Compilation of IndexHandle on Java 21 ([#4480](https://github.com/samply/blaze/issues/4480))
+* Use blaze-server.org Canonical in Custom Search Params ([#4500](https://github.com/samply/blaze/issues/4500))
+* Remove curl from the Blaze Image ([#4519](https://github.com/samply/blaze/issues/4519))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/131?closed=1).
+
 ## v1.12.1
 
 ### Notes
