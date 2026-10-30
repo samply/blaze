@@ -21,7 +21,8 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
-   [blaze.job.re-index]
+   [blaze.job.re-index :as re-index]
+   [blaze.job.re-index-spec]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.luid :as luid]
@@ -31,6 +32,7 @@
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
+   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -315,6 +317,47 @@
                    {:coding
                     [#fhir/Coding{:system #fhir/uri "foo" :code #fhir/code "bar"}]}}])
    (range n)))
+
+(deftest job-test
+  (let [job (re-index/job (bt/offset-date-time) {:search-param-url "http://hl7.org/fhir/SearchParameter/clinical-code"})]
+    (testing "meta.profile carries both canonicals, current first"
+      (given (:profile (:meta job))
+        [0] := #fhir/canonical "https://blaze-server.org/fhir/StructureDefinition/ReIndexJob"
+        [1] := #fhir/canonical "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"))
+
+    (testing "status is ready"
+      (given job
+        :status := #fhir/code "ready"
+        :intent := #fhir/code "order"))
+
+    (testing "code carries both JobType systems with display, current first"
+      (given (:coding (:code job))
+        [0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/JobType"
+        [0 :code] := #fhir/code "re-index"
+        [0 :display] := #fhir/string "(Re)Index a Search Parameter"
+        [1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        [1 :code] := #fhir/code "re-index"
+        [1 :display] := #fhir/string "(Re)Index a Search Parameter"))
+
+    (testing "the search-param-url input carries both parameter systems"
+      (given (first (:input job))
+        [:type :coding 0 :system] := #fhir/uri "https://blaze-server.org/fhir/CodeSystem/ReIndexJobParameter"
+        [:type :coding 0 :code] := #fhir/code "search-param-url"
+        [:type :coding 1 :system] := #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+        [:type :coding 1 :code] := #fhir/code "search-param-url"
+        :value := #fhir/canonical "http://hl7.org/fhir/SearchParameter/clinical-code")))
+
+  (testing "the created job is executed"
+    (with-system-data [{:blaze/keys [job-scheduler] :as system} config]
+      [(gen-tx-data 1)]
+
+      @(js/create-job job-scheduler (re-index/job (bt/offset-date-time) {:search-param-url "http://hl7.org/fhir/SearchParameter/clinical-code"}))
+
+      (given @(jtu/pull-job system :completed)
+        :fhir/type := :fhir/Task
+        jtu/combined-status := :completed
+        total-resources := #fhir/unsignedInt 1
+        resources-processed := #fhir/unsignedInt 1))))
 
 (deftest simple-job-execution-test
   (testing "success"

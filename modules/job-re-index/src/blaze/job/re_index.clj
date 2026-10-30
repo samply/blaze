@@ -33,6 +33,21 @@
     :system #fhir/uri-interned "http://unitsofmeasure.org"
     :code #fhir/code "s"})
 
+(defn job
+  "Creates a re-index job resource."
+  [authored-on {:keys [search-param-url]}]
+  {:fhir/type :fhir/Task
+   :meta (type/meta {:profile (mapv type/canonical (canonical/urls "StructureDefinition/ReIndexJob"))})
+   :status #fhir/code "ready"
+   :intent #fhir/code "order"
+   :code (job-util/type-codeable-concept "re-index" "(Re)Index a Search Parameter")
+   :authoredOn (type/dateTime authored-on)
+   :input
+   [{:fhir/type :fhir.Task/input
+     :type (type/codeable-concept
+            {:coding (canonical/codings "CodeSystem/ReIndexJobParameter" "search-param-url")})
+     :value (type/canonical search-param-url)}]})
+
 (defn- start-job [job total-resources]
   (assoc
    job

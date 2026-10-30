@@ -24,7 +24,7 @@ cat <<END
 END
 }
 
-outcome="$(curl -sH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "$(parameters)" "$base/\$compact")"
+outcome="$(parameters | execute_operation_allow_error "$base/\$compact")"
 
 echo "$outcome"
 
