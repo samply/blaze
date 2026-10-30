@@ -341,7 +341,8 @@
         (on-start context job))
       (-on-cancel [_ job]
         (swap! (::running-jobs context) assoc (:id job) true)
-        (ac/completed-future job)))))
+        (ac/completed-future job))
+      (-on-shutdown [_ _]))))
 
 (derive :blaze.job/disk-perf :blaze.job/handler)
 

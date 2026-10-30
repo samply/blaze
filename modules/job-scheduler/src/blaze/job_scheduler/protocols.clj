@@ -26,4 +26,15 @@
     free the resources the job allocated.
 
     Returns a CompletableFuture that will complete with a possibly updated job
-    or will complete exceptionally with an anomaly in case of errors."))
+    or will complete exceptionally with an anomaly in case of errors.")
+
+  (-on-shutdown [job-handler job]
+    "Handles the event that the job scheduler shuts down while `job` is
+    running.
+
+    The jobs status will be `on-hold` with the reason `orderly-shutdown`.
+    Should make the running job stop as soon as possible, because the job
+    scheduler waits for it to stop. The job must stay on-hold, so it must not
+    be updated.
+
+    Must not block. The return value is ignored."))
