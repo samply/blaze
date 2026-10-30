@@ -62,21 +62,8 @@
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "quantity")))
 
-(defn- resource-value
-  "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash` starting with `prefix`.
-
-  The `prefix` is important, because resources have more than one index entry
-  and so more than one value per search parameter. Different unit
-  representations and other possible prefixes from composite search parameters
-  are responsible for the multiple values."
-  {:arglists '([batch-db c-hash tid id prefix])}
-  [{:keys [snapshot] :as batch-db} c-hash tid id prefix]
-  (r-sp-v/next-value snapshot (p/-resource-handle batch-db tid id) c-hash
-                     (bs/size prefix) prefix))
-
 (defn- id-start-key [batch-db c-hash tid prefix start-id]
-  (let [start-value (resource-value batch-db c-hash tid start-id prefix)]
+  (let [start-value (u/resource-value batch-db c-hash tid start-id prefix)]
     (assert start-value)
     (sp-vr/encode-seek-key c-hash tid start-value start-id)))
 
@@ -116,8 +103,8 @@
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles' snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
-                                     (bs/subs value 0 prefix-length))]
+   (let [start-value (u/resource-value batch-db c-hash tid start-id
+                                       (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
                           start-id))))
@@ -131,8 +118,8 @@
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev' snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
-                                     (bs/subs value 0 prefix-length))]
+   (let [start-value (u/resource-value batch-db c-hash tid start-id
+                                       (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
                                start-id))))
@@ -146,8 +133,8 @@
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
-                                     (bs/subs value 0 prefix-length))]
+   (let [start-value (u/resource-value batch-db c-hash tid start-id
+                                       (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles snapshot c-hash tid prefix-length start-value
                           start-id))))
@@ -161,8 +148,8 @@
   ([{:keys [snapshot]} c-hash tid prefix-length value]
    (sp-vr/index-handles-prev snapshot c-hash tid prefix-length value))
   ([{:keys [snapshot] :as batch-db} c-hash tid prefix-length value start-id]
-   (let [start-value (resource-value batch-db c-hash tid start-id
-                                     (bs/subs value 0 prefix-length))]
+   (let [start-value (u/resource-value batch-db c-hash tid start-id
+                                       (bs/subs value 0 prefix-length))]
      (assert start-value)
      (sp-vr/index-handles-prev snapshot c-hash tid prefix-length start-value
                                start-id))))

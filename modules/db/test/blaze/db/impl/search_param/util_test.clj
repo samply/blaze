@@ -1,6 +1,8 @@
 (ns blaze.db.impl.search-param.util-test
   (:refer-clojure :exclude [hash])
   (:require
+   [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.index-handle :as ih]
    [blaze.db.impl.index.index-handle-spec]
@@ -8,6 +10,7 @@
    [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.impl.search-param.util-spec]
+   [blaze.db.test-util :as dtu :refer [with-system-data]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -100,6 +103,24 @@
 
 (defn- index-handle [svi & more]
   (reduce ih/conj (ih/from-single-version-id svi) more))
+
+(deftest resource-value-test
+  (with-system-data [{:blaze.db/keys [node]} dtu/config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :name [#fhir/HumanName{:family #fhir/string "Fred"
+                                    :given [#fhir/string "Bob"]}]}]]]
+
+    (with-open [batch-db (d/new-batch-db (d/db node))]
+      (let [c-hash (codec/c-hash "name")
+            tid (codec/tid "Patient")]
+        (testing "returns the value starting with the prefix"
+          (is (= (codec/string "fred")
+                 (u/resource-value batch-db c-hash tid "0" (codec/string "fr"))))
+          (is (= (codec/string "bob")
+                 (u/resource-value batch-db c-hash tid "0" (codec/string "bo")))))
+
+        (testing "returns nil if no value starts with the prefix"
+          (is (nil? (u/resource-value batch-db c-hash tid "0" (codec/string "x")))))))))
 
 (deftest by-id-grouper-test
   (testing "empty input"

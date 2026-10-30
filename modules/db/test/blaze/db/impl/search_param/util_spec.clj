@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.util-spec
   (:require
+   [blaze.byte-string :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
@@ -14,6 +15,14 @@
 (s/fdef u/compile-id
   :args (s/cat :id string?)
   :ret (s/or :value :blaze.resource/id :anomaly ::anom/anomaly))
+
+(s/fdef u/resource-value
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
+               :c-hash :blaze.db/c-hash
+               :tid :blaze.db/tid
+               :id :blaze.resource/id
+               :prefix byte-string?)
+  :ret (s/nilable byte-string?))
 
 (s/fdef u/separate-op
   :args (s/cat :value string?)
