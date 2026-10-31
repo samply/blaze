@@ -16,6 +16,14 @@
     (with-open [out (FileOutputStream. ^String output-path)]
       (.write out ^bytes (:body response)))))
 
+(defn- fetch-loinc [filename]
+  (try
+    (download-file "https://deps.blaze-server.eu/Loinc_2.83_578bb2001df9ebf74b5566a11ccf0ebb.zip" filename)
+    (catch Exception e
+      (io/delete-file filename true)
+      (throw (ex-info (format "Error while downloading the LOINC release archive (%s). Please download %s from https://loinc.org/downloads/ and put it into the directory modules/terminology-service-local." (ex-message e) filename)
+                      {:file filename})))))
+
 (defn- bytes->hex
   "Converts a byte array to a hexadecimal string."
   [^bytes byte-array]
@@ -45,11 +53,14 @@
                        :expected expected-sha
                        :actual actual-sha})))))
 
-(defn download-loinc [_]
-  (let [filename "Loinc_2.82.zip"]
+(defn download-loinc
+  "Downloads and unzips the LOINC release archive. Uses an archive already
+  placed in this module directory."
+  [_]
+  (let [filename "Loinc_2.83.zip"]
     (when-not (.exists (io/file filename))
-      (download-file (str "https://speicherwolke.uni-leipzig.de/index.php/s/F9JSkDk7eCskzLE/download/" filename) filename))
-    (verify-download filename "d34b9f15a8e5156698650b8ca1fa1a13f9d5356a5182109720fcfc21fc8a4f03")
+      (fetch-loinc filename))
+    (verify-download filename "077a0718e87d8309ffe3a673f75b836a8e783dc36a646413ef97c71c12eab27e")
     (b/unzip {:zip-file filename :target-dir "target/generated-resources/blaze/terminology_service/local/code_system/loinc"})
     (b/delete {:path filename}))
   (b/write-file {:path "target/prep-done" :string ""}))
