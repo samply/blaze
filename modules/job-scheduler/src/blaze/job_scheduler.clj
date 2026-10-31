@@ -17,7 +17,7 @@
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
-   [java.util.concurrent Flow$Subscriber]))
+   [java.util.concurrent Flow$Subscriber TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,9 +45,8 @@
   (-> (job-util/pull-job node id)
       (ac/then-compose #(job-util/update-job node % job-util/fail-job e))))
 
-(defn- job-completion-handler [{:keys [node]} running-jobs id]
+(defn- job-completion-handler [{:keys [node]} id]
   (fn [{:keys [status]} e]
-    (swap! running-jobs dissoc id)
     (if e
       (if (job-util/job-update-failed? e)
         (log/debug "The job with id =" id "was unable to update itself. It may have been paused.")
@@ -61,11 +60,28 @@
     (catch Exception e
       (ac/completed-future (ba/anomaly e)))))
 
+(defn- track-running-job!
+  "Adds the job with `id` to `running-jobs` until `future` completes.
+
+  Adds a future of its own, that completes after the job was removed again, so
+  that waiting on it means the job isn't in `running-jobs` anymore. Removes the
+  job only after it was added, also if `future` is already completed, so that a
+  job completing immediately doesn't stay in `running-jobs`. Returns nil."
+  [running-jobs id future]
+  (let [tracked (ac/future)]
+    (swap! running-jobs assoc id tracked)
+    (-> future
+        (ac/when-complete
+         (fn [_ _]
+           (swap! running-jobs dissoc id)
+           (ac/complete! tracked nil))))
+    nil))
+
 (defn- on-start [{:keys [context running-jobs]} {:keys [id] :as job}]
   (log/debug "Started job with id =" id)
-  (->> (ac/handle (wrap-error on-start* context job)
-                  (job-completion-handler context running-jobs id))
-       (swap! running-jobs assoc id)))
+  (->> (-> (wrap-error on-start* context job)
+           (ac/handle (job-completion-handler context id)))
+       (track-running-job! running-jobs id)))
 
 (defn- on-resume* [context job]
   (if-let [handler (find-handler context job)]
@@ -74,25 +90,24 @@
 
 (defn- on-resume [{:keys [context running-jobs]} {:keys [id] :as job}]
   (log/debug "Resumed job with id =" id)
-  (->> (ac/handle (wrap-error on-resume* context job)
-                  (job-completion-handler context running-jobs id))
-       (swap! running-jobs assoc id)))
+  (->> (-> (wrap-error on-resume* context job)
+           (ac/handle (job-completion-handler context id)))
+       (track-running-job! running-jobs id)))
 
 (defn- on-cancel* [context job]
   (if-let [handler (find-handler context job)]
     (p/-on-cancel handler job)
     (on-missing-handler context "cancel" job)))
 
-(defn- job-cancellation-completion-handler [running-jobs id]
+(defn- job-cancellation-completion-handler [id]
   (fn [_ _]
-    (swap! running-jobs dissoc id)
     (log/debug (format "Finished requesting cancellation of job with id `%s`." id))))
 
 (defn- on-cancel [{:keys [context running-jobs]} {:keys [id] :as job}]
   (log/debug (format "Request cancellation of job with id `%s`." id))
-  (->> (ac/handle (wrap-error on-cancel* context job)
-                  (job-cancellation-completion-handler running-jobs id))
-       (swap! running-jobs assoc id)))
+  (->> (-> (wrap-error on-cancel* context job)
+           (ac/handle (job-cancellation-completion-handler id)))
+       (track-running-job! running-jobs id)))
 
 (deftype TaskSubscriber [node job-scheduler ^:volatile-mutable subscription]
   Flow$Subscriber
@@ -274,10 +289,61 @@
   (format "Can't put job `%s` on hold during shutdown because it isn't in-progress. It's status is `%s`."
           id (:value status)))
 
-(defn- shutdown [{:keys [context running-jobs]}]
+(defn- pull-again-later
+  "Returns a CompletableFuture that will complete with the result of calling
+  `f`, which pulls a job again, after a short delay."
+  [f]
+  (-> (ac/completed-future nil)
+      (ac/then-compose-async
+       (fn [_] (f))
+       (ac/delayed-executor 10 TimeUnit/MILLISECONDS))))
+
+(defn- hold-on-shutdown
+  "Returns a CompletableFuture that will complete with the job with `id` put
+  on-hold with the reason `orderly-shutdown` or will complete exceptionally
+  with an anomaly if the job isn't running anymore.
+
+  A job that is still `ready` while it is in `running-jobs` is about to be put
+  in-progress by its handler, so it is pulled again until it isn't ready
+  anymore. Takes the `running-jobs` atom, because the job can leave it while it
+  is pulled again. A hold that fails, because the job was updated
+  concurrently, is retried as well."
+  [{:keys [node] :as context} running-jobs id]
+  (-> (job-util/pull-job node id)
+      (ac/then-compose
+       (fn [{:keys [status] :as job}]
+         (condp = (:value status)
+           "ready"
+           (if (contains? @running-jobs id)
+             (pull-again-later #(hold-on-shutdown context running-jobs id))
+             (ac/completed-future (ba/conflict (shutdown-conflict-msg job))))
+
+           "in-progress"
+           (-> (job-util/update-job node job hold-job**
+                                    job-util/orderly-shut-down-status-reason)
+               (ac/exceptionally-compose
+                #(if (job-util/job-update-failed? %)
+                   (hold-on-shutdown context running-jobs id)
+                   (ac/completed-future %))))
+
+           "on-hold" (ac/completed-future job)
+
+           (ac/completed-future (ba/conflict (shutdown-conflict-msg job))))))))
+
+(defn- on-shutdown
+  "Signals the handler of the on-hold `job` that the job scheduler shuts down,
+  so that the job stops as soon as possible."
+  [context job]
+  (when-let [handler (find-handler context job)]
+    (p/-on-shutdown handler job)))
+
+(defn- shutdown
+  "Puts all running jobs on-hold, signals their handlers to stop them and waits
+  until they have stopped."
+  [{:keys [context running-jobs]}]
   @(ac/all-of (mapv
-               #(-> (hold-job* context % job-util/orderly-shut-down-status-reason
-                               shutdown-conflict-msg)
+               #(-> (hold-on-shutdown context running-jobs %)
+                    (ac/then-apply (partial on-shutdown context))
                     (ac/exceptionally
                      (fn [{::anom/keys [message]}] (log/warn message))))
                (keys @running-jobs)))

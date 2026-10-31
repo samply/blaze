@@ -1,7 +1,7 @@
 (ns blaze.job-scheduler-test
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.db.kv :as kv]
@@ -93,7 +93,54 @@
             (ac/then-compose #(job-util/update-job admin-node % finish-job))))
       (-on-cancel [_ job]
         (ac/cancel! (get @delays (:id job)))
-        (ac/completed-future job)))))
+        (ac/completed-future job))
+      (-on-shutdown [_ _]))))
+
+(defn- long-running-job-future
+  "Returns a future that is meant to be completed when `job` is signalled to
+  shut down.
+
+  Completes with `job` after 10 seconds otherwise, so that a test in which the
+  job is never signalled fails instead of hanging."
+  [job]
+  (doto (ac/future)
+    (ac/complete-on-timeout! job 10 TimeUnit/SECONDS)))
+
+(defn- after-start-gate
+  "Returns a future that will complete with `job` after `start-gate` was
+  delivered."
+  [start-gate job]
+  (ac/supply-async #(do @start-gate job)))
+
+(defmethod ig/init-key :blaze.job/long-running
+  [_ {:keys [admin-node start-gate shutdown-signal]}]
+  (let [running (atom {})]
+    (reify p/JobHandler
+      (-on-start [_ {:keys [id] :as job}]
+        (let [future (long-running-job-future job)]
+          (swap! running assoc id future)
+          (-> (if start-gate
+                (after-start-gate start-gate job)
+                (ac/completed-future job))
+              (ac/then-compose #(job-util/update-job admin-node % start-job))
+              (ac/then-compose (fn [_] future)))))
+      (-on-shutdown [_ {:keys [id] :as job}]
+        (deliver shutdown-signal job)
+        (ac/complete! (get @running id) job)))))
+
+(defmethod ig/init-key :blaze.job/no-op
+  [_ {:keys [called-signal]}]
+  (reify p/JobHandler
+    (-on-start [_ job]
+      (deliver called-signal job)
+      (ac/completed-future job))
+    (-on-resume [_ job]
+      (deliver called-signal job)
+      (ac/completed-future job))
+    (-on-cancel [_ job]
+      (deliver called-signal job)
+      (ac/completed-future job))
+    (-on-shutdown [_ _])))
 
 (defmethod ig/init-key :blaze.job/error
   [_ _]
@@ -681,6 +728,106 @@
         jtu/combined-status := :on-hold/orderly-shutdown
         job-util/job-type := :test))))
 
+(defn- long-running-config [handler-config]
+  (-> (assoc-in config [:blaze/job-scheduler :handlers :blaze.job/long-running]
+                (ig/ref :blaze.job/long-running))
+      (assoc :blaze.job/long-running
+             (assoc handler-config :admin-node (ig/ref :blaze.db.admin/node)))))
+
+(deftest shutdown-signals-running-jobs-test
+  (let [shutdown-signal (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (long-running-config {:shutdown-signal shutdown-signal})]
+
+      @(js/create-job job-scheduler (ready-job "long-running"))
+
+      @(jtu/pull-job system job-id :in-progress/started)
+
+      (ig/halt! system [:blaze/job-scheduler])
+
+      (testing "the job handler was signalled with the on-hold job"
+        (given (deref shutdown-signal 0 ::not-signalled)
+          :fhir/type := :fhir/Task
+          :id := job-id
+          jtu/combined-status := :on-hold/orderly-shutdown))
+
+      (testing "there are no running jobs left"
+        (is (empty? @(:running-jobs job-scheduler))))
+
+      (testing "the job stays on-hold"
+        (given @(jtu/pull-job-history system job-id)
+          count := 3
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :on-hold/orderly-shutdown)))))
+
+(defn- await-running
+  "Waits until the job with `id` is in the running jobs of `job-scheduler` if
+  `running?` is true, or isn't in them otherwise.
+
+  Returns true if that happens within 10 seconds, or false otherwise."
+  [{:keys [running-jobs]} id running?]
+  (loop [n 1000]
+    (cond
+      (= running? (contains? @running-jobs id)) true
+      (zero? n) false
+      :else (do (Thread/sleep 10) (recur (dec n))))))
+
+(defn- pull-job-signalling-ready
+  "Returns a function like `pull-job` that delivers a job pulled from the
+  current database to `ready-signal` if it is ready."
+  [pull-job ready-signal]
+  (fn
+    ([node id]
+     (do-sync [job (pull-job node id)]
+       (when (= :ready (jtu/combined-status job))
+         (deliver ready-signal job))
+       job))
+    ([node db id]
+     (pull-job node db id))))
+
+(deftest shutdown-signals-starting-jobs-test
+  (let [start-gate (promise)
+        shutdown-signal (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (long-running-config {:start-gate start-gate
+                                        :shutdown-signal shutdown-signal})]
+
+      @(js/create-job job-scheduler (ready-job "long-running"))
+
+      (testing "the job is running but still ready"
+        (is (await-running job-scheduler job-id true))
+        (given @(jtu/pull-job system job-id :ready)
+          jtu/combined-status := :ready))
+
+      (let [pulled-ready (promise)]
+        (with-redefs [job-util/pull-job (pull-job-signalling-ready
+                                         job-util/pull-job pulled-ready)]
+          (let [halted (future (ig/halt! system [:blaze/job-scheduler]))]
+
+            (testing "the shutdown sees the job as ready"
+              (given (deref pulled-ready 10000 ::timeout)
+                jtu/combined-status := :ready))
+
+            (deliver start-gate ::open)
+            @halted)))
+
+      (testing "the job handler was signalled with the on-hold job"
+        (given (deref shutdown-signal 0 ::not-signalled)
+          :fhir/type := :fhir/Task
+          :id := job-id
+          jtu/combined-status := :on-hold/orderly-shutdown))
+
+      (testing "there are no running jobs left"
+        (is (empty? @(:running-jobs job-scheduler))))
+
+      (testing "the job stays on-hold"
+        (given @(jtu/pull-job-history system job-id)
+          count := 3
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :on-hold/orderly-shutdown)))))
+
 (deftest error-in-on-next-handler-test
   (let [called (promise)]
     (with-redefs [js/on-start (fn [_ _] (deliver called ::called) (throw (Exception.)))]
@@ -690,3 +837,64 @@
 
         ;; the throwing on-start makes the TaskSubscriber fail
         (is (= ::called (deref called 10000 ::timeout)))))))
+
+(defn- no-op-config [called-signal]
+  (-> (assoc-in config [:blaze/job-scheduler :handlers :blaze.job/no-op]
+                (ig/ref :blaze.job/no-op))
+      (assoc :blaze.job/no-op {:called-signal called-signal})))
+
+(defn- halt-job-scheduler
+  "Halts the job scheduler of `system`.
+
+  Returns ::halted, or ::timeout if halting doesn't return within 10 seconds."
+  [system]
+  (-> (future (ig/halt! system [:blaze/job-scheduler]) ::halted)
+      (deref 10000 ::timeout)))
+
+(deftest job-completing-immediately-test
+  (testing "start"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (ready-job "no-op"))
+
+        (deref called-signal 10000 ::timeout)
+
+        (testing "the job isn't running anymore"
+          (is (await-running job-scheduler job-id false)))
+
+        (testing "halting the job scheduler returns"
+          (is (= ::halted (halt-job-scheduler system)))))))
+
+  (testing "resume"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (on-hold-job "no-op"))
+        @(js/resume-job job-scheduler job-id)
+
+        (deref called-signal 10000 ::timeout)
+
+        (testing "the job isn't running anymore"
+          (is (await-running job-scheduler job-id false)))
+
+        (testing "halting the job scheduler returns"
+          (is (= ::halted (halt-job-scheduler system)))))))
+
+  (testing "cancel"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (on-hold-job "no-op"))
+        @(js/cancel-job job-scheduler job-id)
+
+        (deref called-signal 10000 ::timeout)
+
+        (testing "the job isn't running anymore"
+          (is (await-running job-scheduler job-id false)))
+
+        (testing "halting the job scheduler returns"
+          (is (= ::halted (halt-job-scheduler system))))))))

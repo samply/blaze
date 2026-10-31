@@ -19,6 +19,7 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.protocols :as jsp]
    [blaze.job.disk-perf :as job-disk-perf]
    [blaze.job.disk-perf-spec]
    [blaze.job.test-util :as jtu]
@@ -482,3 +483,8 @@
       (testing "the job ends up cancelled with finished sub status"
         (given @(jtu/pull-job system :cancelled/finished)
           jtu/combined-status := :cancelled/finished)))))
+
+(deftest on-shutdown-test
+  (with-system [{:blaze.job/keys [disk-perf]} (config (new-tmp-dir!))]
+    (testing "does nothing"
+      (is (nil? (jsp/-on-shutdown disk-perf {:fhir/type :fhir/Task :id "0"}))))))

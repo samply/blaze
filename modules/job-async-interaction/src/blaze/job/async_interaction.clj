@@ -114,6 +114,25 @@
 (defn- finish-cancellation [job]
   (assoc job :businessStatus job-util/cancellation-finished-sub-status))
 
+(defn- mark-running
+  "Returns `running-jobs` with the job with `id` marked as running, unless it
+  was already requested to stop.
+
+  The job can be cancelled or the job scheduler can shut down while the job is
+  started, so a stop request may arrive before the job is marked as running.
+  Such a request must not be lost."
+  [running-jobs id]
+  (update running-jobs id #(or % false)))
+
+(defn- stopped-by-shutdown?
+  "Returns true if the job with `id` in `running-jobs` was requested to stop
+  because the job scheduler shuts down.
+
+  The job scheduler has put such a job on-hold already, so it must not be
+  updated."
+  [running-jobs id]
+  (= :shutdown (get running-jobs id)))
+
 (defn- on-start
   [{:keys [admin-node] ::keys [running-jobs] :as context} job]
   (-> (u/pull-request-bundle admin-node job)
@@ -123,7 +142,7 @@
            (-> (job-util/update-job admin-node job start-job)
                (ac/then-compose
                 (fn [{:keys [id] :as job}]
-                  (swap! running-jobs assoc id false)
+                  (swap! running-jobs mark-running id)
                   (let [start (System/nanoTime)]
                     (-> (process-batch-entries context job t entries)
                         (ac/then-compose
@@ -132,11 +151,17 @@
                                                  bundle-id start)))
                         (ac/exceptionally-compose
                          (fn [e]
-                           (if (ba/interrupted? e)
+                           (cond
+                             (not (ba/interrupted? e))
+                             (ac/completed-future e)
+
+                             (stopped-by-shutdown? @running-jobs id)
+                             (job-util/pull-job admin-node id)
+
+                             :else
                              (-> (job-util/pull-job admin-node id)
                                  (ac/then-compose
-                                  #(job-util/update-job admin-node % finish-cancellation)))
-                             (ac/completed-future e))))
+                                  #(job-util/update-job admin-node % finish-cancellation))))))
                         (ac/when-complete
                          (fn [_ _]
                            (swap! running-jobs dissoc id))))))))
@@ -150,12 +175,17 @@
 (defmethod ig/init-key :blaze.job/async-interaction
   [_ config]
   (log/info "Init async-interaction job handler")
+  ;; running jobs map to false or to the reason they were requested to stop,
+  ;; which is either :cancelled or :shutdown. A stop request is never reset to
+  ;; false.
   (let [context (assoc config ::running-jobs (atom {}))]
     (reify p/JobHandler
       (-on-start [_ job]
         (on-start context job))
       (-on-cancel [_ job]
-        (swap! (::running-jobs context) assoc (:id job) true)
-        (ac/completed-future job)))))
+        (swap! (::running-jobs context) assoc (:id job) :cancelled)
+        (ac/completed-future job))
+      (-on-shutdown [_ job]
+        (swap! (::running-jobs context) assoc (:id job) :shutdown)))))
 
 (derive :blaze.job/async-interaction :blaze.job/handler)

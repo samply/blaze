@@ -21,6 +21,7 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.protocols :as jsp]
    [blaze.job.re-index]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
@@ -33,7 +34,7 @@
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
@@ -635,3 +636,8 @@
               [0 jtu/combined-status] := :ready
               [1 jtu/combined-status] := :in-progress/started
               [2 jtu/combined-status] := :in-progress/incremented)))))))
+
+(deftest on-shutdown-test
+  (with-system [{:blaze.job/keys [re-index]} config]
+    (testing "does nothing"
+      (is (nil? (jsp/-on-shutdown re-index {:fhir/type :fhir/Task :id "0"}))))))
