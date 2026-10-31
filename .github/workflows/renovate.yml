@@ -29,10 +29,12 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+    # Renovate supports only the Node versions in the engines field of its
+    # package.json, which can lag behind the version in .nvmrc used elsewhere.
     - name: Setup Node
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
       with:
-        node-version-file: .nvmrc
+        node-version: 24
 
     - name: Validate Renovate Config
       run: npx --yes --package "renovate@${RENOVATE_VERSION}" -- renovate-config-validator --strict
