@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jre-noble@sha256:ce8543ddd3070ccbeaac2106a74c9387ddeb8d47a1c43348345715c1ef245c7f
+FROM eclipse-temurin:25-jre-noble@sha256:2ef7a81085e0502d7d4ff7e7c0257b6d4f46433f8ea6021180aa3c8a2b9ca3ec
 
 LABEL org.opencontainers.image.title="Blaze"
 LABEL org.opencontainers.image.description="A FHIR® Server with internal, fast CQL Evaluation Engine"
