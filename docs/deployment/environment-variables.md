@@ -10,7 +10,7 @@
 
 ### Environment Variables
 
-The frontend doesn't start if one of `BACKEND_BASE_URL`, `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`, `AUTH_ISSUER` or `AUTH_SECRET` is missing or empty, and names the missing ones in its log.
+The frontend doesn't start if `BACKEND_BASE_URL` is missing or empty, or, unless [`ENABLE_AUTH`](#enable-auth) is `false`, one of `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET`, `AUTH_ISSUER` or `AUTH_SECRET` is missing or empty, and names the missing ones in its log.
 
 #### `ORIGIN` <Badge type="warning" text="Since 0.26"/> <Badge type="danger" text="Removed 1.13.0"/>
 
@@ -19,6 +19,12 @@ No longer used. The base URL of the frontend as accessed by the browser is deriv
 #### `BACKEND_BASE_URL` <Badge type="warning" text="Since 0.26"/>
 
 The `BASE_URL` of the backend as reachable by the frontend.
+
+#### `ENABLE_AUTH` <Badge type="warning" text="Since 1.14.0"/>
+
+Set this to `false` to deploy the frontend without login, for example as a demo server. Without login, the admin section is removed, because everybody could use it: the **Admin** navigation item and the user menu are hidden, and the admin pages answer with 404. The `AUTH_*` variables aren't needed then, and requests to the backend are sent without an access token, so the backend has to run without [`OPENID_PROVIDER_URL`](#openid-provider-url). The admin API of the backend should stay disabled by not setting [`ENABLE_ADMIN_API`](#enable-admin-api), because it is reachable without login as well.
+
+**Default:** `true`
 
 #### `AUTH_CLIENT_ID` <Badge type="warning" text="Since 0.26"/>
 

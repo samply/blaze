@@ -69,3 +69,21 @@ server {
     }
 }
 ```
+
+## Without Login
+
+If the frontend is deployed without login (`ENABLE_AUTH=false`), API requests carry no access token. The example config
+`no-auth.conf.template` forwards requests based on the `Accept` header instead. Requests accepting
+`application/fhir+json` or `application/fhir+xml` go to the backend and all others to the frontend.
+
+```text
+map $http_accept $upstream {
+    default http://frontend:3000;
+
+    "~application/fhir\+(json|xml)" http://backend;
+}
+```
+
+Browsers never accept the FHIR media types, and the frontend talks to the backend directly, so all of its requests stay
+with the frontend. API clients have to send one of the two media types in the `Accept` header. Others, like curl without
+an `Accept` header, get the frontend.

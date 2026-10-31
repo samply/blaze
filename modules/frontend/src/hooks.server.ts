@@ -1,10 +1,30 @@
 import { redirect, error } from '@sveltejs/kit';
-import { BACKEND_BASE_URL, ORIGIN } from '$app/env/private';
+import { ENABLE_AUTH } from '$app/env/public';
+import {
+  AUTH_CLIENT_ID,
+  AUTH_CLIENT_SECRET,
+  AUTH_ISSUER,
+  AUTH_SECRET,
+  BACKEND_BASE_URL,
+  ORIGIN
+} from '$app/env/private';
 import { sequence, type Handle, type HandleFetch, type ServerInit } from '@sveltejs/kit/hooks';
-import { auth, handle as handleAuthentication } from '#lib/server/auth.js';
-import { authenticate } from '#lib/server/session.js';
+import { authConfig } from '#lib/server/auth-config.js';
+import { authHandle, createAuth } from '#lib/server/auth.js';
+import { authenticate, type AuthApi } from '#lib/server/session.js';
 import { createOriginCheck, warnAboutOrigin } from '#lib/server/origin.js';
 import { resolve as resolveRoute } from '$app/paths';
+
+/**
+ * Better Auth, if auth is enabled.
+ *
+ * Without auth, the frontend can be deployed without login, for example as a
+ * demo server. The admin section is removed then, because everybody could
+ * use it.
+ */
+const auth = ENABLE_AUTH
+  ? createAuth(authConfig({ AUTH_CLIENT_ID, AUTH_CLIENT_SECRET, AUTH_ISSUER, AUTH_SECRET }))
+  : undefined;
 
 const signInPath = resolveRoute('__sign-in');
 
@@ -20,15 +40,43 @@ function signInUrl(target: URL): string {
   return `${signInPath}?redirect=${encodeURIComponent(target.pathname + target.search)}`;
 }
 
-export const handleAuthorization: Handle = async ({ event, resolve }) => {
-  if (event.route.id != '/__sign-in') {
-    const session = await authenticate(auth.api, event.request.headers);
+/**
+ * Lets only signed-in users through, redirecting all others to the sign-in
+ * page.
+ */
+export function authorize(api: AuthApi): Handle {
+  return async ({ event, resolve }) => {
+    if (event.route.id != '/__sign-in') {
+      const session = await authenticate(api, event.request.headers);
 
-    if (!session) {
-      redirect(307, signInUrl(event.url));
+      if (!session) {
+        redirect(307, signInUrl(event.url));
+      }
+
+      event.locals.session = session;
     }
 
-    event.locals.session = session;
+    return resolve(event);
+  };
+}
+
+/**
+ * Returns true if the route with `routeId` is only available with auth: the
+ * sign-in page and the admin section.
+ */
+function isAuthOnlyRoute(routeId: string | null): boolean {
+  return routeId === '/__sign-in' || routeId === '/__admin' || !!routeId?.startsWith('/__admin/');
+}
+
+/**
+ * Answers the routes only available with auth with 404.
+ *
+ * The check is done here rather than in the admin layout, because a form
+ * action runs before any load.
+ */
+export const rejectAuthOnlyRoutes: Handle = ({ event, resolve }) => {
+  if (isAuthOnlyRoute(event.route.id)) {
+    error(404, 'Not Found');
   }
 
   return resolve(event);
@@ -74,12 +122,9 @@ export const expireAuthJsCookies: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-export const handle = sequence(
-  checkOrigin,
-  expireAuthJsCookies,
-  handleAuthentication,
-  handleAuthorization
-);
+export const handle = auth
+  ? sequence(checkOrigin, expireAuthJsCookies, authHandle(auth), authorize(auth.api))
+  : sequence(checkOrigin, expireAuthJsCookies, rejectAuthOnlyRoutes);
 
 /**
  * The `Forwarded` header telling the backend the origin the browser uses, so
@@ -112,15 +157,18 @@ export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
 
   const session = event.locals.session;
 
-  if (!session?.accessToken) {
+  if (auth && !session?.accessToken) {
     error(401, `Unauthorized.`);
   }
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     Accept: request.headers.get('accept') || 'application/fhir+json',
-    Authorization: 'Bearer ' + session?.accessToken,
     Forwarded: forwarded(event.url)
   };
+
+  if (session) {
+    headers['Authorization'] = 'Bearer ' + session.accessToken;
+  }
 
   const contentType = request.headers.get('content-type');
 
@@ -148,7 +196,10 @@ export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {
   // Both streamed loads await a backend request before they start streaming,
   // which is what lets this redirect still reach the browser; see
   // `docs/implementation/frontend.md`.
-  if (res.status === 401) {
+  //
+  // Without auth, there is no sign-in page to redirect to, so the 401 is
+  // passed through.
+  if (auth && res.status === 401) {
     redirect(307, signInUrl(event.url));
   }
 

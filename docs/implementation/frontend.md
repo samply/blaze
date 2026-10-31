@@ -30,6 +30,21 @@ database.
 * Keycloak users don't need an email, but Better Auth requires one, so an email under the reserved `.invalid` TLD is
   made up for users without one
 
+### Without Auth
+
+With the env var `ENABLE_AUTH` set to `false`, the frontend can be deployed without login, for example as a demo
+server.
+
+* Better Auth isn't created at all, so the `AUTH_*` env vars aren't needed; `authConfig` in
+  `src/lib/server/auth-config.ts` checks them only if auth is enabled, because the schemas in `src/env.ts` only see
+  their own variable
+* `handleFetch` sends the backend requests without an access token and passes a 401 of the backend through, because
+  there is no sign-in page to redirect to
+* the admin section is removed, because everybody could use it: `rejectAuthOnlyRoutes` in `src/hooks.server.ts`
+  answers the admin routes and the sign-in page with 404. That check lives in the `handle` hook rather than in the
+  admin layout, because a form action runs before any load.
+* `ENABLE_AUTH` is a public env var, so that the layout can hide the **Admin** navigation item and the user menu
+
 ## Loading
 
 All loading happens server side. There are `+page.server.ts` / `+layout.server.ts` load functions and form actions, and

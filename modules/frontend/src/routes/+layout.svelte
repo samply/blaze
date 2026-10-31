@@ -4,6 +4,7 @@
   import '../app.css';
   import '@fontsource-variable/lexend';
   import { page } from '$app/state';
+  import { ENABLE_AUTH } from '$app/env/public';
   import { fade } from 'svelte/transition';
   import { onNavigate, refreshAll } from '$app/navigation';
   import { signOut } from '#lib/auth-client.js';
@@ -75,36 +76,40 @@
               id="/metadata"
               label="Metadata"
             />
-            <NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+            <!-- without auth, everybody could use the admin section -->
+            {#if ENABLE_AUTH}
+              <NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+            {/if}
           </div>
         </div>
 
         <!-- User Profile -->
-        <div class="ml-6 flex items-center">
-          <div class="relative ml-3">
-            <div>
-              <button
-                type="button"
-                class="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none enabled:cursor-pointer dark:bg-gray-800"
-                id="user-menu-button"
-                aria-expanded="false"
-                aria-haspopup="true"
-                onclick={() => (userProfileOpen = !userProfileOpen)}
-                disabled={!page.data.session}
-              >
-                <span class="absolute -inset-1.5"></span>
-                <span class="sr-only">Open user menu</span>
-                <span
-                  class:text-gray-900={page.data.session}
-                  class:dark:text-gray-100={page.data.session}
-                  class:text-gray-500={!page.data.session}
-                  class:dark:text-gray-400={!page.data.session}
+        {#if ENABLE_AUTH}
+          <div class="ml-6 flex items-center">
+            <div class="relative ml-3">
+              <div>
+                <button
+                  type="button"
+                  class="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none enabled:cursor-pointer dark:bg-gray-800"
+                  id="user-menu-button"
+                  aria-expanded="false"
+                  aria-haspopup="true"
+                  onclick={() => (userProfileOpen = !userProfileOpen)}
+                  disabled={!page.data.session}
                 >
-                  <UserCircle class="size-8" /></span
-                >
-              </button>
-            </div>
-            <!--
+                  <span class="absolute -inset-1.5"></span>
+                  <span class="sr-only">Open user menu</span>
+                  <span
+                    class:text-gray-900={page.data.session}
+                    class:dark:text-gray-100={page.data.session}
+                    class:text-gray-500={!page.data.session}
+                    class:dark:text-gray-400={!page.data.session}
+                  >
+                    <UserCircle class="size-8" /></span
+                  >
+                </button>
+              </div>
+              <!--
                           Dropdown menu, show/hide based on menu state.
 
                           Entering: "transition ease-out duration-200"
@@ -114,34 +119,35 @@
                             From: "transform opacity-100 scale-100"
                             To: "transform opacity-0 scale-95"
                         -->
-            {#if userProfileOpen}
-              <div
-                class="absolute right-0 z-10 mt-2 flex w-48 origin-top-right flex-col items-stretch rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800"
-                role="menu"
-                aria-orientation="vertical"
-                aria-labelledby="user-menu-button"
-                tabindex="-1"
-                transition:fade={{ duration: 100 }}
-              >
-                <p class="block px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
-                  {page.data.session?.user?.name}
-                </p>
-                <button
-                  onclick={async () => {
-                    await signOut();
-                    // the reloaded page finds no session and goes to the sign-in page
-                    await refreshAll();
-                  }}
-                  class="block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 enabled:cursor-pointer dark:text-gray-300 hover:dark:bg-gray-600"
-                  role="menuitem"
+              {#if userProfileOpen}
+                <div
+                  class="absolute right-0 z-10 mt-2 flex w-48 origin-top-right flex-col items-stretch rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5 focus:outline-none dark:bg-gray-800"
+                  role="menu"
+                  aria-orientation="vertical"
+                  aria-labelledby="user-menu-button"
                   tabindex="-1"
-                  id="user-menu-item-sign-out"
-                  >Sign out
-                </button>
-              </div>
-            {/if}
+                  transition:fade={{ duration: 100 }}
+                >
+                  <p class="block px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
+                    {page.data.session?.user?.name}
+                  </p>
+                  <button
+                    onclick={async () => {
+                      await signOut();
+                      // the reloaded page finds no session and goes to the sign-in page
+                      await refreshAll();
+                    }}
+                    class="block px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 enabled:cursor-pointer dark:text-gray-300 hover:dark:bg-gray-600"
+                    role="menuitem"
+                    tabindex="-1"
+                    id="user-menu-item-sign-out"
+                    >Sign out
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
     </div>
   </nav>

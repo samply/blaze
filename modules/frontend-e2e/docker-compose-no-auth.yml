@@ -1,0 +1,57 @@
+# A deployment without login, as used for demo servers. Keycloak isn't needed.
+services:
+  ingress:
+    image: "nginx:1.31.6@sha256:60f0d4e986561e08804f75c211dcaf7fc5455699eada29f42cbe8a0a7253dd86"
+    environment:
+      BLAZE_HOST: "blaze.localhost"
+    ports:
+    - "443:443"
+    volumes:
+    - "../ingress/no-auth.conf.template:/etc/nginx/templates/default.conf.template:ro"
+    - "../ingress/blaze-cert.pem:/etc/nginx/conf.d/blaze-cert.pem:ro"
+    - "../ingress/blaze-key.pem:/etc/nginx/conf.d/blaze-key.pem:ro"
+    depends_on:
+    - backend
+
+  frontend:
+    image: "blaze-frontend:latest"
+    environment:
+      BACKEND_BASE_URL: "http://backend:8080"
+      ENABLE_AUTH: "false"
+      PROTOCOL_HEADER: "x-forwarded-proto"
+      HOST_HEADER: "x-forwarded-host"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://127.0.0.1:3000/fhir/" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+      ingress:
+        condition: service_started
+
+  backend:
+    image: "blaze:latest"
+    read_only: true
+    tmpfs:
+    - "/tmp:exec"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      LOG_LEVEL: "debug"
+      # Enabled on purpose, although a deployment without login shouldn't do
+      # that, to test that the frontend doesn't expose the admin section.
+      # Without the admin API, the backend itself would answer with 404.
+      ENABLE_ADMIN_API: "true"
+    volumes:
+    - "blaze-data:/app/data"
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "http://localhost:8080/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  blaze-data:
