@@ -55,6 +55,21 @@
       "ignoreUnstable": false
     },
     {
+      "description": [
+        "Renovate itself runs only on the Node versions in the engines field of its package.json (currently ^24.11.0), so keep the Node version used by the Renovate workflow below 25. Remove this rule once Renovate supports a newer Node version."
+      ],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchFileNames": [
+        ".github/workflows/renovate.yml"
+      ],
+      "matchDepNames": [
+        "node"
+      ],
+      "allowedVersions": "<25"
+    },
+    {
       "groupName": "jackson",
       "matchPackageNames": [
         "/com.fasterxml.jackson/"
