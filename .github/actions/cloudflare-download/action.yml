@@ -1,0 +1,33 @@
+name: Download File from Cloudflare R2 with Caching
+description: Downloads a file from https://deps.blaze-server.eu, the Cloudflare R2 bucket of Blaze, given its token and filename. The bucket holds the file under `<name>_<token>.<extension>`. Files are cached to save further downloads.
+
+inputs:
+  token:
+    required: true
+    description: The token of the file to download. Should come from a GitHub secret if the file isn't public.
+  filename:
+    required: true
+    description: The name of the file to download without the token, e.g. `fhir-definitions-4.0.1.zip`. The file is saved under this name.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        key: ${{ inputs.filename }}
+        path: ${{ inputs.filename }}
+
+    - shell: bash
+      env:
+        TOKEN: ${{ inputs.token }}
+        FILENAME: ${{ inputs.filename }}
+      run: |
+        if [ -f "$FILENAME" ]; then
+          echo "File $FILENAME was loaded from cache."
+        elif [ -z "$TOKEN" ]; then
+          echo "::error::Missing the token of $FILENAME. Secrets aren't available in workflows triggered from forks."
+          exit 1
+        else
+          echo "Downloading $FILENAME..."
+          curl -sSfL -o "$FILENAME" "https://deps.blaze-server.eu/${FILENAME%.*}_$TOKEN.${FILENAME##*.}"
+        fi

@@ -301,9 +301,9 @@ jobs:
         path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -386,9 +386,9 @@ jobs:
         path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -448,9 +448,9 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -508,9 +508,9 @@ jobs:
         path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -588,9 +588,9 @@ jobs:
         path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -682,9 +682,9 @@ jobs:
         path: modules/ig/fsh-generated/resources
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -776,9 +776,9 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -1975,9 +1975,9 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e DB_SCALE_FACTOR=2 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Download Synthea Test Data
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: kDsa2ifeMFdqK35
+        token: 00a8ed8f20ebbdaa8d9c623f83e1a25d
         filename: synthea-1000.tar
 
     - name: Create Synthea Test Data Dir
@@ -2349,9 +2349,9 @@ jobs:
       run: docker compose -f .github/integration-test-extern-terminology-${{ matrix.auth }}/docker-compose.yml up -d
 
     - name: Download Synthea Test Data
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: kDsa2ifeMFdqK35
+        token: 00a8ed8f20ebbdaa8d9c623f83e1a25d
         filename: synthea-1000.tar
 
     - name: Create Synthea Test Data Dir
@@ -3124,9 +3124,9 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
@@ -3583,9 +3583,9 @@ jobs:
         restore-keys: gitlibs
 
     - name: Download FHIR 4.0.1 Definition ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: KQGqr6Wz29xHK9W
+        token: 21c8a360f7591512aba8b56e7d50f6b0
         filename: fhir-definitions-4.0.1.zip
 
     - name: Copy FHIR 4.0.1 Definition ZIP
