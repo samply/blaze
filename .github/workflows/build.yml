@@ -310,13 +310,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: F9JSkDk7eCskzLE
-        filename: Loinc_2.82.zip
+        token: 578bb2001df9ebf74b5566a11ccf0ebb
+        filename: Loinc_2.83.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
+      run: cp Loinc_2.83.zip modules/terminology-service-local/Loinc_2.83.zip
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test
@@ -395,13 +395,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: F9JSkDk7eCskzLE
-        filename: Loinc_2.82.zip
+        token: 578bb2001df9ebf74b5566a11ccf0ebb
+        filename: Loinc_2.83.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
+      run: cp Loinc_2.83.zip modules/terminology-service-local/Loinc_2.83.zip
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test-slow
@@ -517,13 +517,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: F9JSkDk7eCskzLE
-        filename: Loinc_2.82.zip
+        token: 578bb2001df9ebf74b5566a11ccf0ebb
+        filename: Loinc_2.83.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
+      run: cp Loinc_2.83.zip modules/terminology-service-local/Loinc_2.83.zip
 
     - name: Test Coverage
       if: ${{ matrix.kind == 'normal' }}
@@ -597,13 +597,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: F9JSkDk7eCskzLE
-        filename: Loinc_2.82.zip
+        token: 578bb2001df9ebf74b5566a11ccf0ebb
+        filename: Loinc_2.83.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
+      run: cp Loinc_2.83.zip modules/terminology-service-local/Loinc_2.83.zip
 
     - name: Test
       run: make test-root
@@ -691,13 +691,13 @@ jobs:
       run: cp fhir-definitions-4.0.1.zip modules/fhir-structure/fhir-definitions-4.0.1.zip
 
     - name: Download LOINC ZIP
-      uses: ./.github/actions/speicherwolke-download
+      uses: ./.github/actions/cloudflare-download
       with:
-        token: F9JSkDk7eCskzLE
-        filename: Loinc_2.82.zip
+        token: 578bb2001df9ebf74b5566a11ccf0ebb
+        filename: Loinc_2.83.zip
 
     - name: Copy LOINC ZIP
-      run: cp Loinc_2.82.zip modules/terminology-service-local/Loinc_2.82.zip
+      run: cp Loinc_2.83.zip modules/terminology-service-local/Loinc_2.83.zip
 
     - name: Build Uberjar
       run: make uberjar
