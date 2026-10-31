@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isRedirect } from '@sveltejs/kit';
 
+vi.mock('$app/env/public', () => ({ ENABLE_AUTH: true }));
 vi.mock('$app/env/private', () => ({
   BACKEND_BASE_URL: 'http://backend:8080',
+  AUTH_CLIENT_ID: 'client-id',
+  AUTH_CLIENT_SECRET: 'client-secret',
+  AUTH_ISSUER: 'https://keycloak.localhost/realms/blaze',
+  AUTH_SECRET: 'secret',
   ORIGIN: 'https://blaze.example.com'
 }));
 const authApi = vi.hoisted(() => ({
@@ -10,14 +15,32 @@ const authApi = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
   refreshToken: vi.fn()
 }));
+const createAuth = vi.hoisted(() => vi.fn(() => ({ api: authApi })));
 vi.mock('#lib/server/auth.js', () => ({
-  auth: { api: authApi },
-  handle: (input: { event: unknown; resolve: unknown }) =>
+  createAuth,
+  authHandle: () => (input: { event: unknown; resolve: unknown }) =>
     (input.resolve as (e: unknown) => unknown)(input.event)
 }));
 
-const { checkOrigin, expireAuthJsCookies, handleAuthorization, handleFetch, init } =
-  await import('./hooks.server.js');
+const { checkOrigin, expireAuthJsCookies, handleFetch, init } = await import('./hooks.server.js');
+const handleAuthorization = (await import('./hooks.server.js')).authorize(authApi);
+// captured right away, because the mocks are cleared before each test
+const createAuthCalls = [...createAuth.mock.calls];
+
+describe('auth test', () => {
+  it('creates Better Auth from the auth variables', () => {
+    expect(createAuthCalls).toStrictEqual([
+      [
+        {
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          issuer: 'https://keycloak.localhost/realms/blaze',
+          secret: 'secret'
+        }
+      ]
+    ]);
+  });
+});
 
 /**
  * Lets the mocked Better Auth API answer with a session of the user `name`
