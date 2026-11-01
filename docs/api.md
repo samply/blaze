@@ -83,6 +83,8 @@ HTTP/1.1 202 Accepted
 X-Progress: in-progress
 ```
 
+The `X-Progress` header is one of `ready`, `in-progress` or `on-hold` <Badge type="warning" text="Since 1.14.0"/>. A request is `on-hold` if its processing was paused or Blaze was shut down while processing it.
+
 or in the final response:
 
 ```text
