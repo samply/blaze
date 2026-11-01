@@ -220,6 +220,26 @@ backend:
 
 Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
 
+### Without Login <Badge type="warning" text="Since 1.14.0"/>
+
+For a demo server, the frontend can be deployed without login by setting [`ENABLE_AUTH`](./environment-variables.md#enable-auth) to `false`. Keycloak isn't needed then and the `AUTH_*` environment variables can be omitted:
+
+```yaml
+frontend:
+  environment:
+    BACKEND_BASE_URL: "http://backend:8080"
+    ENABLE_AUTH: "false"
+    PROTOCOL_HEADER: "x-forwarded-proto"
+    HOST_HEADER: "x-forwarded-host"
+```
+
+Without login, the admin section of the frontend is removed, because everybody could use it. The backend has to run without `OPENID_PROVIDER_URL`, because the frontend sends its requests without an access token. Please also don't set `ENABLE_ADMIN_API` at the backend, because its admin API would be reachable without login as well.
+
+Without login, API requests carry no access token, so the [ingress](#ingress) can't tell them apart from the requests of browsers by the `Authorization` header. Use `modules/ingress/no-auth.conf.template` instead of `modules/ingress/default.conf.template`. It forwards requests accepting `application/fhir+json` or `application/fhir+xml` to the backend and all others to the frontend. API clients have to send one of these two media types in the `Accept` header, which [blazectl][1] does.
+
+> [!CAUTION]
+> Without `OPENID_PROVIDER_URL`, everybody can read and write all data via the FHIR API of the backend. Please only use this setup with data that may be public.
+
 ### Health Check
 
 #### Frontend

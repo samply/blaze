@@ -7,6 +7,7 @@ node_modules
 .env.*
 !.env.example
 docker-compose.yml
+docker-compose-no-auth.yml
 
 # Ignore files for PNPM, NPM and YARN
 pnpm-lock.yaml

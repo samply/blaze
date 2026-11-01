@@ -23,6 +23,12 @@ test-dev-chromium:
 test-dev-ui:
 	DEV="1" npx playwright test --ui --project chromium
 
+test-no-auth:
+	npx playwright test --config playwright-no-auth.config.ts
+
+test-dev-no-auth:
+	DEV="1" npx playwright test --config playwright-no-auth.config.ts --project chromium
+
 cloc-prod:
 
 cloc-test:
@@ -32,4 +38,4 @@ clean:
 	rm -rf node_modules
 	$(MAKE) -C test-data clean
 
-.PHONY: fmt install update install-playwright lint test test-dev test-dev-chromium test-dev-ui cloc-prod cloc-test clean
+.PHONY: fmt install update install-playwright lint test test-dev test-dev-chromium test-dev-ui test-no-auth test-dev-no-auth cloc-prod cloc-test clean

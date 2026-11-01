@@ -21,12 +21,31 @@ const required = {
  */
 const optional = { schema: (input: string | undefined) => input ?? '' };
 
+/**
+ * Accepts `true` and `false`, falling back to `true` for an unset variable.
+ */
+const enabledByDefault = {
+  schema: (input: string | undefined) => {
+    if (!input || input === 'true') {
+      return true;
+    }
+    if (input === 'false') {
+      return false;
+    }
+    throw new Error('has to be true or false');
+  }
+};
+
 export const variables = defineEnvVars({
   BACKEND_BASE_URL: required,
-  AUTH_CLIENT_ID: required,
-  AUTH_CLIENT_SECRET: required,
-  AUTH_ISSUER: required,
-  AUTH_SECRET: required,
+  // public, because the layout hides the admin section and the user menu without auth
+  ENABLE_AUTH: { ...enabledByDefault, public: true },
+  // only required if auth is enabled, which `authConfig` checks, because a
+  // schema only sees its own variable
+  AUTH_CLIENT_ID: optional,
+  AUTH_CLIENT_SECRET: optional,
+  AUTH_ISSUER: optional,
+  AUTH_SECRET: optional,
   // no longer supported, only read to warn about it
   ORIGIN: optional
 });
