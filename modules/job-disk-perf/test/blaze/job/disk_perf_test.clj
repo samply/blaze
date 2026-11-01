@@ -1,5 +1,6 @@
 (ns blaze.job.disk-perf-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
@@ -21,6 +22,7 @@
    [blaze.job-scheduler :as js]
    [blaze.job.disk-perf :as job-disk-perf]
    [blaze.job.disk-perf-spec]
+   [blaze.job.disk-perf.engine :as engine]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -437,6 +439,27 @@
   (-> (pull-job-in-phase* system id phase)
       (ac/or-timeout! 10 TimeUnit/SECONDS)))
 
+(defn- pull-job-started-again*
+  [{:blaze.db.admin/keys [node] :as system} id]
+  (-> (d/pull node (d/resource-handle (d/db node) "Task" id))
+      (ac/then-compose-async
+       (fn [job]
+         (if (#{:in-progress/started :in-progress/incremented}
+              (jtu/combined-status job))
+           (ac/completed-future job)
+           (pull-job-started-again* system id)))
+       (ac/delayed-executor 10 TimeUnit/MILLISECONDS))))
+
+(defn- pull-job-started-again
+  "Waits until the resumed job with `id` was started again or 10 seconds are
+  eclipsed.
+
+  Accepts the job also after its first progress update, because that can
+  follow the start immediately."
+  [system id]
+  (-> (pull-job-started-again* system id)
+      (ac/or-timeout! 10 TimeUnit/SECONDS)))
+
 (deftest pause-resume-test
   (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
@@ -455,9 +478,15 @@
         (given @(js/pause-job job-scheduler id)
           jtu/combined-status := :on-hold/paused))
 
+      (testing "pausing stops the benchmark"
+        (is (jtu/await-no-running-jobs job-scheduler)))
+
       (testing "resuming restarts the benchmark"
         (given @(js/resume-job job-scheduler id)
-          jtu/combined-status := :in-progress/resumed))
+          jtu/combined-status := :in-progress/resumed)
+
+        (given @(pull-job-started-again system id)
+          jtu/combined-status :? #{:in-progress/started :in-progress/incremented}))
 
       @(js/cancel-job job-scheduler id)
 
@@ -482,3 +511,72 @@
       (testing "the job ends up cancelled with finished sub status"
         (given @(jtu/pull-job system :cancelled/finished)
           jtu/combined-status := :cancelled/finished)))))
+
+(deftest shutdown-test
+  (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+
+    @(js/create-job job-scheduler
+                    (job-disk-perf/job (bt/offset-date-time)
+                                       (assoc tiny-params :phase-duration 10M)))
+
+    (testing "the job is running"
+      (given @(jtu/pull-job system :in-progress/incremented)
+        jtu/combined-status := :in-progress/incremented))
+
+    (let [halted (future (ig/halt! system [:blaze/job-scheduler]) ::halted)]
+
+      (testing "halting the job scheduler returns before the benchmark ends"
+        (is (= ::halted (deref halted 5000 ::timeout))))
+
+      @halted
+
+      (testing "the job stays on-hold after it ended"
+        (given (last @(jtu/pull-job-history system))
+          jtu/combined-status := :on-hold/orderly-shutdown)))))
+
+(deftest paused-job-test
+  (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+
+    (let [{:keys [id]} @(js/create-job
+                         job-scheduler
+                         (job-disk-perf/job (bt/offset-date-time)
+                                            (assoc tiny-params :phase-duration 1M)))]
+
+      @(pull-job-in-phase system id "rand-read")
+
+      (testing "the job can be paused"
+        (given @(js/pause-job job-scheduler id)
+          jtu/combined-status := :on-hold/paused))
+
+      (testing "the benchmark ends"
+        (is (jtu/await-no-running-jobs job-scheduler)))
+
+      (testing "the job stays paused after it ended"
+        (given (last @(jtu/pull-job-history system))
+          jtu/combined-status := :on-hold/paused)))))
+
+(deftest benchmark-error-test
+  (with-redefs [engine/run! (fn [_ _ _ _] (ba/fault "fault-181402"))]
+    (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+
+      @(js/create-job job-scheduler (job-disk-perf/job (bt/offset-date-time) tiny-params))
+
+      (testing "the job has failed"
+        (given @(jtu/pull-job system :failed)
+          jtu/combined-status := :failed
+          job-util/error-msg := "fault-181402")))))
+
+(deftest cancellation-at-the-end-of-the-benchmark-test
+  (let [job-id (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+      (with-redefs [engine/run! (fn [_ _ _ _]
+                                  @(js/cancel-job job-scheduler @job-id)
+                                  {})]
+
+        (deliver job-id (:id @(js/create-job job-scheduler
+                                             (job-disk-perf/job (bt/offset-date-time)
+                                                                tiny-params))))
+
+        (testing "the cancellation is finished"
+          (given @(jtu/pull-job system :cancelled/finished)
+            jtu/combined-status := :cancelled/finished))))))

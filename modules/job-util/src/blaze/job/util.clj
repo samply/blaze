@@ -260,6 +260,30 @@
   [{::js/keys [action] :as anomaly}]
   (and (ba/conflict? anomaly) (= :update-job action)))
 
+(defn mark-running
+  "Returns `running-jobs` with the job with `id` marked as running, unless it
+  was already requested to stop.
+
+  `running-jobs` is the map a job handler keeps of its running jobs. It maps
+  the id of each job to false while it is running or to the reason the job was
+  requested to stop, which is either :cancelled, :paused or :shutdown.
+
+  The job can be cancelled or paused or the job scheduler can shut down while
+  the job is started, so a stop request may arrive before the job is marked as
+  running. Such a request must not be lost."
+  [running-jobs id]
+  (update running-jobs id #(or % false)))
+
+(defn stopped-on-hold?
+  "Returns true if the job with `id` in `running-jobs` was requested to stop
+  because it was put on-hold, because it was paused or the job scheduler shuts
+  down.
+
+  The job scheduler has put such a job on-hold already, so it must not be
+  updated."
+  [running-jobs id]
+  (contains? #{:paused :shutdown} (get running-jobs id)))
+
 (defn fail-job [job {::anom/keys [category message]}]
   (-> (assoc job :status #fhir/code "failed")
       (dissoc :statusReason :businessStatus)

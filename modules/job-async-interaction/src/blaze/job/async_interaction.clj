@@ -123,7 +123,7 @@
            (-> (job-util/update-job admin-node job start-job)
                (ac/then-compose
                 (fn [{:keys [id] :as job}]
-                  (swap! running-jobs assoc id false)
+                  (swap! running-jobs job-util/mark-running id)
                   (let [start (System/nanoTime)]
                     (-> (process-batch-entries context job t entries)
                         (ac/then-compose
@@ -132,11 +132,17 @@
                                                  bundle-id start)))
                         (ac/exceptionally-compose
                          (fn [e]
-                           (if (ba/interrupted? e)
+                           (cond
+                             (not (ba/interrupted? e))
+                             (ac/completed-future e)
+
+                             (job-util/stopped-on-hold? @running-jobs id)
+                             (job-util/pull-job admin-node id)
+
+                             :else
                              (-> (job-util/pull-job admin-node id)
                                  (ac/then-compose
-                                  #(job-util/update-job admin-node % finish-cancellation)))
-                             (ac/completed-future e))))
+                                  #(job-util/update-job admin-node % finish-cancellation))))))
                         (ac/when-complete
                          (fn [_ _]
                            (swap! running-jobs dissoc id))))))))
@@ -155,7 +161,11 @@
       (-on-start [_ job]
         (on-start context job))
       (-on-cancel [_ job]
-        (swap! (::running-jobs context) assoc (:id job) true)
-        (ac/completed-future job)))))
+        (swap! (::running-jobs context) assoc (:id job) :cancelled)
+        (ac/completed-future job))
+      (-on-pause [_ job]
+        (swap! (::running-jobs context) assoc (:id job) :paused))
+      (-on-shutdown [_ job]
+        (swap! (::running-jobs context) assoc (:id job) :shutdown)))))
 
 (derive :blaze.job/async-interaction :blaze.job/handler)

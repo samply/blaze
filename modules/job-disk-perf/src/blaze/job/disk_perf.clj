@@ -291,19 +291,40 @@
 (defn- job-duration [start]
   (BigDecimal/valueOf (- (System/nanoTime) (long start)) 9))
 
+(defn- on-hold-msg [{:keys [id]}]
+  (format "The job `%s` is on-hold and can't be updated." id))
+
+(defn- unless-on-hold
+  "Returns a function that applies the job transition `f` to a job, unless the
+  job is on-hold, in which case it returns a conflict.
+
+  A job is put on-hold while it is running, if it is paused or the job
+  scheduler shuts down. It has to stay on-hold, so its execution must not
+  update it when it ends. The update fails with the conflict, which the job
+  scheduler treats as a job unable to update itself."
+  [f]
+  (fn [{:keys [status] :as job}]
+    (if (= "on-hold" (:value status))
+      (ba/conflict (on-hold-msg job))
+      (f job))))
+
 (defn- complete! [{:keys [admin-node]} id result start]
   (let [duration (job-duration start)]
     (job-util/update-job-with-retry
      admin-node 5 id
-     (fn [job]
-       (if (job-util/cancelled-sub-status job)
-         (finish-cancellation job)
-         (complete-job job result duration))))))
+     (unless-on-hold
+      (fn [job]
+        (if (job-util/cancelled-sub-status job)
+          (finish-cancellation job)
+          (complete-job job result duration)))))))
 
 (defn- handle-error! [{:keys [admin-node]} id e]
-  (if (ba/interrupted? e)
-    (job-util/update-job-with-retry admin-node 5 id finish-cancellation)
-    (job-util/update-job-with-retry admin-node 5 id #(job-util/fail-job % e))))
+  (job-util/update-job-with-retry
+   admin-node 5 id
+   (unless-on-hold
+    (if (ba/interrupted? e)
+      finish-cancellation
+      #(job-util/fail-job % e)))))
 
 (defn- cancelled-fn [running-jobs id]
   #(when (get @running-jobs id) (ba/interrupted)))
@@ -315,7 +336,7 @@
     (-> (job-util/update-job admin-node job start-job)
         (ac/then-compose
          (fn [{:keys [id] :as job}]
-           (swap! running-jobs assoc id false)
+           (swap! running-jobs job-util/mark-running id)
            (let [current-job (volatile! job)
                  start (System/nanoTime)]
              (-> (ac/supply-async
@@ -340,8 +361,12 @@
       (-on-resume [_ job]
         (on-start context job))
       (-on-cancel [_ job]
-        (swap! (::running-jobs context) assoc (:id job) true)
-        (ac/completed-future job)))))
+        (swap! (::running-jobs context) assoc (:id job) :cancelled)
+        (ac/completed-future job))
+      (-on-pause [_ job]
+        (swap! (::running-jobs context) assoc (:id job) :paused))
+      (-on-shutdown [_ job]
+        (swap! (::running-jobs context) assoc (:id job) :shutdown)))))
 
 (derive :blaze.job/disk-perf :blaze.job/handler)
 

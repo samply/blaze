@@ -33,7 +33,8 @@
    [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
@@ -310,14 +311,16 @@
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
 
-(defmethod ig/init-key ::batch-handler [_ {:keys [cancelled-promise]}]
+(defmethod ig/init-key ::batch-handler [_ {:keys [cancelled-promise observed-promise]}]
   (fn [{:blaze/keys [cancelled?]}]
     ;; if a cancellation is expected, wait until it was handled in order to make
     ;; the interleaving with the cancellation deterministic
     (when cancelled-promise @cancelled-promise)
-    (if-let [anom (cancelled?)]
-      (ac/completed-future anom)
-      (ac/completed-future (ring/response {:fhir/type :fhir/Observation})))))
+    (let [anom (cancelled?)]
+      (when observed-promise (deliver observed-promise anom))
+      (if anom
+        (ac/completed-future anom)
+        (ac/completed-future (ring/response {:fhir/type :fhir/Observation}))))))
 
 (defmethod ig/init-key ::cancellation-signaling-job-handler [_ {:keys [handler cancelled-promise]}]
   (reify p/JobHandler
@@ -328,7 +331,24 @@
     (-on-cancel [_ job]
       (do-sync [job (p/-on-cancel handler job)]
         (deliver cancelled-promise ::cancelled)
-        job))))
+        job))
+    (-on-pause [_ job]
+      (p/-on-pause handler job)
+      (deliver cancelled-promise ::paused))
+    (-on-shutdown [_ job]
+      (p/-on-shutdown handler job)
+      (deliver cancelled-promise ::shutdown))))
+
+(defmethod ig/init-key ::early-signalling-job-handler [_ {:keys [handler signal]}]
+  (reify p/JobHandler
+    (-on-start [_ job]
+      ;; signals the job before the handler has registered it as running, like
+      ;; the job scheduler can do while the handler commits the in-progress
+      ;; update of the job
+      (case signal
+        :cancel @(p/-on-cancel handler job)
+        :shutdown (p/-on-shutdown handler job))
+      (p/-on-start handler job))))
 
 (defn- processing-duration [job]
   (-> (job-util/output-value job job-async/output-uri "processing-duration")
@@ -433,8 +453,8 @@
   (luid/luid clock (rng-fn)))
 
 (defn- cancellation-signalling-config
-  "Config in which the batch handler waits until the cancellation of the job was
-  handled, so that the batch handler will always see the cancellation."
+  "Config in which the batch handler waits until the cancellation or shutdown of
+  the job was handled, so that the batch handler will always see it."
   [cancelled-promise]
   (-> (assoc-in config [::batch-handler :cancelled-promise] cancelled-promise)
       (assoc-in [:blaze/job-scheduler :handlers :blaze.job/async-interaction]
@@ -470,3 +490,86 @@
           [1 jtu/combined-status] := :in-progress/started
           [2 jtu/combined-status] := :cancelled/requested
           [3 jtu/combined-status] := :cancelled/finished)))))
+
+(deftest shutdown-test
+  (let [cancelled-promise (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (cancellation-signalling-config cancelled-promise)]
+
+      @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
+                      (job-async/request-bundle "0" "GET" "Observation"))
+
+      @(jtu/pull-job system :in-progress/started)
+
+      (ig/halt! system [:blaze/job-scheduler])
+
+      (testing "there are no running jobs left"
+        (is (empty? (:running-jobs @(:state job-scheduler)))))
+
+      (testing "the job stays on-hold"
+        (given @(jtu/pull-job-history system)
+          count := 3
+
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :on-hold/orderly-shutdown)))))
+
+(defn- early-signalling-config
+  "Config in which the job is signalled with `signal` before the handler has
+  registered it as running and in which the batch handler delivers the result
+  of `:blaze/cancelled?` to `observed-promise`."
+  [signal observed-promise]
+  (-> (assoc-in config [::batch-handler :observed-promise] observed-promise)
+      (assoc-in [:blaze/job-scheduler :handlers :blaze.job/async-interaction]
+                (ig/ref ::early-signalling-job-handler))
+      (assoc ::early-signalling-job-handler
+             {:handler (ig/ref :blaze.job/async-interaction)
+              :signal signal})))
+
+(deftest signal-before-running-test
+  (doseq [signal [:cancel :shutdown]]
+    (testing (format "the %s signal isn't lost" (name signal))
+      (let [observed-promise (promise)]
+        (with-system [{:blaze/keys [job-scheduler]}
+                      (early-signalling-config signal observed-promise)]
+
+          @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
+                          (job-async/request-bundle "0" "GET" "Observation"))
+
+          (testing "the batch handler sees the interruption"
+            (given (deref observed-promise 10000 ::timeout)
+              ::anom/category := ::anom/interrupted)))))))
+
+(deftest pause-test
+  (let [cancelled-promise (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (cancellation-signalling-config cancelled-promise)]
+
+      @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 0)
+                      (job-async/request-bundle "0" "GET" "Observation"))
+
+      @(jtu/pull-job system :in-progress/started)
+
+      @(js/pause-job job-scheduler (job-id job-scheduler))
+
+      (testing "pausing stops the execution"
+        (is (jtu/await-no-running-jobs job-scheduler)))
+
+      (testing "the job stays paused"
+        (given @(jtu/pull-job-history system)
+          count := 3
+
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :on-hold/paused)))))
+
+(deftest db-sync-timeout-test
+  (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+    @(js/create-job job-scheduler (job-async/job #system/date-time "2024-05-30T10:26:00" "0" 1000)
+                    (job-async/request-bundle "0" "GET" "Observation"))
+
+    (testing "the job has failed"
+      (given @(jtu/pull-job system :failed)
+        jtu/combined-status := :failed
+        job-util/error-msg := "Timeout while trying to acquire the database state with t=1000. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of 1000 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often."))))

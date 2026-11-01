@@ -9,6 +9,8 @@
   (:import
    [java.util.concurrent TimeUnit]))
 
+(set! *warn-on-reflection* true)
+
 (defn combined-status [{{status :value} :status :as job}]
   (if-let [status-reason (job-util/status-reason job)]
     (if-let [cancelled-sub (job-util/cancelled-sub-status job)]
@@ -51,3 +53,14 @@
 
 (defn pull-other-resource [{:blaze.db.admin/keys [node]} type id]
   (d/pull node (d/resource-handle (d/db node) type id)))
+
+(defn await-no-running-jobs
+  "Waits until `job-scheduler` has no running jobs anymore.
+
+  Returns true if that happens within 30 seconds, or false otherwise."
+  [{:keys [state]}]
+  (loop [n 3000]
+    (cond
+      (empty? (:running-jobs @state)) true
+      (zero? n) false
+      :else (do (Thread/sleep 10) (recur (dec n))))))

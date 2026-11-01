@@ -112,6 +112,8 @@
   (log/info "Init compact job handler")
   (reify p/JobHandler
     (-on-start [_ job]
-      (on-start config job))))
+      (on-start config job))
+    (-on-pause [_ _])
+    (-on-shutdown [_ _])))
 
 (derive :blaze.job/compact :blaze.job/handler)

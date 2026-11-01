@@ -4,6 +4,9 @@
    [blaze.spec]
    [clojure.spec.alpha :as s]))
 
+(s/def :blaze.job.util/running-jobs
+  (s/map-of string? (s/or :running false? :stop-reason #{:cancelled :paused :shutdown})))
+
 (s/def ::async-status-url/context
   (s/keys :opt-un [:blaze/context-path]))
 

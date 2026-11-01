@@ -165,6 +165,8 @@
     (-on-start [_ job]
       (on-start config job))
     (-on-resume [_ job]
-      (on-resume config job))))
+      (on-resume config job))
+    (-on-pause [_ _])
+    (-on-shutdown [_ _])))
 
 (derive :blaze.job/re-index :blaze.job/handler)
