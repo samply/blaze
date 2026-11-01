@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
    [blaze.fhir.spec.type :as type]
@@ -60,7 +60,6 @@
     :async-status-handler success-handler
     :async-status-cancel-handler success-handler
     :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
-    :db-sync-timeout 10000
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :search-system-handler success-handler
     :transaction-handler success-handler
@@ -148,8 +147,7 @@
       [:cause-data ::s/problems 9 :pred] := `(fn ~'[%] (contains? ~'% :async-status-handler))
       [:cause-data ::s/problems 10 :pred] := `(fn ~'[%] (contains? ~'% :async-status-cancel-handler))
       [:cause-data ::s/problems 11 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))
-      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 13 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 12 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "missing parsing-context"
     (given-failed-system (update config :blaze/rest-api dissoc :parsing-context)
@@ -217,12 +215,6 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :capabilities-handler))))
 
-  (testing "missing db-sync-timeout"
-    (given-failed-system (update config :blaze/rest-api dissoc :db-sync-timeout)
-      :key := :blaze/rest-api
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
-
   (testing "missing page-id-cipher"
     (given-failed-system (update config :blaze/rest-api dissoc :page-id-cipher)
       :key := :blaze/rest-api
@@ -276,14 +268,16 @@
 (deftest structure-definition-test
   (testing "StructureDefinition resources are created"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (< 100 (d/type-total (d/db node) "StructureDefinition")))))
+      (with-db [db node]
+        (is (< 100 (d/type-total db "StructureDefinition"))))))
 
   (testing "can't delete the Patient StructureDefinition"
     (with-system [{:blaze.db/keys [node]} config]
-      (let [[{:keys [id]}] (vec @(d/type-query (d/db node) "StructureDefinition" [["url" "http://hl7.org/fhir/StructureDefinition/Patient"]]))]
-        (given-failed-future (d/transact node [[:delete "StructureDefinition" id]])
-          ::anom/category := ::anom/conflict
-          ::anom/message := (format "Can't delete the read-only resource `StructureDefinition/%s`." id))))))
+      (with-db [db node]
+        (let [[{:keys [id]}] (vec @(d/type-query db "StructureDefinition" [["url" "http://hl7.org/fhir/StructureDefinition/Patient"]]))]
+          (given-failed-future (d/transact node [[:delete "StructureDefinition" id]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't delete the read-only resource `StructureDefinition/%s`." id)))))))
 
 (deftest format-override-test
   (testing "XML"

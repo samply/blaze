@@ -3,16 +3,20 @@
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
   "../../coll/resources/clj-kondo.exports/blaze/coll"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
   "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"
   "../../test-util/resources/clj-kondo.exports/blaze/test-util"
   "../../util/resources/clj-kondo.exports/blaze/util"]
 
  :lint-as
- {blaze.db.api-test/with-open-db clojure.core/with-open
-  blaze.db.api-test-perf/with-system-data clojure.core/with-open
+ {blaze.db.api-test-perf/with-system-data clojure.core/with-open
   blaze.db.test-util/with-system-data clojure.core/with-open
   blaze.db.api-test/forv clojure.core/for}
+
+ :hooks
+ {:analyze-call
+  {blaze.db.test-util/with-db blaze.db.api-stub.clj-kondo/with-db}}
 
  :linters
  {:unresolved-var

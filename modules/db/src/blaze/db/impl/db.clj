@@ -1,202 +1,226 @@
 (ns blaze.db.impl.db
-  "Primary Database Implementation"
+  "Primary Database Implementation
+
+  A database value reads from a key-value store snapshot that is held by the
+  scope the database value was created in. All reads of the database value and
+  of values derived from it with `since` use that snapshot. The snapshot pools
+  its iterators per thread, so a database value can be used from several
+  threads at once."
   (:require
-   [blaze.async.comp :as ac :refer [do-sync]]
-   [blaze.coll.core :refer [with-open-coll]]
-   [blaze.db.impl.batch-db :as batch-db]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
+   [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.db.patient-everything :as pe]
+   [blaze.db.impl.index :as index]
    [blaze.db.impl.index.patient-last-change :as plc]
+   [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.index.system-as-of :as sao]
+   [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
+   [blaze.db.impl.index.type-as-of :as tao]
+   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.kv :as kv])
+   [blaze.db.impl.query.util :as qu]
+   [blaze.db.impl.search-param.chained :as spc]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
+   [blaze.db.node.resource-indexer :as resource-indexer]
+   [blaze.db.search-param-registry :as sr])
   (:import
-   [java.io Writer]
-   [java.lang AutoCloseable]))
+   [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 
-(defn- since-t-by-instant [kv-store since]
-  (with-open [snapshot (kv/new-snapshot kv-store)]
-    (t-by-instant/t-by-instant snapshot since)))
+(defn- rev-include [db snapshot reference source-tid code]
+  (coll/eduction
+   (u/resource-handle-xf db source-tid)
+   (sp-vr/index-handles-full-value snapshot code source-tid reference)))
 
-(defrecord Db [node kv-store basis-t t since-t]
+(defn- sp-total
+  [db {:keys [base]}]
+  (if (= ["Resource"] base)
+    (d/system-total db)
+    (transduce (map (partial d/type-total db)) + base)))
+
+(defn- sp-list
+  "Returns a reducible collection of all resource handles of base types of
+  `search-param` in `db` optionally starting with `start-type` and `start-id`."
+  {:arglists '([db search-param] [db search-param start-type start-id])}
+  ([db {:keys [base]}]
+   (if (= ["Resource"] base)
+     (d/system-list db)
+     (coll/eduction (mapcat (partial d/type-list db)) base)))
+  ([db {:keys [base]} start-type start-id]
+   (if (= ["Resource"] base)
+     (d/system-list db start-type start-id)
+     (let [rest (drop 1 (drop-while (complement #{start-type}) base))]
+       (coll/eduction
+        cat
+        [(d/type-list db start-type start-id)
+         (coll/eduction (mapcat (partial d/type-list db)) rest)])))))
+
+(defn- sp-get-by-url [{{:keys [search-param-registry]} :node} url]
+  (or (sr/get-by-url search-param-registry url)
+      (ba/not-found (format "Search parameter with URL `%s` not found." url))))
+
+(defrecord Db [node kv-store resource-handle-cache snapshot t since-t]
   p/Db
   (-node [_]
     node)
 
-  (-as-of [_ t]
-    (assert (<= ^long t ^long basis-t) (format "(<= %d %d)" t basis-t))
-    (Db. node kv-store basis-t t since-t))
-
-  (-basis-t [_]
-    basis-t)
-
-  (-as-of-t [_]
-    (when (not= basis-t t) t))
+  (-t [_]
+    t)
 
   (-since [_ since]
-    (let [since-t (since-t-by-instant kv-store since)]
-      (Db. node kv-store t t (or since-t 0))))
+    (Db. node kv-store resource-handle-cache snapshot t
+         ;; the snapshot can contain transactions newer than t
+         (min t (or (t-by-instant/t-by-instant snapshot since) 0))))
 
   (-since-t [_]
     since-t)
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource-handle [_ tid id]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-resource-handle batch-db tid id)))
+  (-resource-handle [db tid id]
+    (rao/resource-handle db tid id))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-type-list [_ tid]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-type-list batch-db tid)))
+  (-type-list [db tid]
+    (rao/type-list db tid))
 
-  (-type-list [_ tid start-id]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-type-list batch-db tid start-id)))
+  (-type-list [db tid start-id]
+    (rao/type-list db tid start-id))
 
   (-type-total [_ tid]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-type-total batch-db tid)))
+    (if (zero? since-t)
+      (:total (type-stats/seek-value snapshot tid t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
-  (-system-list [_]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-system-list batch-db)))
+  (-system-list [db]
+    (rao/system-list db))
 
-  (-system-list [_ start-tid start-id]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-system-list batch-db start-tid start-id)))
+  (-system-list [db start-tid start-id]
+    (rao/system-list db start-tid start-id))
 
   (-system-total [_]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-system-total batch-db)))
+    (if (zero? since-t)
+      (:total (system-stats/seek-value snapshot t) 0)
+      (ba/unsupported "Total is not supported on since-dbs.")))
 
   ;; ---- Patient-Compartment-Level Functions ---------------------------------
 
   (-patient-compartment-last-change-t [_ patient-id]
-    (with-open [snapshot (kv/new-snapshot kv-store)
-                plci (kv/new-iterator snapshot :patient-last-change-index)]
+    (with-open [plci (kv/new-iterator snapshot :patient-last-change-index)]
       (plc/last-change-t plci patient-id t)))
 
-  (-patient-compartment-last-change-t-xf [db f]
-    (map #(f % (p/-patient-compartment-last-change-t db (:id %)))))
+  (-patient-compartment-last-change-t-xf [_ f]
+    (plc/last-change-t-xf snapshot t f))
 
   ;; ---- Common Query Functions ----------------------------------------------
 
-  (-count-query [_ query]
-    (let [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (-> (p/-count-query batch-db query)
-          (ac/when-complete (fn [_ _] (.close batch-db))))))
+  (-count-query [db query]
+    (p/-count query db))
 
-  (-execute-query [_ query]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-execute-query batch-db query)))
+  (-execute-query [db query]
+    (p/-execute query db))
 
-  (-execute-query [_ query arg1]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-execute-query batch-db query arg1)))
+  (-execute-query [db query arg1]
+    (p/-execute query db arg1))
 
-  (-execute-query [_ query arg1 arg2]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-execute-query batch-db query arg1 arg2)))
+  (-execute-query [db query arg1 arg2]
+    (p/-execute query db arg1 arg2))
 
-  (-explain-query [_ query]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-explain-query batch-db query)))
+  (-explain-query [db query]
+    (p/-query-plan query db))
 
-  (-matcher-transducer [_ clauses]
-    (fn [rf]
-      (let [batch-db (batch-db/new-batch-db node basis-t t since-t)
-            rf ((p/-matcher-transducer batch-db clauses) rf)]
-        (fn
-          ([result]
-           ;; complete first, so that the matcher can return its iterators
-           (try
-             (rf result)
-             (finally
-               (.close ^AutoCloseable batch-db))))
-          ([result input]
-           (rf result input))))))
+  (-matcher-transducer [db matcher]
+    (p/-transducer matcher db))
 
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-instance-history batch-db tid id start-t)))
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (rao/instance-history snapshot t since-t tid id start-t)))
 
   (-total-num-of-instance-changes [_ tid id]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-instance-changes batch-db tid id)))
+    (count (rao/instance-history snapshot t since-t tid id t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
   (-type-history [_ tid start-t start-id]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-type-history batch-db tid start-t start-id)))
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (tao/type-history snapshot t since-t tid start-t start-id)))
 
   (-total-num-of-type-changes [_ tid]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-type-changes batch-db tid)))
+    (cond-> (:num-changes (type-stats/seek-value snapshot tid t) 0)
+      (pos? since-t)
+      (- (:num-changes (type-stats/seek-value snapshot tid since-t) 0))))
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-system-history batch-db start-t start-tid start-id)))
+  (-system-history [db start-t start-tid start-id]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (sao/system-history db start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-total-num-of-system-changes batch-db)))
+    (cond-> (:num-changes (system-stats/seek-value snapshot t) 0)
+      (pos? since-t)
+      (- (:num-changes (system-stats/seek-value snapshot since-t) 0))))
 
   (-changes [_]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-changes batch-db)))
+    (sao/changes snapshot t))
 
   ;; ---- Include ---------------------------------------------------------------
 
-  (-include [_ resource-handle code]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-include batch-db resource-handle code)))
+  (-include [db resource-handle code]
+    (spc/targets db resource-handle (codec/c-hash code)))
 
-  (-include [_ resource-handle code target-type]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-include batch-db resource-handle code target-type)))
+  (-include [db resource-handle code target-type]
+    (spc/targets db resource-handle (codec/c-hash code)
+                 (codec/tid target-type)))
 
-  (-rev-include [_ resource-handle]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-rev-include batch-db resource-handle)))
+  (-rev-include [db resource-handle]
+    (let [search-param-registry (:search-param-registry node)
+          type (name (:fhir/type resource-handle))
+          reference (rh/tid-id resource-handle)]
+      (coll/eduction
+       (comp
+        (mapcat
+         (fn [{:keys [base code]}]
+           (let [code (codec/c-hash code)]
+             (coll/eduction
+              (mapcat #(rev-include db snapshot reference (codec/tid %) code))
+              base))))
+        (distinct))
+       (sr/list-by-target-type search-param-registry type))))
 
-  (-rev-include [_ resource-handle source-type code]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-rev-include batch-db resource-handle source-type code)))
+  (-rev-include [db resource-handle source-type code]
+    (rev-include db snapshot (rh/tid-id resource-handle)
+                 (codec/tid source-type) (codec/c-hash code)))
 
-  (-patient-everything [_ patient-handle start end]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-patient-everything batch-db patient-handle start end)))
+  (-patient-everything [db patient-handle start end]
+    (pe/patient-everything db patient-handle start end))
 
-  (-re-index-total [_ search-param-url]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (p/-re-index-total batch-db search-param-url)))
+  (-re-index-total [db search-param-url]
+    (when-ok [search-param (sp-get-by-url db search-param-url)]
+      (sp-total db search-param)))
 
-  (-re-index [_ search-param-url]
-    (let [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (do-sync [next (p/-re-index batch-db search-param-url)]
-        (.close batch-db)
-        next)))
+  (-re-index [db search-param-url]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param))
+      ac/completed-future))
 
-  (-re-index [_ search-param-url start-type start-id]
-    (let [batch-db (batch-db/new-batch-db node basis-t t since-t)]
-      (do-sync [next (p/-re-index batch-db search-param-url start-type start-id)]
-        (.close batch-db)
-        next)))
-
-  ;; ---- Batch DB ------------------------------------------------------------
-
-  (-new-batch-db [_]
-    (batch-db/new-batch-db node basis-t t since-t))
+  (-re-index [db search-param-url start-type start-id]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param start-type start-id))
+      ac/completed-future))
 
   ;; ---- Transaction ---------------------------------------------------------
 
@@ -213,8 +237,8 @@
   (-compile-type-query-lenient [_ type clauses]
     (p/-compile-type-query-lenient node type clauses))
 
-  (-compile-type-matcher [_ type clauses]
-    (p/-compile-type-matcher node type clauses))
+  (-compile-type-matcher [_ type clause]
+    (p/-compile-type-matcher node type clause))
 
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
@@ -252,7 +276,50 @@
 (defmethod print-method Db [^Db db ^Writer w]
   (.write w (format "Db[t=%d]" (.t db))))
 
-(defn db
-  "Creates a database on `node` based on `t`."
-  [node t]
-  (->Db node (:kv-store node) t t 0))
+(defrecord Matcher [search-clauses]
+  p/Matcher
+  (-transducer [_ db]
+    (index/other-clauses-resource-handle-filter db search-clauses))
+  (-matcher-clauses [_]
+    (qu/decode-clauses {:search-clauses search-clauses})))
+
+(defn- db
+  "Creates a database value on `node` that reads from `snapshot` at `t`,
+  including only changes after `since-t` if it's positive.
+
+  The database value is valid only as long as `snapshot` isn't closed."
+  [{:keys [kv-store resource-handle-cache] :as node} snapshot t since-t]
+  (->Db node kv-store resource-handle-cache snapshot t since-t))
+
+(defn call-with-db
+  "Like `with-db`, but `f` returns its result directly instead of a
+  CompletableFuture, and the database value includes only changes after
+  `since-t` if it's positive.
+
+  The scope ends when `f` returns, so its result has to be realized. Returns
+  the result of `f`."
+  [{:keys [kv-store] :as node} t since-t f]
+  (with-open [snapshot (kv/new-snapshot kv-store)]
+    (f (db node snapshot t since-t))))
+
+(defn with-db
+  "Opens a scope with a database value on `node` at `t` and calls `f` with it.
+
+  The scope holds a new snapshot of the key-value store of `node` from its start
+  to its end. It ends when the CompletableFuture returned by `f` completes or
+  when `f` returns something else or throws.
+
+  Returns a CompletableFuture that completes with the result of the future
+  returned by `f` after the scope has ended. Fails with the anomaly returned or
+  thrown by `f` and with a fault if `f` returns neither a CompletableFuture nor
+  an anomaly."
+  [{:keys [kv-store] :as node} t f]
+  (let [snapshot (kv/new-snapshot kv-store)
+        result (ba/try-anomaly (f (db node snapshot t 0)))]
+    (if (ac/completable-future? result)
+      (ac/when-complete result (fn [_ _] (.close snapshot)))
+      (do (.close snapshot)
+          (ac/completed-future
+           (if (ba/anomaly? result)
+             result
+             (ba/fault "The function passed to `with-db` has to return a CompletableFuture.")))))))

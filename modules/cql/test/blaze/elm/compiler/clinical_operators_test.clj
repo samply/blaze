@@ -6,8 +6,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
-   [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-operators]
@@ -149,26 +148,26 @@
                 {:def
                  [{:name "code-system-def-135520"
                    :id "code-system-135750"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
-          (testing "Static"
-            (let [elm (elm-constructor [{:type "Null"}
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Static"
+              (let [elm (elm-constructor [{:type "Null"}
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (false? (expr/eval (eval-context db) expr nil))))
+                (testing "eval"
+                  (is (false? (expr/eval (eval-context db) expr nil))))
 
-              (ctu/testing-constant expr)))
+                (ctu/testing-constant expr)))
 
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "nil"
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Dynamic"
+              (let [elm (elm-constructor [#elm/parameter-ref "nil"
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (false? (expr/eval (eval-context db) expr nil)))))))))
+                (testing "eval"
+                  (is (false? (expr/eval (eval-context db) expr nil))))))))))
 
     (testing "String"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -190,64 +189,8 @@
                 {:def
                  [{:name "code-system-def-135520"
                    :id "system-115910"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
-
-          (testing "Static"
-            (let [elm (elm-constructor [#elm/string "code-115927"
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
-
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))
-
-              (testing "expression is dynamic"
-                (is (false? (core/-static expr))))
-
-              (testing "attach cache"
-                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-                  count := 2
-                  [0] := expr
-                  [1] :? empty?))
-
-              (ctu/testing-constant-patient-count expr)
-
-              (ctu/testing-constant-resolve-refs expr)
-
-              (ctu/testing-constant-resolve-params expr)
-
-              (ctu/testing-constant-optimize expr)
-
-              (testing "form"
-                (has-form expr
-                  '(in-code-system
-                    "code-115927"
-                    (code-system "system-115910"))))))
-
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
-
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))))))
-
-      (testing "with failing terminology service"
-        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
-          (let [context
-                {:library
-                 {:parameters
-                  {:def
-                   [{:name "code-115927"}]}
-                  :codeSystems
-                  {:def
-                   [{:name "code-system-def-135520"
-                     :id "code-system-135750"}]}}
-                 :terminology-service
-                 (reify p/TerminologyService
-                   (-code-system-validate-code [_ _]
-                     (ac/completed-future (ba/fault "msg-094502"))))}
-                db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
             (testing "Static"
               (let [elm (elm-constructor [#elm/string "code-115927"
@@ -255,9 +198,7 @@
                     expr (c/compile context elm)]
 
                 (testing "eval"
-                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
-                    ::anom/category := ::anom/fault
-                    ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))
+                  (is (true? (expr/eval (eval-context db) expr nil))))
 
                 (testing "expression is dynamic"
                   (is (false? (core/-static expr))))
@@ -280,7 +221,7 @@
                   (has-form expr
                     '(in-code-system
                       "code-115927"
-                      (code-system "code-system-135750"))))))
+                      (code-system "system-115910"))))))
 
             (testing "Dynamic"
               (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
@@ -288,9 +229,67 @@
                     expr (c/compile context elm)]
 
                 (testing "eval"
-                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
-                    ::anom/category := ::anom/fault
-                    ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))))))))
+                  (is (true? (expr/eval (eval-context db) expr nil)))))))))
+
+      (testing "with failing terminology service"
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [context
+                {:library
+                 {:parameters
+                  {:def
+                   [{:name "code-115927"}]}
+                  :codeSystems
+                  {:def
+                   [{:name "code-system-def-135520"
+                     :id "code-system-135750"}]}}
+                 :terminology-service
+                 (reify p/TerminologyService
+                   (-code-system-validate-code [_ _]
+                     (ac/completed-future (ba/fault "msg-094502"))))}]
+            (with-db [db node]
+
+              (testing "Static"
+                (let [elm (elm-constructor [#elm/string "code-115927"
+                                            #elm/code-system-ref "code-system-def-135520"])
+                      expr (c/compile context elm)]
+
+                  (testing "eval"
+                    (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                      ::anom/category := ::anom/fault
+                      ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502"))
+
+                  (testing "expression is dynamic"
+                    (is (false? (core/-static expr))))
+
+                  (testing "attach cache"
+                    (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                      count := 2
+                      [0] := expr
+                      [1] :? empty?))
+
+                  (ctu/testing-constant-patient-count expr)
+
+                  (ctu/testing-constant-resolve-refs expr)
+
+                  (ctu/testing-constant-resolve-params expr)
+
+                  (ctu/testing-constant-optimize expr)
+
+                  (testing "form"
+                    (has-form expr
+                      '(in-code-system
+                        "code-115927"
+                        (code-system "code-system-135750"))))))
+
+              (testing "Dynamic"
+                (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
+                                            #elm/code-system-ref "code-system-def-135520"])
+                      expr (c/compile context elm)]
+
+                  (testing "eval"
+                    (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                      ::anom/category := ::anom/fault
+                      ::anom/message := "Error while testing that the code `code-115927` is in CodeSystem `code-system-135750`. Cause: msg-094502")))))))))
 
     (testing "Code"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -311,17 +310,17 @@
                :terminology-service terminology-service}
               elm (elm-constructor [#elm/code ["code-system-def-134106" "code-115927"]
                                     #elm/code-system-ref "code-system-def-134106"])
-              expr (c/compile context elm)
-              db (d/db node)]
+              expr (c/compile context elm)]
+          (with-db [db node]
 
-          (testing "eval"
-            (is (true? (expr/eval (eval-context db) expr nil))))
+            (testing "eval"
+              (is (true? (expr/eval (eval-context db) expr nil))))
 
-          (testing "form"
-            (has-form expr
-              '(in-code-system
-                (code "system-115910" nil "code-115927")
-                (code-system "system-115910")))))))
+            (testing "form"
+              (has-form expr
+                '(in-code-system
+                  (code "system-115910" nil "code-115927")
+                  (code-system "system-115910"))))))))
 
     (testing "Concept"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -343,38 +342,38 @@
                 {:def [{:name "code-system-def-135520"
                         :id "system-115910"
                         :version "version-132113"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
-          (testing "Static"
-            (let [elm (elm-constructor [#elm/concept [[#elm/code ["code-system-def-135520" "code-115927"]]]
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Static"
+              (let [elm (elm-constructor [#elm/concept [[#elm/code ["code-system-def-135520" "code-115927"]]]
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))
+                (testing "eval"
+                  (is (true? (expr/eval (eval-context db) expr nil))))
 
-              (testing "form"
-                (has-form expr
-                  '(in-code-system
-                    (concept (code "system-115910" "version-132113" "code-115927"))
-                    (code-system "system-115910" "version-132113"))))))
+                (testing "form"
+                  (has-form expr
+                    '(in-code-system
+                      (concept (code "system-115910" "version-132113" "code-115927"))
+                      (code-system "system-115910" "version-132113"))))))
 
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "concept"
-                                        #elm/code-system-ref "code-system-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Dynamic"
+              (let [elm (elm-constructor [#elm/parameter-ref "concept"
+                                          #elm/code-system-ref "code-system-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (testing "true"
-                  (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
-                                           (concept/concept [(code/code "system-115910" "version-132113" "code-115927")]))]
-                    (is (true? (expr/eval eval-ctx expr nil)))))
+                (testing "eval"
+                  (testing "true"
+                    (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
+                                             (concept/concept [(code/code "system-115910" "version-132113" "code-115927")]))]
+                      (is (true? (expr/eval eval-ctx expr nil)))))
 
-                (testing "false"
-                  (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
-                                           (concept/concept [(code/code "system-115910" "version-132113" "code-135028")]))]
-                    (is (false? (expr/eval eval-ctx expr nil)))))))))))))
+                  (testing "false"
+                    (let [eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
+                                             (concept/concept [(code/code "system-115910" "version-132113" "code-135028")]))]
+                      (is (false? (expr/eval eval-ctx expr nil))))))))))))))
 
 ;; 23.8. InValueSet
 ;;
@@ -413,26 +412,26 @@
                 {:def
                  [{:name "value-set-def-135520"
                    :id "value-set-135750"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
-          (testing "Static"
-            (let [elm (elm-constructor [{:type "Null"}
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Static"
+              (let [elm (elm-constructor [{:type "Null"}
+                                          #elm/value-set-ref "value-set-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (false? (expr/eval (eval-context db) expr nil))))
+                (testing "eval"
+                  (is (false? (expr/eval (eval-context db) expr nil))))
 
-              (ctu/testing-constant expr)))
+                (ctu/testing-constant expr)))
 
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "nil"
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Dynamic"
+              (let [elm (elm-constructor [#elm/parameter-ref "nil"
+                                          #elm/value-set-ref "value-set-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (false? (expr/eval (eval-context db) expr nil)))))))))
+                (testing "eval"
+                  (is (false? (expr/eval (eval-context db) expr nil))))))))))
 
     (testing "String"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -476,64 +475,8 @@
                 {:def
                  [{:name "value-set-def-135520"
                    :id "value-set-135750"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
-
-          (testing "Static"
-            (let [elm (elm-constructor [#elm/string "code-115927"
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)]
-
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))
-
-              (testing "expression is dynamic"
-                (is (false? (core/-static expr))))
-
-              (testing "attach cache"
-                (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
-                  count := 2
-                  [0] := expr
-                  [1] :? empty?))
-
-              (ctu/testing-constant-patient-count expr)
-
-              (ctu/testing-constant-resolve-refs expr)
-
-              (ctu/testing-constant-resolve-params expr)
-
-              (ctu/testing-constant-optimize expr)
-
-              (testing "form"
-                (has-form expr
-                  '(in-value-set
-                    "code-115927"
-                    (value-set "value-set-135750"))))))
-
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)]
-
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))))))
-
-      (testing "with failing terminology service"
-        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
-          (let [context
-                {:library
-                 {:parameters
-                  {:def
-                   [{:name "code-115927"}]}
-                  :valueSets
-                  {:def
-                   [{:name "value-set-def-135520"
-                     :id "value-set-135750"}]}}
-                 :terminology-service
-                 (reify p/TerminologyService
-                   (-value-set-validate-code [_ _]
-                     (ac/completed-future (ba/fault "msg-094502"))))}
-                db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
             (testing "Static"
               (let [elm (elm-constructor [#elm/string "code-115927"
@@ -541,9 +484,7 @@
                     expr (c/compile context elm)]
 
                 (testing "eval"
-                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
-                    ::anom/category := ::anom/fault
-                    ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502"))
+                  (is (true? (expr/eval (eval-context db) expr nil))))
 
                 (testing "expression is dynamic"
                   (is (false? (core/-static expr))))
@@ -574,9 +515,67 @@
                     expr (c/compile context elm)]
 
                 (testing "eval"
-                  (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
-                    ::anom/category := ::anom/fault
-                    ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502"))))))))
+                  (is (true? (expr/eval (eval-context db) expr nil)))))))))
+
+      (testing "with failing terminology service"
+        (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          (let [context
+                {:library
+                 {:parameters
+                  {:def
+                   [{:name "code-115927"}]}
+                  :valueSets
+                  {:def
+                   [{:name "value-set-def-135520"
+                     :id "value-set-135750"}]}}
+                 :terminology-service
+                 (reify p/TerminologyService
+                   (-value-set-validate-code [_ _]
+                     (ac/completed-future (ba/fault "msg-094502"))))}]
+            (with-db [db node]
+
+              (testing "Static"
+                (let [elm (elm-constructor [#elm/string "code-115927"
+                                            #elm/value-set-ref "value-set-def-135520"])
+                      expr (c/compile context elm)]
+
+                  (testing "eval"
+                    (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                      ::anom/category := ::anom/fault
+                      ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502"))
+
+                  (testing "expression is dynamic"
+                    (is (false? (core/-static expr))))
+
+                  (testing "attach cache"
+                    (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+                      count := 2
+                      [0] := expr
+                      [1] :? empty?))
+
+                  (ctu/testing-constant-patient-count expr)
+
+                  (ctu/testing-constant-resolve-refs expr)
+
+                  (ctu/testing-constant-resolve-params expr)
+
+                  (ctu/testing-constant-optimize expr)
+
+                  (testing "form"
+                    (has-form expr
+                      '(in-value-set
+                        "code-115927"
+                        (value-set "value-set-135750"))))))
+
+              (testing "Dynamic"
+                (let [elm (elm-constructor [#elm/parameter-ref "code-115927"
+                                            #elm/value-set-ref "value-set-def-135520"])
+                      expr (c/compile context elm)]
+
+                  (testing "eval"
+                    (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                      ::anom/category := ::anom/fault
+                      ::anom/message := "Error while testing that the code `code-115927` is in ValueSet `value-set-135750`. Cause: msg-094502")))))))))
 
     (testing "Code"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -607,17 +606,17 @@
                :terminology-service terminology-service}
               elm (elm-constructor [#elm/code ["sys-def-115852" "code-115927"]
                                     #elm/value-set-ref "value-set-def-135520"])
-              expr (c/compile context elm)
-              db (d/db node)]
+              expr (c/compile context elm)]
+          (with-db [db node]
 
-          (testing "eval"
-            (is (true? (expr/eval (eval-context db) expr nil))))
+            (testing "eval"
+              (is (true? (expr/eval (eval-context db) expr nil))))
 
-          (testing "form"
-            (has-form expr
-              '(in-value-set
-                (code "system-115910" nil "code-115927")
-                (value-set "value-set-135750")))))))
+            (testing "form"
+              (has-form expr
+                '(in-value-set
+                  (code "system-115910" nil "code-115927")
+                  (value-set "value-set-135750"))))))))
 
     (testing "Concept"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -648,32 +647,32 @@
                 {:def
                  [{:name "value-set-def-135520"
                    :id "value-set-135750"}]}}
-               :terminology-service terminology-service}
-              db (d/db node)]
+               :terminology-service terminology-service}]
+          (with-db [db node]
 
-          (testing "Static"
-            (let [elm (elm-constructor [#elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)]
+            (testing "Static"
+              (let [elm (elm-constructor [#elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]
+                                          #elm/value-set-ref "value-set-def-135520"])
+                    expr (c/compile context elm)]
 
-              (testing "eval"
-                (is (true? (expr/eval (eval-context db) expr nil))))
+                (testing "eval"
+                  (is (true? (expr/eval (eval-context db) expr nil))))
 
-              (testing "form"
-                (has-form expr
-                  '(in-value-set
-                    (concept (code "system-115910" "version-132113" "code-115927"))
-                    (value-set "value-set-135750"))))))
+                (testing "form"
+                  (has-form expr
+                    '(in-value-set
+                      (concept (code "system-115910" "version-132113" "code-115927"))
+                      (value-set "value-set-135750"))))))
 
-          (testing "Dynamic"
-            (let [elm (elm-constructor [#elm/parameter-ref "concept"
-                                        #elm/value-set-ref "value-set-def-135520"])
-                  expr (c/compile context elm)
-                  eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
-                                     (concept/concept [(st/with-instrument-disabled (code/code nil nil nil))]))]
+            (testing "Dynamic"
+              (let [elm (elm-constructor [#elm/parameter-ref "concept"
+                                          #elm/value-set-ref "value-set-def-135520"])
+                    expr (c/compile context elm)
+                    eval-ctx (assoc-in (eval-context db) [:parameters "concept"]
+                                       (concept/concept [(st/with-instrument-disabled (code/code nil nil nil))]))]
 
-              (testing "eval"
-                (is (false? (expr/eval eval-ctx expr nil)))))))))))
+                (testing "eval"
+                  (is (false? (expr/eval eval-ctx expr nil))))))))))))
 
 ;; 23.9. Not Equal
 

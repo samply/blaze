@@ -121,7 +121,7 @@
   "Ensures that all LOINC code systems are present in the database node."
   {:arglists '([context loinc-context])}
   [{:keys [node] :as context} {:keys [code-systems]}]
-  (-> (cs-u/code-system-versions (d/db node) url)
+  (-> (d/with-db node #(cs-u/code-system-versions % url))
       (ac/then-compose
        (fn [existing-versions]
          (let [tx-ops (cs-u/tx-ops context existing-versions code-systems)]

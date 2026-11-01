@@ -1,8 +1,8 @@
 (ns blaze.db.impl.search-param.chained-spec
   (:require
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.spec]
    [blaze.db.search-param :as-alias search-param]
@@ -11,7 +11,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef spc/targets
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :resource-handle :blaze.db/resource-handle
                :code :blaze.db/c-hash
                :target-tid (s/? :blaze.db/tid))

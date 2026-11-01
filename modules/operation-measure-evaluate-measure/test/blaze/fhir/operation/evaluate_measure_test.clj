@@ -3,7 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.elm.expression :as-alias expr]
@@ -261,7 +261,7 @@
     (handler (assoc request :blaze/job-scheduler job-scheduler))))
 
 (defn- wrap-handler [handler node job-scheduler]
-  (-> handler wrap-defaults (wrap-db node 100)
+  (-> handler wrap-defaults (wrap-db node)
       (wrap-job-scheduler job-scheduler)
       wrap-error))
 
@@ -499,7 +499,8 @@
             [:period :end] := #fhir/dateTime #system/date-time "2015"))
 
         (testing "the MeasureReport isn't persisted"
-          (is (zero? (d/type-total (d/db node) "MeasureReport")))))))
+          (with-db [db node]
+            (is (zero? (d/type-total db "MeasureReport"))))))))
 
   (testing "the return preference is ignored"
     (with-no-persistence-handler [handler node]
@@ -528,7 +529,8 @@
             :status := #fhir/code "complete"))
 
         (testing "the MeasureReport isn't persisted"
-          (is (zero? (d/type-total (d/db node) "MeasureReport")))))))
+          (with-db [db node]
+            (is (zero? (d/type-total db "MeasureReport"))))))))
 
   (testing "subject-list report"
     (with-no-persistence-handler [handler node]
@@ -571,10 +573,11 @@
             [:group 0 :population 0 :subjectResults :reference] := #fhir/string "List/AAAAAAAAAAAAAAAA"))
 
         (testing "the MeasureReport isn't persisted"
-          (is (zero? (d/type-total (d/db node) "MeasureReport"))))
+          (with-db [db node]
+            (is (zero? (d/type-total db "MeasureReport")))))
 
         (testing "the referenced List is persisted"
-          (let [db (d/db node)]
+          (with-db [db node]
             (is (= 1 (d/type-total db "List")))
 
             (testing "and its subjectResults reference resolves"
@@ -607,7 +610,8 @@
           :type := #fhir/code "summary")
 
         (testing "nothing is persisted"
-          (is (zero? (d/type-total (d/db node) "MeasureReport"))))))))
+          (with-db [db node]
+            (is (zero? (d/type-total db "MeasureReport")))))))))
 
 (deftest handler-type-test
   (testing "Returns Success"

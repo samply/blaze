@@ -167,14 +167,17 @@
 (defn- tag-update-error [e]
   (assoc e ::js/action :update-job))
 
+(defn- pull-job* [node db id]
+  (d/pull node (d/resource-handle db "Task" id)))
+
 (defn pull-job
   "Returns a CompletableFuture that will complete with the job with `id` in
-  `db`, or in the current database of `node` if not given, or will complete
-  exceptionally with an anomaly in case of errors."
+  the database of `node` at `t`, or in the current database of `node` if not
+  given, or will complete exceptionally with an anomaly in case of errors."
   ([node id]
-   (pull-job node (d/db node) id))
-  ([node db id]
-   (d/pull node (d/resource-handle db "Task" id))))
+   (d/with-db node #(pull-job* node % id)))
+  ([node t id]
+   (d/with-sync-db node t #(pull-job* node % id))))
 
 (defn- then-pull-job [stage node id]
   (ac/then-compose stage #(pull-job node % id)))

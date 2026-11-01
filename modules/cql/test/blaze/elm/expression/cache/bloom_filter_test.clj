@@ -1,7 +1,7 @@
 (ns blaze.elm.expression.cache.bloom-filter-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.test-util :as ctu]
@@ -43,17 +43,17 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
-            expr (c/compile {:node node :eval-context "Patient"} elm)
-            db (d/db node)
-            bloom-filter (bloom-filter/create node expr)]
+            expr (c/compile {:node node :eval-context "Patient"} elm)]
+        (with-db [db node]
+          (let [bloom-filter (bloom-filter/create node expr)]
 
-        (testing "Patient 0 with an Observation is in the Bloom filter"
-          (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
-            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
+            (testing "Patient 0 with an Observation is in the Bloom filter"
+              (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+                (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
 
-        (testing "Patient 1 without an Observation is definitely not in the Bloom filter"
-          (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "1"))]
-            (is (false? (bloom-filter/might-contain? bloom-filter resource))))))))
+            (testing "Patient 1 without an Observation is definitely not in the Bloom filter"
+              (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "1"))]
+                (is (false? (bloom-filter/might-contain? bloom-filter resource))))))))))
 
   (testing "Bloom filter can't be used for resources other than Patients"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -63,18 +63,18 @@
         [:put {:fhir/type :fhir/Specimen :id "1"}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
-            expr (c/compile {:node node :eval-context "Patient"} elm)
-            db (d/db node)
-            bloom-filter (bloom-filter/create node expr)
-            handle (d/resource-handle db "Specimen" "1")]
+            expr (c/compile {:node node :eval-context "Patient"} elm)]
+        (with-db [db node]
+          (let [bloom-filter (bloom-filter/create node expr)
+                handle (d/resource-handle db "Specimen" "1")]
 
-        (testing "with resource created by mk-resource"
-          (let [resource (cr/mk-resource db handle)]
-            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
+            (testing "with resource created by mk-resource"
+              (let [resource (cr/mk-resource db handle)]
+                (is (true? (bloom-filter/might-contain? bloom-filter resource)))))
 
-        (testing "with resource created by resource-mapper"
-          (let [[resource] (into [] (cr/resource-mapper db) [handle])]
-            (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))
+            (testing "with resource created by resource-mapper"
+              (let [[resource] (into [] (cr/resource-mapper db) [handle])]
+                (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))))
 
   (testing "Bloom filter older than the last change in the patient's compartment"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -88,9 +88,9 @@
                                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]])
 
         (testing "the Bloom filter can't be trusted for Patient 0 anymore"
-          (let [db (d/db node)
-                resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
-            (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))
+          (with-db [db node]
+            (let [resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+              (is (true? (bloom-filter/might-contain? bloom-filter resource)))))))))
 
   (testing "Bloom filter newer than the database of the resource"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -99,15 +99,15 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
       (let [elm #elm/exists #elm/retrieve{:type "Observation"}
-            expr (c/compile {:node node :eval-context "Patient"} elm)
-            db (d/db node)]
+            expr (c/compile {:node node :eval-context "Patient"} elm)]
+        (with-db [db node]
 
-        @(d/transact node [[:delete "Observation" "0"]])
+          @(d/transact node [[:delete "Observation" "0"]])
 
-        (testing "the Bloom filter created after the deletion doesn't contain Patient 0, but it can't be trusted for the older database"
-          (let [bloom-filter (bloom-filter/create node expr)
-                resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
-            (is (true? (bloom-filter/might-contain? bloom-filter resource)))))))))
+          (testing "the Bloom filter created after the deletion doesn't contain Patient 0, but it can't be trusted for the older database"
+            (let [bloom-filter (bloom-filter/create node expr)
+                  resource (cr/mk-resource db (d/resource-handle db "Patient" "0"))]
+              (is (true? (bloom-filter/might-contain? bloom-filter resource))))))))))
 
 (deftest create-test
   (testing "with empty database"

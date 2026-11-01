@@ -27,6 +27,10 @@ For example, when paging through FHIR search results or history bundles, Blaze s
 
 In practice, each FHIR RESTful API read request obtains the most recent database value and uses that for all queries necessary to fulfill the request.
 
+### Scopes
+
+A database value is valid only within a scope. The functions `with-db` and `with-sync-db` of `blaze.db.api` call a function with a database value and end its scope when the CompletableFuture returned by that function completes. The scope holds one snapshot of the key-value store from its start to its end. All reads of the database value, possibly from several threads at once, go to that snapshot, so a database value doesn't see transactions committed after its scope started. Results have to be realized before the scope ends, because reading from a database value after its scope has ended fails. A FHIR RESTful API request has one scope that ends after its response was built.
+
 ## Logical Data Model
 
 Blaze uses a document-based data model, similar to document stores like [MongoDB][5] and XTDB. In this model, each version of a FHIR resource is a document.
@@ -461,7 +465,7 @@ flowchart TB
 
     subgraph publisher ["Changed Resources Publisher Thread"]
         window["one window per subscription:<br>after its queued-t, at most<br>its free queue slots"]
-        batch["one batch database over<br>the union of all windows"]
+        batch["one database value over<br>the union of all windows"]
         handles["changed handles per type,<br>from the type history over<br>the union of its windows"]
         window --> batch --> handles
     end
@@ -524,7 +528,7 @@ sequenceDiagram
     Note over pub,sub: t=5 follows in a later round,<br>so a subscription that lags<br>behind catches up over<br>multiple rounds
 ```
 
-All windows of a round are served by a **single batch database** — one snapshot of the key-value store — spanning their union, no matter how far apart the subscriptions are. Inside it, the type history of a type is examined only over the union of the windows of its own subscriptions, so that a subscription that lags behind doesn't make the history of the types of the subscriptions that are caught up be examined from its own queued-t.
+All windows of a round are served by a **single database value** — one snapshot of the key-value store — spanning their union, no matter how far apart the subscriptions are. Inside it, the type history of a type is examined only over the union of the windows of its own subscriptions, so that a subscription that lags behind doesn't make the history of the types of the subscriptions that are caught up be examined from its own queued-t.
 
 This isolates the subscribers from each other in two ways. A subscriber that doesn't consume fast enough only fills up its own queue, while the other subscribers still receive their handles. And a subscriber that blocks in its delivery method only blocks the thread of its own subscription. Closing a node is never delayed by a subscriber that doesn't consume, only by a delivery already in progress.
 

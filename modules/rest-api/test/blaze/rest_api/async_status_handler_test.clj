@@ -40,7 +40,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# ::rest-api/async-status-handler} config]
        ~txs
-       (let [~handler-binding (-> handler# (wrap-db node# 100)
+       (let [~handler-binding (-> handler# (wrap-db node#)
                                   wrap-error)]
          ~@body))))
 

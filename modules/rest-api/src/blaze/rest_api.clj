@@ -65,7 +65,6 @@
     ::async-status-handler
     ::async-status-cancel-handler
     ::capabilities-handler
-    ::db-sync-timeout
     :blaze/page-id-cipher]
    :opt-un
    [:blaze/context-path
@@ -79,9 +78,8 @@
     :blaze.db/enforce-referential-integrity]))
 
 (defmethod ig/init-key :blaze/rest-api
-  [_ {:keys [base-url context-path db-sync-timeout] :as config}]
-  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path)
-            "and a database sync timeout of" db-sync-timeout "ms")
+  [_ {:keys [base-url context-path] :as config}]
+  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path))
   @(structure-definitions/ensure-structure-definitions config)
   (handler config))
 

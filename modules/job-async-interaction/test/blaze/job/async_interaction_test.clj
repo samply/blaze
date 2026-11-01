@@ -84,7 +84,6 @@
    {:main-node (ig/ref :blaze.db.main/node)
     :admin-node (ig/ref :blaze.db.admin/node)
     :batch-handler (ig/ref ::batch-handler)
-    :db-sync-timeout 1000
     :blaze/base-url "base-url-104348"
     :context-path "/fhir"
     :clock (ig/ref :blaze.test/fixed-clock)
@@ -233,8 +232,7 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :context-path))))
 
   (testing "missing main-node"
     (given-failed-system (update config :blaze.job/async-interaction dissoc :main-node)
@@ -253,12 +251,6 @@
       :key := :blaze.job/async-interaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))))
-
-  (testing "missing db-sync-timeout"
-    (given-failed-system (update config :blaze.job/async-interaction dissoc :db-sync-timeout)
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "missing context-path"
     (given-failed-system (update config :blaze.job/async-interaction dissoc :context-path)
@@ -292,13 +284,6 @@
       :key := :blaze.job/async-interaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/batch-handler]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid db-sync-timeout"
-    (given-failed-system (assoc-in config [:blaze.job/async-interaction :db-sync-timeout] ::invalid)
-      :key := :blaze.job/async-interaction
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.rest-api/db-sync-timeout]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid context-path"

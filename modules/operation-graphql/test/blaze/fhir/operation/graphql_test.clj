@@ -107,7 +107,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# ::graphql/handler} config]
        ~txs
-       (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
+       (let [~handler-binding (-> handler# (wrap-db node#) wrap-error)]
          ~@body))))
 
 (deftest execute-query-test

@@ -52,11 +52,11 @@
   (-ordered-index-handles [_ _ _ _ _ _]
     (ba/unsupported))
 
-  (-index-handles [_ batch-db tid _ compiled-value]
-    (spq/index-handles batch-db c-hash tid prefix-length compiled-value))
+  (-index-handles [_ db tid _ compiled-value]
+    (spq/index-handles db c-hash tid prefix-length compiled-value))
 
-  (-index-handles [_ batch-db tid _ compiled-value start-id]
-    (spq/index-handles batch-db c-hash tid prefix-length compiled-value start-id))
+  (-index-handles [_ db tid _ compiled-value start-id]
+    (spq/index-handles db c-hash tid prefix-length compiled-value start-id))
 
   (-supports-ordered-compartment-index-handles [_ _ _]
     false)
@@ -67,11 +67,11 @@
   (-ordered-compartment-index-handles [_ _ _ _ _ _ _]
     (ba/unsupported))
 
-  (-matcher [_ batch-db _ compiled-values]
-    (spq/matcher batch-db c-hash prefix-length compiled-values))
+  (-matcher [_ db _ compiled-values]
+    (spq/matcher db c-hash prefix-length compiled-values))
 
-  (-single-version-id-matcher [_ batch-db tid _ compiled-values]
-    (spq/single-version-id-matcher batch-db tid c-hash prefix-length
+  (-single-version-id-matcher [_ db tid _ compiled-values]
+    (spq/single-version-id-matcher db tid c-hash prefix-length
                                    compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])

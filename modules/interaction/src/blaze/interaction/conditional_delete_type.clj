@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#cdelete"
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -57,6 +57,10 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers query-params]}]
     (let [clauses (uc/search-clauses query-params)]
-      (do-sync [db (d/transact node [(conditional-delete-op type clauses)])]
-        (build-response db type (handler-util/preference headers "return")
-                        clauses)))))
+      (-> (d/transact node [(conditional-delete-op type clauses)])
+          (ac/then-compose
+           (fn [t]
+             (d/with-sync-db node t
+               #(ac/completed-future
+                 (build-response % type (handler-util/preference headers "return")
+                                 clauses)))))))))

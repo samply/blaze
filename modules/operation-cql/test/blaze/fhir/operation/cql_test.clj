@@ -154,7 +154,7 @@
                          job-scheduler# :blaze/job-scheduler
                          handler# :blaze.fhir.operation/cql} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
                                   (wrap-job-scheduler job-scheduler#)
                                   wrap-error)]
          ~@body))))
