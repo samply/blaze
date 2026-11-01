@@ -47,8 +47,8 @@
 
   <SummaryBanner mode={summaryMode} fixed url={page.url} />
 
-  {#if data.bundle.fhirObjectEntry !== undefined && data.bundle.fhirObjectEntry.length > 0}
-    {#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
+  {#if data.bundle.entry !== undefined && data.bundle.entry.length > 0}
+    {#each data.bundle.entry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
       <EntryCard {entry} />
     {/each}
   {/if}

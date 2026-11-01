@@ -1,0 +1,31 @@
+{
+  "resourceType": "Patient",
+  "id": "birth-time",
+  "name": [
+    {
+      "family": "Birth Time",
+      "given": ["Ann", "Marie"],
+      "_given": [
+        null,
+        {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/iso21090-EN-qualifier",
+              "valueCode": "CL"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "gender": "female",
+  "birthDate": "2020-01-02",
+  "_birthDate": {
+    "extension": [
+      {
+        "url": "http://hl7.org/fhir/StructureDefinition/patient-birthTime",
+        "valueDateTime": "2020-01-02T10:28:45+01:00"
+      }
+    ]
+  }
+}

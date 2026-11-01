@@ -67,8 +67,8 @@
 
     <SummaryBanner {...data.summaryState} url={page.url} />
 
-    {#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
-      {#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
+    {#if bundle.entry !== undefined && bundle.entry.length > 0}
+      {#each bundle.entry as entry (entry.fullUrl)}
         <EntryCard {entry} />
       {/each}
     {:else if bundle.total === undefined}

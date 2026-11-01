@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { FhirObjectBundleEntry } from '#lib/resource/resource-card.js';
+  import type { BundleEntry, FhirResource } from 'fhir/r4';
   import { isSubsetted } from '#lib/resource/subsetted.js';
   import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
-    entry: FhirObjectBundleEntry;
+    entry: BundleEntry<FhirResource>;
   }
 
   let { entry }: Props = $props();

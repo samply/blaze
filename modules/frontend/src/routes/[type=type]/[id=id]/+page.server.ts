@@ -1,7 +1,7 @@
 import { backendUrl } from '#lib/backend.js';
 import { error } from '@sveltejs/kit';
-import { fhirObject } from '#lib/resource/resource-card.js';
 import type { PageServerLoad } from './$types';
+import type { FhirResource } from 'fhir/r4';
 
 export const load: PageServerLoad = async ({ fetch, params }) => {
   const res = await fetch(backendUrl(`/${params.type}/${params.id}`), {
@@ -22,9 +22,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
     );
   }
 
-  const resource = await res.json();
-
   return {
-    resource: await fhirObject(resource, fetch)
+    resource: (await res.json()) as FhirResource
   };
 };

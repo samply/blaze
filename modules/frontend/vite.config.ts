@@ -2,9 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { elementTypes } from './plugins/element-types.js';
 
 export default defineConfig({
   plugins: [
+    elementTypes(),
     tailwindcss(),
     sveltekit({
       compilerOptions: {
@@ -30,6 +32,6 @@ export default defineConfig({
   ],
   test: {
     expect: { requireAssertions: true },
-    include: ['src/**/*.{test,spec}.{js,ts}']
+    include: ['src/**/*.{test,spec}.{js,ts}', 'plugins/**/*.{test,spec}.{js,ts}']
   }
 });

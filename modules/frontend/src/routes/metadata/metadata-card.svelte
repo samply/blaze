@@ -1,14 +1,13 @@
 <script lang="ts">
   import type { CapabilityStatement } from 'fhir/r4';
   import { RestfulInteraction } from '#lib/fhir.js';
-  import type { FhirObject } from '#lib/resource/resource-card.js';
   import { isTabActive } from '#lib/util.js';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
 
   import DateTime from '#lib/values/date-time.svelte';
   import { Check, ArrowDownTray, XMark } from 'svelte-heros-v2';
-  import Object from '#lib/resource/json/object.svelte';
+  import JsonObject from '#lib/resource/json/object.svelte';
   import TabItem from '#lib/tab-item.svelte';
   import InteractionTh from './interaction-th.svelte';
   import InteractionTd from './interaction-td.svelte';
@@ -16,10 +15,9 @@
 
   interface Props {
     capabilityStatement: CapabilityStatement;
-    capabilityStatementObject: FhirObject;
   }
 
-  let { capabilityStatement, capabilityStatementObject }: Props = $props();
+  let { capabilityStatement }: Props = $props();
 </script>
 
 <div class="overflow-hidden">
@@ -152,7 +150,7 @@
     </Table>
   {:else}
     <pre class="flex overflow-auto text-sm"><code class="p-4"
-        ><Object object={capabilityStatementObject} /></code
+        ><JsonObject object={capabilityStatement} /></code
       ></pre>
   {/if}
 </div>

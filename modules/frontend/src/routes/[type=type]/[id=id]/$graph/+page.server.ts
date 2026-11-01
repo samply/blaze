@@ -1,9 +1,8 @@
 import type { PageServerLoad } from './$types';
-import type { Bundle, GraphDefinition } from 'fhir/r4';
+import type { Bundle, FhirResource, GraphDefinition } from 'fhir/r4';
 
 import { backendUrl } from '#lib/backend.js';
 import { error } from '@sveltejs/kit';
-import { fhirObject, transformBundle } from '#lib/resource/resource-card.js';
 
 export const load: PageServerLoad = async ({ fetch, params, url }) => {
   const resourceRes = await fetch(backendUrl(`/${params.type}/${params.id}`), {
@@ -71,9 +70,9 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
   }
 
   return {
-    resource: await fhirObject(resource, fetch),
+    resource: resource as FhirResource,
     graphDefinitions: bundle.entry?.map((e) => e.resource as GraphDefinition),
     selectedGraphDefinitionUrl: url.searchParams.get('graph'),
-    graph: graphRes !== undefined ? await transformBundle(fetch, await graphRes.json()) : undefined
+    graph: graphRes !== undefined ? ((await graphRes.json()) as Bundle<FhirResource>) : undefined
   };
 };

@@ -4,11 +4,6 @@ export function toTitleCase(s: string): string {
   return s.substring(0, 1).toUpperCase() + s.substring(1);
 }
 
-export function startsWithUpperCase(s: string): boolean {
-  const c = s.charAt(0);
-  return c.toUpperCase() === c;
-}
-
 export function sortByProperty<T>(propName: keyof T) {
   return function (a: T, b: T) {
     if (a[propName] === undefined || a[propName] === null) return 1;

@@ -1,9 +1,8 @@
-import type { CapabilityStatement, OperationOutcome } from 'fhir/r4';
+import type { Bundle, CapabilityStatement, FhirResource, OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
 import { backendUrl } from '#lib/backend.js';
 import { error } from '@sveltejs/kit';
 import { processParams } from '#lib/util.js';
-import { transformBundle } from '#lib/resource/resource-card.js';
 import { searchMetadata, type SearchMetadata } from '#lib/search-metadata.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
@@ -81,7 +80,7 @@ export async function fetchBundleWithDuration(
   }
 
   return {
-    bundle: await transformBundle(fetch, await res.json()),
+    bundle: (await res.json()) as Bundle<FhirResource>,
     duration: Date.now() - start
   };
 }
@@ -103,7 +102,7 @@ export async function fetchPageBundleWithDuration(
   }
 
   return {
-    bundle: await transformBundle(fetch, await res.json()),
+    bundle: (await res.json()) as Bundle<FhirResource>,
     duration: Date.now() - start
   };
 }

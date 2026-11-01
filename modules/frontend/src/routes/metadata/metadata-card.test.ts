@@ -22,14 +22,7 @@ describe('metadata card test', () => {
   // keeps the label and the date on the same line on narrow screens
   it('joins the last updated label and its date with a non-breaking space', () => {
     const { body } = render(MetadataCard, {
-      props: {
-        capabilityStatement,
-        capabilityStatementObject: {
-          type: { code: 'CapabilityStatement' },
-          object: capabilityStatement,
-          properties: []
-        }
-      }
+      props: { capabilityStatement }
     });
 
     const nbsp = String.fromCharCode(0xa0);

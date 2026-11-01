@@ -1,4 +1,3 @@
-import { fhirObject } from '#lib/resource/resource-card.js';
 import type { LayoutServerLoad } from './$types';
 
 import { backendUrl } from '#lib/backend.js';
@@ -14,10 +13,7 @@ export const load: LayoutServerLoad = async ({ fetch }) => {
     error(res.status, 'error while loading the CapabilityStatement');
   }
 
-  const capabilityStatement = (await res.json()) as CapabilityStatement;
-
   return {
-    capabilityStatement: capabilityStatement,
-    capabilityStatementObject: await fhirObject(capabilityStatement, fetch)
+    capabilityStatement: (await res.json()) as CapabilityStatement
   };
 };

@@ -1,18 +1,17 @@
 <script lang="ts">
-  import type { FhirObject } from '#lib/resource/resource-card.js';
   import type { Reference } from 'fhir/r4';
 
   import { resolve } from '$app/paths';
 
   interface Props {
-    values: FhirObject[];
+    values: Reference[];
   }
 
   let { values }: Props = $props();
 
   const max = 10;
 
-  let references = $derived(values.slice(0, max).map((v) => v.object) as Reference[]);
+  let references = $derived(values.slice(0, max));
 
   function toRouteParams(reference: string) {
     const [type, id] = reference.split('/');

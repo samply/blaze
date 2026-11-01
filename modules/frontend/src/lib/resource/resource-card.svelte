@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { Element, FhirResource, Meta, Resource } from 'fhir/r4';
-  import type { FhirObject } from './resource-card.js';
+  import type { FhirResource, Meta } from 'fhir/r4';
   import type { ResolvedPathname } from '$app/types';
 
   import { resolve } from '$app/paths';
@@ -12,15 +11,16 @@
   import { isTabActive } from '#lib/util.js';
   import { willBeRendered as willMetaBeRendered } from '#lib/values/meta.js';
   import { title } from '#lib/resource.js';
+  import { properties as resourceProperties } from './properties.js';
 
   import TabItem from '../tab-item.svelte';
   import TabItemEmbedded from '../tab-item-embedded.svelte';
   import DateTime from '#lib/values/date-time.svelte';
   import Property from './property.svelte';
-  import Object from './json/object.svelte';
+  import JsonObject from './json/object.svelte';
 
   interface Props {
-    resource: FhirObject;
+    resource: FhirResource;
     embedded?: boolean;
     versionLink?: boolean;
     header?: Snippet;
@@ -28,14 +28,10 @@
 
   let { resource, embedded = false, versionLink = false, header }: Props = $props();
 
-  function hasMeta(element: Element): element is Resource & { meta: Meta } {
-    return (element as Resource).meta !== undefined;
-  }
-
-  function href(resource: FhirObject): ResolvedPathname {
-    const type = resource.type.code;
-    const id = resource.object.id;
-    const vid = (resource.object as Resource).meta?.versionId;
+  function href(resource: FhirResource): ResolvedPathname {
+    const type = resource.resourceType;
+    const id = resource.id;
+    const vid = resource.meta?.versionId;
 
     if (id === undefined) {
       return resolve('/[type=type]?_summary=true', { type });
@@ -48,16 +44,11 @@
     return resolve('/[type=type]/[id=id]/_history/[vid=vid]', { type: type, id: id, vid: vid });
   }
 
-  function title1(resource: FhirObject) {
-    return title(resource.object as FhirResource);
-  }
-
   let properties = $derived(
-    resource.properties.filter(
+    resourceProperties(resource).filter(
       (p) =>
-        p.name != 'resourceType' &&
         p.name != 'id' &&
-        (p.type.code != 'Meta' || willMetaBeRendered((p.value as FhirObject).object as Meta)) &&
+        (p.type.code != 'Meta' || willMetaBeRendered(p.values[0] as Meta)) &&
         p.type.code != 'Narrative'
     )
   );
@@ -83,13 +74,13 @@
     <div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
       <div class="flex">
         <h3 class="grow text-base leading-6 font-semibold text-gray-900 dark:text-gray-100">
-          <a href={href(resource)}>{title1(resource)}</a>
+          <a href={href(resource)}>{title(resource)}</a>
         </h3>
         {@render header?.()}
       </div>
-      {#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
+      {#if resource.meta?.lastUpdated !== undefined}
         <p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          Last Updated&nbsp;<DateTime value={resource.object.meta.lastUpdated} />
+          Last Updated&nbsp;<DateTime value={resource.meta.lastUpdated} />
         </p>
       {/if}
     </div>
@@ -105,7 +96,7 @@
     </div>
   {:else}
     <pre in:fade|global={fadeParams} class="flex overflow-auto text-sm dark:text-gray-200"><code
-        class="p-4"><Object object={resource} /></code
+        class="p-4"><JsonObject object={resource} /></code
       ></pre>
   {/if}
 </div>

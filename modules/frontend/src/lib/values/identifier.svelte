@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { Identifier } from 'fhir/r4';
-  import type { FhirObject } from '#lib/resource/resource-card.js';
 
   import { sortByProperty } from '#lib/util.js';
 
@@ -9,15 +8,13 @@
   }
 
   interface Props {
-    values: FhirObject<Identifier>[];
+    values: Identifier[];
   }
 
   let { values }: Props = $props();
 
   let compactValues = $derived(
-    values
-      .map((v) => ({ type: compactType(v.object), value: v.object.value }))
-      .sort(sortByProperty('type'))
+    values.map((v) => ({ type: compactType(v), value: v.value })).sort(sortByProperty('type'))
   );
 </script>
 
