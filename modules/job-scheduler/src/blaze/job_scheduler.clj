@@ -95,16 +95,48 @@
   (format "Ignore %s of job with id `%s`, because the job is already running."
           action id))
 
+(defn- outdated-ignore-msg [action id]
+  (format "Ignore %s of job with id `%s`, because the job has changed in the meantime."
+          action id))
+
+(defn- pull-error-msg [action id]
+  (format "Failed to pull the job with id `%s` for its %s:" id action))
+
+(defn- execute-current-job
+  "Returns a CompletableFuture that will complete after `f` was called with the
+  current version of the job with `id` and its future completed, or will
+  complete immediately if that version isn't `pending?` anymore.
+
+  The job a dispatch starts from can be outdated, because the scan on start and
+  the subscription can both see the same version of a job, and the subscription
+  can still deliver versions committed shortly before it was created. So its
+  execution can have ended already. Because the job is reserved as running
+  before it is pulled, no other execution can start from the version pulled."
+  [{:keys [node] :as context} action pending? f id]
+  (-> (job-util/pull-job node id)
+      (ac/then-compose
+       (fn [job]
+         (if (pending? job)
+           (do (log/debug (format "Execute %s of job with id `%s`." action id))
+               (-> (wrap-error f context job)
+                   (ac/handle (job-completion-handler context id))))
+           (do (log/debug (outdated-ignore-msg action id))
+               (ac/completed-future nil)))))
+      (ac/exceptionally
+       #(log/error (pull-error-msg action id) (::anom/message %)))))
+
 (defn- execute-job
   "Executes `job` by calling `f`, which calls the job handler, unless the job
   scheduler shuts down.
 
   Reserves the job as running in `state` before its handler is called, so that
   a shutdown either sees the job or refuses the reservation. Doesn't execute a
-  job that is already running. The running job has a future of its own, that
-  completes after the job was removed from `state` again, when the future
-  returned by `f` completes."
-  [{:keys [context state]} action f {:keys [id] :as job}]
+  job that is already running. Calls `f` with the current version of the job
+  only if it is still `pending?`, so that a job isn't executed again from an
+  outdated version after its execution ended. The running job has a future of
+  its own, that completes after the job was removed from `state` again, when
+  the future returned by `f` completes."
+  [{:keys [context state]} action pending? f {:keys [id] :as job}]
   (let [tracked (ac/future)
         {:keys [shutting-down? running-jobs]} (swap! state reserve-job id tracked)]
     (cond
@@ -112,19 +144,31 @@
       (log/debug (shutdown-ignore-msg action job))
 
       (not (identical? tracked (get running-jobs id)))
-      (log/warn (running-ignore-msg action job))
+      (log/debug (running-ignore-msg action job))
 
       :else
-      (do (log/debug (format "Execute %s of job with id `%s`." action id))
-          (-> (wrap-error f context job)
-              (ac/handle (job-completion-handler context id))
-              (ac/when-complete
-               (fn [_ _]
-                 (swap! state remove-job id)
-                 (ac/complete! tracked nil))))))))
+      (-> (execute-current-job context action pending? f id)
+          (ac/when-complete
+           (fn [_ _]
+             (swap! state remove-job id)
+             (ac/complete! tracked nil)))))))
+
+(defn- status-value [{{:keys [value]} :status}]
+  value)
+
+(defn- ready? [job]
+  (= "ready" (status-value job)))
+
+(defn- resumed? [job]
+  (and (= "in-progress" (status-value job))
+       (= "resumed" (job-util/status-reason job))))
+
+(defn- cancellation-requested? [job]
+  (and (= "cancelled" (status-value job))
+       (= "requested" (job-util/cancelled-sub-status job))))
 
 (defn- on-start [job-scheduler job]
-  (execute-job job-scheduler "start" on-start* job))
+  (execute-job job-scheduler "start" ready? on-start* job))
 
 (defn- on-resume* [context job]
   (if-let [handler (find-handler context job)]
@@ -132,7 +176,7 @@
     (on-missing-handler context "resume" job)))
 
 (defn- on-resume [job-scheduler job]
-  (execute-job job-scheduler "resume" on-resume* job))
+  (execute-job job-scheduler "resume" resumed? on-resume* job))
 
 (defn- on-cancel* [context job]
   (if-let [handler (find-handler context job)]
@@ -159,18 +203,11 @@
 (defn- dispatch-job
   "Starts, resumes or requests the cancellation of `job` according to its
   status."
-  [job-scheduler {{status-value :value} :status :as job}]
+  [job-scheduler job]
   (cond
-    (= "ready" status-value)
-    (on-start job-scheduler job)
-
-    (and (= "in-progress" status-value)
-         (= "resumed" (job-util/status-reason job)))
-    (on-resume job-scheduler job)
-
-    (and (= "cancelled" status-value)
-         (= "requested" (job-util/cancelled-sub-status job)))
-    (on-cancel job-scheduler job)))
+    (ready? job) (on-start job-scheduler job)
+    (resumed? job) (on-resume job-scheduler job)
+    (cancellation-requested? job) (on-cancel job-scheduler job)))
 
 (deftype TaskSubscriber [node job-scheduler ^:volatile-mutable subscription]
   Flow$Subscriber
@@ -185,6 +222,29 @@
     (log/fatal "Job scheduler failed. Please restart Blaze. Cause:" (ex-message e))
     (flow/cancel! subscription))
   (onComplete [_]))
+
+(defn- dispatch-pending-jobs-error-handler [{::anom/keys [message]}]
+  (log/error "Failed to dispatch the pending jobs on start of the job scheduler:"
+             message))
+
+(defn- dispatch-pending-jobs
+  "Dispatches the jobs of `node` that are pending, because they became ready
+  or were resumed while no job scheduler was listening, like the
+  `TaskSubscriber` does.
+
+  Has to be called after subscribing to Task changes, so that no change falls
+  into a gap between the subscription and the database value pulled from. A
+  job that is seen by both is executed only once, because a job that is already
+  running isn't executed again and a job whose execution ended isn't pending
+  anymore.
+
+  Returns a CompletableFuture that will complete after all pending jobs were
+  dispatched."
+  [node job-scheduler]
+  (-> (d/type-query (d/db node) "Task" [["status" "ready" "in-progress"]])
+      (ac/then-compose #(d/pull-many node (vec %)))
+      (ac/then-apply #(run! (partial dispatch-job job-scheduler) %))
+      (ac/exceptionally dispatch-pending-jobs-error-handler)))
 
 (defn- current-job-number-observation [{:keys [node] :as context} db]
   (-> (d/type-query db "Observation" [["identifier" "job-number"]])
@@ -442,6 +502,7 @@
                        :state (atom {:shutting-down? false :running-jobs {}})}]
     (d/subscribe-changes! node "Task" "job-scheduler"
                           (->TaskSubscriber node job-scheduler nil))
+    (dispatch-pending-jobs node job-scheduler)
     job-scheduler))
 
 (defmethod ig/halt-key! :blaze/job-scheduler

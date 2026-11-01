@@ -171,6 +171,21 @@
       (ac/completed-future job))
     (-on-shutdown [_ _])))
 
+(defmethod ig/init-key :blaze.job/completing
+  [_ {:keys [admin-node executions]}]
+  (letfn [(complete [job]
+            (swap! executions inc)
+            (job-util/update-job admin-node job finish-job))]
+    (reify p/JobHandler
+      (-on-start [_ job]
+        (complete job))
+      (-on-resume [_ job]
+        (complete job))
+      (-on-cancel [_ job]
+        (ac/completed-future job))
+      (-on-pause [_ _])
+      (-on-shutdown [_ _]))))
+
 (defmethod ig/init-key :blaze.job/blocking-start
   [_ {:keys [start-gate]}]
   (reify p/JobHandler
@@ -1221,3 +1236,198 @@
         (testing "the job isn't put on-hold"
           (given (last @(jtu/pull-job-history system job-id))
             jtu/combined-status := :in-progress/started))))))
+
+(defn- with-restarted-job-scheduler
+  "Starts a new job scheduler with the config of the halted job scheduler of
+  `system`, calls `f` with it and halts it again afterwards."
+  [{:blaze/keys [job-scheduler]} f]
+  (let [job-scheduler (ig/init-key :blaze/job-scheduler (:context job-scheduler))]
+    (try
+      (f job-scheduler)
+      (finally
+        (ig/halt-key! :blaze/job-scheduler job-scheduler)))))
+
+(deftest pending-jobs-on-start-test
+  (testing "a job that became ready while no job scheduler was listening is started"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        (ig/halt! system [:blaze/job-scheduler])
+
+        @(js/create-job job-scheduler (ready-job "no-op"))
+
+        (with-restarted-job-scheduler system
+          (fn [job-scheduler]
+            (testing "the job handler is called"
+              (given (deref called-signal 10000 ::not-called)
+                :id := job-id
+                jtu/combined-status := :ready))
+
+            (testing "the job isn't running anymore"
+              (is (await-running job-scheduler job-id false))))))))
+
+  (testing "a job that was resumed while no job scheduler was listening is resumed"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (on-hold-job "no-op"))
+
+        (ig/halt! system [:blaze/job-scheduler])
+
+        @(js/resume-job job-scheduler job-id)
+
+        (with-restarted-job-scheduler system
+          (fn [job-scheduler]
+            (testing "the job handler is called"
+              (given (deref called-signal 10000 ::not-called)
+                :id := job-id
+                jtu/combined-status := :in-progress/resumed))
+
+            (testing "the job isn't running anymore"
+              (is (await-running job-scheduler job-id false))))))))
+
+  (testing "a job that is in-progress with the reason started isn't executed"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]
+                     :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (on-hold-job "no-op"))
+
+        (ig/halt! system [:blaze/job-scheduler])
+
+        @(job-util/update-job node @(jtu/pull-job system job-id :on-hold)
+                              start-job)
+
+        (with-restarted-job-scheduler system
+          (fn [_]
+            (testing "the job handler isn't called"
+              (is (= ::not-called (deref called-signal 1000 ::not-called)))))))))
+
+  (testing "a job that is on-hold isn't executed"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        @(js/create-job job-scheduler (on-hold-job "no-op"))
+
+        (ig/halt! system [:blaze/job-scheduler])
+
+        (with-restarted-job-scheduler system
+          (fn [_]
+            (testing "the job handler isn't called"
+              (is (= ::not-called (deref called-signal 1000 ::not-called)))))))))
+
+  (testing "the job scheduler starts although pulling the pending jobs fails"
+    (let [called-signal (promise)]
+      (with-system [{:blaze/keys [job-scheduler] :as system}
+                    (no-op-config called-signal)]
+
+        (ig/halt! system [:blaze/job-scheduler])
+
+        @(js/create-job job-scheduler (ready-job "no-op"))
+
+        (with-redefs [d/type-query
+                      (fn [_ _ _] (ac/completed-future (ba/fault "fault-131512")))]
+          (with-restarted-job-scheduler system
+            (fn [job-scheduler]
+              (testing "the job scheduler is valid"
+                (is (s/valid? :blaze/job-scheduler job-scheduler)))
+
+              (testing "the job handler isn't called"
+                (is (= ::not-called (deref called-signal 1000 ::not-called)))))))))))
+
+(defn- completing-config [executions]
+  (-> (assoc-in config [:blaze/job-scheduler :handlers :blaze.job/completing]
+                (ig/ref :blaze.job/completing))
+      (assoc :blaze.job/completing {:admin-node (ig/ref :blaze.db.admin/node)
+                                    :executions executions})))
+
+(defn- stale-handle
+  "Returns the resource handle of the version of `job` in the database of
+  `node`, also after the job has changed."
+  [node job]
+  (let [t (:blaze.db/t (:blaze.db/tx (meta job)))]
+    (d/resource-handle (d/as-of (d/db node) t) "Task" (:id job))))
+
+(defn- type-query-returning
+  "Returns a function like `type-query` that returns `handles`."
+  [handles]
+  (fn [_ _ _] (ac/completed-future handles)))
+
+(deftest stale-job-is-not-executed-test
+  (testing "a job that was started already isn't started again"
+    (let [executions (atom 0)]
+      (with-system [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]
+                     :as system}
+                    (completing-config executions)]
+
+        (let [ready-job @(js/create-job job-scheduler (ready-job "completing"))]
+
+          @(jtu/pull-job system job-id :completed)
+          (is (await-running job-scheduler job-id false))
+
+          (ig/halt! system [:blaze/job-scheduler])
+
+          (with-redefs [d/type-query (type-query-returning
+                                      [(stale-handle node ready-job)])]
+            (with-restarted-job-scheduler system
+              (fn [job-scheduler]
+                (testing "the job handler isn't called again"
+                  (Thread/sleep 1000)
+                  (is (= 1 @executions)))
+
+                (testing "the job isn't running"
+                  (is (await-running job-scheduler job-id false))))))))))
+
+  (testing "a job that was resumed already isn't resumed again"
+    (let [executions (atom 0)]
+      (with-system [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]
+                     :as system}
+                    (completing-config executions)]
+
+        @(js/create-job job-scheduler (on-hold-job "completing"))
+
+        (let [resumed-job @(js/resume-job job-scheduler job-id)]
+
+          @(jtu/pull-job system job-id :completed)
+          (is (await-running job-scheduler job-id false))
+
+          (ig/halt! system [:blaze/job-scheduler])
+
+          (with-redefs [d/type-query (type-query-returning
+                                      [(stale-handle node resumed-job)])]
+            (with-restarted-job-scheduler system
+              (fn [job-scheduler]
+                (testing "the job handler isn't called again"
+                  (Thread/sleep 1000)
+                  (is (= 1 @executions)))
+
+                (testing "the job isn't running"
+                  (is (await-running job-scheduler job-id false)))))))))))
+
+(deftest job-failing-to-pull-is-not-executed-test
+  (let [called-signal (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system}
+                  (no-op-config called-signal)]
+
+      (ig/halt! system [:blaze/job-scheduler])
+
+      @(js/create-job job-scheduler (ready-job "no-op"))
+
+      (with-redefs [job-util/pull-job
+                    (fn [_ _] (ac/completed-future (ba/fault "fault-143912")))]
+        (with-restarted-job-scheduler system
+          (fn [job-scheduler]
+            (testing "the job handler isn't called"
+              (is (= ::not-called (deref called-signal 1000 ::not-called))))
+
+            (testing "the job isn't running"
+              (is (await-running job-scheduler job-id false))))))
+
+      (testing "the job stays ready"
+        (given @(jtu/pull-job-history system job-id)
+          count := 1
+          [0 jtu/combined-status] := :ready)))))
