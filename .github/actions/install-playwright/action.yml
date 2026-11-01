@@ -1,0 +1,48 @@
+name: Install Playwright with Caching
+description: Installs the npm dependencies of the frontend-e2e module, the Playwright browsers and their system dependencies. The npm cache and the APT packages of the system dependencies are cached to save further downloads. The browsers aren't cached, because they download fast.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache npm
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.npm
+        key: npm-frontend-e2e-${{ hashFiles('modules/frontend-e2e/package-lock.json', 'modules/frontend-e2e/test-data/package-lock.json') }}
+        restore-keys: npm-frontend-e2e-
+
+    # The APT packages depend on the packages already installed on the runner
+    # image and on the Playwright version.
+    - name: Determine APT Cache Key
+      id: apt-cache-key
+      shell: bash
+      run: |
+        PLAYWRIGHT_VERSION=$(jq -r '.packages["node_modules/playwright-core"].version' modules/frontend-e2e/package-lock.json)
+        echo "key=playwright-apt-$ImageOS-$ImageVersion-$PLAYWRIGHT_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Cache APT Packages
+      id: apt-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: ~/.cache/playwright-apt-archives
+        key: ${{ steps.apt-cache-key.outputs.key }}
+
+    - name: Restore APT Packages
+      if: steps.apt-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: sudo find ~/.cache/playwright-apt-archives -maxdepth 1 -name '*.deb' -exec cp -t /var/cache/apt/archives {} +
+
+    - name: Install Dependencies
+      shell: bash
+      run: make -C modules/frontend-e2e install-playwright
+
+    - name: Collect APT Packages
+      if: steps.apt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p ~/.cache/playwright-apt-archives
+        find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/.cache/playwright-apt-archives {} +
+        if [ -z "$(ls -A ~/.cache/playwright-apt-archives)" ]; then
+          echo "::warning::Found no downloaded APT packages to cache."
+          rmdir ~/.cache/playwright-apt-archives
+        fi
