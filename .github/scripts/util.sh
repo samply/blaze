@@ -71,6 +71,20 @@ transact_return_representation() {
   curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d @- "$1"
 }
 
+# Executes the operation at the URL $1 with the Parameters resource read from
+# stdin and returns the response body. Fails on HTTP errors. Additional
+# arguments are passed to curl, e.g. `-o /dev/null -D -` to return the response
+# headers instead.
+execute_operation() {
+  execute_operation_allow_error "$1" -f "${@:2}"
+}
+
+# Like execute_operation, but returns the body of HTTP error responses instead
+# of failing. Use it to test error responses.
+execute_operation_allow_error() {
+  curl -sH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "${@:2}" "$1"
+}
+
 # Returns the body of a successful GET request to the URL $1 using strict
 # search parameter handling.
 search_strict() {

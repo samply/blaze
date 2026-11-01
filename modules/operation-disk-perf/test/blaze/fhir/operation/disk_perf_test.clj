@@ -5,6 +5,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.disk-perf]
    [blaze.fhir.util :as fu]
+   [blaze.handler.async-job-spec]
    [blaze.handler.util :as handler-util]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.test-util :as tu]

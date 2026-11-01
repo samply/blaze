@@ -33,7 +33,7 @@ check_bundle() {
 
 check_bundle "GET" "$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything?start=2013&end=2014")"
 
-check_bundle "POST" "$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d @- "$base/Patient/$patient_id/\$everything" <<END
+check_bundle "POST" "$(execute_operation "$base/Patient/$patient_id/\$everything" <<END
 {
   "resourceType": "Parameters",
   "parameter": [

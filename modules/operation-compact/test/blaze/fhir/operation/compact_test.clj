@@ -4,6 +4,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.compact]
    [blaze.fhir.util :as fu]
+   [blaze.handler.async-job-spec]
    [blaze.handler.util :as handler-util]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.test-util :as tu]
@@ -92,6 +93,18 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "invalid"
           [:issue 0 :diagnostics] := #fhir/string "Expected Parameters resource but was `Patient` resource."))))
+
+  (testing "missing body"
+    (with-handler [handler]
+      (let [{:keys [status body]} @(handler {})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Missing required parameter `database`."))))
 
   (testing "Missing database parameter"
     (with-handler [handler]
