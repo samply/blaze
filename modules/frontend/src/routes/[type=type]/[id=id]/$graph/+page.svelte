@@ -12,13 +12,12 @@
   import NoResultsCard from '../../no-results-card.svelte';
 
   import { title } from '#lib/resource.js';
-  import type { FhirResource } from 'fhir/r4';
 
   import { ChevronDown } from 'svelte-heros-v2';
 
   let { data, params }: PageProps = $props();
 
-  let resource = $derived(data.resource.object as FhirResource);
+  let resource = $derived(data.resource);
 </script>
 
 <svelte:head>
@@ -81,8 +80,8 @@
   {/if}
 
   {#if data.graph}
-    {#if data.graph.fhirObjectEntry !== undefined && data.graph.fhirObjectEntry.length > 0}
-      {#each data.graph.fhirObjectEntry as entry (entry.fullUrl)}
+    {#if data.graph.entry !== undefined && data.graph.entry.length > 0}
+      {#each data.graph.entry as entry (entry.fullUrl)}
         <EntryCard {entry} />
       {/each}
     {:else if data.graph.total === undefined}

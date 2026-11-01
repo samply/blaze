@@ -1,14 +1,11 @@
 <script lang="ts">
-  import type { FhirObject } from '#lib/resource/resource-card.js';
   import type { Dosage } from 'fhir/r4';
 
   interface Props {
-    values: FhirObject[];
+    values: Dosage[];
   }
 
-  let { values }: Props = $props();
-
-  let dosages = $derived(values.map((v) => v.object) as Dosage[]);
+  let { values: dosages }: Props = $props();
 </script>
 
 <div class="rounded-lg ring-1 ring-gray-300 dark:ring-gray-500">

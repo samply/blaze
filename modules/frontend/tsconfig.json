@@ -5,5 +5,5 @@
     "sourceMap": true,
     "strict": true
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "plugins", "vite.config.ts"]
 }

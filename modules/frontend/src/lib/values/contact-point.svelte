@@ -1,16 +1,13 @@
 <script lang="ts">
-  import type { FhirObject } from '#lib/resource/resource-card.js';
   import type { ContactPoint } from 'fhir/r4';
   import { joinStrings } from '#lib/util.js';
   import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
-    values: FhirObject[];
+    values: ContactPoint[];
   }
 
-  let { values }: Props = $props();
-
-  let contactPoints = $derived(values.map((v) => v.object) as ContactPoint[]);
+  let { values: contactPoints }: Props = $props();
 
   // See https://www.hl7.org/fhir/R4B/valueset-contact-point-use.html
   type Use = 'home' | 'work' | 'temp' | 'old' | 'mobile';

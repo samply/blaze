@@ -1,950 +1,220 @@
-import type { Bundle, ElementDefinition, Patient, StructureDefinition } from 'fhir/r4';
-import { describe, expect, it } from 'vitest';
-import { calcPropertiesDeep, type FhirObject, getTypeElements } from './resource-card.js';
-import { readFileSync } from 'fs';
+import type {
+  ClaimResponse,
+  FhirResource,
+  Measure,
+  Observation,
+  Patient,
+  Questionnaire
+} from 'fhir/r4';
+import { describe, expect, it, vi } from 'vitest';
+import { render } from 'svelte/server';
 
-const structureDefinitionPatient = readStructureDefinition('Patient');
-const structureDefinitionObservation = readStructureDefinition('Observation');
-const structureDefinitionMedicationAdministration = readStructureDefinition(
-  'MedicationAdministration'
-);
-const structureDefinitionCarePlan = readStructureDefinition('CarePlan');
+const state = vi.hoisted(() => ({ url: new URL('http://localhost/fhir/Patient/0') }));
 
-function readBundle(name: string): Bundle {
-  const data = readFileSync(name);
-  return JSON.parse(data.toString());
+vi.mock('$app/state', () => ({ page: state }));
+
+const { default: ResourceCard } = await import('./resource-card.svelte');
+
+function renderTab(resource: FhirResource, tab: 'default' | 'json'): string {
+  state.url = new URL(`http://localhost/fhir/Patient/0?__tab=${tab}`);
+  return render(ResourceCard, { props: { resource } }).body;
 }
 
-function readStructureDefinitionFrom(file: string, name: string): StructureDefinition | undefined {
-  const bundle = readBundle(
-    `../fhir-structure/target/generated-resources/blaze/fhir/4.0.1/profiles-${file}.json`
-  );
-  return bundle.entry?.find((e) => e.resource?.id === name)?.resource as StructureDefinition;
-}
+const extension = [{ url: 'http://example.com/ext', valueString: 'ext-value' }];
 
-function readStructureDefinition(name: string): StructureDefinition {
-  const structureDefinition = readStructureDefinitionFrom('types', name);
-  if (structureDefinition === undefined) {
-    const structureDefinition = readStructureDefinitionFrom('resources', name);
-    return structureDefinition as StructureDefinition;
-  } else {
-    return structureDefinition;
-  }
-}
+describe('resource card test', () => {
+  describe('normal view', () => {
+    it('formats dates', () => {
+      const patient: Patient = { resourceType: 'Patient', birthDate: '2020-01-02' };
 
-describe('calcPropertiesDeep test', () => {
-  it('Patient.id', () => {
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          id: 'foo'
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'id',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'foo' }
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        id: 'foo'
-      }
+      expect(renderTab(patient, 'default')).toContain('<time datetime="2020-01-02"');
     });
-  });
-  it('Patient.meta.profile', () => {
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          meta: {
-            profile: ['foo']
-          }
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'meta',
-          type: { code: 'Meta' },
-          value: {
-            type: { code: 'Meta' },
-            properties: [
-              {
-                name: 'profile',
-                type: {
-                  code: 'canonical',
-                  targetProfile: ['http://hl7.org/fhir/StructureDefinition/StructureDefinition']
-                },
-                value: [
-                  {
-                    type: {
-                      code: 'canonical',
-                      targetProfile: ['http://hl7.org/fhir/StructureDefinition/StructureDefinition']
-                    },
-                    value: 'foo'
-                  }
-                ]
-              }
-            ],
-            object: {
-              profile: ['foo']
-            }
-          }
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        meta: {
-          profile: ['foo']
-        }
-      }
-    });
-  });
-  it('Patient active comes before gender', () => {
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          gender: 'male',
-          active: false
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'active',
-          type: { code: 'boolean' },
-          value: { type: { code: 'boolean' }, value: false }
-        },
-        {
-          name: 'gender',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'male' }
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        gender: 'male',
-        active: false
-      }
-    });
-  });
-  it('Patient.identifier', () => {
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          identifier: [
-            {
-              value: 'foo'
-            }
-          ]
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'identifier',
-          type: { code: 'Identifier' },
-          value: [
-            {
-              type: { code: 'Identifier' },
-              properties: [
-                {
-                  name: 'value',
-                  type: { code: 'string' },
-                  value: { type: { code: 'string' }, value: 'foo' }
-                }
-              ],
-              object: {
-                value: 'foo'
-              }
-            }
-          ]
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        identifier: [
-          {
-            value: 'foo'
-          }
-        ]
-      }
-    });
-  });
-  it('contained resource', () => {
-    const containedPatient: Patient = {
-      resourceType: 'Patient',
-      gender: 'female'
-    };
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          contained: [containedPatient]
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'contained',
-          type: { code: 'Resource' },
-          value: [
-            {
-              type: { code: 'Patient' },
-              properties: [
-                {
-                  name: 'resourceType',
-                  type: { code: 'string' },
-                  value: { type: { code: 'string' }, value: 'Patient' }
-                },
-                {
-                  name: 'gender',
-                  type: { code: 'code' },
-                  value: { type: { code: 'code' }, value: 'female' }
-                }
-              ],
-              object: {
-                resourceType: 'Patient',
-                gender: 'female'
-              }
-            }
-          ]
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        contained: [
-          {
-            resourceType: 'Patient',
-            gender: 'female'
-          }
-        ]
-      }
-    });
-  });
-  it('polymorph attribute with complex type', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      structureDefinitionMedicationAdministration,
-      {
-        resourceType: 'MedicationAdministration',
-        status: 'unknown',
-        medicationCodeableConcept: {
-          text: 'text-131123'
-        },
-        subject: {}
-      }
-    );
-    expect(result).toHaveProperty('type', { code: 'MedicationAdministration' });
-    expect(result).toHaveProperty('properties');
-    expect(result.properties).toHaveLength(4);
-    const thirdProperty = result.properties[2];
-    expect(thirdProperty).toHaveProperty('name', 'medicationCodeableConcept');
-    expect(thirdProperty).toHaveProperty('value');
-    expect(thirdProperty.value).toHaveProperty('type', { code: 'CodeableConcept' });
-    expect(thirdProperty.value).toHaveProperty('properties');
-    const thirdPropertyValue = thirdProperty.value as FhirObject;
-    expect(thirdPropertyValue.properties).toHaveLength(1);
-    expect(thirdPropertyValue.properties[0]).toHaveProperty('name', 'text');
-    expect(thirdPropertyValue.properties[0]).toHaveProperty('value', {
-      type: { code: 'string' },
-      value: 'text-131123'
-    });
-  });
-  it('backbone element', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      structureDefinitionPatient,
-      {
-        resourceType: 'Patient',
-        contact: [
-          {
-            gender: 'female'
-          }
-        ]
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'contact',
-          type: { code: 'BackboneElement' },
-          value: [
-            {
-              type: { code: 'BackboneElement' },
-              properties: [
-                {
-                  name: 'gender',
-                  type: { code: 'code' },
-                  value: { type: { code: 'code' }, value: 'female' }
-                }
-              ],
-              object: {
-                gender: 'female'
-              }
-            }
-          ]
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        contact: [
-          {
-            gender: 'female'
-          }
-        ]
-      }
-    });
-  });
-  it('multiple backbone elements', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      structureDefinitionPatient,
-      {
-        resourceType: 'Patient',
-        contact: [
-          {
-            gender: 'female'
-          },
-          {
-            gender: 'male'
-          }
-        ]
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'contact',
-          type: { code: 'BackboneElement' },
-          value: [
-            {
-              type: { code: 'BackboneElement' },
-              properties: [
-                {
-                  name: 'gender',
-                  type: { code: 'code' },
-                  value: { type: { code: 'code' }, value: 'female' }
-                }
-              ],
-              object: {
-                gender: 'female'
-              }
-            },
-            {
-              type: { code: 'BackboneElement' },
-              properties: [
-                {
-                  name: 'gender',
-                  type: { code: 'code' },
-                  value: { type: { code: 'code' }, value: 'male' }
-                }
-              ],
-              object: {
-                gender: 'male'
-              }
-            }
-          ]
-        }
-      ],
-      object: {
-        resourceType: 'Patient',
-        contact: [
-          {
-            gender: 'female'
-          },
-          {
-            gender: 'male'
-          }
-        ]
-      }
-    });
-  });
-  it('nested backbone elements', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      structureDefinitionCarePlan,
-      {
-        resourceType: 'CarePlan',
-        activity: [
-          {
-            detail: {
-              status: 'completed'
-            }
-          }
-        ],
-        status: 'unknown',
-        intent: 'proposal',
-        subject: {}
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'CarePlan' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'CarePlan' }
-        },
-        {
-          name: 'status',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'unknown' }
-        },
-        {
-          name: 'intent',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'proposal' }
-        },
-        {
-          name: 'subject',
-          type: {
-            code: 'Reference',
-            targetProfile: [
-              'http://hl7.org/fhir/StructureDefinition/Patient',
-              'http://hl7.org/fhir/StructureDefinition/Group'
-            ]
-          },
-          value: { type: { code: 'Reference' }, properties: [], object: {} }
-        },
-        {
-          name: 'activity',
-          type: { code: 'BackboneElement' },
-          value: [
-            {
-              type: { code: 'BackboneElement' },
-              properties: [
-                {
-                  name: 'detail',
-                  type: { code: 'BackboneElement' },
-                  value: {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'status',
-                        type: { code: 'code' },
-                        value: { type: { code: 'code' }, value: 'completed' }
-                      }
-                    ],
-                    object: {
-                      status: 'completed'
-                    }
-                  }
-                }
-              ],
-              object: {
-                detail: {
-                  status: 'completed'
-                }
-              }
-            }
-          ]
-        }
-      ],
-      object: {
-        resourceType: 'CarePlan',
-        activity: [
-          {
-            detail: {
-              status: 'completed'
-            }
-          }
-        ],
-        status: 'unknown',
-        intent: 'proposal',
-        subject: {}
-      }
-    });
-  });
-  it('recursive backbone elements', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      readStructureDefinition('Consent'),
-      {
-        resourceType: 'Consent',
-        provision: {
-          type: 'deny',
-          provision: [
-            {
-              type: 'permit'
-            }
-          ]
-        },
-        category: [{}],
-        scope: {},
-        status: 'draft'
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'Consent' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Consent' }
-        },
-        {
-          name: 'status',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'draft' }
-        },
-        {
-          name: 'scope',
-          type: { code: 'CodeableConcept' },
-          value: {
-            type: { code: 'CodeableConcept' },
-            properties: [],
-            object: {}
-          }
-        },
-        {
-          name: 'category',
-          type: { code: 'CodeableConcept' },
-          value: [
-            {
-              type: { code: 'CodeableConcept' },
-              properties: [],
-              object: {}
-            }
-          ]
-        },
-        {
-          name: 'provision',
-          type: { code: 'BackboneElement' },
-          value: {
-            type: { code: 'BackboneElement' },
-            properties: [
-              {
-                name: 'type',
-                type: { code: 'code' },
-                value: { type: { code: 'code' }, value: 'deny' }
-              },
-              {
-                name: 'provision',
-                type: { code: 'BackboneElement' },
-                value: [
-                  {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'type',
-                        type: { code: 'code' },
-                        value: { type: { code: 'code' }, value: 'permit' }
-                      }
-                    ],
-                    object: {
-                      type: 'permit'
-                    }
-                  }
-                ]
-              }
-            ],
-            object: {
-              type: 'deny',
-              provision: [
-                {
-                  type: 'permit'
-                }
-              ]
-            }
-          }
-        }
-      ],
-      object: {
-        resourceType: 'Consent',
-        provision: {
-          type: 'deny',
-          provision: [
-            {
-              type: 'permit'
-            }
-          ]
-        },
-        category: [{}],
-        scope: {},
-        status: 'draft'
-      }
-    });
-  });
-  it('nested referenced backbone elements', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      readStructureDefinition('ValueSet'),
-      {
-        resourceType: 'ValueSet',
-        compose: {
-          include: [
-            {
-              system: 'system-1'
-            }
-          ],
-          exclude: [
-            {
-              system: 'system-2'
-            }
-          ]
-        },
-        status: 'draft'
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'ValueSet' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'ValueSet' }
-        },
-        {
-          name: 'status',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'draft' }
-        },
-        {
-          name: 'compose',
-          type: { code: 'BackboneElement' },
-          value: {
-            type: { code: 'BackboneElement' },
-            properties: [
-              {
-                name: 'include',
-                type: { code: 'BackboneElement' },
-                value: [
-                  {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'system',
-                        type: { code: 'uri' },
-                        value: { type: { code: 'uri' }, value: 'system-1' }
-                      }
-                    ],
-                    object: {
-                      system: 'system-1'
-                    }
-                  }
-                ]
-              },
-              {
-                name: 'exclude',
-                type: { code: 'BackboneElement' },
-                value: [
-                  {
-                    type: { code: 'BackboneElement' },
-                    properties: [
-                      {
-                        name: 'system',
-                        type: { code: 'uri' },
-                        value: { type: { code: 'uri' }, value: 'system-2' }
-                      }
-                    ],
-                    object: {
-                      system: 'system-2'
-                    }
-                  }
-                ]
-              }
-            ],
-            object: {
-              include: [
-                {
-                  system: 'system-1'
-                }
-              ],
-              exclude: [
-                {
-                  system: 'system-2'
-                }
-              ]
-            }
-          }
-        }
-      ],
-      object: {
-        resourceType: 'ValueSet',
-        compose: {
-          include: [
-            {
-              system: 'system-1'
-            }
-          ],
-          exclude: [
-            {
-              system: 'system-2'
-            }
-          ]
-        },
-        status: 'draft'
-      }
-    });
-  });
-  it('element', () => {
-    const result = calcPropertiesDeep(
-      readStructureDefinition,
-      getTypeElements(new Map<string, ElementDefinition[]>()),
-      structureDefinitionObservation,
-      {
+
+    it('names choice-typed elements without type suffix', () => {
+      const observation: Observation = {
         resourceType: 'Observation',
-        effectiveTiming: {
-          repeat: {
-            frequency: 1
-          }
-        },
-        code: {},
-        status: 'final'
-      }
-    );
-    expect(result).toStrictEqual({
-      type: { code: 'Observation' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Observation' }
-        },
-        {
-          name: 'status',
-          type: { code: 'code' },
-          value: { type: { code: 'code' }, value: 'final' }
-        },
-        {
-          name: 'code',
-          type: { code: 'CodeableConcept' },
-          value: { type: { code: 'CodeableConcept' }, object: {}, properties: [] }
-        },
-        {
-          name: 'effectiveTiming',
-          humanName: 'effective',
-          type: { code: 'Timing' },
-          value: {
-            type: { code: 'Timing' },
-            properties: [
-              {
-                name: 'repeat',
-                type: { code: 'Element' },
-                value: {
-                  type: { code: 'Element' },
-                  properties: [
-                    {
-                      name: 'frequency',
-                      type: { code: 'positiveInt' },
-                      value: { type: { code: 'positiveInt' }, value: 1 }
-                    }
-                  ],
-                  object: {
-                    frequency: 1
-                  }
-                }
-              }
-            ],
-            object: {
-              repeat: {
-                frequency: 1
-              }
-            }
-          }
-        }
-      ],
-      object: {
-        resourceType: 'Observation',
-        effectiveTiming: {
-          repeat: {
-            frequency: 1
-          }
-        },
-        code: {},
-        status: 'final'
-      }
+        status: 'final',
+        code: { text: 'code-text' },
+        valueQuantity: { value: 23, unit: 'kg' }
+      };
+
+      const body = renderTab(observation, 'default');
+
+      expect(body).toMatch(/>\s*Value\s*</);
+      expect(body).not.toContain('ValueQuantity');
+      expect(body).toMatch(/23\s*(<!--\[\d*-->)?kg/);
     });
-  });
-  it('primitive extension', () => {
-    expect(
-      calcPropertiesDeep(
-        readStructureDefinition,
-        getTypeElements(new Map<string, ElementDefinition[]>()),
-        structureDefinitionPatient,
-        {
-          resourceType: 'Patient',
-          id: 'foo',
-          gender: 'other',
-          _gender: {
-            extension: [
-              {
-                url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
-                valueCoding: {
-                  system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
-                  code: 'D',
-                  display: 'divers'
-                }
-              }
-            ]
-          }
-        }
-      )
-    ).toStrictEqual({
-      type: { code: 'Patient' },
-      properties: [
-        {
-          name: 'resourceType',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'Patient' }
-        },
-        {
-          name: 'id',
-          type: { code: 'string' },
-          value: { type: { code: 'string' }, value: 'foo' }
-        },
-        {
-          name: 'gender',
-          type: { code: 'code' },
-          value: {
-            type: { code: 'code' },
-            value: 'other',
-            extensions: [
-              {
-                type: { code: 'Extension' },
-                properties: [
-                  {
-                    name: 'url',
-                    type: { code: 'string' },
-                    value: {
-                      type: { code: 'string' },
-                      value: 'http://fhir.de/StructureDefinition/gender-amtlich-de'
-                    }
-                  },
-                  {
-                    name: 'valueCoding',
-                    humanName: 'value',
-                    type: { code: 'Coding' },
-                    value: {
-                      type: { code: 'Coding' },
-                      properties: [
-                        {
-                          name: 'system',
-                          type: { code: 'uri' },
-                          value: {
-                            type: { code: 'uri' },
-                            value: 'http://fhir.de/CodeSystem/gender-amtlich-de'
-                          }
-                        },
-                        {
-                          name: 'code',
-                          type: { code: 'code' },
-                          value: { type: { code: 'code' }, value: 'D' }
-                        },
-                        {
-                          name: 'display',
-                          type: { code: 'string' },
-                          value: { type: { code: 'string' }, value: 'divers' }
-                        }
-                      ],
-                      object: {
-                        system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
-                        code: 'D',
-                        display: 'divers'
-                      }
-                    }
-                  }
-                ],
-                object: {
-                  url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
-                  valueCoding: {
-                    system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
-                    code: 'D',
-                    display: 'divers'
-                  }
-                }
-              }
-            ]
-          }
-        }
-      ],
-      object: {
+
+    it('links canonicals to resources of their target type', () => {
+      const measure: Measure = {
+        resourceType: 'Measure',
+        status: 'active',
+        library: ['http://example.com/Library/0']
+      };
+
+      expect(renderTab(measure, 'default')).toContain(
+        '/fhir/Library?_summary=true&amp;url=http%3A%2F%2Fexample.com%2FLibrary%2F0'
+      );
+    });
+
+    it('marks primitive values with extensions', () => {
+      const patient: Patient = {
         resourceType: 'Patient',
-        id: 'foo',
-        gender: 'other',
-        _gender: {
+        birthDate: '2020-01-02',
+        _birthDate: { extension }
+      };
+
+      expect(renderTab(patient, 'default')).toContain('(has extensions)');
+    });
+
+    it('renders the data absent reason of primitive values without value', () => {
+      const patient: Patient = {
+        resourceType: 'Patient',
+        _birthDate: {
           extension: [
             {
-              url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
-              valueCoding: {
-                system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
-                code: 'D',
-                display: 'divers'
-              }
+              url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+              valueCode: 'unknown'
             }
           ]
         }
-      }
+      };
+
+      const body = renderTab(patient, 'default');
+
+      expect(body).toMatch(/>\s*BirthDate\s*</);
+      expect(body).toMatch(/title="Data absent reason"[^>]*>\s*absent: unknown\s*</);
+      expect(body).not.toContain('(has extensions)');
+    });
+
+    it('marks other extensions next to the data absent reason', () => {
+      const patient: Patient = {
+        resourceType: 'Patient',
+        _birthDate: {
+          extension: [
+            {
+              url: 'http://hl7.org/fhir/StructureDefinition/data-absent-reason',
+              valueCode: 'masked'
+            },
+            ...extension
+          ]
+        }
+      };
+
+      const body = renderTab(patient, 'default');
+
+      expect(body).toMatch(/title="Data absent reason"[^>]*>\s*absent: masked\s*</);
+      expect(body).toContain('(has extensions)');
+    });
+
+    it('renders complex values', () => {
+      const patient: Patient = {
+        resourceType: 'Patient',
+        name: [{ given: ['given-name'], family: 'family-name' }]
+      };
+
+      expect(renderTab(patient, 'default')).toContain('given-name family-name');
+    });
+
+    it('renders elements defined by content reference as backbone elements', () => {
+      const claimResponse: ClaimResponse = {
+        resourceType: 'ClaimResponse',
+        status: 'active',
+        type: { text: 'type-text' },
+        use: 'claim',
+        patient: { reference: 'Patient/0' },
+        created: '2020-01-02',
+        insurer: { reference: 'Organization/0' },
+        outcome: 'complete',
+        adjudication: [{ category: { text: 'category-text' } }]
+      };
+
+      const body = renderTab(claimResponse, 'default');
+
+      expect(body).toMatch(/>\s*Adjudication\s*</);
+      expect(body).toContain('&lt;backbone-element>');
+    });
+
+    it('omits id and narrative', () => {
+      const patient: Patient = {
+        resourceType: 'Patient',
+        id: 'id-value',
+        text: { status: 'generated', div: '<div>narrative</div>' }
+      };
+
+      const body = renderTab(patient, 'default');
+
+      expect(body).not.toMatch(/>\s*Id\s*</);
+      expect(body).not.toMatch(/>\s*Text\s*</);
+    });
+  });
+
+  describe('json view', () => {
+    it('renders extensions of primitive values in arrays', () => {
+      const questionnaire: Questionnaire = {
+        resourceType: 'Questionnaire',
+        status: 'active',
+        subjectType: ['Patient', 'Group'],
+        _subjectType: [null, { extension }] as Questionnaire['_subjectType']
+      };
+
+      const body = renderTab(questionnaire, 'json');
+
+      expect(body).toContain('"_subjectType"');
+      expect(body).toContain('null');
+      expect(body).toContain('"ext-value"');
+    });
+
+    it('renders the id of primitive values', () => {
+      const patient: Patient = {
+        resourceType: 'Patient',
+        birthDate: '2020-01-02',
+        _birthDate: { id: 'element-id' }
+      };
+
+      expect(renderTab(patient, 'json')).toContain('"element-id"');
+    });
+
+    it('renders unknown properties', () => {
+      const resource = { resourceType: 'Patient', foo: 'bar' } as unknown as Patient;
+
+      const body = renderTab(resource, 'json');
+
+      expect(body).toContain('"foo"');
+      expect(body).toContain('"bar"');
+    });
+
+    it('renders properties in JSON order', () => {
+      const patient: Patient = { resourceType: 'Patient', gender: 'male', active: true };
+
+      const body = renderTab(patient, 'json');
+
+      expect(body.indexOf('"resourceType"')).toBeLessThan(body.indexOf('"gender"'));
+      expect(body.indexOf('"gender"')).toBeLessThan(body.indexOf('"active"'));
+    });
+
+    it('renders numbers and booleans unquoted', () => {
+      const observation: Observation = {
+        resourceType: 'Observation',
+        status: 'final',
+        code: { text: 'code-text' },
+        valueQuantity: { value: 23 },
+        _status: { extension: [{ url: 'http://example.com/ext', valueBoolean: false }] }
+      };
+
+      const body = renderTab(observation, 'json');
+
+      expect(body).toMatch(/>23</);
+      expect(body).toMatch(/>false</);
+    });
+
+    it('escapes strings', () => {
+      const patient = {
+        resourceType: 'Patient',
+        gender: 'a"b'
+      } as unknown as Patient;
+
+      expect(renderTab(patient, 'json')).toContain('a\\"b');
     });
   });
 });

@@ -25,4 +25,4 @@ cloc-prod:
 clean:
 	rm -rf build node_modules .svelte-kit
 
-.PHONY: install update fmt lint test build cloc-prod clean
+.PHONY: install update fmt lint build-fhir-structure test build cloc-prod clean

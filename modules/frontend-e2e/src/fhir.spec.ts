@@ -298,6 +298,45 @@ test('Patient Page', async ({ page }) => {
   await expectBadge(page.getByRole('note').filter({ hasText: 'home' }));
 });
 
+// The Patient is uploaded from `test-data/Patient-data-absent-reason.json` by `upload.sh`.
+test('Patient Page shows the data absent reason of a primitive value', async ({ page }) => {
+  await page.goto('/fhir/Patient/data-absent-reason');
+
+  await expect(page).toHaveTitle('Patient/data-absent-reason - Blaze');
+
+  const birthDate = page.getByRole('listitem').filter({ hasText: 'BirthDate' });
+  await expectBadge(birthDate.getByRole('note').filter({ hasText: 'absent: unknown' }));
+  await expect(birthDate.getByRole('note')).toHaveAttribute('title', 'Data absent reason');
+  await expect(birthDate).not.toContainText('(has extensions)');
+});
+
+// The Patient is uploaded from `test-data/Patient-birth-time.json` by `upload.sh`.
+test('Patient Page shows the extensions of primitive values', async ({ page }) => {
+  await page.goto('/fhir/Patient/birth-time');
+
+  await expect(page).toHaveTitle('Patient/birth-time - Blaze');
+  await expectActiveNavLink(page, 'Normal');
+
+  const birthDate = page.getByRole('listitem').filter({ hasText: 'BirthDate' });
+  await expect(birthDate.locator('time[datetime="2020-01-02"]')).toBeVisible();
+  await expect(birthDate).toContainText('(has extensions)');
+
+  await page.getByRole('link', { name: 'Json' }).click();
+
+  await expectActiveNavLink(page, 'Json');
+  const json = page.locator('pre');
+  await expect(json).toContainText('"_birthDate"');
+  await expect(json).toContainText('"http://hl7.org/fhir/StructureDefinition/patient-birthTime"');
+  await expect(json).toContainText('"2020-01-02T10:28:45+01:00"');
+
+  // extensions of primitive values in arrays, here the second given name
+  await expect(json).toContainText('"_given"');
+  await expect(json).toContainText(
+    '"http://hl7.org/fhir/StructureDefinition/iso21090-EN-qualifier"'
+  );
+  await expect(json).toContainText('"CL"');
+});
+
 /**
  * Selecting `_include` or `_revinclude` as the search param swaps the plain
  * value input for a dropdown populated from the server's CapabilityStatement

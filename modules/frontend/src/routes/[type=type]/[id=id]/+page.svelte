@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { PageProps } from './$types';
-  import type { FhirResource } from 'fhir/r4';
 
   import BreadcrumbEntryHome from '#lib/breadcrumb/home.svelte';
   import BreadcrumbEntryType from '#lib/breadcrumb/type.svelte';
@@ -14,7 +13,7 @@
 
   let { data, params }: PageProps = $props();
 
-  let resource = $derived(data.resource.object as FhirResource);
+  let resource = $derived(data.resource);
 </script>
 
 <svelte:head>

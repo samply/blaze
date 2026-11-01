@@ -106,9 +106,8 @@ the distinction is what makes a call site readable, not the depth arithmetic.
 A promise returned un-awaited from `load` and consumed with `{#await ...}{:catch}` is streamed. Its rejection reaches
 the `{:catch}` block as the jsonified error *body* — SvelteKit runs it through `handle_error_and_jsonify` — not as the
 `HttpError`, so the status is not available the way it is for an error that fails the load itself. `App.Error`
-therefore carries an optional `status`, which the `appError` functions in `src/routes/[type=type]/util.ts` and
-`src/lib/metadata.ts` set. Every `error(…)` body that can surface in such a block has to carry it — that includes the
-StructureDefinition loads made while transforming a streamed bundle and the one `handleFetch` throws.
+therefore carries an optional `status`, which the `appError` function in `src/routes/[type=type]/util.ts` sets. Every
+`error(…)` body that can surface in such a block has to carry it — that includes the one `handleFetch` throws.
 
 Both streamed loads — `src/routes/[type=type]/+page.server.ts` and
 `src/routes/[type=type]/__page/[pageId=pageId]/+page.server.ts` — await `fetchSearchMetadata` before they return the
@@ -118,8 +117,5 @@ serializes the rejection into the streamed chunk, where it surfaces as a generic
 `/metadata`, which Blaze protects with the same `wrap-auth-guard` as everything else
 (`modules/rest-api/src/blaze/rest_api/routes.clj`, applied at the root `""` level), so `handleFetch` sees the 401 while
 a redirect can still be acted upon.
-
-The StructureDefinition loads are the exception: they run inside the streamed promise, via `transformBundle`. A token
-revoked between the `/metadata` call and them ends in an error card rather than the sign-in page.
 
 [1]: <https://www.better-auth.com>

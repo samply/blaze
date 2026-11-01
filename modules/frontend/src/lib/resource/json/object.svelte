@@ -1,18 +1,19 @@
 <script lang="ts">
-  import type { FhirObject } from '../resource-card.js';
   import Property from './property.svelte';
 
   interface Props {
     indent?: number;
-    insideArray?: boolean;
-    object: FhirObject;
+    object: object;
   }
 
-  let { indent = 0, insideArray = false, object }: Props = $props();
+  let { indent = 0, object }: Props = $props();
+
+  let entries = $derived(Object.entries(object));
 </script>
 
-{insideArray ? ' '.repeat(indent) : ''}{'{\n'}{#each object.properties as property, index}<Property
-    indent={indent + 4}
-    isLast={index + 1 === object.properties.length}
-    {property}
-  />{/each}{' '.repeat(indent)}}
+{#if entries.length === 0}{'{}'}{:else}{'{\n'}{#each entries as [name, value], index (name)}<Property
+      indent={indent + 4}
+      isLast={index + 1 === entries.length}
+      {name}
+      {value}
+    />{/each}{' '.repeat(indent)}}{/if}

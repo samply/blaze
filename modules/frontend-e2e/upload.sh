@@ -13,6 +13,12 @@ blazectl --no-progress \
   --token "$token" \
   upload "$script_dir/../../.github/test-data/synthea"
 
+echo "Upload a Patient with an extension on birthDate..."
+curl -sfXPUT -H 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/Patient-birth-time.json" "$base/Patient/birth-time"
+
+echo "Upload a Patient with a data-absent-reason on birthDate..."
+curl -sfXPUT -H 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/Patient-data-absent-reason.json" "$base/Patient/data-absent-reason"
+
 echo "Upload KDS Fall Profile..."
 curl -sfH 'Content-Type: application/fhir+json' -H 'Prefer: return=minimal' --cacert "$ca_cert" --oauth2-bearer "$token" -d @"$script_dir/test-data/node_modules/de.medizininformatikinitiative.kerndatensatz.fall/StructureDefinition-mii-pr-fall-kontakt-gesundheitseinrichtung.json" "$base/StructureDefinition"
 

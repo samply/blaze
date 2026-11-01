@@ -11,8 +11,5 @@
 </svelte:head>
 
 <main class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-  <MetadataCard
-    capabilityStatement={data.capabilityStatement}
-    capabilityStatementObject={data.capabilityStatementObject}
-  />
+  <MetadataCard capabilityStatement={data.capabilityStatement} />
 </main>

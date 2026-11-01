@@ -1,13 +1,12 @@
 <script lang="ts">
-  import type { FhirObject } from '#lib/resource/resource-card.js';
   import type { HumanName } from 'fhir/r4';
   import Badge from '#lib/tailwind/badge.svelte';
 
   interface Props {
-    values: FhirObject[];
+    values: HumanName[];
   }
 
-  let { values }: Props = $props();
+  let { values: humanNames }: Props = $props();
 
   function display(value: HumanName): string {
     return (
@@ -17,8 +16,6 @@
       )
     );
   }
-
-  let humanNames = $derived(values.map((v) => v.object) as HumanName[]);
 
   // See https://hl7.org/fhir/R4B/valueset-name-use.html
   type Use = 'usual' | 'official' | 'temp' | 'nickname' | 'anonymous' | 'old' | 'maiden';

@@ -1,25 +1,24 @@
 <script lang="ts">
-  import type { FhirPrimitive } from '#lib/resource/resource-card.js';
+  import type { ElementType } from '#lib/element-types.js';
   import { targetType } from './canonical.js';
   import { resolve } from '$app/paths';
 
   interface Props {
-    value: FhirPrimitive;
+    type: ElementType;
+    value: string;
   }
 
-  let { value }: Props = $props();
+  let { type, value }: Props = $props();
 
-  let type = $derived(targetType(value.type));
+  let target = $derived(targetType(type));
 </script>
 
-{#if type && typeof value.value === 'string'}
+{#if target}
   <a
-    href="{resolve('/[type=type]', { type: type })}?_summary=true&url={encodeURIComponent(
-      value.value
-    )}"
+    href="{resolve('/[type=type]', { type: target })}?_summary=true&url={encodeURIComponent(value)}"
     class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 hover:dark:text-indigo-400"
-    >{value.value}</a
+    >{value}</a
   >
 {:else}
-  {value.value}
+  {value}
 {/if}
