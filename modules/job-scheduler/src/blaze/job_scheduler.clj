@@ -112,7 +112,7 @@
       (log/debug (shutdown-ignore-msg action job))
 
       (not (identical? tracked (get running-jobs id)))
-      (log/warn (running-ignore-msg action job))
+      (log/debug (running-ignore-msg action job))
 
       :else
       (do (log/debug (format "Execute %s of job with id `%s`." action id))
@@ -185,6 +185,30 @@
     (log/fatal "Job scheduler failed. Please restart Blaze. Cause:" (ex-message e))
     (flow/cancel! subscription))
   (onComplete [_]))
+
+(defn- dispatch-pending-jobs-error-handler [{::anom/keys [message]}]
+  (log/error "Failed to dispatch the pending jobs on start of the job scheduler:"
+             message))
+
+(defn- dispatch-pending-jobs
+  "Dispatches the jobs of `node` that are pending, because they became ready
+  or were resumed while no job scheduler was listening, like the
+  `TaskSubscriber` does.
+
+  Has to be called after subscribing to Task changes, so that no change falls
+  into a gap between the subscription and the database value pulled from. A
+  job that is seen by both isn't executed twice at the same time, because a
+  job that is already running isn't executed again. If its first execution has
+  ended already, the job handler is called again with an outdated version of
+  the job, whose first update fails, because it is conditional on that version.
+
+  Returns a CompletableFuture that will complete after all pending jobs were
+  dispatched."
+  [node job-scheduler]
+  (-> (d/type-query (d/db node) "Task" [["status" "ready" "in-progress"]])
+      (ac/then-compose #(d/pull-many node (vec %)))
+      (ac/then-apply #(run! (partial dispatch-job job-scheduler) %))
+      (ac/exceptionally dispatch-pending-jobs-error-handler)))
 
 (defn- current-job-number-observation [{:keys [node] :as context} db]
   (-> (d/type-query db "Observation" [["identifier" "job-number"]])
@@ -442,6 +466,7 @@
                        :state (atom {:shutting-down? false :running-jobs {}})}]
     (d/subscribe-changes! node "Task" "job-scheduler"
                           (->TaskSubscriber node job-scheduler nil))
+    (dispatch-pending-jobs node job-scheduler)
     job-scheduler))
 
 (defmethod ig/halt-key! :blaze/job-scheduler
