@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-filename="$1"
-base="${2:-http://localhost:8080/fhir}"
+base="${1:-http://localhost:8080/fhir}"
+filename="$2"
 
 resource_type="$(jq -r .resourceType "$filename")"
 if [[ "$resource_type" =~ ValueSet|CodeSystem ]]; then
