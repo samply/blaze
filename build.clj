@@ -1,8 +1,13 @@
 (ns build
   (:require
+   [clojure.string :as str]
    [clojure.tools.build.api :as b])
   (:import
-   [java.time LocalDate]))
+   [java.time LocalDate]
+   [java.util Properties]
+   [java.util.zip ZipEntry ZipFile]))
+
+(set! *warn-on-reflection* true)
 
 (def lib 'samply/blaze)
 (def class-dir "target/classes")
@@ -31,11 +36,77 @@
                    :content {:blaze/version version
                              :blaze/release-date (str (LocalDate/now))}})))
 
+(def ^:private maven-libs
+  (filter (comp :mvn/version val) (:libs basis)))
+
+(defn- artifact-id
+  "Returns the Maven artifact ID of `lib`, whose name can end in `$<classifier>`."
+  [lib]
+  (first (str/split (name lib) #"\$")))
+
+(defn- pom-properties-path [lib]
+  (format "META-INF/maven/%s/%s/pom.properties" (namespace lib) (artifact-id lib)))
+
+(defn- jar-pom-properties-paths
+  "Returns the paths of all pom.properties files in the jar at `path`."
+  [^String path]
+  (with-open [jar (ZipFile. path)]
+    (into
+     #{}
+     (comp (map #(.getName ^ZipEntry %))
+           (filter #(re-matches #"META-INF/maven/.+/pom\.properties" %)))
+     (enumeration-seq (.entries jar)))))
+
+(defn- write-pom-properties
+  "Writes a pom.properties file for every Maven library that no jar brings one
+  for.
+
+  The uberjar merges the jars of all libraries, so image scanners can identify
+  the libraries only through those files."
+  []
+  (let [existing (into #{} (comp (mapcat (comp :paths val))
+                                 (mapcat jar-pom-properties-paths))
+                       maven-libs)]
+    (doseq [[lib {:mvn/keys [version]}] maven-libs
+            :let [path (pom-properties-path lib)]
+            :when (not (existing path))]
+      (b/write-file
+       {:path (str class-dir "/" path)
+        :string (format "groupId=%s\nartifactId=%s\nversion=%s\n"
+                        (namespace lib) (artifact-id lib) version)}))))
+
+(defn- pom-properties-version
+  "Returns the version in the pom.properties file at `path` of `jar` or nil if
+  there is no such file."
+  [^ZipFile jar ^String path]
+  (when-let [entry (.getEntry jar path)]
+    (with-open [in (.getInputStream jar entry)]
+      (.getProperty (doto (Properties.) (.load in)) "version"))))
+
+(defn- pom-properties-problem
+  "Returns a description of the problem with the pom.properties file of the
+  Maven library `lib` in `jar` or nil if it holds the resolved `version`."
+  [jar [lib {:mvn/keys [version]}]]
+  (let [actual (pom-properties-version jar (pom-properties-path lib))]
+    (when (not= version actual)
+      (format "%s: expected version %s but was %s" lib version actual))))
+
+(defn check-pom-properties
+  "Fails if not every Maven library has a pom.properties file holding its resolved
+  version in the uberjar."
+  [_]
+  (with-open [jar (ZipFile. ^String uber-file)]
+    (when-let [problems (seq (keep #(pom-properties-problem jar %) maven-libs))]
+      (throw (ex-info (str "Invalid pom.properties files in " uber-file ":\n"
+                           (str/join "\n" (sort problems)))
+                      {})))))
+
 (defn uber [_]
   (clean nil)
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (write-version-file)
+  (write-pom-properties)
   (b/compile-clj {:basis basis
                   :class-dir class-dir
                   :ns-compile
