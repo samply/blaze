@@ -7,6 +7,7 @@
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler :as-alias js]
+   [blaze.job.util.impl :as impl]
    [blaze.util :refer [str]]
    [cognitect.anomalies :as anom])
   (:import
@@ -222,8 +223,7 @@
   (and (ba/conflict? anomaly) (= 412 (:http/status anomaly)) (< i n)))
 
 (defn- delayed-executor [i]
-  (ac/delayed-executor (+ (* 1000 (int (Math/pow 2 i))) (rand-int 1000))
-                       TimeUnit/NANOSECONDS))
+  (ac/delayed-executor (impl/retry-delay-micros i (rand)) TimeUnit/MICROSECONDS))
 
 (defn- maybe-retry [node n i id f]
   (fn [anomaly]
