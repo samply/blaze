@@ -2,4 +2,5 @@
  ["../../../.clj-kondo/root"
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
-  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]}
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"
+  "../../test-util/resources/clj-kondo.exports/blaze/test-util"]}
