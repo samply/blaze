@@ -111,9 +111,6 @@
       (add-response-bundle-reference response-bundle-id)
       (add-processing-duration start)))
 
-(defn- finish-cancellation [job]
-  (assoc job :businessStatus job-util/cancellation-finished-sub-status))
-
 (defn- on-start
   [{:keys [admin-node] ::keys [running-jobs] :as context} job]
   (-> (u/pull-request-bundle admin-node job)
@@ -142,7 +139,7 @@
                              :else
                              (-> (job-util/pull-job admin-node id)
                                  (ac/then-compose
-                                  #(job-util/update-job admin-node % finish-cancellation))))))
+                                  #(job-util/update-job admin-node % job-util/finish-cancellation))))))
                         (ac/when-complete
                          (fn [_ _]
                            (swap! running-jobs dissoc id))))))))

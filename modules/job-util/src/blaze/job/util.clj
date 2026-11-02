@@ -9,7 +9,8 @@
    [blaze.job-scheduler :as-alias js]
    [blaze.job.util.impl :as impl]
    [blaze.util :refer [str]]
-   [cognitect.anomalies :as anom])
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log])
   (:import
    [java.util.concurrent TimeUnit]))
 
@@ -165,8 +166,89 @@
 (defn- tx-ops [job other-resources]
   (into [(update-tx-op job)] (map (partial vector :create)) other-resources))
 
-(defn- tag-update-error [e]
-  (assoc e ::js/action :update-job))
+(def ^:private running-transitions
+  #{["in-progress" "incremented"]
+    ["on-hold" "paused"]
+    ["on-hold" "orderly-shutdown"]
+    ["cancelled" "requested"]
+    ["completed" nil]
+    ["failed" nil]})
+
+(def ^:private on-hold-transitions
+  #{["in-progress" "resumed"]
+    ["cancelled" "finished"]
+    ["failed" nil]})
+
+(def ^:private transitions
+  "The allowed status transitions of jobs.
+
+  Maps the state of a job before an update to the set of states the job can
+  have after the update. A state is a pair of the status of the job and its
+  status reason, or its sub status if the job is cancelled.
+
+  A job that isn't running, because it's ready or on-hold, is cancelled
+  directly, so its cancellation is finished. The cancellation of a running job
+  is only requested, so that its execution can finish it. A cancelled job can't
+  fail anymore, because the status `cancelled` is a terminal state of a FHIR
+  Task. A resumed job stays resumed until its next increment."
+  {["ready" nil]
+   #{["in-progress" "started"]
+     ["cancelled" "finished"]
+     ["failed" nil]}
+   ["in-progress" "started"] running-transitions
+   ["in-progress" "incremented"] running-transitions
+   ["in-progress" "resumed"] running-transitions
+   ["on-hold" "paused"] on-hold-transitions
+   ["on-hold" "orderly-shutdown"] on-hold-transitions
+   ["cancelled" "requested"] #{["cancelled" "finished"]}})
+
+(defn- job-state
+  "Returns the state of `job`, the pair of its status and its status reason,
+  or its sub status if the job is cancelled."
+  [{{status :value} :status :as job}]
+  [status (if (= "cancelled" status) (cancelled-sub-status job) (status-reason job))])
+
+(defn- state-str [[status reason]]
+  (cond-> (str status) reason (str "/" reason)))
+
+(defn- transition-conflict [{:keys [id]} from to]
+  (let [from (state-str from)
+        to (state-str to)]
+    (ba/conflict
+     (format "Job `%s` can't transition from `%s` to `%s`." id from to)
+     ::js/action :transition-job
+     :job/from from
+     :job/to to)))
+
+(defn- transition-conflict? [{::js/keys [action]}]
+  (= :transition-job action))
+
+(def ^:private bug-report-hint
+  "This is a bug in Blaze. Please report it at https://github.com/samply/blaze/issues.")
+
+(defn- handle-update-error
+  "Returns the anomaly `e` of a failed update of a job tagged with the action
+  `:update-job`, so that the job scheduler treats it as a job unable to update
+  itself, because it was updated concurrently.
+
+  A transition conflict keeps its own tag and is logged as error instead,
+  because the transitions of a job are coded, so that a transition that isn't
+  allowed is a bug. The job scheduler treats it like any other error of a job."
+  [e]
+  (if (transition-conflict? e)
+    (do (log/error (str (::anom/message e) " " bug-report-hint))
+        e)
+    (assoc e ::js/action :update-job)))
+
+(defn- check-transition
+  "Returns `new-job` if `job` is allowed to transition into it or a conflict
+  anomaly otherwise."
+  [job new-job]
+  (let [from (job-state job)
+        to (job-state new-job)]
+    (if (contains? (transitions from) to)
+      new-job
+      (transition-conflict job from to))))
 
 (defn pull-job
   "Returns a CompletableFuture that will complete with the job with `id` in
@@ -180,6 +262,13 @@
 (defn- then-pull-job [stage node id]
   (ac/then-compose stage #(pull-job node % id)))
 
+(defn- transact-update [node {:keys [id] :as job} new-job other-resources]
+  (-> (if-ok [new-job (check-transition job new-job)]
+        (-> (d/transact node (tx-ops new-job other-resources))
+            (then-pull-job node id))
+        ac/completed-future)
+      (ac/exceptionally handle-update-error)))
+
 (defn update-job+
   "Submits a transaction that updates `job` to a state as result of applying
   `f` to `job` and any supplied args. In addition to `job`, `other-resources`
@@ -187,23 +276,19 @@
 
   Returns a CompletableFuture that will complete with the job after the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors."
+  in case of a transaction error or other errors.
+
+  Fails with a conflict if the status transition of the job isn't allowed."
   {:arglists
    '([node job other-resources f]
      [node job other-resources f x]
      [node job other-resources f x y])}
-  ([node {:keys [id] :as job} other-resources f]
-   (-> (d/transact node (tx-ops (f job) other-resources))
-       (then-pull-job node id)
-       (ac/exceptionally tag-update-error)))
-  ([node {:keys [id] :as job} other-resources f x]
-   (-> (d/transact node (tx-ops (f job x) other-resources))
-       (then-pull-job node id)
-       (ac/exceptionally tag-update-error)))
-  ([node {:keys [id] :as job} other-resources f x y]
-   (-> (d/transact node (tx-ops (f job x y) other-resources))
-       (then-pull-job node id)
-       (ac/exceptionally tag-update-error))))
+  ([node job other-resources f]
+   (transact-update node job (f job) other-resources))
+  ([node job other-resources f x]
+   (transact-update node job (f job x) other-resources))
+  ([node job other-resources f x y]
+   (transact-update node job (f job x y) other-resources)))
 
 (defn update-job
   "Submits a transaction that updates `job` to a state as result of applying
@@ -211,7 +296,9 @@
 
   Returns a CompletableFuture that will complete with the job after the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors."
+  in case of a transaction error or other errors.
+
+  Fails with a conflict if the status transition of the job isn't allowed."
   ([node job f]
    (update-job+ node job nil f))
   ([node job f x]
@@ -236,12 +323,12 @@
 (defn- update-job-with-retry* [node n i id f]
   (-> (pull-job node id)
       (ac/then-compose
-       #(if-ok [job (f %)]
-          (d/transact node [(update-tx-op job)])
+       #(if-ok [new-job (f %)
+                new-job (check-transition % new-job)]
+          (d/transact node [(update-tx-op new-job)])
           ac/completed-future))
       (then-pull-job node id)
-      (ac/exceptionally-compose (maybe-retry node n i id f))
-      (ac/exceptionally tag-update-error)))
+      (ac/exceptionally-compose (maybe-retry node n i id f))))
 
 (defn update-job-with-retry
   "Submits a transaction that updates `job` to a state as result of applying
@@ -251,11 +338,31 @@
   transaction in case of success or will complete exceptionally with an anomaly
   in case of a transaction error or other errors.
 
-  Retries the update up to `n` times on concurrent update problems."
+  Fails with a conflict if the status transition of the job isn't allowed.
+  Retries the update up to `n` times on concurrent update problems.
+
+  Handles the error only once after all retries, so that a transition conflict
+  is logged only once."
   [node n id f]
-  (update-job-with-retry* node n 0 id f))
+  (-> (update-job-with-retry* node n 0 id f)
+      (ac/exceptionally handle-update-error)))
+
+(defn ended?
+  "Returns true if `job` has ended, because it's completed, failed or its
+  cancellation is finished."
+  [{:keys [status] :as job}]
+  (case (:value status)
+    ("completed" "failed") true
+    "cancelled" (not= "requested" (cancelled-sub-status job))
+    false))
 
 (defn job-update-failed?
+  "Returns true if `anomaly` is the result of an update of a job that failed,
+  because the job was updated concurrently, or because the function updating
+  the job returned a conflict.
+
+  A transition conflict isn't a failed update in that sense, because it's a
+  bug."
   {:arglists '([anomaly])}
   [{::js/keys [action] :as anomaly}]
   (and (ba/conflict? anomaly) (= :update-job action)))
@@ -284,11 +391,28 @@
   [running-jobs id]
   (contains? #{:paused :shutdown} (get running-jobs id)))
 
-(defn fail-job [job {::anom/keys [category message]}]
-  (-> (assoc job :status #fhir/code "failed")
-      (dissoc :statusReason :businessStatus)
-      (add-output "error-category" (type/string (name category)))
+(defn finish-cancellation
+  "Returns `job`, whose cancellation was requested, with its cancellation
+  finished."
+  [job]
+  (assoc job :businessStatus cancellation-finished-sub-status))
+
+(defn- add-error [job {::anom/keys [category message]}]
+  (-> (add-output job "error-category" (type/string (name category)))
       (add-output "error" (type/string (or message "empty error message")))))
+
+(defn fail-job
+  "Returns `job` failed with the error `anomaly`.
+
+  Finishes the cancellation of `job` instead, keeping the error, if its
+  cancellation was requested, because a cancelled job can't fail anymore. The
+  status `cancelled` is a terminal state of a FHIR Task."
+  [job anomaly]
+  (if (= "requested" (cancelled-sub-status job))
+    (add-error (finish-cancellation job) anomaly)
+    (-> (assoc job :status #fhir/code "failed")
+        (dissoc :statusReason :businessStatus)
+        (add-error anomaly))))
 
 (defn async-status-url
   "Returns the URL of the async status endpoint of `job`.

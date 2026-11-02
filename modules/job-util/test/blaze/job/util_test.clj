@@ -6,10 +6,11 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
+   [blaze.job-scheduler :as-alias js]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.job.util-spec]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -176,8 +177,19 @@
           :output
           [(job-util/task-output "foo" "other" #fhir/string "other")]})))
 
+(def ^:private ready-task
+  {:fhir/type :fhir/Task :id "0" :status #fhir/code "ready"})
+
+(def ^:private incremented-task
+  {:fhir/type :fhir/Task
+   :id "0"
+   :status #fhir/code "in-progress"
+   :statusReason job-util/incremented-status-reason})
+
 (defn- start-job [job]
-  (assoc job :status #fhir/code "in-progress"))
+  (assoc job
+         :status #fhir/code "in-progress"
+         :statusReason job-util/started-status-reason))
 
 (deftest pull-job-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -189,7 +201,7 @@
 
 (deftest update-job-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-    [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+    [[[:put ready-task]]]
 
     (let [job @(job-util/pull-job node "0")]
 
@@ -205,7 +217,7 @@
 
   (testing "lost updates are detected"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put ready-task]]]
 
       (let [job @(job-util/pull-job node "0")]
 
@@ -229,7 +241,7 @@
   (testing "without other resources"
     (testing "with no argument"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put ready-task]]]
 
         (let [job @(job-util/pull-job node "0")]
 
@@ -238,7 +250,7 @@
 
     (testing "with one argument"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put ready-task]]]
 
         (let [job @(job-util/pull-job node "0")]
 
@@ -248,16 +260,17 @@
 
     (testing "with two arguments"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+        [[[:put ready-task]]]
 
         (let [job @(job-util/pull-job node "0")]
 
-          (given @(job-util/update-job+ node job nil (fn [job a b] (assoc job :status (type/code (str a "-" b)))) "on" "hold")
-            :status := #fhir/code "on-hold")))))
+          (given @(job-util/update-job+ node job nil (fn [job status reason] (assoc job :status (type/code status) :statusReason reason)) "in-progress" job-util/started-status-reason)
+            :status := #fhir/code "in-progress"
+            job-util/status-reason := "started")))))
 
   (testing "with one Bundle"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put ready-task]]]
 
       (let [job @(job-util/pull-job node "0")]
 
@@ -269,8 +282,8 @@
         (is (some? (d/resource-handle (d/db node) "Bundle" "0")))))))
 
 (defn- start-job* [{:keys [status] :as job}]
-  (if (nil? status)
-    (assoc job :status #fhir/code "in-progress")
+  (if (= "ready" (:value status))
+    (start-job job)
     (ba/conflict "already started")))
 
 (defn- add-unknown-bundle-reference [job]
@@ -279,7 +292,7 @@
 (deftest update-job-with-retry-test
   (testing "retry"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put ready-task]]]
 
       (given @(job-util/update-job-with-retry node 1 "0" start-job*)
         [:meta :versionId] := #fhir/id "2"
@@ -288,11 +301,12 @@
       (testing "fails because it's already started"
         (given-failed-future (job-util/update-job-with-retry node 1 "0" start-job*)
           ::anom/category := ::anom/conflict
-          ::anom/message := "already started"))))
+          ::anom/message := "already started"
+          job-util/job-update-failed? := true))))
 
   (testing "referential integrity problem"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put incremented-task]]]
 
       (given-failed-future (job-util/update-job-with-retry node 1 "0" add-unknown-bundle-reference)
         ::anom/category := ::anom/conflict
@@ -319,7 +333,7 @@
 (deftest update-job-with-retry-concurrent-test
   (testing "single status change"
     (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+      [[[:put ready-task]]]
 
       (let [futures (repeatedly 5 #(start-job-with-retry node "0"))]
         @(ac/all-of futures)
@@ -331,8 +345,7 @@
   (testing "multiple counter increments"
     (testing "are all sucessful"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
-                    (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
+        [[[:put (job-util/add-output incremented-task "my" "count" #fhir/unsignedInt 0)]]]
 
         (let [futures (repeatedly 5 #(increment-count-with-retry node 4 "0"))]
           @(ac/all-of futures)
@@ -342,12 +355,222 @@
 
     (testing "at least one fails"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
-        [[[:put (-> {:fhir/type :fhir/Task :id "0"}
-                    (job-util/add-output "my" "count" #fhir/unsignedInt 0))]]]
+        [[[:put (job-util/add-output incremented-task "my" "count" #fhir/unsignedInt 0)]]]
 
         (given-failed-future (ac/all-of (repeatedly 50 #(increment-count-with-retry node 2 "0")))
           ::anom/category := ::anom/conflict
           :http/status := 412)))))
+
+(defn- set-state
+  "Returns `job` in `state`, a keyword of the status of the job and the status
+  reason, or the sub status of a cancelled job, as namespace, like
+  `:in-progress/started`."
+  [job state]
+  (let [status (or (namespace state) (name state))
+        reason (when (namespace state) (name state))]
+    (cond-> (-> (assoc job :status (type/code status))
+                (dissoc :statusReason :businessStatus))
+      (and reason (= "cancelled" status))
+      (assoc :businessStatus
+             (jtu/concept (canonical/url "CodeSystem/JobCancelledSubStatus") reason))
+      (and reason (not= "cancelled" status))
+      (assoc :statusReason
+             (jtu/concept (canonical/url "CodeSystem/JobStatusReason") reason)))))
+
+(defn- state [{{status :value} :status :as job}]
+  (if-let [reason (or (job-util/status-reason job)
+                      (job-util/cancelled-sub-status job))]
+    (keyword status reason)
+    (keyword status)))
+
+(def ^:private allowed-transitions
+  [[:ready :in-progress/started]
+   [:ready :cancelled/finished]
+   [:ready :failed]
+   [:in-progress/started :in-progress/incremented]
+   [:in-progress/started :on-hold/paused]
+   [:in-progress/started :on-hold/orderly-shutdown]
+   [:in-progress/started :cancelled/requested]
+   [:in-progress/started :completed]
+   [:in-progress/started :failed]
+   [:in-progress/incremented :in-progress/incremented]
+   [:in-progress/incremented :on-hold/paused]
+   [:in-progress/incremented :on-hold/orderly-shutdown]
+   [:in-progress/incremented :cancelled/requested]
+   [:in-progress/incremented :completed]
+   [:in-progress/incremented :failed]
+   [:in-progress/resumed :in-progress/incremented]
+   [:in-progress/resumed :on-hold/paused]
+   [:in-progress/resumed :on-hold/orderly-shutdown]
+   [:in-progress/resumed :cancelled/requested]
+   [:in-progress/resumed :completed]
+   [:in-progress/resumed :failed]
+   [:on-hold/paused :in-progress/resumed]
+   [:on-hold/paused :cancelled/finished]
+   [:on-hold/paused :failed]
+   [:on-hold/orderly-shutdown :in-progress/resumed]
+   [:on-hold/orderly-shutdown :cancelled/finished]
+   [:on-hold/orderly-shutdown :failed]
+   [:cancelled/requested :cancelled/finished]])
+
+(def ^:private disallowed-transitions
+  [[:ready :ready]
+   [:ready :in-progress/resumed]
+   [:ready :cancelled/requested]
+   [:ready :completed]
+   [:in-progress/started :in-progress/started]
+   [:in-progress/resumed :in-progress/started]
+   [:in-progress/resumed :in-progress/resumed]
+   [:in-progress/started :cancelled/finished]
+   [:on-hold/paused :in-progress/started]
+   [:on-hold/paused :cancelled/requested]
+   [:on-hold/paused :completed]
+   [:cancelled/requested :cancelled/requested]
+   [:cancelled/requested :completed]
+   [:cancelled/requested :failed]
+   [:cancelled/finished :cancelled/finished]
+   [:cancelled/finished :failed]
+   [:completed :failed]
+   [:failed :completed]])
+
+(defn- state-str [state]
+  (if-let [status (namespace state)]
+    (str status "/" (name state))
+    (name state)))
+
+(defn- transition-conflict-msg [from to]
+  (format "Job `0` can't transition from `%s` to `%s`."
+          (state-str from) (state-str to)))
+
+(defn- transition-bug-msg [from to]
+  (str (transition-conflict-msg from to)
+       " This is a bug in Blaze. Please report it at https://github.com/samply/blaze/issues."))
+
+(defn- count-logged
+  "Calls `f` and returns the number of log entries whose first vararg equals
+  `msg`, logged from any thread while `f` runs."
+  [msg f]
+  (let [n (atom 0)
+        key (keyword "blaze.job.util-test" (name (gensym "count-")))]
+    (log/swap-config!
+     assoc-in [:appenders key]
+     {:enabled? true
+      :fn (fn [{:keys [vargs]}]
+            (when (= msg (first vargs))
+              (swap! n inc)))})
+    (try
+      (f)
+      @n
+      (finally
+        (log/swap-config! update :appenders dissoc key)))))
+
+(defn- start-job-after-concurrent-update
+  "Returns a function for `update-job-with-retry` that updates the job
+  concurrently on its first call, so that the update is retried, and starts the
+  job on the retry, which isn't an allowed transition."
+  [node]
+  (let [calls (atom 0)]
+    (fn [job]
+      (if (= 1 (swap! calls inc))
+        (do @(d/transact node [[:put job]])
+            job)
+        (start-job job)))))
+
+(deftest update-job-transition-test
+  (testing "allowed transitions"
+    (doseq [[from to] allowed-transitions]
+      (testing (str from " -> " to)
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          [[[:put (set-state {:fhir/type :fhir/Task :id "0"} from)]]]
+
+          (given @(job-util/update-job node @(job-util/pull-job node "0") set-state to)
+            state := to)))))
+
+  (testing "disallowed transitions"
+    (doseq [[from to] disallowed-transitions]
+      (testing (str from " -> " to)
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          [[[:put (set-state {:fhir/type :fhir/Task :id "0"} from)]]]
+
+          (with-global-log-capture [logged (transition-bug-msg from to)]
+            (given-failed-future (job-util/update-job node @(job-util/pull-job node "0") set-state to)
+              ::anom/category := ::anom/conflict
+              ::anom/message := (transition-conflict-msg from to)
+              :job/from := (state-str from)
+              :job/to := (state-str to)
+              ::js/action := :transition-job
+              job-util/job-update-failed? := false)
+
+            (testing "the transition conflict is logged as bug"
+              (given (deref logged 1000 ::not-logged)
+                :level := :error)))
+
+          (testing "the job stays unchanged"
+            (given @(job-util/pull-job node "0")
+              state := from
+              [:meta :versionId] := #fhir/id "1"))))))
+
+  (testing "a job without status can't be updated"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Task :id "0"}]]]
+
+      (given-failed-future (job-util/update-job node @(job-util/pull-job node "0") start-job)
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Job `0` can't transition from `` to `in-progress/started`."
+        :job/from := ""
+        :job/to := "in-progress/started")))
+
+  (testing "update-job+ checks the transition"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put (set-state {:fhir/type :fhir/Task :id "0"} :in-progress/resumed)]]]
+
+      (given-failed-future (job-util/update-job+ node @(job-util/pull-job node "0")
+                                                 [{:fhir/type :fhir/Bundle :id "0"}]
+                                                 start-job)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (transition-conflict-msg :in-progress/resumed :in-progress/started)
+        ::js/action := :transition-job
+        job-util/job-update-failed? := false)
+
+      (testing "the other resources aren't created"
+        (is (nil? (d/resource-handle (d/db node) "Bundle" "0"))))))
+
+  (testing "update-job-with-retry checks the transition"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put (set-state {:fhir/type :fhir/Task :id "0"} :in-progress/resumed)]]]
+
+      (given-failed-future (job-util/update-job-with-retry node 5 "0" start-job)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (transition-conflict-msg :in-progress/resumed :in-progress/started)
+        ::js/action := :transition-job
+        job-util/job-update-failed? := false)))
+
+  (testing "update-job-with-retry logs a transition conflict after a retry only once"
+    (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+      [[[:put (set-state {:fhir/type :fhir/Task :id "0"} :in-progress/incremented)]]]
+
+      (let [msg (transition-bug-msg :in-progress/incremented :in-progress/started)
+            n (count-logged
+               msg
+               #(given-failed-future
+                 (job-util/update-job-with-retry
+                  node 5 "0" (start-job-after-concurrent-update node))
+                  ::anom/category := ::anom/conflict
+                  ::js/action := :transition-job))]
+        (is (= 1 n))))))
+
+(deftest ended?-test
+  (testing "ended jobs"
+    (doseq [state [:completed :failed :cancelled/finished]]
+      (testing state
+        (is (true? (job-util/ended? (set-state {:fhir/type :fhir/Task} state)))))))
+
+  (testing "jobs that haven't ended"
+    (doseq [state [:ready :in-progress/started :in-progress/incremented
+                   :in-progress/resumed :on-hold/paused :on-hold/orderly-shutdown
+                   :cancelled/requested]]
+      (testing state
+        (is (false? (job-util/ended? (set-state {:fhir/type :fhir/Task} state))))))))
 
 (deftest job-update-failed-test
   (are [anomaly] (false? (job-util/job-update-failed? anomaly))
@@ -357,7 +580,23 @@
 (deftest fail-job-test
   (testing "without message"
     (given (job-util/fail-job {:fhir/type :fhir/Task} (ba/fault))
-      job-util/error-msg := "empty error message")))
+      job-util/error-msg := "empty error message"))
+
+  (testing "a running job fails"
+    (given (job-util/fail-job (set-state {:fhir/type :fhir/Task} :in-progress/started)
+                              (ba/fault "msg-162512"))
+      state := :failed
+      job-util/error := (ba/fault "msg-162512")))
+
+  (testing "a job whose cancellation was requested gets its cancellation finished"
+    (given (job-util/fail-job (set-state {:fhir/type :fhir/Task} :cancelled/requested)
+                              (ba/incorrect "msg-162538"))
+      state := :cancelled/finished
+      job-util/error := (ba/incorrect "msg-162538"))))
+
+(deftest finish-cancellation-test
+  (given (job-util/finish-cancellation (set-state {:fhir/type :fhir/Task} :cancelled/requested))
+    state := :cancelled/finished))
 
 (deftest async-status-url-test
   (testing "with context path"

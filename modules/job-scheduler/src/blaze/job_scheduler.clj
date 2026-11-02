@@ -40,10 +40,20 @@
     (p/-on-start handler job)
     (on-missing-handler context "start" job)))
 
+(defn- fail-job
+  "Fails `job` with `e`, unless it has ended already.
+
+  A job can end while its execution still runs, because a job that is on-hold
+  is cancelled directly, also if its execution hasn't stopped yet."
+  [node job e]
+  (if (job-util/ended? job)
+    (ac/completed-future job)
+    (job-util/update-job node job job-util/fail-job e)))
+
 (defn- fail-job-on-error [node id e]
   (log/error (format "Error while executing the job with id `%s`:" id) (::anom/message e))
   (-> (job-util/pull-job node id)
-      (ac/then-compose #(job-util/update-job node % job-util/fail-job e))))
+      (ac/then-compose #(fail-job node % e))))
 
 (defn- job-completion-handler [{:keys [node]} id]
   (fn [{:keys [status]} e]
@@ -283,22 +293,40 @@
 (defn- cancel-conflict-anom [{:keys [status] :as job}]
   (ba/conflict (cancel-conflict-msg job) :job/status (:value status)))
 
-(defn- cancel-job* [{:keys [status] :as job}]
-  (if-not (#{"completed" "failed" "cancelled"} (:value status))
-    (-> (assoc
-         job
-         :status #fhir/code "cancelled"
-         :businessStatus job-util/cancellation-requested-sub-status)
-        (dissoc :statusReason))
+(defn- cancel [job sub-status]
+  (-> (assoc job :status #fhir/code "cancelled" :businessStatus sub-status)
+      (dissoc :statusReason)))
+
+(defn- cancel-job*
+  "Requests the cancellation of `job` if it's in-progress, so that its
+  execution can finish the cancellation, or finishes the cancellation directly
+  if `job` is ready or on-hold, because its execution doesn't run or stops by
+  itself.
+
+  Decides on the status of `job` only, because the execution of `job` can run
+  on another Blaze node sharing the admin database, so the running jobs of
+  this job scheduler don't tell whether the job is running.
+
+  A job that is ready may be about to be started by its handler. But the
+  update of the handler to put the job in-progress will fail, because the job
+  was updated concurrently, so that the job isn't executed."
+  [{:keys [status] :as job}]
+  (case (:value status)
+    "in-progress" (cancel job job-util/cancellation-requested-sub-status)
+    ("ready" "on-hold") (cancel job job-util/cancellation-finished-sub-status)
     (cancel-conflict-anom job)))
 
 (defn cancel-job
   "Returns a CompletableFuture that will complete with a possibly cancelled job
   or will complete exceptionally with an anomaly in case of errors.
 
-  In case the status of the job is one of `completed`, `failed` or `cancelled`
-  the job will not be cancelled and the anomaly will have the category conflict
-  and contain the status under the key :job/status.
+  The cancellation of a job that is in-progress is only requested, so that its
+  execution can finish it. The cancellation of a job that is ready or on-hold
+  is finished directly.
+
+  In case the status of the job is another one, like `completed`, `failed` or
+  `cancelled`, the job will not be cancelled and the anomaly will have the
+  category conflict and contain the status under the key :job/status.
 
   Retries the cancellation up to 5 times on concurrent update problems."
   {:arglists '([job-scheduler id])}

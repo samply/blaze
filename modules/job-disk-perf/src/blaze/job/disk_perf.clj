@@ -4,7 +4,9 @@
   RocksDB stores produce.
 
   Because a benchmark restarted after an interruption can't reuse partial
-  results, resuming a disk performance job restarts the whole benchmark."
+  results, resuming a disk performance job restarts the whole benchmark. The
+  resumed job stays resumed until its first progress update, which happens
+  right after the benchmark has started."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
@@ -162,20 +164,40 @@
   (-> (bt/duration (-> job :meta :lastUpdated :value) (instant clock))
       (bt/as-seconds)))
 
+(defn- progress-update-due?
+  "Returns true if the progress of `job` should be persisted, because it's
+  resumed or wasn't updated within the last 10 seconds.
+
+  The first progress of a resumed job is persisted immediately, because the
+  benchmark starts over, so that the progress of the job from before it was
+  paused is outdated."
+  [clock job]
+  (or (= "resumed" (job-util/status-reason job))
+      (< 10 (elapsed clock job))))
+
 (defn- progress-fn
   "Returns the progress function given to the engine.
 
   Persists the current phase and progress percentage, throttled to one update
-  every 10 seconds. Runs synchronously on the engine thread so that no update
-  is in flight when the engine finishes."
-  [{:keys [admin-node clock]} current-job]
+  every 10 seconds, except for the first one of a resumed job. Runs
+  synchronously on the engine thread so that no update is in flight when the
+  engine finishes.
+
+  Sets `update-failed` if an update fails because the job was updated
+  concurrently, so that the benchmark stops. Only stopping the job updates it
+  while it's running, by cancelling, pausing or the shutdown of the job
+  scheduler. Otherwise the job is outdated, because it was dispatched again
+  after its execution had ended."
+  [{:keys [admin-node clock]} current-job update-failed]
   (fn [phase fraction]
     (let [job @current-job]
-      (when (< 10 (elapsed clock job))
+      (when (and (not @update-failed) (progress-update-due? clock job))
         (let [result (ba/try-anomaly
                       @(job-util/update-job admin-node job
                                             #(update-progress % phase (int (* 100 (double fraction))))))]
-          (when-not (ba/anomaly? result)
+          (if (ba/anomaly? result)
+            (when (job-util/job-update-failed? result)
+              (vreset! update-failed true))
             (vreset! current-job result)))))))
 
 (defn- increment-quantity-value [quantity x]
@@ -285,68 +307,108 @@
      "rating" (value "rating")
      "processing-duration" (value "processing-duration"))))
 
-(defn- finish-cancellation [job]
-  (assoc job :businessStatus job-util/cancellation-finished-sub-status))
-
 (defn- job-duration [start]
   (BigDecimal/valueOf (- (System/nanoTime) (long start)) 9))
 
-(defn- on-hold-msg [{:keys [id]}]
-  (format "The job `%s` is on-hold and can't be updated." id))
+(defn- cancellation-requested? [job]
+  (= "requested" (job-util/cancelled-sub-status job)))
 
-(defn- unless-on-hold
-  "Returns a function that applies the job transition `f` to a job, unless the
-  job is on-hold, in which case it returns a conflict.
+(defn- running?
+  "Returns true if `job` is still running, because it's in-progress or its
+  cancellation was requested, so that its execution has to end it."
+  [{:keys [status] :as job}]
+  (or (= "in-progress" (:value status)) (cancellation-requested? job)))
 
-  A job is put on-hold while it is running, if it is paused or the job
-  scheduler shuts down. It has to stay on-hold, so its execution must not
-  update it when it ends. The update fails with the conflict, which the job
-  scheduler treats as a job unable to update itself."
-  [f]
-  (fn [{:keys [status] :as job}]
-    (if (= "on-hold" (:value status))
-      (ba/conflict (on-hold-msg job))
-      (f job))))
+(defn- not-running-msg [{:keys [id status]}]
+  (format "The job `%s` with status `%s` can't be updated by its execution."
+          id (:value status)))
+
+(defn- update-if
+  "Returns a function that applies the job transition `f` to a job satisfying
+  `pred` or returns a conflict otherwise.
+
+  The job can be updated while its execution runs. It's put on-hold, if it's
+  paused or the job scheduler shuts down. It's cancelled directly, if it's
+  cancelled while on-hold. And it has ended already, if it was dispatched again
+  after its execution had ended. Its execution must not update it in
+  those cases. The update fails with the conflict, which the job scheduler
+  treats as a job unable to update itself."
+  [pred f]
+  (fn [job]
+    (if (pred job)
+      (f job)
+      (ba/conflict (not-running-msg job)))))
 
 (defn- complete! [{:keys [admin-node]} id result start]
   (let [duration (job-duration start)]
     (job-util/update-job-with-retry
      admin-node 5 id
-     (unless-on-hold
+     (update-if
+      running?
       (fn [job]
-        (if (job-util/cancelled-sub-status job)
-          (finish-cancellation job)
+        (if (cancellation-requested? job)
+          (job-util/finish-cancellation job)
           (complete-job job result duration)))))))
 
-(defn- handle-error! [{:keys [admin-node]} id e]
+(defn- handle-error!
+  "Ends the execution of the job with `id` that ended with the error `e`.
+
+  Finishes the cancellation of the job if the benchmark was interrupted,
+  because its cancellation was requested. The benchmark is also interrupted if
+  the job was put on-hold or a progress update failed, in which case the job
+  isn't updated."
+  [{:keys [admin-node]} id e]
   (job-util/update-job-with-retry
    admin-node 5 id
-   (unless-on-hold
-    (if (ba/interrupted? e)
-      finish-cancellation
-      #(job-util/fail-job % e)))))
+   (if (ba/interrupted? e)
+     (update-if cancellation-requested? job-util/finish-cancellation)
+     (update-if running? #(job-util/fail-job % e)))))
 
-(defn- cancelled-fn [running-jobs id]
-  #(when (get @running-jobs id) (ba/interrupted)))
+(defn- cancelled-fn
+  "Returns the function given to the engine that stops the benchmark if the
+  job with `id` was requested to stop or a progress update failed."
+  [running-jobs id update-failed]
+  #(when (or (get @running-jobs id) @update-failed) (ba/interrupted)))
 
-(defn- on-start
-  [{:keys [admin-node executor] ::keys [running-jobs] :as context} job]
+(defn- execute
+  "Runs the benchmark of `job`, which is in-progress, and updates the job when
+  the benchmark ends."
+  [{:keys [executor] ::keys [running-jobs] :as context} dir params {:keys [id] :as job}]
+  (swap! running-jobs job-util/mark-running id)
+  (let [current-job (volatile! job)
+        update-failed (volatile! false)
+        start (System/nanoTime)]
+    (-> (ac/supply-async
+         #(engine/run! dir params (progress-fn context current-job update-failed)
+                       (cancelled-fn running-jobs id update-failed))
+         executor)
+        (ac/then-compose #(complete! context id % start))
+        (ac/exceptionally-compose #(handle-error! context id %))
+        (ac/when-complete (fn [_ _] (swap! running-jobs dissoc id))))))
+
+(defn- with-params
+  "Calls `f` with the directory and the parameters of `job` or fails `job` if
+  they are invalid."
+  [{:keys [admin-node] :as context} job f]
   (if-ok [dir (dir context job)
           params (params context job)]
-    (-> (job-util/update-job admin-node job start-job)
-        (ac/then-compose
-         (fn [{:keys [id] :as job}]
-           (swap! running-jobs job-util/mark-running id)
-           (let [current-job (volatile! job)
-                 start (System/nanoTime)]
-             (-> (ac/supply-async
-                  #(engine/run! dir params (progress-fn context current-job)
-                                (cancelled-fn running-jobs id))
-                  executor)
-                 (ac/then-compose #(complete! context id % start))
-                 (ac/exceptionally-compose #(handle-error! context id %))
-                 (ac/when-complete (fn [_ _] (swap! running-jobs dissoc id))))))))
+    (f dir params)
     (partial job-util/update-job admin-node job job-util/fail-job)))
+
+(defn- on-start [{:keys [admin-node] :as context} job]
+  (with-params
+    context job
+    (fn [dir params]
+      (-> (job-util/update-job admin-node job start-job)
+          (ac/then-compose (partial execute context dir params))))))
+
+(defn- on-resume
+  "Restarts the benchmark of the resumed `job`.
+
+  Doesn't update the job before the benchmark runs, so that the job stays
+  resumed until its first progress update."
+  [context job]
+  (with-params context job #(execute context %1 %2 job)))
 
 (defmethod m/pre-init-spec :blaze.job/disk-perf [_]
   (s/keys :req-un [::dirs ::admin-node ::executor ::block-size :blaze/clock]))
@@ -359,7 +421,7 @@
       (-on-start [_ job]
         (on-start context job))
       (-on-resume [_ job]
-        (on-start context job))
+        (on-resume context job))
       (-on-cancel [_ job]
         (swap! (::running-jobs context) assoc (:id job) :cancelled)
         (ac/completed-future job))

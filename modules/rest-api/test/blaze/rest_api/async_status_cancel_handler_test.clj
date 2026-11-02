@@ -8,6 +8,7 @@
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.async-interaction :as job-async]
+   [blaze.job.util :as job-util]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.module.test-util :refer [given-failed-system]]
@@ -86,7 +87,9 @@
   (job-async/job authored-on bundle-id t))
 
 (defn- in-progress-job [authored-on bundle-id t]
-  (assoc (job-async/job authored-on bundle-id t) :status #fhir/code "in-progress"))
+  (assoc (job-async/job authored-on bundle-id t)
+         :status #fhir/code "in-progress"
+         :statusReason job-util/started-status-reason))
 
 (defn- completed-job [authored-on request-bundle-id t response-bundle-id]
   (-> (job-async/job authored-on request-bundle-id t)
