@@ -84,6 +84,14 @@
   :args (s/cat :node :blaze.db/node :n pos-int? :id string? :f fn? :args (s/* any?))
   :ret ac/completable-future?)
 
+(s/fdef job-util/cancellation-requested?
+  :args (s/cat :job :fhir/Task)
+  :ret boolean?)
+
+(s/fdef job-util/ended?
+  :args (s/cat :job :fhir/Task)
+  :ret boolean?)
+
 (s/fdef job-util/job-update-failed?
   :args (s/cat :anomaly ::anom/anomaly)
   :ret boolean?)
@@ -95,6 +103,14 @@
 (s/fdef job-util/stopped-on-hold?
   :args (s/cat :running-jobs ::job-util/running-jobs :id string?)
   :ret boolean?)
+
+(s/fdef job-util/finish-cancellation
+  :args (s/cat :job :fhir/Task)
+  :ret :fhir/Task)
+
+(s/fdef job-util/fail-job
+  :args (s/cat :job :fhir/Task :anomaly ::anom/anomaly)
+  :ret :fhir/Task)
 
 (s/fdef job-util/async-status-url
   :args (s/cat :context ::async-status-url/context

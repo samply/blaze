@@ -29,11 +29,12 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [with-global-log-capture]]
    [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]])
@@ -439,27 +440,6 @@
   (-> (pull-job-in-phase* system id phase)
       (ac/or-timeout! 10 TimeUnit/SECONDS)))
 
-(defn- pull-job-started-again*
-  [{:blaze.db.admin/keys [node] :as system} id]
-  (-> (d/pull node (d/resource-handle (d/db node) "Task" id))
-      (ac/then-compose-async
-       (fn [job]
-         (if (#{:in-progress/started :in-progress/incremented}
-              (jtu/combined-status job))
-           (ac/completed-future job)
-           (pull-job-started-again* system id)))
-       (ac/delayed-executor 10 TimeUnit/MILLISECONDS))))
-
-(defn- pull-job-started-again
-  "Waits until the resumed job with `id` was started again or 10 seconds are
-  eclipsed.
-
-  Accepts the job also after its first progress update, because that can
-  follow the start immediately."
-  [system id]
-  (-> (pull-job-started-again* system id)
-      (ac/or-timeout! 10 TimeUnit/SECONDS)))
-
 (deftest pause-resume-test
   (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
 
@@ -483,16 +463,69 @@
 
       (testing "resuming restarts the benchmark"
         (given @(js/resume-job job-scheduler id)
-          jtu/combined-status := :in-progress/resumed)
-
-        (given @(pull-job-started-again system id)
-          jtu/combined-status :? #{:in-progress/started :in-progress/incremented}))
+          jtu/combined-status := :in-progress/resumed))
 
       @(js/cancel-job job-scheduler id)
 
       (testing "the job ends up cancelled with finished sub status"
         (given @(jtu/pull-job system :cancelled/finished)
-          jtu/combined-status := :cancelled/finished)))))
+          jtu/combined-status := :cancelled/finished))
+
+      (testing "the resumed job isn't started again"
+        (is (not-any? #{:in-progress/started}
+                      (->> @(jtu/pull-job-history system id)
+                           (map jtu/combined-status)
+                           (drop-while #(not= :in-progress/resumed %)))))))))
+
+(defn- resumed-job [params]
+  (assoc (job-disk-perf/job (bt/offset-date-time) params)
+         :status #fhir/code "in-progress"
+         :statusReason job-util/resumed-status-reason))
+
+(defn- await-cancelled
+  "Waits until `cancelled?` returns an anomaly and returns it, or returns a
+  fault after 10 seconds."
+  [cancelled?]
+  (loop [n 1000]
+    (or (cancelled?)
+        (if (zero? n)
+          (ba/fault "not cancelled")
+          (do (Thread/sleep 10) (recur (dec n)))))))
+
+(defn- run-until-cancelled
+  "Returns a function like `engine/run!` that delivers `running` and runs until
+  it's cancelled."
+  [running]
+  (fn [_ _ _ cancelled?]
+    (deliver running ::running)
+    (await-cancelled cancelled?)))
+
+(deftest resume-test
+  (let [running (promise)]
+    (with-redefs [engine/run! (run-until-cancelled running)]
+      (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+
+        (let [{:keys [id]} @(js/create-job job-scheduler (resumed-job tiny-params))]
+
+          (testing "the benchmark is restarted"
+            (is (= ::running (deref running 10000 ::timeout))))
+
+          (testing "the job stays resumed"
+            (given @(jtu/pull-job system id :in-progress/resumed)
+              jtu/combined-status := :in-progress/resumed))
+
+          @(js/cancel-job job-scheduler id)
+
+          (testing "the job ends up cancelled with finished sub status"
+            (given @(jtu/pull-job system id :cancelled/finished)
+              jtu/combined-status := :cancelled/finished))
+
+          (testing "job history"
+            (given @(jtu/pull-job-history system id)
+              count := 3
+              [0 jtu/combined-status] := :in-progress/resumed
+              [1 jtu/combined-status] := :cancelled/requested
+              [2 jtu/combined-status] := :cancelled/finished)))))))
 
 (deftest cancellation-test
   (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
@@ -580,3 +613,151 @@
         (testing "the cancellation is finished"
           (given @(jtu/pull-job system :cancelled/finished)
             jtu/combined-status := :cancelled/finished))))))
+
+(deftest benchmark-error-after-cancellation-request-test
+  (let [job-id (promise)]
+    (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+      (with-redefs [engine/run! (fn [_ _ _ _]
+                                  @(js/cancel-job job-scheduler @job-id)
+                                  (ba/fault "fault-165420"))]
+
+        (deliver job-id (:id @(js/create-job job-scheduler
+                                             (job-disk-perf/job (bt/offset-date-time)
+                                                                tiny-params))))
+
+        (testing "the cancellation is finished with the error"
+          (given @(jtu/pull-job system :cancelled/finished)
+            jtu/combined-status := :cancelled/finished
+            job-util/error-msg := "fault-165420"))))))
+
+(defn- complete-directly
+  "Completes `job` by updating it directly on `admin-node`, like its first
+  execution would do, bypassing the job handler."
+  [admin-node job]
+  (d/transact
+   admin-node
+   [[:put (-> (assoc job :status #fhir/code "completed")
+              (dissoc :statusReason))]]))
+
+(defn- transition-bug-msg [id from to]
+  (format "Job `%s` can't transition from `%s` to `%s`. This is a bug in Blaze. Please report it at https://github.com/samply/blaze/issues."
+          id from to))
+
+(deftest failing-progress-update-test
+  (testing "the benchmark of an outdated resumed job stops on its first progress update"
+    (let [running (promise)
+          progress-gate (promise)
+          stopped (promise)]
+      (with-redefs [engine/run! (fn [_ _ progress! cancelled?]
+                                  (deliver running ::running)
+                                  @progress-gate
+                                  (progress! :seq-write 0.5)
+                                  (deliver stopped (await-cancelled cancelled?))
+                                  @stopped)]
+        (with-system [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]
+                       :as system}
+                      (config (new-tmp-dir!))]
+
+          (let [{:keys [id] :as job} @(js/create-job job-scheduler (resumed-job tiny-params))]
+
+            (testing "the benchmark is restarted"
+              (is (= ::running (deref running 10000 ::timeout))))
+
+            @(complete-directly node job)
+
+            (with-global-log-capture [logged (transition-bug-msg id "completed" "completed")]
+              (deliver progress-gate ::open)
+
+              (testing "the benchmark stops"
+                (given (deref stopped 20000 ::timeout)
+                  ::anom/category := ::anom/interrupted))
+
+              (testing "the execution of the job ends"
+                (is (jtu/await-no-running-jobs job-scheduler)))
+
+              (testing "no transition conflict is logged"
+                (is (= ::not-logged (deref logged 1000 ::not-logged)))))
+
+            (testing "the job stays completed"
+              (given (last @(jtu/pull-job-history system id))
+                jtu/combined-status := :completed))))))))
+
+(deftest cancellation-while-paused-job-stops-test
+  (testing "a paused job cancelled before its benchmark stopped gets its cancellation finished by the benchmark"
+    (let [running (promise)
+          stop-gate (promise)]
+      (with-redefs [engine/run! (fn [_ _ _ cancelled?]
+                                  (deliver running ::running)
+                                  @stop-gate
+                                  (cancelled?))]
+        (with-system [{:blaze/keys [job-scheduler] :as system} (config (new-tmp-dir!))]
+
+          (let [{:keys [id]} @(js/create-job job-scheduler
+                                             (job-disk-perf/job (bt/offset-date-time)
+                                                                tiny-params))]
+
+            (testing "the benchmark is running"
+              (is (= ::running (deref running 10000 ::timeout))))
+
+            (given @(js/pause-job job-scheduler id)
+              jtu/combined-status := :on-hold/paused)
+
+            (given @(js/cancel-job job-scheduler id)
+              jtu/combined-status := :cancelled/requested)
+
+            (deliver stop-gate ::open)
+
+            (testing "the execution of the job ends"
+              (is (jtu/await-no-running-jobs job-scheduler)))
+
+            (testing "the cancellation is finished"
+              (given @(jtu/pull-job-history system id)
+                count := 5
+                [0 jtu/combined-status] := :ready
+                [1 jtu/combined-status] := :in-progress/started
+                [2 jtu/combined-status] := :on-hold/paused
+                [3 jtu/combined-status] := :cancelled/requested
+                [4 jtu/combined-status] := :cancelled/finished))))))))
+
+(defn- paused-in-rand-read
+  "Returns `job` with the progress outputs of a job paused at 80 % of the
+  random read phase."
+  [job]
+  (let [system (canonical/url "CodeSystem/DiskPerfJobOutput")]
+    (assoc job :output [(job-util/task-output system "current-phase" #fhir/code "rand-read")
+                        (job-util/task-output system "phase-progress" #fhir/unsignedInt 80)])))
+
+(defn- config-without-clock-offset
+  "Returns the config with a clock that isn't ahead of the transaction clock,
+  so that progress updates are throttled."
+  [dir]
+  (assoc-in (config dir) [:blaze.test/offset-clock :offset-seconds] 0))
+
+(deftest resumed-job-progress-test
+  (testing "the outdated progress of a resumed job is replaced by its first progress update immediately"
+    (let [progressed (promise)]
+      (with-redefs [engine/run! (fn [_ _ progress! cancelled?]
+                                  (progress! :seq-write 0.0)
+                                  (deliver progressed ::progressed)
+                                  (await-cancelled cancelled?))]
+        (with-system [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]
+                       :as system}
+                      (config-without-clock-offset (new-tmp-dir!))]
+
+          (let [{:keys [id]} @(js/create-job job-scheduler
+                                             (paused-in-rand-read (resumed-job tiny-params)))]
+
+            (testing "the benchmark reports its first progress"
+              (is (= ::progressed (deref progressed 10000 ::timeout))))
+
+            (testing "the job shows the progress of the restarted benchmark"
+              (given @(job-util/pull-job node id)
+                jtu/combined-status := :in-progress/incremented
+                [#(output-value % "current-phase") :value] := "seq-write"
+                [#(output-value % "phase-progress") :value] := 0))
+
+            @(js/cancel-job job-scheduler id)
+
+            (testing "the job ends up cancelled"
+              (given @(jtu/pull-job system id :cancelled/finished)
+                jtu/combined-status := :cancelled/finished))))))))

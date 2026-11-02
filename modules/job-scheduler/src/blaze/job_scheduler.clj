@@ -40,19 +40,35 @@
     (p/-on-start handler job)
     (on-missing-handler context "start" job)))
 
+(defn- fail-job
+  "Fails `job` with `e`, unless it has ended already.
+
+  A job can have ended before its execution fails, if its handler ended it
+  before, or if the execution belongs to an outdated dispatch of the job."
+  [node job e]
+  (if (job-util/ended? job)
+    (ac/completed-future job)
+    (job-util/update-job node job job-util/fail-job e)))
+
 (defn- fail-job-on-error [node id e]
   (log/error (format "Error while executing the job with id `%s`:" id) (::anom/message e))
   (-> (job-util/pull-job node id)
-      (ac/then-compose #(job-util/update-job node % job-util/fail-job e))))
+      (ac/then-compose #(fail-job node % e))))
 
-(defn- job-completion-handler [{:keys [node]} id]
+(defn- job-completion-handler
+  "Returns a function that handles the end of the execution of the job with
+  `id` and returns a CompletableFuture that completes after the job was
+  updated, if necessary."
+  [{:keys [node]} id]
   (fn [{:keys [status]} e]
     (if e
       (if (job-util/job-update-failed? e)
-        (log/debug "The job with id =" id "was unable to update itself. It may have been paused.")
+        (do (log/debug "The job with id =" id "was unable to update itself. It may have been paused.")
+            (ac/completed-future nil))
         (fail-job-on-error node id e))
-      (log/debug "The execution of the job with id =" id "ended with status ="
-                 (:value status)))))
+      (do (log/debug "The execution of the job with id =" id "ended with status ="
+                     (:value status))
+          (ac/completed-future nil)))))
 
 (defn- wrap-error
   "Calls `f` with `context` and `job` and returns its future, or a future
@@ -87,6 +103,45 @@
   [state]
   (assoc state :shutting-down? true))
 
+(defn- running?
+  "Returns true if the execution of the job with `id` is running in `state`."
+  [state id]
+  (contains? (:running-jobs state) id))
+
+(defn- finish-requested-cancellation
+  "Finishes the cancellation of the job with `id`, if it was requested.
+
+  Used if the job has no running execution anymore, which could finish the
+  cancellation, either because its execution has ended without finishing it,
+  like the one of a job handler not supporting cancellation, or because its
+  execution has ended before the cancellation was requested.
+
+  Returns a CompletableFuture that will complete after the cancellation is
+  finished. Completes normally also on errors, which are only logged."
+  [node id]
+  (-> (job-util/pull-job node id)
+      (ac/then-compose
+       #(if (job-util/cancellation-requested? %)
+          (job-util/update-job node % job-util/finish-cancellation)
+          (ac/completed-future %)))
+      (ac/exceptionally
+       (fn [{::anom/keys [message]}]
+         (log/debug (format "Failed to finish the cancellation of job with id `%s`: %s"
+                            id message))))))
+
+(defn- end-execution
+  "Removes the job with `id` from the running jobs of `job-scheduler`,
+  finishes its cancellation, if it was requested, and completes `tracked`
+  afterwards.
+
+  Finishes the cancellation after the job was removed from the running jobs, so
+  that either this function or `on-cancel` sees a cancellation requested
+  concurrently."
+  [{:keys [context state]} id tracked]
+  (swap! state remove-job id)
+  (-> (finish-requested-cancellation (:node context) id)
+      (ac/when-complete (fn [_ _] (ac/complete! tracked nil)))))
+
 (defn- shutdown-ignore-msg [action {:keys [id]}]
   (format "Ignore %s of job with id `%s`, because the job scheduler shuts down."
           action id))
@@ -102,9 +157,9 @@
   Reserves the job as running in `state` before its handler is called, so that
   a shutdown either sees the job or refuses the reservation. Doesn't execute a
   job that is already running. The running job has a future of its own, that
-  completes after the job was removed from `state` again, when the future
-  returned by `f` completes."
-  [{:keys [context state]} action f {:keys [id] :as job}]
+  completes after the job was removed from `state` again and its requested
+  cancellation was finished, when the future returned by `f` completes."
+  [{:keys [context state] :as job-scheduler} action f {:keys [id] :as job}]
   (let [tracked (ac/future)
         {:keys [shutting-down? running-jobs]} (swap! state reserve-job id tracked)]
     (cond
@@ -118,10 +173,9 @@
       (do (log/debug (format "Execute %s of job with id `%s`." action id))
           (-> (wrap-error f context job)
               (ac/handle (job-completion-handler context id))
+              (ac/then-compose identity)
               (ac/when-complete
-               (fn [_ _]
-                 (swap! state remove-job id)
-                 (ac/complete! tracked nil))))))))
+               (fn [_ _] (end-execution job-scheduler id tracked))))))))
 
 (defn- on-start [job-scheduler job]
   (execute-job job-scheduler "start" on-start* job))
@@ -144,17 +198,20 @@
     (log/debug (format "Finished requesting cancellation of job with id `%s`." id))))
 
 (defn- on-cancel
-  "Requests the cancellation of `job` from its handler.
+  "Requests the cancellation of `job` from its handler, if its execution is
+  running, or finishes the cancellation otherwise.
 
   Doesn't track the request in the running jobs, because the job may still be
   running until it notices the cancellation. Its execution stays tracked by the
   future returned when it was started or resumed. Requests cancellations also
   while the job scheduler shuts down, because a cancelled job isn't put
   on-hold, so only its cancellation can stop it."
-  [{:keys [context]} {:keys [id] :as job}]
-  (log/debug (format "Request cancellation of job with id `%s`." id))
-  (-> (wrap-error on-cancel* context job)
-      (ac/handle (job-cancellation-completion-handler id))))
+  [{:keys [context state]} {:keys [id] :as job}]
+  (if (running? @state id)
+    (do (log/debug (format "Request cancellation of job with id `%s`." id))
+        (-> (wrap-error on-cancel* context job)
+            (ac/handle (job-cancellation-completion-handler id))))
+    (finish-requested-cancellation (:node context) id)))
 
 (defn- dispatch-job
   "Starts, resumes or requests the cancellation of `job` according to its
@@ -283,28 +340,52 @@
 (defn- cancel-conflict-anom [{:keys [status] :as job}]
   (ba/conflict (cancel-conflict-msg job) :job/status (:value status)))
 
-(defn- cancel-job* [{:keys [status] :as job}]
-  (if-not (#{"completed" "failed" "cancelled"} (:value status))
-    (-> (assoc
-         job
-         :status #fhir/code "cancelled"
-         :businessStatus job-util/cancellation-requested-sub-status)
-        (dissoc :statusReason))
+(defn- cancel [job sub-status]
+  (-> (assoc job :status #fhir/code "cancelled" :businessStatus sub-status)
+      (dissoc :statusReason)))
+
+(defn- cancel-job*
+  "Requests the cancellation of `job` if its execution is running, so that the
+  execution can finish the cancellation, or finishes the cancellation directly
+  otherwise, because no execution exists that could finish it.
+
+  The execution of a job that is on-hold can still run, because it only stops
+  when its handler notices that the job was paused.
+
+  A job that is ready may be about to be started by its handler. Its
+  cancellation is finished directly, because the update of the handler to put
+  the job in-progress will fail, because the job was updated concurrently, so
+  that the job isn't executed."
+  [running? {:keys [status] :as job}]
+  (case (:value status)
+    "ready"
+    (cancel job job-util/cancellation-finished-sub-status)
+
+    ("in-progress" "on-hold")
+    (cancel job (if running?
+                  job-util/cancellation-requested-sub-status
+                  job-util/cancellation-finished-sub-status))
+
     (cancel-conflict-anom job)))
 
 (defn cancel-job
   "Returns a CompletableFuture that will complete with a possibly cancelled job
   or will complete exceptionally with an anomaly in case of errors.
 
-  In case the status of the job is one of `completed`, `failed` or `cancelled`
-  the job will not be cancelled and the anomaly will have the category conflict
-  and contain the status under the key :job/status.
+  The cancellation of a job whose execution is running is only requested, so
+  that its execution can finish it. The cancellation of a job that is ready or
+  has no running execution is finished directly. The job scheduler finishes a
+  requested cancellation itself if the execution ends without finishing it.
+
+  In case the status of the job is another one, like `completed`, `failed` or
+  `cancelled`, the job will not be cancelled and the anomaly will have the
+  category conflict and contain the status under the key :job/status.
 
   Retries the cancellation up to 5 times on concurrent update problems."
   {:arglists '([job-scheduler id])}
-  [{{:keys [node]} :context} id]
+  [{{:keys [node]} :context :keys [state]} id]
   (log/debug "Try to cancel job with id =" id)
-  (job-util/update-job-with-retry node 5 id cancel-job*))
+  (job-util/update-job-with-retry node 5 id #(cancel-job* (running? @state id) %)))
 
 (defn- hold-job** [job reason]
   (assoc
@@ -329,7 +410,7 @@
   "Signals the handler of the paused `job` if the job is running, so that its
   execution stops as soon as possible and the job can be resumed."
   [context state {:keys [id] :as job}]
-  (when (contains? (:running-jobs @state) id)
+  (when (running? @state id)
     (when-let [handler (find-handler context job)]
       (p/-on-pause handler job))))
 
@@ -368,7 +449,7 @@
            (not= "on-hold" (:value status))
            (ac/completed-future (ba/conflict (resume-conflict-msg job)))
 
-           (contains? (:running-jobs @state) id)
+           (running? @state id)
            (ac/completed-future (ba/conflict (resume-running-conflict-msg id)))
 
            :else
@@ -416,7 +497,7 @@
        (fn [{:keys [status] :as job}]
          (condp = (:value status)
            "ready"
-           (if (contains? (:running-jobs @state) id)
+           (if (running? @state id)
              (pull-again-later #(hold-on-shutdown context state id))
              (ac/completed-future (ba/conflict (shutdown-conflict-msg job))))
 

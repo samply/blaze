@@ -28,10 +28,13 @@
     "Handles the event that the cancellation of `job` was requested.
 
     The jobs status will be `cancelled` with a sub status of `requested`.
-    Should only signal the running execution of `job` to stop. The work of the
-    cancellation, like freeing the resources the job allocated and finishing
-    the cancellation, belongs to the execution, so to the future returned by
-    `-on-start` or `-on-resume`, which the job scheduler waits for on shutdown.
+    Is only called while the execution of `job` is running, also if the job
+    was on-hold before. Should only signal the running execution of `job` to
+    stop. The work of the cancellation, like freeing the resources the job
+    allocated and finishing the cancellation, belongs to the execution, so to
+    the future returned by `-on-start` or `-on-resume`, which the job scheduler
+    waits for on shutdown. If the execution ends without finishing the
+    cancellation, the job scheduler finishes it.
 
     Returns a CompletableFuture that should complete promptly with a possibly
     updated job or complete exceptionally with an anomaly in case of errors.
