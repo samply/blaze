@@ -20,7 +20,12 @@
   ;; pinned to fix CVE-2026-106451, can be removed if kafka-clients depends on
   ;; at least this version
   at.yawk.lz4/lz4-java
-  {:mvn/version "1.12.1"}}
+  {:mvn/version "1.12.1"}
+
+  ;; pinned to fix CVE-2026-93451, CVE-2026-108106 and CVE-2026-116590, can be
+  ;; removed if kafka-clients depends on at least this version
+  org.xerial.snappy/snappy-java
+  {:mvn/version "1.1.10.12"}}
 
  :aliases
  {:test
