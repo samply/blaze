@@ -1,10 +1,7 @@
 # Delete History <Badge type="info" text="Feature: INTERACTION_DELETE_HISTORY"/> <Badge type="warning" text="Since 0.30.1"/>
 
-> [!CAUTION]
-> The delete history interaction is currently **alpha** and has to be enabled explicitly by setting the env var `ENABLE_INTERACTION_DELETE_HISTORY` to true. Please don't use it in production. Please be aware that the database might not be able to migrate to a newer version of Blaze if the operation was used.
-
-> [!CAUTION]
-> The delete history interaction is trial use in the unreleased next version of FHIR. So it is subject to change. Please use it with care.
+> [!NOTE]
+> The delete history interaction is an optional feature that has to be enabled by setting [`ENABLE_INTERACTION_DELETE_HISTORY`](../../deployment/environment-variables.md#enable-interaction-delete-history) to `true`.
 
 The delete history interaction removes all versions of the resource except the current version.
 
