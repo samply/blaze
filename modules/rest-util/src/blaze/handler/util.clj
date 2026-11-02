@@ -92,6 +92,19 @@
          (some? expression))
     (assoc :expression [(type/string expression)])))
 
+(defn parameters-body
+  "Returns the Parameters resource `body` of an operation request.
+
+  A missing `body` is returned as an empty Parameters resource, so that missing
+  parameters are reported as such. Returns an anomaly if `body` is a resource
+  of another type."
+  {:arglists '([body])}
+  [{:fhir/keys [type] :as body}]
+  (cond
+    (nil? body) {:fhir/type :fhir/Parameters}
+    (= :fhir/Parameters type) body
+    :else (ba/incorrect (format "Expected Parameters resource but was `%s` resource." (name type)))))
+
 (defn operation-outcome
   "Creates an FHIR OperationOutcome from an anomaly."
   {:arglists '([anomaly])}

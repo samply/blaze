@@ -44,6 +44,7 @@ Rigorous adherence to these patterns is required:
   * Use existing functions if possible.
   * Create a function if code is used more than two times.
 * **Named Functions over Explaining Comments:** If a piece of code needs a comment to explain what it does or why, especially an anonymous function whose intent isn't obvious (e.g. `#(or % false)` in a `swap!`), extract it into a function with a name stating its intent and put the explanation into its docstring, instead of writing an inline comment.
+* **Arglists:** A public function that destructures its arguments must have an `:arglists` metadata map between the docstring and the argument vector that hides the destructuring, so that docs and tooling show only plain argument names (e.g. `{:arglists '([specs parameters])}` for the argument vector `[specs {params :parameter}]`).
 * **No no-op nil calls:** Don't deliberately call a function with a `nil` argument just so it does nothing and returns its input unchanged (e.g. a nil-tolerant pass-through wrapper for an optional dependency). This is an antipattern — it hides the optionality at the call site. Make the call conditional instead (e.g. with `cond->`), so the absence of the dependency is visible where it matters.
 * **Testing:**
   * **Test-Driven Development (mandatory):** Never change production code without first writing a failing test that captures the new behaviour. Write the test, see it fail, then make it pass. This applies to bug fixes (regression test first), new features, and contract changes (e.g. allowing an anomaly return value).

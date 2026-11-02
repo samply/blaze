@@ -1,24 +1,14 @@
 (ns blaze.fhir.operation.compact
   "Main entry point into the $compact operation."
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
-   [blaze.fhir.util :as fu]
-   [blaze.handler.util :as handler-util]
-   [blaze.job-scheduler :as js]
+   [blaze.anomaly :as ba]
+   [blaze.handler.async-job :as async-job]
    [blaze.job.compact :as job-compact]
    [blaze.module :as m]
    [blaze.spec]
-   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [ring.util.response :as ring]
    [taoensso.timbre :as log]))
-
-(defn- parameters [{:fhir/keys [type] :as body}]
-  (if (= :fhir/Parameters type)
-    body
-    (ba/incorrect (format "Expected Parameters resource but was `%s` resource." (name type)))))
 
 (defn- coerce [spec msg]
   (fn [value]
@@ -42,14 +32,6 @@
   (s/keys :req-un [:blaze/clock] :opt-un [:blaze/context-path]))
 
 (defmethod ig/init-key :blaze.fhir.operation/compact
-  [_ {:keys [clock] :as context}]
+  [_ context]
   (log/info "Init FHIR $compact operation handler")
-  (fn [{:keys [body] :blaze/keys [job-scheduler] :as request}]
-    (if-ok [parameters (parameters body)
-            params (fu/coerce-params param-specs parameters)]
-      (let [authored-on (bt/offset-date-time clock)]
-        (log/debug "Initiate async response...")
-        (do-sync [job (js/create-job job-scheduler (job-compact/job authored-on params))]
-          (-> (ring/status 202)
-              (handler-util/async-status-location context request job))))
-      ac/completed-future)))
+  (async-job/handler context param-specs job-compact/job))

@@ -3,6 +3,7 @@
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.util :as fu]
+   [blaze.fhir.util.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
@@ -23,7 +24,7 @@
   :ret (s/coll-of string? :kind vector? :min-count 1 :max-count 2))
 
 (s/fdef fu/coerce-params
-  :args (s/cat :specs map? :parameters :fhir/Parameters)
+  :args (s/cat :specs ::fu/param-specs :parameters :fhir/Parameters)
   :ret (s/or :params (s/map-of simple-keyword? any?) :anomaly ::anom/anomaly))
 
 (s/fdef fu/coerce-integer

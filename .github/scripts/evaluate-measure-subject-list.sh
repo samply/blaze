@@ -32,7 +32,7 @@ END
 }
 
 evaluate_measure() {
-  parameters "$2" | curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1/Measure/\$evaluate-measure"
+  parameters "$2" | execute_operation "$1/Measure/\$evaluate-measure"
 }
 
 base="http://localhost:8080/fhir"

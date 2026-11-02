@@ -1531,6 +1531,23 @@
     :blaze.operation.patient/purge
     {:node #blaze/ref :blaze.db.main/node}}}
 
+  {:key :re-index
+   :name "Operation $re-index"
+   :toggle "ENABLE_OPERATION_RE_INDEX"
+   :config
+   {:blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+      {:code "re-index"
+       :def-uri "https://blaze-server.org/fhir/OperationDefinition/re-index"
+       :affects-state true
+       :system-handler #blaze/ref :blaze.fhir.operation/re-index
+       :documentation "This operation (re)indexes all resources of a search parameter. It will be always async."}]
+
+    :blaze.fhir.operation/re-index
+    {:search-param-registry #blaze/ref :blaze.db/search-param-registry
+     :clock #blaze/ref :blaze/clock
+     :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}}}
+
   {:key :terminology-service
    :name "Terminology Service"
    :toggle "ENABLE_TERMINOLOGY_SERVICE"

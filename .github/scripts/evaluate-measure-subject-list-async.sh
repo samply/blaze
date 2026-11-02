@@ -39,7 +39,7 @@ eclipsed() {
 }
 
 evaluate_measure() {
-  parameters "$2" | curl -sfH "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
+  parameters "$2" | execute_operation "$1/Measure/\$evaluate-measure" -H "Prefer: respond-async,return=representation" -o /dev/null -D -
 }
 
 base="http://localhost:8080/fhir"
