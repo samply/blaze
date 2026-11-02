@@ -1,0 +1,29 @@
+name: Commits
+
+on:
+  pull_request:
+    branches:
+    - main
+  merge_group:
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  commit-committers:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        fetch-depth: 0
+
+    - name: Check that Commits were Committed by their Authors
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+      run: .github/scripts/check-commit-committers.sh "$BASE_SHA" "$HEAD_SHA"
