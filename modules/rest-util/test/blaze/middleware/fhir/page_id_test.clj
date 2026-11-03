@@ -14,7 +14,8 @@
    [juxt.iota :refer [given]])
   (:import
    [com.google.crypto.tink Aead KeysetHandle RegistryConfiguration]
-   [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]))
+   [com.google.crypto.tink.aead AeadConfig PredefinedAeadParameters]
+   [java.util Base64 HexFormat]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -38,6 +39,19 @@
 (def handler
   (wrap-decrypt-page-id ac/completed-future page-id-cipher))
 
+(def previous-version-clear-text
+  "The CBOR encoded query params `{\"_count\" \"1\" \"__page-id-stack\" [\"\"
+  \"id-130918\"]}` as issued by previous versions of Blaze, which used maps and
+  arrays of indefinite length."
+  (.parseHex (HexFormat/of)
+             (str "bf665f636f756e7461316f5f5f706167652d69642d737461636b9f60"
+                  "6969642d313330393138ffff")))
+
+(defn- encrypt-clear-text [clear-text]
+  (.encodeToString
+   (.withoutPadding (Base64/getUrlEncoder))
+   (.encrypt ^Aead page-id-cipher clear-text nil)))
+
 (deftest wrap-decrypt-page-id-test
   (testing "random string results in an anomaly with category incorrect"
     (satisfies-prop 1000
@@ -58,4 +72,10 @@
       (given @(handler {:path-params {:page-id page-id}})
         :params := {"_count" "1"}
         :query-params := {"_count" "1"}
-        :blaze/paging-params := paging-params))))
+        :blaze/paging-params := paging-params)))
+
+  (testing "page ids issued by previous versions can be decrypted"
+    (let [page-id (encrypt-clear-text previous-version-clear-text)]
+      (given @(handler {:path-params {:page-id page-id}})
+        :params := {"_count" "1"}
+        :blaze/paging-params := {"__page-id-stack" ["" "id-130918"]}))))
