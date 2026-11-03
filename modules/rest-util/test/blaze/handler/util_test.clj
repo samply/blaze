@@ -25,6 +25,16 @@
              {:fhir/type :fhir/Task :id "AAAAAAAAAAAAAAAA"})
             [:headers "Content-Location"])))))
 
+(deftest format-request-test
+  (testing "without query string"
+    (is (= "GET [base]/foo"
+           (handler-util/format-request {:request-method :get :uri "/foo"}))))
+
+  (testing "with query string"
+    (is (= "POST [base]/foo?bar=baz"
+           (handler-util/format-request
+            {:request-method :post :uri "/foo" :query-string "bar=baz"})))))
+
 (deftest preference-test
   (testing "return"
     (are [headers res] (= res (handler-util/preference headers "return"))

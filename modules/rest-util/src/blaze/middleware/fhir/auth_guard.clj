@@ -1,8 +1,8 @@
-(ns blaze.rest-api.middleware.auth-guard
+(ns blaze.middleware.fhir.auth-guard
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
-   [blaze.rest-api.middleware.log :refer [format-request]]
+   [blaze.handler.util :as handler-util]
    [buddy.auth :as auth]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
@@ -13,7 +13,7 @@
     :code #fhir/code "MSG_AUTH_REQUIRED"})
 
 (defn- not-authenticated-response [request]
-  (log/warn (format-request request) "- 401 - Unauthorized")
+  (log/warn (handler-util/format-request request) "- 401 - Unauthorized")
   (ac/completed-future
    (-> (ring/response
         {:fhir/type :fhir/OperationOutcome

@@ -37,6 +37,7 @@
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [blaze.util-spec]
+   [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -45,6 +46,8 @@
    [java-time.api :as time]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [reitit.ring :as reitit-ring]
    [ring.core.protocols :as rp]
    [taoensso.timbre :as log])
   (:import
@@ -386,6 +389,12 @@
       [:cause-data ::s/problems 0 :via] := [::admin-api/features]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid auth backends"
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :auth-backends] [::invalid])
+      :key := :blaze/admin-api
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "with minimal config"
     (with-system [{handler :blaze/admin-api} (config!)]
       (is (fn? handler)))))
@@ -419,6 +428,85 @@
              {:request-method :get
               :uri "/fhir/__admin/foo"})
       :status := 404)))
+
+(defmethod ig/init-key ::auth-backend
+  [_ _]
+  (reify ap/IAuthentication
+    (-parse [_ _])
+    (-authenticate [_ _ _])))
+
+(defn- auth-config! []
+  (-> (assoc-in (config!) [:blaze/admin-api :auth-backends] [(ig/ref ::auth-backend)])
+      (assoc ::auth-backend {})))
+
+(def ^:private path-param-values
+  {"db" "index" "column-family" "default" "id" "AAAAAAAAAAAAAAAA"})
+
+(defn- fill-path-params
+  "Replaces all path params like `{db}` in `path` by example values. Fails on
+  unknown path params, so that new routes can't be skipped silently."
+  [path]
+  (str/replace path #"\{([^}]+)\}"
+               (fn [[_ param]]
+                 (or (path-param-values param)
+                     (throw (ex-info (str "Unknown path param: " param) {}))))))
+
+(def ^:private request-methods
+  [:get :head :post :put :patch :delete])
+
+(defn- route-requests
+  "Returns a tuple of an unauthenticated request and the response type for
+  every route and request method of the admin API `handler`."
+  [handler]
+  (for [[path data] (reitit/routes (reitit-ring/get-router handler))
+        method request-methods
+        :when (method data)]
+    [{:request-method method :uri (fill-path-params path)}
+     (:response-type data)]))
+
+(deftest unauthenticated-test
+  (testing "every route rejects unauthenticated requests"
+    (with-system [{handler :blaze/admin-api} (auth-config!)]
+      (let [requests (route-requests handler)
+            handler (wrap-read-json handler)]
+        (testing "all routes are found"
+          (is (< 15 (count requests))))
+
+        (doseq [[{:keys [request-method uri] :as request} response-type] requests]
+          (testing (str (name request-method) " " uri)
+            (case response-type
+              :json
+              (given @(handler request)
+                :status := 401
+                [:headers "Content-Type"] := "application/json;charset=utf-8"
+                :body := {"msg" "Authentication required."})
+
+              :fhir
+              (given @(handler request)
+                :status := 401
+                [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+                [:body "resourceType"] := "OperationOutcome"
+                [:body "issue" 0 "code"] := "login"
+                [:body "issue" 0 "details" "coding" 0 "code"] := "MSG_AUTH_REQUIRED")))))))
+
+  (testing "unknown paths return a small JSON body"
+    (with-handler [handler] (auth-config!) []
+      (given @(handler {:request-method :get :uri "/fhir/__admin/foo"})
+        :status := 401
+        [:headers "Content-Type"] := "application/json;charset=utf-8"
+        :body := {"msg" "Authentication required."})))
+
+  (testing "authenticated requests are passed through"
+    (with-handler [handler] (auth-config!) []
+      (given @(handler {:request-method :get :uri "/fhir/__admin/dbs"
+                        :identity ::identity})
+        :status := 200
+        [:body 0 "name"] := "index")
+
+      (given @(handler {:request-method :get :uri "/fhir/__admin/Task"
+                        :identity ::identity})
+        :status := 200
+        [:body "resourceType"] := "Bundle"))))
 
 (deftest handler-openapi-test
   (with-handler [handler] (config!) []

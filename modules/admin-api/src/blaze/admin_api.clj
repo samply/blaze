@@ -25,6 +25,8 @@
    [blaze.job-scheduler.spec]
    [blaze.job.canonical :as jc]
    [blaze.job.re-index]
+   [blaze.middleware.auth-guard :as auth-guard]
+   [blaze.middleware.fhir.auth-guard :as fhir-auth-guard]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.id :as id]
    [blaze.middleware.fhir.output :as fhir-output]
@@ -170,6 +172,13 @@
                         ((wrap-json-output opts) handler))
                 :fhir wrap-fhir-output))})
 
+(def ^:private wrap-auth-guard
+  {:name :auth-guard
+   :compile (fn [{:keys [response-type]} _]
+              (condp = response-type
+                :json auth-guard/wrap-auth-guard
+                :fhir fhir-auth-guard/wrap-auth-guard))})
+
 (def ^:private wrap-db
   {:name :db
    :wrap db/wrap-db})
@@ -237,7 +246,7 @@
 
 (defn- router
   [{:keys [context-path admin-node validator parsing-context writing-context
-           db-sync-timeout dbs create-job-handler read-job-handler
+           auth-backends db-sync-timeout dbs create-job-handler read-job-handler
            history-job-handler search-type-job-handler pause-job-handler
            resume-job-handler cancel-job-handler cql-cache-stats-handler
            cql-bloom-filters-handler]
@@ -247,7 +256,10 @@
   (reitit.ring/router
    [""
     {:openapi {:id :admin-api}
-     :middleware [[wrap-output writing-context] openapi/openapi-feature]
+     :middleware
+     (cond-> [[wrap-output writing-context] openapi/openapi-feature]
+       (seq auth-backends)
+       (conj wrap-auth-guard))
      :response-type :json
      :response-type.json/opts {:encode-key-fn (comp camel name)}}
     [""
@@ -504,10 +516,15 @@
                    :blaze/job-scheduler ::read-job-handler
                    ::history-job-handler ::search-type-job-handler ::settings
                    ::features]
-          :opt [::dbs ::expr/cache ::db-sync-timeout]))
+          :opt [::dbs ::expr/cache ::db-sync-timeout]
+          :opt-un [::auth-backends]))
+
+(defn- not-found-handler [{:keys [uri]}]
+  (-> (ring/not-found {"uri" uri})
+      (ac/completed-future)))
 
 (defmethod ig/init-key :blaze/admin-api
-  [_ {:keys [job-scheduler] :as config}]
+  [_ {:keys [job-scheduler auth-backends] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
    (router (assoc config
@@ -518,6 +535,6 @@
                   :cql-cache-stats-handler (cql-cache-stats-handler config)
                   :cql-bloom-filters-handler (cql-bloom-filters-handler config)))
    ((wrap-json-output {})
-    (fn [{:keys [uri]}]
-      (-> (ring/not-found {"uri" uri})
-          (ac/completed-future))))))
+    (cond-> not-found-handler
+      (seq auth-backends)
+      auth-guard/wrap-auth-guard))))

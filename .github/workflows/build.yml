@@ -3228,6 +3228,9 @@ jobs:
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
 
+    - name: Unauthenticated Admin API Requests
+      run: .github/scripts/admin-api/unauthenticated-requests.sh
+
     - name: Token Rejected with Wrong Issuer
       run: .github/scripts/rejected-request.sh 8081
 

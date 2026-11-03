@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.fhir.structure-definition-repo :as sdr]
+   [blaze.middleware.fhir.auth-guard :as auth-guard]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.error :as error]
    [blaze.middleware.fhir.id :as id]
@@ -10,7 +11,6 @@
    [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.link-headers :as link-headers]
    [blaze.middleware.output :as output]
-   [blaze.rest-api.middleware.auth-guard :as auth-guard]
    [blaze.rest-api.middleware.ensure-form-body :as ensure-form-body]
    [blaze.rest-api.middleware.forwarded :as forwarded]
    [blaze.rest-api.middleware.metrics :as metrics]
@@ -34,9 +34,21 @@
   {:name :forwarded
    :wrap forwarded/wrap-forwarded})
 
+(defn- guards-itself?
+  "Returns true if the handler of a route with `route-data` guards against
+  unauthenticated requests itself.
+
+  That are the handlers of routes with response type `:none`, like the admin
+  API, because only they know the format of the response of each of their
+  endpoints."
+  [{:keys [response-type]}]
+  (= :none response-type))
+
 (def ^:private wrap-auth-guard
   {:name :auth-guard
-   :wrap auth-guard/wrap-auth-guard})
+   :compile (fn [route-data _]
+              (when-not (guards-itself? route-data)
+                auth-guard/wrap-auth-guard))})
 
 (def ^:private wrap-invalid-id
   {:name :invalid-id

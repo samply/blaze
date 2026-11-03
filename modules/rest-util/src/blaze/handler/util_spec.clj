@@ -6,6 +6,10 @@
    [blaze.spec]
    [clojure.spec.alpha :as s]))
 
+(s/fdef handler-util/format-request
+  :args (s/cat :request map?)
+  :ret string?)
+
 (s/fdef handler-util/preference
   :args (s/cat :headers (s/nilable map?) :name string?)
   :ret (s/nilable keyword?))

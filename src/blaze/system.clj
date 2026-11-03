@@ -136,6 +136,9 @@
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
     :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}
 
+   :blaze/admin-api
+   {:auth-backends (ig/refset :blaze.auth/backend)}
+
    ::rest-api/requests-total {}
    ::rest-api/request-duration-seconds {}
    ::rest-api/parse-duration-seconds {}

@@ -1,6 +1,6 @@
-(ns blaze.rest-api.middleware.auth-guard-spec
+(ns blaze.middleware.fhir.auth-guard-spec
   (:require
-   [blaze.rest-api.middleware.auth-guard :as auth-guard]
+   [blaze.middleware.fhir.auth-guard :as auth-guard]
    [clojure.spec.alpha :as s]))
 
 (s/fdef auth-guard/wrap-auth-guard
