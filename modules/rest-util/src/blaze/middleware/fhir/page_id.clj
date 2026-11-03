@@ -17,14 +17,18 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok try-one]]
    [blaze.async.comp :as ac]
-   [cheshire.core :as json]
-   [cognitect.anomalies :as anom])
+   [cognitect.anomalies :as anom]
+   [jsonista.core :as j])
   (:import
+   [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [com.google.crypto.tink Aead]
    [java.security GeneralSecurityException]
    [java.util Base64 Base64$Encoder]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private cbor-object-mapper
+  (j/object-mapper {:factory (CBORFactory.)}))
 
 (defn- decrypt* [page-id-cipher input]
   (try-one GeneralSecurityException ::anom/incorrect
@@ -37,7 +41,7 @@
 (defn- decrypt [page-id-cipher page-id]
   (if-ok [cipher-text (b64-decode page-id)
           clear-text (decrypt* page-id-cipher cipher-text)]
-    (json/parse-cbor clear-text)
+    (j/read-value clear-text cbor-object-mapper)
     (fn [_] (ba/not-found (format "Page with id `%s` not found." page-id)))))
 
 (def ^:private paging-param-names
@@ -78,6 +82,6 @@
   that can be used as page id."
   {:arglists '([page-id-cipher query-params])}
   [page-id-cipher query-params]
-  (let [clear-text (json/generate-cbor query-params)
+  (let [clear-text (j/write-value-as-bytes query-params cbor-object-mapper)
         cipher-text (.encrypt ^Aead page-id-cipher clear-text nil)]
     (.encodeToString b64-encoder cipher-text)))
