@@ -7,10 +7,14 @@
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb.spec]
    [blaze.db.spec]
+   [buddy.auth.protocols :as p]
    [clojure.spec.alpha :as s]))
 
 (s/def ::admin-api/admin-node
   :blaze.db/node)
+
+(s/def ::admin-api/auth-backends
+  (s/coll-of #(satisfies? p/IAuthentication %)))
 
 (s/def ::admin-api/read-job-handler
   fn?)

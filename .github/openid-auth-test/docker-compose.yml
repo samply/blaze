@@ -21,6 +21,7 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
+      ENABLE_ADMIN_API: "true"
     ports:
     - "8080:8080"
     volumes:

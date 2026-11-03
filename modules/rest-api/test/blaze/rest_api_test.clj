@@ -266,9 +266,18 @@
       (rp/write-body-to-stream body nil out)
       (.toByteArray out))))
 
-(defn- wrap-read-value [handler]
+(defn- wrap-read-value
+  "Reads the body of the response. Raises errors while reading the body, so
+  that tests fail instead of waiting forever for a response."
+  [handler]
   (fn [request respond raise]
-    (handler request #(respond (update % :body read-value)) raise)))
+    (handler
+     request
+     #(try
+        (respond (update % :body read-value))
+        (catch Throwable e
+          (raise e)))
+     raise)))
 
 (defn- call [handler request]
   (tu-r/call (wrap-read-value handler) request))
@@ -518,3 +527,43 @@
     (testing "Patient search"
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200))))
+
+(def ^:private admin-handler
+  (constantly (ac/completed-future (ring/response (.getBytes "admin")))))
+
+(def unauthenticated-config
+  (-> (assoc-in config [:blaze/rest-api :auth-backends] [(ig/ref ::unauthenticated-backend)])
+      (assoc-in [:blaze/rest-api :admin-handler] admin-handler)
+      (update-in [:blaze/rest-api :operations] conj
+                 #:blaze.rest-api.operation
+                  {:code "graphql"
+                   :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
+                   :affects-state false
+                   :response-type :json
+                   :system-handler success-handler})
+      (assoc ::unauthenticated-backend {})))
+
+(defmethod ig/init-key ::unauthenticated-backend
+  [_ _]
+  (reify ap/IAuthentication
+    (-parse [_ _] nil)
+    (-authenticate [_ _ _])))
+
+(deftest unauthenticated-test
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} unauthenticated-config]
+    (testing "FHIR interaction"
+      (given (call rest-api {:request-method :get :uri "/Patient"})
+        :status := 401
+        [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:body json-parser :issue 0 :code] := #fhir/code "login"))
+
+    (testing "the admin handler guards itself"
+      (given (call rest-api {:request-method :get :uri "/__admin/dbs"})
+        :status := 200
+        [:body #(String. ^bytes %)] := "admin"))
+
+    (testing "JSON operation"
+      (given (call rest-api {:request-method :get :uri "/$graphql"})
+        :status := 401
+        [:headers "Content-Type"] := "application/json;charset=utf-8"))))

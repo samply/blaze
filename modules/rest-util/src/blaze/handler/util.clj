@@ -20,6 +20,16 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- format-request-method [{:keys [request-method]}]
+  (str/upper-case (name request-method)))
+
+(defn format-request
+  "Formats `request` for logging like `GET [base]/Patient?name=foo`."
+  [{:keys [uri query-string] :as request}]
+  (if query-string
+    (format "%s [base]%s?%s" (format-request-method request) uri query-string)
+    (format "%s [base]%s" (format-request-method request) uri)))
+
 (def ^:private valid-return-preferences
   #{"minimal" "representation" "OperationOutcome"})
 
