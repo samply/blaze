@@ -26,8 +26,7 @@
    [muuntaja.parse :as parse]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Caffeine]
-   [java.lang AutoCloseable]))
+   [com.github.benmanes.caffeine.cache Caffeine]))
 
 (set! *warn-on-reflection* true)
 
@@ -190,14 +189,6 @@
       (vs/find context url version)
       (vs/find context url))))
 
-(defn- handle-close [stage db]
-  (ac/handle
-   stage
-   (fn [output e]
-     (let [res (if e (assoc e :t (d/t db)) output)]
-       (.close ^AutoCloseable db)
-       res))))
-
 (defn- context [{:keys [clock graph-cache loinc sct]}]
   (cond-> {:clock clock ::cs/graph-cache graph-cache}
     loinc (assoc :loinc/context loinc)
@@ -226,7 +217,7 @@
   [node]
   (log/info "Load all code systems into the resource cache...")
   (let [start (System/nanoTime)]
-    @(cs/list (d/db node))
+    @(d/with-db node cs/list)
     (log/info "Successfully loaded all code systems in"
               (format "%.1f" (u/duration-s start)) "seconds")))
 
@@ -314,10 +305,22 @@
    "lenient-display-validation" {:action :copy :coerce fu/coerce-boolean}
    "activeOnly" {:action :copy :coerce fu/coerce-boolean}})
 
-(defn- db [vnode]
+(defn- with-db
+  "Calls `f` with the current database value of the node in `vnode`, if the
+  terminology service is initialized."
+  [vnode f]
   (if-some [node @vnode]
-    (d/db node)
-    (ba/unavailable "Terminology service is unavailable.")))
+    (d/with-db node f)
+    (ac/completed-future (ba/unavailable "Terminology service is unavailable."))))
+
+(defn- with-db-t
+  "Like `with-db` but associates the t of the database value with the anomaly
+  under :t in case of errors."
+  [vnode f]
+  (with-db vnode
+    (fn [db]
+      (-> (f db)
+          (ac/exceptionally #(assoc % :t (d/t db)))))))
 
 (defn- context-with-db [context db {:keys [tx-resources]}]
   (cond-> (assoc context :db db)
@@ -333,64 +336,58 @@
 
     p/TerminologyService
     (-code-systems [_]
-      (if-ok [db (db vnode)]
-        (c/code-systems db)
-        ac/completed-future))
+      (with-db vnode c/code-systems))
 
     (-code-system-lookup [_ params]
       (if-ok [params (fu/coerce-params cs-lookup-param-specs params)
-              params (cs-lookup-more context params)
-              db (db vnode)]
-        (let [db (d/new-batch-db db)]
-          (-> (find-code-system (context-with-db context db params) params)
-              (ac/then-apply #(cs/lookup % params))
-              (handle-close db)))
+              params (cs-lookup-more context params)]
+        (with-db-t vnode
+          (fn [db]
+            (-> (find-code-system (context-with-db context db params) params)
+                (ac/then-apply #(cs/lookup % params)))))
         ac/completed-future))
 
     (-code-system-validate-code [_ params]
       (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
-              [first-params :as all-params] (cs-validate-code-more context params)
-              db (db vnode)]
-        (let [db (d/new-batch-db db)]
-          (-> (find-code-system (context-with-db context db first-params)
-                                first-params)
-              (ac/then-apply #(cs/validate-code % all-params))
-              (handle-close db)))
+              [first-params :as all-params] (cs-validate-code-more context params)]
+        (with-db-t vnode
+          (fn [db]
+            (-> (find-code-system (context-with-db context db first-params)
+                                  first-params)
+                (ac/then-apply #(cs/validate-code % all-params)))))
         ac/completed-future))
 
     (-expand-value-set [_ params]
       (if-ok [params (fu/coerce-params vs-expand-param-specs params)
-              params (expand-vs-more params)
-              db (db vnode)]
-        (let [db (d/new-batch-db db)
-              context (context-with-db context db params)
-              context (assoc context :params params)]
-          (-> (find-value-set context params)
-              (ac/then-compose
-               (partial vs-expand/expand-value-set context))
-              (handle-close db)))
+              params (expand-vs-more params)]
+        (with-db-t vnode
+          (fn [db]
+            (let [context (-> (context-with-db context db params)
+                              (assoc :params params))]
+              (-> (find-value-set context params)
+                  (ac/then-compose
+                   (partial vs-expand/expand-value-set context))))))
         ac/completed-future))
 
     (-value-set-validate-code [_ params]
       (let [validate-params (partial fu/coerce-params vs-validate-code-param-specs)]
         (if-ok [params (validate-params params)
-                params (vs-validate-code-more params)
-                db (db vnode)]
-          (let [db (d/new-batch-db db)
-                context (context-with-db context db params)]
-            (-> (find-value-set context params)
-                (ac/then-compose
-                 (fn [value-set]
-                   (if-ok [extension-params (validate-params (vs/extension-params value-set))]
-                     (vs-validate-code/validate-code
-                      context
-                      value-set
-                      (merge
-                       (vs/display-language-param value-set)
-                       extension-params
-                       params))
-                     ac/completed-future)))
-                (handle-close db)))
+                params (vs-validate-code-more params)]
+          (with-db-t vnode
+            (fn [db]
+              (let [context (context-with-db context db params)]
+                (-> (find-value-set context params)
+                    (ac/then-compose
+                     (fn [value-set]
+                       (if-ok [extension-params (validate-params (vs/extension-params value-set))]
+                         (vs-validate-code/validate-code
+                          context
+                          value-set
+                          (merge
+                           (vs/display-language-param value-set)
+                           extension-params
+                           params))
+                         ac/completed-future)))))))
           ac/completed-future)))))
 
 (defmethod m/pre-init-spec ::ts/local [_]

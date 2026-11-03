@@ -1,6 +1,5 @@
 (ns blaze.db.node.tx-indexer.expand-test
   (:require
-   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
@@ -33,9 +32,7 @@
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 
 (defn- expand-tx-cmds [node tx-cmds]
-  (let [db (d/new-batch-db (d/db node))]
-    (-> (expand/expand-tx-cmds db tx-cmds)
-        (ac/when-complete (fn [_ _] (.close db))))))
+  (d/with-db node #(expand/expand-tx-cmds % tx-cmds)))
 
 (deftest expand-tx-cmds-conditional-create-test
   (testing "conflict"

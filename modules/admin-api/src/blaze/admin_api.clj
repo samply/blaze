@@ -246,12 +246,11 @@
 
 (defn- router
   [{:keys [context-path admin-node validator parsing-context writing-context
-           auth-backends db-sync-timeout dbs create-job-handler read-job-handler
+           auth-backends dbs create-job-handler read-job-handler
            history-job-handler search-type-job-handler pause-job-handler
            resume-job-handler cancel-job-handler cql-cache-stats-handler
            cql-bloom-filters-handler]
-    :or {context-path ""
-         db-sync-timeout 10000}
+    :or {context-path ""}
     :as context}]
   (reitit.ring/router
    [""
@@ -407,7 +406,7 @@
      [""
       {:name :Task/type
        :get
-       {:middleware [[wrap-db admin-node db-sync-timeout]]
+       {:middleware [[wrap-db admin-node]]
         :handler search-type-job-handler}
        :post
        {:middleware [[wrap-resource parsing-context "Task"]
@@ -417,11 +416,11 @@
       {:middleware [wrap-invalid-id]}
       [""
        {:get
-        {:middleware [[wrap-db admin-node db-sync-timeout]]
+        {:middleware [[wrap-db admin-node]]
          :handler read-job-handler}}]
       ["/_history"
        {:get
-        {:middleware [[wrap-db admin-node db-sync-timeout]
+        {:middleware [[wrap-db admin-node]
                       wrap-link-headers]
          :handler history-job-handler}}]
       ["/$pause"
@@ -516,7 +515,7 @@
                    :blaze/job-scheduler ::read-job-handler
                    ::history-job-handler ::search-type-job-handler ::settings
                    ::features]
-          :opt [::dbs ::expr/cache ::db-sync-timeout]
+          :opt [::dbs ::expr/cache]
           :opt-un [::auth-backends]))
 
 (defn- not-found-handler [{:keys [uri]}]

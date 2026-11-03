@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.cql.translator :as t]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.external-data]
@@ -80,30 +80,30 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context ctu/patient-retrieve-elm)
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")]
+              expr (c/compile context ctu/patient-retrieve-elm)]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")]
 
-          (testing "eval"
-            (given (expr/eval (eval-context db) expr patient)
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0"))
+              (testing "eval"
+                (given (expr/eval (eval-context db) expr patient)
+                  [0 :fhir/type] := :fhir/Patient
+                  [0 :id] := "0"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr '(retrieve-resource))))))
+              (testing "form"
+                (has-form expr '(retrieve-resource))))))))
 
     (testing "non-existing type"
       (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -122,30 +122,30 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context #elm/retrieve{:type "Observation"})
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")]
+              expr (c/compile context #elm/retrieve{:type "Observation"})]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")]
 
-          (testing "eval"
-            (given (expr/eval (eval-context db) expr patient)
-              [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "1"))
+              (testing "eval"
+                (given (expr/eval (eval-context db) expr patient)
+                  [0 :fhir/type] := :fhir/Observation
+                  [0 :id] := "1"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr '(retrieve "Observation")))))
+              (testing "form"
+                (has-form expr '(retrieve "Observation")))))))
 
       (testing "with one code"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -174,33 +174,33 @@
                      {:type "Observation"
                       :codes #elm/list [#elm/code ["sys-def-131750"
                                                    "code-192300"]]}
-                expr (c/compile context elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
+                expr (c/compile context elm)]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
 
-            (testing "eval"
-              (given (expr/eval (eval-context db) expr patient)
-                count := 1
-                [0 :fhir/type] := :fhir/Observation
-                [0 :id] := "1"))
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 1
+                    [0 :fhir/type] := :fhir/Observation
+                    [0 :id] := "1"))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+                (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+                (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+                (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+                (ctu/testing-constant-resolve-params expr)
 
-            (testing "optimize"
-              (is (= expr (c/optimize expr db))))
+                (testing "optimize"
+                  (is (= expr (c/optimize expr db))))
 
-            (testing "form"
-              (has-form expr
-                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))))
+                (testing "form"
+                  (has-form expr
+                    '(retrieve "Observation" [["code" "system-192253|code-192300"]])))))))
 
         (testing "optimizing into an empty list because Observation isn't available"
           (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -217,10 +217,10 @@
                        {:type "Observation"
                         :codes #elm/list [#elm/code ["sys-def-131750"
                                                      "code-192300"]]}
-                  expr (c/compile context elm)
-                  db (d/db node)]
+                  expr (c/compile context elm)]
+              (with-db [db node]
 
-              (has-form (c/optimize expr db) [])))))
+                (has-form (c/optimize expr db) []))))))
 
       (testing "with two codes"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -258,39 +258,39 @@
                       :codes
                       #elm/list [#elm/code ["sys-def-131750" "code-192300"]
                                  #elm/code ["sys-def-131750" "code-140541"]]}
-                expr (c/compile context elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
+                expr (c/compile context elm)]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
 
-            (testing "eval"
-              (given (expr/eval (eval-context db) expr patient)
-                count := 2
-                [0 :fhir/type] := :fhir/Observation
-                [0 :id] := "1"
-                [1 :fhir/type] := :fhir/Observation
-                [1 :id] := "2"))
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 2
+                    [0 :fhir/type] := :fhir/Observation
+                    [0 :id] := "1"
+                    [1 :fhir/type] := :fhir/Observation
+                    [1 :id] := "2"))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+                (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+                (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+                (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+                (ctu/testing-constant-resolve-params expr)
 
-            (testing "optimize"
-              (is (= expr (c/optimize expr db))))
+                (testing "optimize"
+                  (is (= expr (c/optimize expr db))))
 
-            (testing "form"
-              (has-form expr
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]]))))))
+                (testing "form"
+                  (has-form expr
+                    '(retrieve
+                      "Observation"
+                      [["code"
+                        "system-192253|code-192300"
+                        "system-192253|code-140541"]]))))))))
 
       (testing "with one concept"
         (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -330,39 +330,39 @@
                          [[#elm/code ["sys-def-131750" "code-192300"]
                            #elm/code ["sys-def-131750" "code-140541"]]]
                         "codes"]}
-                expr (c/compile context elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
+                expr (c/compile context elm)]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
 
-            (testing "eval"
-              (given (expr/eval (eval-context db) expr patient)
-                count := 2
-                [0 :fhir/type] := :fhir/Observation
-                [0 :id] := "1"
-                [1 :fhir/type] := :fhir/Observation
-                [1 :id] := "2"))
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 2
+                    [0 :fhir/type] := :fhir/Observation
+                    [0 :id] := "1"
+                    [1 :fhir/type] := :fhir/Observation
+                    [1 :id] := "2"))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+                (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+                (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+                (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+                (ctu/testing-constant-resolve-params expr)
 
-            (testing "optimize"
-              (is (= expr (c/optimize expr db))))
+                (testing "optimize"
+                  (is (= expr (c/optimize expr db))))
 
-            (testing "form"
-              (has-form expr
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]]))))))
+                (testing "form"
+                  (has-form expr
+                    '(retrieve
+                      "Observation"
+                      [["code"
+                        "system-192253|code-192300"
+                        "system-192253|code-140541"]]))))))))
 
       (testing "with value set reference"
         (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -407,38 +407,38 @@
                      {:type "Observation"
                       :codes #elm/value-set-ref "vs1"
                       :codeComparator "in"}
-                expr (c/compile context elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
+                expr (c/compile context elm)]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
 
-            (testing "eval"
-              (given (expr/eval (eval-context db) expr patient)
-                count := 2
-                [0 :fhir/type] := :fhir/Observation
-                [0 :id] := "1"
-                [1 :fhir/type] := :fhir/Observation
-                [1 :id] := "2"))
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 2
+                    [0 :fhir/type] := :fhir/Observation
+                    [0 :id] := "1"
+                    [1 :fhir/type] := :fhir/Observation
+                    [1 :id] := "2"))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+                (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+                (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+                (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+                (ctu/testing-constant-resolve-params expr)
 
-            (testing "optimize"
-              (is (= expr (c/optimize expr db))))
+                (testing "optimize"
+                  (is (= expr (c/optimize expr db))))
 
-            (testing "form"
-              (has-form expr
-                '(retrieve
-                  "Observation"
-                  [["code:in"
-                    "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))
+                (testing "form"
+                  (has-form expr
+                    '(retrieve
+                      "Observation"
+                      [["code:in"
+                        "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))))
 
       (testing "unknown code property"
         (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -482,45 +482,45 @@
               {:node node
                :eval-context "Specimen"
                :library {}}
-              expr (c/compile context ctu/patient-retrieve-elm)
-              db (d/db node)
-              eval-ctx (eval-context db)]
+              expr (c/compile context ctu/patient-retrieve-elm)]
+          (with-db [db node]
+            (let [eval-ctx (eval-context db)]
 
-          (testing "eval"
-            (testing "specimen with patient subject"
-              (given (expr/eval eval-ctx expr (ctu/resource db "Specimen" "0"))
-                count := 1
-                [0 :fhir/type] := :fhir/Patient
-                [0 :id] := "0"))
+              (testing "eval"
+                (testing "specimen with patient subject"
+                  (given (expr/eval eval-ctx expr (ctu/resource db "Specimen" "0"))
+                    count := 1
+                    [0 :fhir/type] := :fhir/Patient
+                    [0 :id] := "0"))
 
-            (testing "specimen without subject"
-              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "1")))))
+                (testing "specimen without subject"
+                  (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "1")))))
 
-            (testing "specimen with group subject"
-              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "2")))))
+                (testing "specimen with group subject"
+                  (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "2")))))
 
-            (testing "specimen with invalid subject reference"
-              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "3")))))
+                (testing "specimen with invalid subject reference"
+                  (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "3")))))
 
-            (testing "specimen with deleted patient subject"
-              (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "4"))))))
+                (testing "specimen with deleted patient subject"
+                  (is (nil? (expr/eval eval-ctx expr (ctu/resource db "Specimen" "4"))))))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr
-              '(retrieve (Specimen) "Patient")))))))
+              (testing "form"
+                (has-form expr
+                  '(retrieve (Specimen) "Patient")))))))))
 
   (testing "Unfiltered context"
     (testing "Medication"
@@ -546,31 +546,31 @@
                    {:type "Medication"
                     :codes #elm/list [#elm/code ["sys-def-225944"
                                                  "code-225809"]]}
-              expr (c/compile context elm)
-              db (d/db node)]
+              expr (c/compile context elm)]
+          (with-db [db node]
 
-          (testing "eval"
-            (given (expr/eval (eval-context db) expr nil)
-              count := 1
-              [0 :fhir/type] := :fhir/Medication
-              [0 :id] := "0"))
+            (testing "eval"
+              (given (expr/eval (eval-context db) expr nil)
+                count := 1
+                [0 :fhir/type] := :fhir/Medication
+                [0 :id] := "0"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+            (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+            (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+            (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+            (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+            (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr
-              '(retrieve "Medication" [["code" "system-225806|code-225809"]]))))))
+            (testing "form"
+              (has-form expr
+                '(retrieve "Medication" [["code" "system-225806|code-225809"]])))))))
 
     (testing "with value set reference"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -615,38 +615,38 @@
                    {:type "Observation"
                     :codes #elm/value-set-ref "vs1"
                     :codeComparator "in"}
-              expr (c/compile context elm)
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")]
+              expr (c/compile context elm)]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")]
 
-          (testing "eval"
-            (given (expr/eval (eval-context db) expr patient)
-              count := 2
-              [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "1"
-              [1 :fhir/type] := :fhir/Observation
-              [1 :id] := "2"))
+              (testing "eval"
+                (given (expr/eval (eval-context db) expr patient)
+                  count := 2
+                  [0 :fhir/type] := :fhir/Observation
+                  [0 :id] := "1"
+                  [1 :fhir/type] := :fhir/Observation
+                  [1 :id] := "2"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (testing "optimize"
-            (is (= expr (c/optimize expr db))))
+              (testing "optimize"
+                (is (= expr (c/optimize expr db))))
 
-          (testing "form"
-            (has-form expr
-              '(retrieve
-                "Observation"
-                [["code:in"
-                  "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))
+              (testing "form"
+                (has-form expr
+                  '(retrieve
+                    "Observation"
+                    [["code:in"
+                      "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))))
 
     (testing "unknown code property"
       (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -695,34 +695,34 @@
                           [\"name-133756\" -> Observation]
                         ")
               context (compile-context system)
-              {:keys [expression-defs]} (library/compile-library context library {})
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")
-              eval-context (assoc (eval-context db) :expression-defs expression-defs)
-              expr (:expression (get expression-defs "InInitialPopulation"))]
+              {:keys [expression-defs]} (library/compile-library context library {})]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")
+                  eval-context (assoc (eval-context db) :expression-defs expression-defs)
+                  expr (:expression (get expression-defs "InInitialPopulation"))]
 
-          (testing "eval"
-            (given (expr/eval eval-context expr patient)
-              count := 1
-              [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "0"))
+              (testing "eval"
+                (given (expr/eval eval-context expr patient)
+                  count := 1
+                  [0 :fhir/type] := :fhir/Observation
+                  [0 :id] := "0"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr
-              '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
+              (testing "form"
+                (has-form expr
+                  '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))))
 
     (testing "with pre-compiled database query"
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
@@ -752,35 +752,35 @@
                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                         ")
               context (compile-context system)
-              {:keys [expression-defs]} (library/compile-library context library {})
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")
-              eval-context (assoc (eval-context db) :expression-defs expression-defs)
-              expr (:expression (get expression-defs "InInitialPopulation"))]
+              {:keys [expression-defs]} (library/compile-library context library {})]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")
+                  eval-context (assoc (eval-context db) :expression-defs expression-defs)
+                  expr (:expression (get expression-defs "InInitialPopulation"))]
 
-          (testing "eval"
-            (given (expr/eval eval-context expr patient)
-              count := 1
-              [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "0"))
+              (testing "eval"
+                (given (expr/eval eval-context expr patient)
+                  count := 1
+                  [0 :fhir/type] := :fhir/Observation
+                  [0 :id] := "0"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr
-              '(retrieve (singleton-from (retrieve-resource)) "Observation"
-                         [["code" "system-133620|code-133657"]]))))))
+              (testing "form"
+                (has-form expr
+                  '(retrieve (singleton-from (retrieve-resource)) "Observation"
+                             [["code" "system-133620|code-133657"]]))))))))
 
     (testing "with pre-compiled database query"
       (with-system-data [{:blaze.db/keys [node] :as system} api-stub/mem-node-config]
@@ -818,35 +818,35 @@
                           [\"name-133730\" -> Observation: vs1]
                         ")
               context (compile-context system)
-              {:keys [expression-defs]} (library/compile-library context library {})
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")
-              eval-context (assoc (eval-context db) :expression-defs expression-defs)
-              expr (:expression (get expression-defs "InInitialPopulation"))]
+              {:keys [expression-defs]} (library/compile-library context library {})]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")
+                  eval-context (assoc (eval-context db) :expression-defs expression-defs)
+                  expr (:expression (get expression-defs "InInitialPopulation"))]
 
-          (testing "eval"
-            (given (expr/eval eval-context expr patient)
-              count := 1
-              [0 :fhir/type] := :fhir/Observation
-              [0 :id] := "0"))
+              (testing "eval"
+                (given (expr/eval eval-context expr patient)
+                  count := 1
+                  [0 :fhir/type] := :fhir/Observation
+                  [0 :id] := "0"))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+              (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+              (ctu/testing-constant-patient-count expr)
 
-          (ctu/testing-constant-resolve-refs expr)
+              (ctu/testing-constant-resolve-refs expr)
 
-          (ctu/testing-constant-resolve-params expr)
+              (ctu/testing-constant-resolve-params expr)
 
-          (ctu/testing-constant-optimize expr)
+              (ctu/testing-constant-optimize expr)
 
-          (testing "form"
-            (has-form expr
-              '(retrieve (singleton-from (retrieve-resource)) "Observation"
-                         [["code:in" "http://fhir.org/VCL?v1=(http://system-133620)*"]]))))))
+              (testing "form"
+                (has-form expr
+                  '(retrieve (singleton-from (retrieve-resource)) "Observation"
+                             [["code:in" "http://fhir.org/VCL?v1=(http://system-133620)*"]]))))))))
 
     (testing "unknown code property"
       (with-system [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -929,14 +929,14 @@
                    {:type "Observation"
                     :codes #elm/list [#elm/code ["sys-def-141923"
                                                  "code-141929"]]}
-              expr (c/compile context elm)
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")]
+              expr (c/compile context elm)]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")]
 
-          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141940"))]
-            (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
-              ::anom/category := ::anom/fault
-              ::anom/message := "msg-141940")))))
+              (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-141940"))]
+                (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
+                  ::anom/category := ::anom/fault
+                  ::anom/message := "msg-141940")))))))
 
     (testing "context-expr -eval (Patient context, Encounter data-type, no codes)"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -947,14 +947,14 @@
                :eval-context "Patient"
                :library {}}
               elm #elm/retrieve {:type "Encounter"}
-              expr (c/compile context elm)
-              db (d/db node)
-              patient (ctu/resource db "Patient" "0")]
+              expr (c/compile context elm)]
+          (with-db [db node]
+            (let [patient (ctu/resource db "Patient" "0")]
 
-          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142211"))]
-            (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
-              ::anom/category := ::anom/fault
-              ::anom/message := "msg-142211")))))
+              (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142211"))]
+                (given (ba/try-anomaly (expr/eval (eval-context db) expr patient))
+                  ::anom/category := ::anom/fault
+                  ::anom/message := "msg-142211")))))))
 
     (testing "type-query-expr -eval (Unfiltered context with codes)"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -973,13 +973,13 @@
                    {:type "Observation"
                     :codes #elm/list [#elm/code ["sys-def-142425"
                                                  "code-142430"]]}
-              expr (c/compile context elm)
-              db (d/db node)]
+              expr (c/compile context elm)]
+          (with-db [db node]
 
-          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142447"))]
-            (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
-              ::anom/category := ::anom/fault
-              ::anom/message := "msg-142447")))))
+            (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142447"))]
+              (given (ba/try-anomaly (expr/eval (eval-context db) expr nil))
+                ::anom/category := ::anom/fault
+                ::anom/message := "msg-142447"))))))
 
     (testing "compartment-query-expr -optimize (Patient context with codes)"
       (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
@@ -998,10 +998,10 @@
                    {:type "Observation"
                     :codes #elm/list [#elm/code ["sys-def-142624"
                                                  "code-142628"]]}
-              expr (c/compile context elm)
-              db (d/db node)]
+              expr (c/compile context elm)]
+          (with-db [db node]
 
-          (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142647"))]
-            (given (ba/try-anomaly (c/optimize expr db))
-              ::anom/category := ::anom/fault
-              ::anom/message := "msg-142647")))))))
+            (with-redefs [d/execute-query (fn [& _] (ba/fault "msg-142647"))]
+              (given (ba/try-anomaly (c/optimize expr db))
+                ::anom/category := ::anom/fault
+                ::anom/message := "msg-142647"))))))))

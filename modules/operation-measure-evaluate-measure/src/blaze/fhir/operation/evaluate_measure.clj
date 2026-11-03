@@ -49,12 +49,14 @@
   (let [id (m/luid context)]
     (-> (d/transact node (tx-ops result id))
         (ac/then-compose
-         (fn [db-after]
-           (response/build-response
-            (response-context request db-after)
-            nil
-            nil
-            (d/resource-handle db-after "MeasureReport" id)))))))
+         (fn [t]
+           (d/with-sync-db node t
+             (fn [db-after]
+               (response/build-response
+                (response-context request db-after)
+                nil
+                nil
+                (d/resource-handle db-after "MeasureReport" id)))))))))
 
 (defn- inline-response
   "Returns the `MeasureReport` inline with a `200 OK` response without persisting

@@ -3,8 +3,8 @@
    [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.iterators-spec]
@@ -23,7 +23,7 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef tao/type-list-desc
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :since-t :blaze.db/t
                :start-t :blaze.db/t
@@ -31,7 +31,7 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef tao/type-list-asc
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :start (s/? (s/cat :start-t :blaze.db/t
                                   :start-id :blaze.resource/id)))

@@ -21,8 +21,7 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Cache Caffeine]
-   [java.lang AutoCloseable]))
+   [com.github.benmanes.caffeine.cache Cache Caffeine]))
 
 (set! *warn-on-reflection* true)
 
@@ -114,27 +113,12 @@
         (ac/completed-future (ba/incorrect "Missing param `graph`")))
       ac/completed-future)))
 
-(defn- handle-close [stage db]
-  (ac/handle
-   stage
-   (fn [resources e]
-     (let [res (if e e resources)]
-       (.close ^AutoCloseable db)
-       res))))
-
-(defn- wrap-batch-db [handler]
-  (fn [{:blaze/keys [db] :as request}]
-    (let [db (d/new-batch-db db)]
-      (-> (handler (assoc request :blaze/db db))
-          (handle-close db)))))
-
 (defmethod m/pre-init-spec :blaze.operation/graph [_]
   (s/keys :req-un [::compiled-graph-cache :blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.operation/graph [_ context]
   (log/info "Init FHIR Resource $graph operation handler")
-  (-> (handler context)
-      (wrap-batch-db)))
+  (handler context))
 
 (defmethod m/pre-init-spec ::compiled-graph-cache [_]
   (s/keys :opt-un [::num-concepts]))

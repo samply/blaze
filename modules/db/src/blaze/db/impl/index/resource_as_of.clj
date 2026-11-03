@@ -194,7 +194,7 @@
   ordered by resource id.
 
   The list starts at the optional `start-id`. Resources not changed after the
-  `since-t` of `batch-db` are skipped.
+  `since-t` of `db` are skipped.
 
   The ResourceAsOf index consists of keys with three parts: `tid`, `id` and
   `t`. The `tid` is a 4-byte hash of the resource type, the `id` a variable
@@ -268,7 +268,7 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
-  {:arglists '([batch-db tid] [batch-db tid start-id])}
+  {:arglists '([db tid] [db tid start-id])}
   ([{:keys [snapshot t since-t]} tid]
    (i/entries snapshot :resource-as-of-index (type-list-xf tid t since-t)
               (start-key tid)))
@@ -386,11 +386,11 @@
 
 (defn- resource-handle-fn
   "Returns a function of `tid` and `id` that returns the resource handle when
-  found in `batch-db` and changed after its `since-t`.
+  found in `db` and changed after its `since-t`.
 
-  Uses the resource handle cache of `batch-db` if it has one, seeking with
+  Uses the resource handle cache of `db` if it has one, seeking with
   `iter` otherwise and on cache misses."
-  {:arglists '([batch-db iter])}
+  {:arglists '([db iter])}
   [{:keys [resource-handle-cache t since-t]} iter]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
@@ -408,12 +408,12 @@
       (resource-handle* iter target-buf key-buf value-buf tid id t since-t))))
 
 (defn resource-handle
-  "Returns the resource handle with `tid` and `id` when found in `batch-db` and
+  "Returns the resource handle with `tid` and `id` when found in `db` and
   changed after its `since-t`.
 
-  Uses the resource handle cache of `batch-db` if it has one. Opens an iterator
+  Uses the resource handle cache of `db` if it has one. Opens an iterator
   only if the handle has to be seeked."
-  {:arglists '([batch-db tid id])}
+  {:arglists '([db tid id])}
   [{:keys [snapshot resource-handle-cache t since-t]} tid id]
   (if resource-handle-cache
     (cached-resource-handle
@@ -423,14 +423,14 @@
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits
-  resource handles when found in `batch-db` and changed after its `since-t`.
+  resource handles when found in `db` and changed after its `since-t`.
 
   Can only be used by a single thread."
-  {:arglists '([batch-db])}
-  [{:keys [snapshot] :as batch-db}]
+  {:arglists '([db])}
+  [{:keys [snapshot] :as db}]
   (fn [rf]
     (let [iter (kv/new-iterator snapshot :resource-as-of-index)
-          resource-handle (resource-handle-fn batch-db iter)]
+          resource-handle (resource-handle-fn db iter)]
       (fn
         ([result]
          (.close ^AutoCloseable iter)
@@ -442,18 +442,18 @@
 
 (defn resource-handle-type-xf
   "Returns a stateful transducer that receives input and emits resource handles
-  when found in `batch-db` and changed after its `since-t`.
+  when found in `db` and changed after its `since-t`.
 
   The `id-extractor` is used to extract the resource id from the input. The
   `matcher` is given the input and the resource handle to decide whether to
   emit the resource handle or not."
-  {:arglists '([batch-db tid] [batch-db tid id-extractor matcher])}
-  ([batch-db tid]
-   (resource-handle-type-xf batch-db tid identity (fn [_ _] true)))
-  ([{:keys [snapshot] :as batch-db} tid id-extractor matcher]
+  {:arglists '([db tid] [db tid id-extractor matcher])}
+  ([db tid]
+   (resource-handle-type-xf db tid identity (fn [_ _] true)))
+  ([{:keys [snapshot] :as db} tid id-extractor matcher]
    (fn [rf]
      (let [iter (kv/new-iterator snapshot :resource-as-of-index)
-           resource-handle (resource-handle-fn batch-db iter)]
+           resource-handle (resource-handle-fn db iter)]
        (fn
          ([result]
           (.close ^AutoCloseable iter)

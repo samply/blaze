@@ -1,6 +1,7 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
@@ -51,10 +52,15 @@
   "Verifies `tx-cmds` against `node`, using the stats the node itself keeps, so
   that the entries are the ones the indexing loop of the node would write."
   [{:keys [read-only-matcher stats] :as node} t tx-cmds]
-  (with-open [db (d/new-batch-db (d/db node))]
-    (verify/verify-tx-cmds
-     {:db-before db :read-only-matcher read-only-matcher :stats @stats}
-     t tx-cmds)))
+  (ba/try-anomaly
+   (ac/join
+    (d/with-db node
+      (fn [db]
+        (ac/completed-future
+         (verify/verify-tx-cmds
+          {:db-before db :read-only-matcher read-only-matcher
+           :stats @stats}
+          t tx-cmds)))))))
 
 (defn- verify-tx-cmds [node t tx-cmds]
   (let [res (verify-tx-cmds* node t tx-cmds)]

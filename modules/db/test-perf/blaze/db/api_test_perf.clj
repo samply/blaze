@@ -1,5 +1,6 @@
 (ns blaze.db.api-test-perf
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -136,6 +137,8 @@
                   node "Patient" "Observation"
                   [["code" "system-191514|code-191518"]])]
       ;; 5.75 µs / 120 ns - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
-      (with-open [db (d/new-batch-db (d/db node))]
-        (criterium/bench
-         (count (d/execute-query db query "0")))))))
+      @(d/with-db node
+         (fn [db]
+           (ac/completed-future
+            (criterium/bench
+             (count (d/execute-query db query "0")))))))))

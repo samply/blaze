@@ -3,8 +3,8 @@
    [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
+   [blaze.db.impl.db.spec]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.iterators-spec]
@@ -19,13 +19,13 @@
   :ret bytes?)
 
 (s/fdef rao/type-list
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :start-id (s/? :blaze.resource/id))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/system-list
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :start (s/? (s/cat :start-tid :blaze.db/tid
                                   :start-id :blaze.resource/id)))
   :ret (cs/coll-of :blaze.db/resource-handle))
@@ -40,17 +40,17 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :id :blaze.resource/id)
   :ret (s/nilable :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle-xf
-  :args (s/cat :batch-db :blaze.db.impl/batch-db)
+  :args (s/cat :db :blaze.db.impl/db)
   :ret fn?)
 
 (s/fdef rao/resource-handle-type-xf
-  :args (s/cat :batch-db :blaze.db.impl/batch-db
+  :args (s/cat :db :blaze.db.impl/db
                :tid :blaze.db/tid
                :id-extractor (s/? fn?)
                :matcher (s/? fn?))

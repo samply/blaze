@@ -1,7 +1,7 @@
 (ns blaze.rest-api.structure-definitions-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.fhir.parsing-context]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module-spec]
@@ -34,7 +34,7 @@
                    :clock fixed-clock :rng-fn incrementing-rng-fn}]
 
       (testing "after creation"
-        (let [db @(structure-definitions/ensure-structure-definitions context)]
+        (with-db [db node @(structure-definitions/ensure-structure-definitions context)]
 
           (testing "over 100 code systems are available"
             (is (< 100 (d/type-total db "StructureDefinition"))))))

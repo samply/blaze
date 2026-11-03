@@ -4,7 +4,7 @@
   https://www.iana.org/assignments/media-types/media-types.xhtml"
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -69,8 +69,9 @@
   (when (valid? code)
     {:code (type/code code) :system url :version version}))
 
-(defn- bcp-13-query [db]
-  (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:13"]]))
+(defn- bcp-13-handle [db]
+  (do-sync [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:13"]])]
+    (coll/first handles)))
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create BCP-13 code system...")
@@ -79,9 +80,9 @@
 (defn ensure-code-system
   "Ensures that the BCP-13 code system is present in the database node."
   [{:keys [node] :as context}]
-  (-> (bcp-13-query (d/db node))
+  (-> (d/with-db node bcp-13-handle)
       (ac/then-compose
-       (fn [handles]
-         (if (coll/first handles)
+       (fn [handle]
+         (if handle
            (ac/completed-future nil)
            (create-code-system context))))))

@@ -1,6 +1,6 @@
 (ns blaze.job.re-index
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.canonical :as canonical]
@@ -102,13 +102,18 @@
 (defn- time-future [future]
   (ac/then-apply future (partial assoc-duration (System/nanoTime))))
 
-(defn- re-index-fn [main-db search-param-url]
+(defn- re-index-fn
+  "Returns a function that re-indexes the next chunk of resources, each chunk
+  in its own database value of `main-node`, so that the job doesn't hold a
+  database value for its whole runtime."
+  [main-node search-param-url]
   (fn
     ([]
-     (-> (d/re-index main-db search-param-url)
+     (-> (d/with-db main-node #(d/re-index % search-param-url))
          (time-future)))
     ([start-type start-id]
-     (-> (d/re-index main-db search-param-url start-type start-id)
+     (-> (d/with-db main-node
+           #(d/re-index % search-param-url start-type start-id))
          (time-future)))))
 
 (defn- continuation
@@ -130,26 +135,36 @@
 (def ^:private missing-search-param-anom
   (ba/incorrect "Missing search parameter URL."))
 
+(defn- re-index-total [main-node search-param-url]
+  (d/with-db main-node
+    #(ac/completed-future (d/re-index-total % search-param-url))))
+
+(defn- start
+  [{:keys [main-node admin-node] :as context} job search-param-url total]
+  (let [re-index (re-index-fn main-node search-param-url)]
+    (-> (job-util/update-job admin-node job start-job total)
+        (ac/then-compose
+         (fn [job]
+           (-> (re-index)
+               (ac/handle (continuation context re-index job))
+               (ac/then-compose identity)))))))
+
 (defn- on-start
   [{:keys [main-node admin-node] :as context} job]
-  (let [main-db (d/db main-node)]
-    (if-let [search-param-url (search-param-url job)]
-      (if-ok [total (d/re-index-total main-db search-param-url)]
-        (let [re-index (re-index-fn main-db search-param-url)]
-          (-> (job-util/update-job admin-node job start-job total)
-              (ac/then-compose
-               (fn [job]
-                 (-> (re-index)
-                     (ac/handle (continuation context re-index job))
-                     (ac/then-compose identity))))))
-        (partial job-util/update-job admin-node job job-util/fail-job))
-      (job-util/update-job admin-node job job-util/fail-job
-                           missing-search-param-anom))))
+  (if-let [search-param-url (search-param-url job)]
+    (-> (re-index-total main-node search-param-url)
+        (ac/handle
+         (fn [total anomaly]
+           (if anomaly
+             (job-util/update-job admin-node job job-util/fail-job anomaly)
+             (start context job search-param-url total))))
+        (ac/then-compose identity))
+    (job-util/update-job admin-node job job-util/fail-job
+                         missing-search-param-anom)))
 
 (defn- on-resume
   [{:keys [main-node] :as context} job]
-  (let [main-db (d/db main-node)
-        re-index (re-index-fn main-db (search-param-url job))
+  (let [re-index (re-index-fn main-node (search-param-url job))
         [type id] (some-> (next-resource job) (str/split #"/" 2))]
     (-> (if type (re-index type id) (re-index))
         (ac/handle (continuation context re-index job))

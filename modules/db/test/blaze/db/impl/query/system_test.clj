@@ -5,7 +5,7 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.query.system :as qs]
    [blaze.db.impl.query.system-spec]
-   [blaze.db.test-util :refer [config with-system-data]]
+   [blaze.db.test-util :refer [config with-db with-system-data]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -31,7 +31,7 @@
                 returns all matches of that type"
         ;; in type hash order, Observation comes before Patient
         (let [query (qs/->SystemQuery [(codec/tid "Patient")] clauses)]
-          (with-open [db (d/new-batch-db (d/db node))]
+          (with-db [db node]
             (given (vec (d/execute-query db query "Observation" "0"))
               count := 1
               [0 :fhir/type] := :fhir/Patient
@@ -40,5 +40,5 @@
       (testing "starting with a type coming after every type of the query
                 returns no matches"
         (let [query (qs/->SystemQuery [(codec/tid "Observation")] clauses)]
-          (with-open [db (d/new-batch-db (d/db node))]
+          (with-db [db node]
             (is (coll/empty? (d/execute-query db query "Patient" "0")))))))))

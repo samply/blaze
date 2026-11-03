@@ -60,7 +60,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.fhir.operation.value-set/expand} config]
        ~txs
-       (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
+       (let [~handler-binding (-> handler# (wrap-db node#) wrap-error)]
          ~@body))))
 
 (deftest handler-test

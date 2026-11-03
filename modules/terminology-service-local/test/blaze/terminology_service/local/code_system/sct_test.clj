@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local.code-system.sct-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub]
+   [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.path :refer [path]]
@@ -32,7 +32,7 @@
     (let [context {:node node :clock fixed-clock :rng-fn incrementing-rng-fn}]
 
       (testing "after creation"
-        (let [db @(sct/ensure-code-systems context sct)]
+        (with-db [db node @(sct/ensure-code-systems context sct)]
 
           (testing "25 code systems are available"
             (is (= 25 (d/type-total db "CodeSystem"))))))
@@ -49,80 +49,84 @@
 
 (deftest find-test
   (with-system [{:blaze.db/keys [node] context ::cs/sct} config]
-    (let [ctx {:sct/context context :db (d/db node)}]
+    (with-db [db node]
+      (let [ctx {:sct/context context :db db}]
 
-      (testing "without version"
-        (given @(cs/find ctx "http://snomed.info/sct")
-          :sct/context :? some?
-          :sct/module-id :? some?))
+        (testing "without version"
+          (given @(cs/find ctx "http://snomed.info/sct")
+            :sct/context :? some?
+            :sct/module-id :? some?))
 
-      (testing "with version"
-        (given @(cs/find ctx "http://snomed.info/sct"
-                         "http://snomed.info/sct/900000000000207008/version/20241001")
-          :sct/context :? some?))
+        (testing "with version"
+          (given @(cs/find ctx "http://snomed.info/sct"
+                           "http://snomed.info/sct/900000000000207008/version/20241001")
+            :sct/context :? some?))
 
-      (testing "not found"
-        (given-failed-future (cs/find ctx "http://snomed.info/sct" "http://snomed.info/sct/000/version/00000000")
-          ::anom/category := ::anom/not-found)))))
+        (testing "not found"
+          (given-failed-future (cs/find ctx "http://snomed.info/sct" "http://snomed.info/sct/000/version/00000000")
+            ::anom/category := ::anom/not-found))))))
 
 (deftest enhance-test
   (with-system [{:blaze.db/keys [node] context ::cs/sct} config]
-    (let [ctx {:sct/context context :db (d/db node)}
-          code-system @(cs/find ctx "http://snomed.info/sct")]
+    (with-db [db node]
+      (let [ctx {:sct/context context :db db}
+            code-system @(cs/find ctx "http://snomed.info/sct")]
 
-      (testing "enhances a code-system with context"
-        (given (c/enhance ctx code-system)
-          :sct/context :? some?
-          :sct/module-id :? some?))
+        (testing "enhances a code-system with context"
+          (given (c/enhance ctx code-system)
+            :sct/context :? some?
+            :sct/module-id :? some?))
 
-      (testing "with invalid version returns anomaly"
-        (let [bad-cs {:fhir/type :fhir/CodeSystem
-                      :url #fhir/uri "http://snomed.info/sct"
-                      :version #fhir/string "invalid"
-                      :content #fhir/code "not-present"
-                      :status #fhir/code "active"}]
-          (given (c/enhance ctx bad-cs)
-            ::anom/category := ::anom/incorrect))))))
+        (testing "with invalid version returns anomaly"
+          (let [bad-cs {:fhir/type :fhir/CodeSystem
+                        :url #fhir/uri "http://snomed.info/sct"
+                        :version #fhir/string "invalid"
+                        :content #fhir/code "not-present"
+                        :status #fhir/code "active"}]
+            (given (c/enhance ctx bad-cs)
+              ::anom/category := ::anom/incorrect)))))))
 
 (deftest expand-complete-test
   (with-system [{:blaze.db/keys [node] context ::cs/sct} config]
-    (let [code-system @(cs/find {:sct/context context :db (d/db node)}
-                                "http://snomed.info/sct")]
+    (with-db [db node]
+      (let [code-system @(cs/find {:sct/context context :db db}
+                                  "http://snomed.info/sct")]
 
-      (testing "without filter returns too-costly"
-        (given (cs/expand-complete code-system {})
-          ::anom/category := ::anom/conflict))
+        (testing "without filter returns too-costly"
+          (given (cs/expand-complete code-system {})
+            ::anom/category := ::anom/conflict))
 
-      (testing "with filter"
-        (let [results (cs/expand-complete code-system {:filter "Eluate"})]
-          (is (seq results))
-          (is (some (comp #{"40511003"} :value :code) results))))
+        (testing "with filter"
+          (let [results (cs/expand-complete code-system {:filter "Eluate"})]
+            (is (seq results))
+            (is (some (comp #{"40511003"} :value :code) results))))
 
-      (testing "with filter and active-only"
-        (let [results (cs/expand-complete code-system {:filter "Eluate"
-                                                       :active-only true})]
-          (is (seq results))
-          (is (some (comp #{"40511003"} :value :code) results)))))))
+        (testing "with filter and active-only"
+          (let [results (cs/expand-complete code-system {:filter "Eluate"
+                                                         :active-only true})]
+            (is (seq results))
+            (is (some (comp #{"40511003"} :value :code) results))))))))
 
 (deftest find-complete-test
   (with-system [{:blaze.db/keys [node] context ::cs/sct} config]
-    (let [code-system @(cs/find {:sct/context context :db (d/db node)}
-                                "http://snomed.info/sct")]
+    (with-db [db node]
+      (let [code-system @(cs/find {:sct/context context :db db}
+                                  "http://snomed.info/sct")]
 
-      (testing "existing concept"
-        (given (cs/find-complete code-system {:clause {:code "40511003"}})
-          [:code :value] := "40511003"
-          :display :? some?
-          :version :? some?
-          :designation :? seq))
+        (testing "existing concept"
+          (given (cs/find-complete code-system {:clause {:code "40511003"}})
+            [:code :value] := "40511003"
+            :display :? some?
+            :version :? some?
+            :designation :? seq))
 
-      (testing "inactive concept without descriptions"
-        (given (cs/find-complete code-system {:clause {:code "430220009"}})
-          [:code :value] := "430220009"
-          :inactive := #fhir/boolean true))
+        (testing "inactive concept without descriptions"
+          (given (cs/find-complete code-system {:clause {:code "430220009"}})
+            [:code :value] := "430220009"
+            :inactive := #fhir/boolean true))
 
-      (testing "non-existing concept"
-        (is (nil? (cs/find-complete code-system {:clause {:code "999999999"}}))))
+        (testing "non-existing concept"
+          (is (nil? (cs/find-complete code-system {:clause {:code "999999999"}}))))
 
-      (testing "invalid code"
-        (is (nil? (cs/find-complete code-system {:clause {:code "not-a-number"}})))))))
+        (testing "invalid code"
+          (is (nil? (cs/find-complete code-system {:clause {:code "not-a-number"}}))))))))

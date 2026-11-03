@@ -1,7 +1,6 @@
 (ns blaze.db.node.transaction
   (:require
    [blaze.anomaly :as ba]
-   [blaze.db.impl.db :as db]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.fhir.hash :as hash]
@@ -131,10 +130,13 @@
 (defn- missing-tx-msg [t]
   (format "Can't find transaction result with point in time of %d." t))
 
-(defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
+(defn load-tx-result
+  "Returns `t` if the transaction with `t` was successful or its anomaly
+  otherwise."
+  [{:keys [tx-cache kv-store]} t]
   (log/trace "load transaction result with t =" t)
   (if (tx-success/tx tx-cache t)
-    (db/db node t)
+    t
     (if-let [anomaly (tx-error/tx-error kv-store t)]
       anomaly
       (ba/fault (missing-tx-msg t)))))

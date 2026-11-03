@@ -1,9 +1,9 @@
 (ns blaze.handler.fhir.util
   "Utilities for FHIR interactions."
-  (:refer-clojure :exclude [str sync])
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.canonical :as canonical]
@@ -20,8 +20,7 @@
    [reitit.core :as reitit])
   (:import
    [java.time Instant OffsetDateTime ZonedDateTime ZoneId]
-   [java.time.format DateTimeFormatter DateTimeParseException]
-   [java.util.concurrent TimeUnit]))
+   [java.time.format DateTimeFormatter DateTimeParseException]))
 
 (set! *warn-on-reflection* true)
 
@@ -250,24 +249,6 @@
   (if-ok [resource-handle (historic-resource-handle db type id t)]
     (pull* db resource-handle :complete)
     ac/completed-future))
-
-(defn- timeout-msg [timeout]
-  (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." timeout))
-
-(defn- timeout-t-msg [t timeout]
-  (format "Timeout while trying to acquire the database state with t=%d. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." t timeout))
-
-(defn sync
-  "Like `blaze.db.api/sync` but fails after `timeout` milliseconds."
-  ([node timeout]
-   (-> (d/sync node)
-       (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
-       (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (timeout-msg timeout))))))
-  ([node t timeout]
-   (-> (do-sync [db (d/sync node t)]
-         (d/as-of db t))
-       (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
-       (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (timeout-t-msg t timeout)))))))
 
 (def ^:private return-preference-url
   (canonical/url "StructureDefinition/return-preference"))

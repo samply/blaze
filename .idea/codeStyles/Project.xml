@@ -13,6 +13,7 @@
           <entry key="blaze.async.comp/async" value="0" />
           <entry key="blaze.cql-translator-test/given-translation" value="-1" />
           <entry key="blaze.db.api-test/given-type-query" value="-1" />
+          <entry key="blaze.db.api/with-sync-db" value="-1" />
           <entry key="blaze.db.impl.codec-test/satisfies-prop" value="-1" />
           <entry key="blaze.db.resource-store.kv-test/given-thrown" value="-1" />
           <entry key="blaze.elm.compiler.logical-operators-test/testing-optimize" value="1" />

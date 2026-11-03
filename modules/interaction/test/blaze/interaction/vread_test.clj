@@ -42,7 +42,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/vread} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
                                   wrap-error)]
          ~@body))))
 

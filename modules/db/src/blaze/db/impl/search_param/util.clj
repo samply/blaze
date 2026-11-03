@@ -48,31 +48,31 @@
     id
     (ba/incorrect (format "Invalid resource id `%s`." id))))
 
-(defn non-deleted-resource-handle [batch-db tid id]
-  (when-let [handle (p/-resource-handle batch-db tid id)]
+(defn non-deleted-resource-handle [db tid id]
+  (when-let [handle (p/-resource-handle db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives index handles and emits resource
   handles when found."
-  [batch-db tid]
+  [db tid]
   (rao/resource-handle-type-xf
-   batch-db tid ih/id
+   db tid ih/id
    ih/matches-hash?))
 
 (defn- svi-resource-handle-xf
   "Returns a stateful transducer that receives single version ids and emits
   resource handles when found."
-  [batch-db tid]
+  [db tid]
   (rao/resource-handle-type-xf
-   batch-db tid svi/id
+   db tid svi/id
    svi/matches-hash?))
 
 (defn single-version-id-matcher
-  [search-param batch-db tid modifier compiled-values]
-  (comp (svi-resource-handle-xf batch-db tid)
-        (p/-matcher search-param batch-db modifier compiled-values)
+  [search-param db tid modifier compiled-values]
+  (comp (svi-resource-handle-xf db tid)
+        (p/-matcher search-param db modifier compiled-values)
         (map svi/from-resource-handle)))
 
 (defn missing-expression-msg [url]
@@ -90,11 +90,11 @@
   "Returns a transducer that filters all upstream byte-string values for
   reference tid-id values, returning the non-deleted resource handles of the
   referenced resources."
-  [batch-db]
+  [db]
   (comp
    tid-id-filter
    (map (fn [tid-id] [(bs/get-int tid-id 0) (tid-id->id tid-id)]))
-   (rao/resource-handle-xf batch-db)
+   (rao/resource-handle-xf db)
    (remove rh/deleted?)))
 
 (def reference-id-mapper

@@ -16,12 +16,12 @@
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
-(s/fdef d/db
-  :args (s/cat :node :blaze.db/node)
-  :ret :blaze.db/db)
+(s/fdef d/with-db
+  :args (s/cat :node :blaze.db/node :f ifn?)
+  :ret ac/completable-future?)
 
-(s/fdef d/sync
-  :args (s/cat :node :blaze.db/node :t (s/? :blaze.db/t))
+(s/fdef d/with-sync-db
+  :args (s/cat :node :blaze.db/node :t (s/? :blaze.db/t) :f ifn?)
   :ret ac/completable-future?)
 
 (s/fdef d/transact
@@ -37,10 +37,6 @@
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/node)
 
-(s/fdef d/as-of
-  :args (s/cat :db :blaze.db/db :t :blaze.db/t)
-  :ret :blaze.db/db)
-
 (s/fdef d/since
   :args (s/cat :db :blaze.db/db :since inst?)
   :ret :blaze.db/db)
@@ -52,14 +48,6 @@
 (s/fdef d/t
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/t)
-
-(s/fdef d/basis-t
-  :args (s/cat :db :blaze.db/db)
-  :ret :blaze.db/t)
-
-(s/fdef d/as-of-t
-  :args (s/cat :db :blaze.db/db)
-  :ret (s/nilable :blaze.db/t))
 
 (s/fdef d/tx
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
@@ -293,12 +281,6 @@
                :date-range (s/? (s/cat :start (s/nilable :system/date)
                                        :end (s/nilable :system/date))))
   :ret (cs/coll-of :blaze.db/resource-handle))
-
-;; ---- Batch DB --------------------------------------------------------------
-
-(s/fdef d/new-batch-db
-  :args (s/cat :db :blaze.db/db)
-  :ret :blaze.db/db)
 
 ;; ---- Pull ------------------------------------------------------------------
 

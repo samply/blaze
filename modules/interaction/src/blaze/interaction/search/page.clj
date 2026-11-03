@@ -128,15 +128,15 @@
   (optional) and :pull-timer, a timer on `duration-histogram` with the phase
   `pull-matches` that has to be observed via `pull-matches` once all pulls
   complete, or an anomaly in case of errors."
-  [duration-histogram batch-db pull include-defs page-size handles]
+  [duration-histogram db pull include-defs page-size handles]
   (let [{:keys [matches] :as res} (build-page* duration-histogram pull
                                                page-size handles)]
     (if (:direct include-defs)
-      (if-ok [includes (include/add-includes batch-db include-defs matches)]
+      (if-ok [includes (include/add-includes db include-defs matches)]
         (assoc res :includes includes)
         #(if (and (-> % :fhir/issue #{"too-costly"})
                   (> page-size 1))
-           (build-page duration-histogram batch-db pull include-defs
+           (build-page duration-histogram db pull include-defs
                        (quot page-size 2) handles)
            %))
       res)))

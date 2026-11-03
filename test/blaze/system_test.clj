@@ -185,7 +185,6 @@
     :structure-definition-repo structure-definition-repo
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
-    :db-sync-timeout 10000
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :auth-backends [(ig/ref ::auth-backend)]
     :search-system-handler (ig/ref :blaze.interaction/search-system)
@@ -219,8 +218,7 @@
    {:node (ig/ref :blaze.db/node)
     :batch-handler (ig/ref ::rest-api/batch-handler)
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :db-sync-timeout 10000}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.interaction/read {}
    :blaze.interaction/vread {}
    :blaze.interaction/delete

@@ -2,7 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.spec]
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
@@ -90,7 +90,8 @@
               {:path-params {:id "0"}})]
 
         (testing "the patient is gone"
-          (is (nil? (d/resource-handle (d/db node) "Patient" "0"))))
+          (with-db [db node]
+            (is (nil? (d/resource-handle db "Patient" "0")))))
 
         (is (= 200 status))
 

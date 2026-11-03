@@ -81,12 +81,11 @@
     :as context}]
   (do-sync [query (compile-query context db)]
     (let [pull (page/match-pull-fn context db query params)]
-      (with-open [_ (prom/timer search-duration-seconds "scan")
-                  batch-db (d/new-batch-db db)]
+      (with-open [_ (prom/timer search-duration-seconds "scan")]
         (when-ok [handles (if query
-                            (execute-query batch-db query page-type page-id)
-                            (system-list batch-db page-type page-id))
-                  page (page/build-page search-duration-seconds batch-db pull
+                            (execute-query db query page-type page-id)
+                            (system-list db page-type page-id))
+                  page (page/build-page search-duration-seconds db pull
                                         include-defs page-size handles)]
           (assoc page :query query))))))
 

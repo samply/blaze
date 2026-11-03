@@ -1,7 +1,7 @@
 (ns blaze.elm.resource-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-open-db with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression-spec]
    [blaze.elm.resource :as cr]
@@ -35,26 +35,27 @@
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
-    (let [resource (resource (d/db node) "Patient" "0")]
+    (with-db [db node]
+      (let [resource (resource db "Patient" "0")]
 
-      (testing "type"
-        (is (= :fhir/Patient (fhir-type resource)))
-        (is (= :foo (fhir-type {:fhir/type :foo}))))
+        (testing "type"
+          (is (= :fhir/Patient (fhir-type resource)))
+          (is (= :foo (fhir-type {:fhir/type :foo}))))
 
-      (testing "id"
-        (is (= "0" (id resource)))
-        (is (= :foo (id {:id :foo}))))
+        (testing "id"
+          (is (= "0" (id resource)))
+          (is (= :foo (id {:id :foo}))))
 
-      (testing "gender"
-        (is (= #fhir/code "female" (:gender resource))))
+        (testing "gender"
+          (is (= #fhir/code "female" (:gender resource))))
 
-      (ctu/testing-constant resource)
+        (ctu/testing-constant resource)
 
-      (testing "form"
-        (has-form resource '(resource "Patient" "0" 1)))
+        (testing "form"
+          (has-form resource '(resource "Patient" "0" 1)))
 
-      (testing "toString"
-        (is (= "Patient[id = 0, t = 1, last-change-t = 1]" (str resource)))))))
+        (testing "toString"
+          (is (= "Patient[id = 0, t = 1, last-change-t = 1]" (str resource))))))))
 
 (deftest mk-resource-test
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
@@ -63,7 +64,7 @@
              :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]
      [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-    (with-open-db [db node]
+    (with-db [db node]
       (testing "the last change of a patient comes from its compartment"
         (is (= "Patient[id = 0, t = 1, last-change-t = 1]"
                (str (resource db "Patient" "0")))))
@@ -85,7 +86,7 @@
      [[:put {:fhir/type :fhir/Observation :id "1"}]]]
 
     (testing "the last change of resources is newer than the database, so that Bloom filters are never used for them"
-      (with-open-db [db node]
+      (with-db [db node]
         (is (= #{"Observation[id = 0, t = 1, last-change-t = 3]"
                  "Observation[id = 1, t = 2, last-change-t = 3]"}
                (map-resources cr/resource-mapper db "Observation")))))))
@@ -99,7 +100,7 @@
      [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]]]
 
     (testing "patient 0 has its last change from the observation and patient 1 from itself"
-      (with-open-db [db node]
+      (with-db [db node]
         (is (= #{"Patient[id = 0, t = 1, last-change-t = 2]"
                  "Patient[id = 1, t = 3, last-change-t = 3]"}
                (map-resources cr/patient-mapper db "Patient")))))))

@@ -2,7 +2,6 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.byte-string-spec]
-   [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
@@ -11,7 +10,7 @@
    [blaze.db.impl.search-param.chained-spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
-   [blaze.db.test-util :as dtu :refer [with-system-data]]
+   [blaze.db.test-util :as dtu :refer [with-db with-system-data]]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
@@ -48,10 +47,10 @@
       (let [[search-param] (sr/parse search-param-registry "Observation" "subject:Patient.gender")
             search-param (assoc search-param :ref-search-param unsupported-estimation-search-param)
             compiled-value @(p/-compile-value search-param nil "male")]
-        (with-open [batch-db (d/new-batch-db (d/db node))]
-          (is (ba/unsupported? (p/-estimated-scan-size search-param batch-db (codec/tid "Observation") nil compiled-value)))
+        (with-db [db node]
+          (is (ba/unsupported? (p/-estimated-scan-size search-param db (codec/tid "Observation") nil compiled-value)))
 
-          (is (zero? (dtu/num-borrowed-iterators batch-db))))))))
+          (is (zero? (dtu/num-borrowed-iterators db))))))))
 
 (deftest validate-modifier-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]

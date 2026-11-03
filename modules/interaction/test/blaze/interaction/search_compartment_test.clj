@@ -168,10 +168,10 @@
   (fn [{::reitit/keys [match] :as request}]
     (if (= "compartment-page" (some-> match :data :name name))
       ((page-id/wrap-decrypt-page-id
-        (db/wrap-snapshot-db handler node 100)
+        (db/wrap-snapshot-db handler node)
         page-id-cipher)
        request)
-      ((db/wrap-db handler node 100) request))))
+      ((db/wrap-db handler node) request))))
 
 (defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

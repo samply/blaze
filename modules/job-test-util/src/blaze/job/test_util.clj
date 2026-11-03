@@ -25,7 +25,7 @@
 
 (defn- pull-job*
   [{:blaze.db.admin/keys [node] :as system} job-id status]
-  (-> (d/pull node (d/resource-handle (d/db node) "Task" job-id))
+  (-> (d/with-db node #(d/pull node (d/resource-handle % "Task" job-id)))
       (ac/then-compose-async
        (fn [job]
          (if (= status (combined-status job))
@@ -48,11 +48,11 @@
   ([{:blaze/keys [job-scheduler] :as system}]
    (pull-job-history system (job-id job-scheduler)))
   ([{:blaze.db.admin/keys [node]} job-id]
-   (-> (d/pull-many node (vec (d/instance-history (d/db node) "Task" job-id)))
+   (-> (d/with-db node #(d/pull-many node (vec (d/instance-history % "Task" job-id))))
        (ac/then-apply reverse))))
 
 (defn pull-other-resource [{:blaze.db.admin/keys [node]} type id]
-  (d/pull node (d/resource-handle (d/db node) type id)))
+  (d/with-db node #(d/pull node (d/resource-handle % type id))))
 
 (defn await-no-running-jobs
   "Waits until `job-scheduler` has no running jobs anymore.
