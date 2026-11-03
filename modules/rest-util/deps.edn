@@ -29,6 +29,17 @@
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
   {:mvn/version "2.22.4"}
 
+  ;; pinned to fix CVE-2025-8916 and CVE-2026-5588, can be removed if buddy-core
+  ;; depends on at least this version
+  org.bouncycastle/bcpkix-jdk18on
+  {:mvn/version "1.86"}
+
+  ;; pinned to fix CVE-2025-14813, CVE-2026-0636, CVE-2026-8763 and
+  ;; CVE-2026-13506, can be removed if buddy-core depends on at least this
+  ;; version
+  org.bouncycastle/bcprov-jdk18on
+  {:mvn/version "1.86"}
+
   org.apache.httpcomponents.core5/httpcore5
   {:mvn/version "5.4.4"}
 
