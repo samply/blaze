@@ -6,7 +6,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/evaluate-measure-util.sh"
 
 evaluate_measure() {
-  curl -sfH 'Accept: application/fhir+json' "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
+  curl -sSfH 'Accept: application/fhir+json' "$1/Measure/\$evaluate-measure?measure=urn:uuid:$2&periodStart=2000&periodEnd=2030"
 }
 
 base="http://localhost:8080/fhir"

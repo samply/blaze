@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
-access_token=$(curl -sfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
+access_token=$(curl -sSfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
 
 if [ -z "$access_token" ]; then
   echo "Missing access token"

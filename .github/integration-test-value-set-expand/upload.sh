@@ -11,6 +11,6 @@ if [[ "$resource_type" =~ ValueSet|CodeSystem ]]; then
     echo "Skip creating the code system or value set $url which is internal in Blaze"
   else
     echo "Upload $filename"
-    curl -sf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$filename" "$base/$resource_type"
+    curl -sSf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$filename" "$base/$resource_type"
   fi
 fi

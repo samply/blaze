@@ -21,12 +21,12 @@ echo "Testing direct binary upload and download..."
 dd if=/dev/urandom bs=8388608 count=1 2>/dev/null > "$temp_original"
 
 # Create Binary resource via direct binary upload
-id=$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/octet-stream' --data-binary "@$temp_original" "$base/Binary" | jq -r '.id')
+id=$(curl -sSfH 'Accept: application/fhir+json' -H 'Content-Type: application/octet-stream' --data-binary "@$temp_original" "$base/Binary" | jq -r '.id')
 
 echo "Created Binary resource via direct binary upload with id: $id"
 
 # Download as JSON format to verify base64 encoding
-curl -sfH 'Accept: application/fhir+json' "$base/Binary/$id" > "$temp_json"
+curl -sSfH 'Accept: application/fhir+json' "$base/Binary/$id" > "$temp_json"
 
 # Extract the base64 content and decode it
 jq -r '.data' "$temp_json" | base64 -d > "$temp_download"

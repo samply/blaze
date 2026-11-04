@@ -34,13 +34,13 @@
   (format "Resource handle `%s/%s` not found in database with t=%d and since-t=%d."
           (codec/tid->type tid) id t since-t))
 
-(defn- non-deleted-resource-handle* [db tid id]
+(defn- existing-resource-handle* [db tid id]
   (when-let [handle (p/-resource-handle db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
 
-(defn- non-deleted-resource-handle [db tid id]
-  (or (non-deleted-resource-handle* db tid id)
+(defn- existing-resource-handle [db tid id]
+  (or (existing-resource-handle* db tid id)
       (ba/fault (resource-handle-not-found-msg db tid id))))
 
 (defn- first-referenced-patient-not-found-msg [{:keys [t since-t]} resource-handle]
@@ -52,7 +52,7 @@
       (ba/fault (first-referenced-patient-not-found-msg db resource-handle))))
 
 (defn- start-patient-id [db tid start-id]
-  (when-ok [start-handle (non-deleted-resource-handle db tid start-id)]
+  (when-ok [start-handle (existing-resource-handle db tid start-id)]
     (first-referenced-patient-id db start-handle)))
 
 ;; A type query over resources with `tid` and patients with `patient-ids`.

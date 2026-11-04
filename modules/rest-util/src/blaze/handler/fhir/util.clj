@@ -4,7 +4,6 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
-   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec :as fhir-spec]
@@ -231,12 +230,15 @@
 (defn- deleted-version-anom [db handle]
   (assoc (deleted-anom db handle) ::anom/message (deleted-version-msg handle)))
 
-(defn- historic-resource-handle [db type id t]
-  (if-let [handle (coll/first (d/instance-history db type id t))]
-    (cond
-      (not= t (:t handle)) (historic-resource-handle-not-found-anom type id t)
-      (identical? :delete (:op handle)) (deleted-version-anom db handle)
-      :else handle)
+(defn- existing-historic-resource-handle
+  "Returns the resource handle of the version with `t` of the resource with
+  `type` and `id` in `db`, or a not-found anomaly if that version doesn't exist
+  or is a deletion."
+  [db type id t]
+  (if-let [handle (d/historic-resource-handle db type id t)]
+    (if (identical? :delete (:op handle))
+      (deleted-version-anom db handle)
+      handle)
     (historic-resource-handle-not-found-anom type id t)))
 
 (defn pull-historic
@@ -247,7 +249,7 @@
   case it is deleted, sets :http/status to 410 and :http/headers Last-Modified
   and ETag to appropriate values."
   [db type id t]
-  (if-ok [resource-handle (historic-resource-handle db type id t)]
+  (if-ok [resource-handle (existing-historic-resource-handle db type id t)]
     (pull* db resource-handle :complete)
     ac/completed-future))
 
@@ -539,7 +541,7 @@
 (defn- validate-routed-entry
   "Validates `entry` against the route `match` of its request URL."
   [idx method type url full-url {:keys [resource] :as entry}
-   {{:keys [id] :as path-params} :path-params :keys [result]}]
+   {{:keys [id vid] :as path-params} :path-params :keys [result]}]
   (let [{{:keys [interaction]} :data :keys [handler]} (get result (request-method method))
         params-anom (path-params-anom path-params url)
         write? (#{"POST" "PUT"} method)]
@@ -568,7 +570,8 @@
       :else
       (cond-> (-> (with-request-url entry full-url)
                   (assoc ::interaction interaction ::type type))
-        id (assoc ::id id)))))
+        id (assoc ::id id)
+        vid (assoc ::vid vid)))))
 
 (defn validate-entry
   "Validates that bundle `entry` can be used in a transaction or batch.
@@ -579,9 +582,9 @@
 
   Returns `entry` with leading slashes stripped from its request URL, the
   interaction of the matched route under ::interaction, the resource type of
-  the request URL under ::type and its id, if any, under ::id or an anomaly in
-  case it isn't valid. Uses `idx` in anomalies to indicate the position of the entry
-  in the bundle."
+  the request URL under ::type, its id, if any, under ::id and its version id,
+  if any, under ::vid or an anomaly in case it isn't valid. Uses `idx` in
+  anomalies to indicate the position of the entry in the bundle."
   {:arglists '([router idx entry])}
   [router idx {:keys [request] :as entry}]
   (let [method (some-> request :method :value)

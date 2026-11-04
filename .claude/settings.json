@@ -4,7 +4,8 @@
       "Bash(make fmt)",
       "Bash(make lint)",
       "Bash(make test)",
-      "Bash(make test-coverage)"
+      "Bash(make test-coverage)",
+      "Bash(git push --force-with-lease:*)"
     ]
   },
   "hooks": {

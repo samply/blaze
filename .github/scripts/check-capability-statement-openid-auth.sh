@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
-access_token=$(curl -sfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
+access_token=$(curl -sSfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
 
 if [ -z "$access_token" ]; then
   echo "Missing access token"
@@ -15,7 +15,7 @@ base="${1:-http://localhost:8080/fhir}"
 
 echo "ℹ️ JSON Format"
 
-capability_statement=$(curl -sfH 'Accept: application/fhir+json' --oauth2-bearer "$access_token" "$base/metadata")
+capability_statement=$(curl -sSfH 'Accept: application/fhir+json' --oauth2-bearer "$access_token" "$base/metadata")
 
 test "status" "$(echo "$capability_statement" | jq -r .status)" "active"
 test "kind" "$(echo "$capability_statement" | jq -r .kind)" "instance"
@@ -34,7 +34,7 @@ test "Operation \$totals Documentation" "$(echo "$capability_statement" | jq -r 
 
 echo "ℹ️ XML Format"
 
-capability_statement=$(curl -sfH 'Accept: application/fhir+xml' --oauth2-bearer "$access_token" "$base/metadata")
+capability_statement=$(curl -sSfH 'Accept: application/fhir+xml' --oauth2-bearer "$access_token" "$base/metadata")
 
 test "status" "$(echo "$capability_statement" | xq -x //status/@value)" "active"
 test "kind" "$(echo "$capability_statement" | xq -x //kind/@value)" "instance"

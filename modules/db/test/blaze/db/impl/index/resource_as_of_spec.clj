@@ -45,6 +45,13 @@
                :id :blaze.resource/id)
   :ret (s/nilable :blaze.db/resource-handle))
 
+(s/fdef rao/historic-resource-handle
+  :args (s/cat :db :blaze.db.impl/db
+               :tid :blaze.db/tid
+               :id :blaze.resource/id
+               :version-t :blaze.db/t)
+  :ret (s/nilable :blaze.db/resource-handle))
+
 (s/fdef rao/resource-handle-xf
   :args (s/cat :db :blaze.db.impl/db)
   :ret fn?)

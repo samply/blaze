@@ -25,14 +25,14 @@ first_entry_id() {
 }
 
 # first page
-first_page="$(curl -sfH 'Accept: application/fhir+json' "$base/Observation")"
+first_page="$(curl -sSfH 'Accept: application/fhir+json' "$base/Observation")"
 first_page_id="$(first_entry_id "$first_page")"
 next_link="$(link_url "$first_page" "next")"
 
 test_non_empty "next link of the first page" "$next_link"
 
 # follow the next link to the second page
-second_page="$(curl -sfH 'Accept: application/fhir+json' "$next_link")"
+second_page="$(curl -sSfH 'Accept: application/fhir+json' "$next_link")"
 second_page_id="$(first_entry_id "$second_page")"
 next_link="$(link_url "$second_page" "next")"
 
@@ -40,7 +40,7 @@ test_not_equal "first entry id of the second page" "$second_page_id" "$first_pag
 test_non_empty "next link of the second page" "$next_link"
 
 # follow the next link to the third page
-third_page="$(curl -sfH 'Accept: application/fhir+json' "$next_link")"
+third_page="$(curl -sSfH 'Accept: application/fhir+json' "$next_link")"
 third_page_id="$(first_entry_id "$third_page")"
 previous_link="$(link_url "$third_page" "previous")"
 
@@ -48,5 +48,5 @@ test_not_equal "first entry id of the third page" "$third_page_id" "$second_page
 test_non_empty "previous link of the third page" "$previous_link"
 
 # follow the previous link back to the second page
-previous_page="$(curl -sfH 'Accept: application/fhir+json' "$previous_link")"
+previous_page="$(curl -sSfH 'Accept: application/fhir+json' "$previous_link")"
 test "first entry id of the previous page" "$(first_entry_id "$previous_page")" "$second_page_id"

@@ -7,15 +7,15 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 
 expand() {
-  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort -d -t, -k 1,2
+  curl -sSfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort -d -t, -k 1,2
 }
 
 expand_count() {
-  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains | length'
+  curl -sSfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains | length'
 }
 
 expand_filter() {
-  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1&filter=$2" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort -d -t, -k 1,2
+  curl -sSfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1&filter=$2" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort -d -t, -k 1,2
 }
 
 test_csv() {

@@ -33,8 +33,8 @@ version_id_v2=$(binary "$data_v2" | update "$base/Binary/$id" | jq -r '.meta.ver
 echo "Created Binary resource with ID $id in versions $version_id_v1 and $version_id_v2"
 
 # Retrieve both versions, Base64 encoding them so they can be safely handled by Bash
-base64_encoded_binary_resource_v1=$(curl -sfH 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v1" | base64 -w 0)
-base64_encoded_binary_resource_v2=$(curl -sfH 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v2" | base64 -w 0)
+base64_encoded_binary_resource_v1=$(curl -sSfH 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v1" | base64 -w 0)
+base64_encoded_binary_resource_v2=$(curl -sSfH 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v2" | base64 -w 0)
 
 echo "Binary data retrieved. Verifying content..."
 
@@ -52,6 +52,6 @@ else
     exit 1
 fi
 
-content_type=$(curl -sf -o /dev/null -w '%{content_type}' -H 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v1")
+content_type=$(curl -sSf -o /dev/null -w '%{content_type}' -H 'Accept: application/pdf' "$base/Binary/$id/_history/$version_id_v1")
 
 test "Content-Type header of the vread response" "$content_type" "application/pdf"

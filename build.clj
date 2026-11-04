@@ -146,6 +146,7 @@
                     blaze.interaction.create
                     blaze.interaction.delete
                     blaze.interaction.delete-history
+                    blaze.interaction.delete-history-version
                     blaze.interaction.history.instance
                     blaze.interaction.history.system
                     blaze.interaction.history.type

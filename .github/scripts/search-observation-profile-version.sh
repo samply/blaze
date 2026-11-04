@@ -20,16 +20,12 @@ cat <<END
 END
 }
 
-create() {
-  curl -sfH "Content-Type: application/fhir+json" -H 'Accept: application/fhir+json' -d @- -o /dev/null "$base/Observation"
-}
-
-observation "1.2.3" | create
-observation "1.3.4" | create
-observation "2.1.6" | create
+observation "1.2.3" | create "$base/Observation" > /dev/null
+observation "1.3.4" | create "$base/Observation" > /dev/null
+observation "2.1.6" | create "$base/Observation" > /dev/null
 
 search() {
-  curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" "$base/Observation?_profile$1=$profile_url$2&_summary=count" | jq -r .total
+  curl -sSfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" "$base/Observation?_profile$1=$profile_url$2&_summary=count" | jq -r .total
 }
 
 test "Observation below v1 count" "$(search ":below" "|1")" "2"

@@ -22,7 +22,7 @@ cat <<END
 END
 }
 
-curl -sfH 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(patient)" -o /dev/null "$base/Patient"
+curl -sSfH 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(patient)" -o /dev/null "$base/Patient"
 
 bundle="$(search_strict "$base/Patient?_tag=http://acme.org/codes|needs-review")"
 

@@ -566,6 +566,12 @@ Enable the [Delete History](../api/interaction/delete-history.md) interaction.
 
 **Default:** `false`
 
+#### `ENABLE_INTERACTION_DELETE_HISTORY_VERSION` <Badge type="warning" text="Since 1.14.0"/>
+
+Enable the [Delete History Version](../api/interaction/delete-history-version.md) interaction.
+
+**Default:** `false`
+
 #### `ENABLE_OPERATION_PATIENT_PURGE` <Badge type="warning" text="Since 0.30.1"/>
 
 Enable the [Operation \$purge on Patient](../api/operation/patient-purge.md).

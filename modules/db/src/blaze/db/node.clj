@@ -1100,7 +1100,7 @@
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
-(defn- rs-keys-of-non-deleted [resource-handles variant]
+(defn- rs-keys-of-existing [resource-handles variant]
   (into [] (comp (remove rh/deleted?) (map #(node-util/rs-key % variant))) resource-handles))
 
 (defn- deleted-resource [{:fhir/keys [type] :keys [id]}]
@@ -1294,16 +1294,16 @@
         (not run?) (ac/completed-future (ba/unavailable (closed-node-msg node-name)))
 
         :else
-        (if-ok [_ (validation/validate-ops tx-ops)
-                _ (acquire-in-flight!)]
-          (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
+        (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
+          (if-ok [_ (validation/validate-tx-cmds tx-cmds)
+                  _ (acquire-in-flight!)]
             (-> (rs/put! resource-store entries)
                 ;; submits on the common ForkJoinPool, because the resource
                 ;; store may complete the put on one of its I/O threads
                 (ac/then-compose-async
                  (fn [_] (tx-log/submit tx-log tx-cmds entries)))
-                (ac/when-complete (fn [t _] (swap! state settle-in-flight t)))))
-          ac/completed-future))))
+                (ac/when-complete (fn [t _] (swap! state settle-in-flight t))))
+            ac/completed-future)))))
 
   (-tx-result [node t]
     (log/trace "call tx-result: t =" t)
@@ -1357,7 +1357,7 @@
   (-pull-many [_ resource-handles opts]
     (let [{:keys [variant elements skip-cache-insertion?]
            :or {variant :complete}} opts
-          keys (rs-keys-of-non-deleted resource-handles variant)
+          keys (rs-keys-of-existing resource-handles variant)
           multi-get (if skip-cache-insertion?
                       rc/multi-get-skip-cache-insertion
                       rc/multi-get)]

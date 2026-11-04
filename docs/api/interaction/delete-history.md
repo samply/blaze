@@ -20,4 +20,6 @@ Deleting the history of a resource means that the historical versions of that re
 > [!NOTE]
 > Due to stability concerns, there is a fix limit of 100,000 versions that can be deleted by this interaction. In case more than 100,000 versions exist, an OperationOutcome with code `too-costly` is returned. Currently there is no way to delete a history with more than 100,000 versions. Please open an [issue][1] if you need to delete larger histories.
 
+A single historical version can be deleted via the [delete history version](delete-history-version.md) interaction.
+
 [1]: <https://github.com/samply/blaze/issues>

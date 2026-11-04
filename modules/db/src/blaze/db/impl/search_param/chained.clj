@@ -17,8 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (defn targets
-  "Returns a reducible collection of non-deleted resource handles that are
-  referenced by `resource-handle` via a search-param with `c-hash` having a type
+  "Returns a reducible collection of the resource handles of existing resources
+  that are referenced by `resource-handle` via a search-param with `c-hash` having a type
   with `target-tid` (optional).
 
   Example: a patient that is referenced by an observation via the subject search

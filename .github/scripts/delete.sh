@@ -6,11 +6,11 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
-headers=$(curl -sf -XDELETE -D - "$base/Patient/$patient_id")
+headers=$(curl -sSf -XDELETE -D - "$base/Patient/$patient_id")
 
 test_empty "content type header" "$(echo "$headers" | grep -i content-type | tr -d '\r')"
 
-patient_history=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/_history")
+patient_history=$(fetch_instance_history "$base" Patient "$patient_id")
 
 total=$(echo "$patient_history" | jq .total)
 if [ "$total" = "1" ]; then

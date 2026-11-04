@@ -10,7 +10,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
-patient_id=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" \
+patient_id=$(curl -sSfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" \
   -d '{"resourceType": "Patient"}' "$base/Patient" | jq -r .id)
 
 bundle() {
@@ -29,7 +29,7 @@ cat <<END
 }
 END
 }
-result=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
+result=$(curl -sSfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
 test "bundle type" "$(echo "$result" | jq -r .type)" "transaction-response"

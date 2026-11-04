@@ -48,7 +48,7 @@
     id
     (ba/incorrect (format "Invalid resource id `%s`." id))))
 
-(defn non-deleted-resource-handle [db tid id]
+(defn existing-resource-handle [db tid id]
   (when-let [handle (p/-resource-handle db tid id)]
     (when-not (rh/deleted? handle)
       handle)))
@@ -88,7 +88,7 @@
 
 (defn reference-resource-handle-mapper
   "Returns a transducer that filters all upstream byte-string values for
-  reference tid-id values, returning the non-deleted resource handles of the
+  reference tid-id values, returning the resource handles of the existing
   referenced resources."
   [db]
   (comp

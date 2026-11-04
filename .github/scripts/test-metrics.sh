@@ -9,7 +9,7 @@ url="http://localhost:8081/metrics"
 num-metrics() {
   local name="$1"
   local filter="$2"
-  curl -sf "$url" | grep "$name" | grep -c "$filter"
+  curl -sSf "$url" | grep "$name" | grep -c "$filter"
 }
 
 test "blaze_rocksdb_block_cache_data_miss index" "$(num-metrics "blaze_rocksdb_block_cache_data_miss" "name=\"index\"")" "1"

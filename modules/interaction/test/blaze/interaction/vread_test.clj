@@ -131,6 +131,34 @@
           [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with the given version was not found."))))
 
+  (testing "with deleted history version"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+       [[:delete-history-version "Patient" "0" 2]]]
+
+      (testing "the deleted version doesn't exist anymore"
+        (let [{:keys [status headers body]}
+              @(handler {:path-params {:id "0" :vid "2"}})]
+
+          (is (= 404 status))
+
+          (testing "has no ETag header"
+            (is (nil? (get headers "ETag"))))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "not-found"
+            [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` with version `2` was not found.")))
+
+      (testing "the other versions still exist"
+        (doseq [[vid active] [["1" #fhir/boolean false] ["3" #fhir/boolean false]]]
+          (given @(handler {:path-params {:id "0" :vid vid}})
+            :status := 200
+            [:body :active] := active)))))
+
   (testing "with deleted history"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]

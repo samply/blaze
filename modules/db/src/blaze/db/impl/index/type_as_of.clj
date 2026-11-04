@@ -110,22 +110,22 @@
 (defn- entry-id [[_t id]] id)
 
 (defn- current-entry?
-  "Returns true if `handle` is the current, non-deleted version of the resource
-  and its `t` equals the `t` of the TypeAsOf `entry`."
+  "Returns true if `handle` is the current version of an existing resource and
+  its `t` equals the `t` of the TypeAsOf `entry`."
   [[resource-t] handle]
   (and (not (rh/deleted? handle))
        (= (long resource-t) (:t handle))))
 
 (defn- current-version-xf
   "Returns a transducer that turns `[t id]` tuples into the resource handles of
-  the current, non-deleted versions, probing the ResourceAsOf index of
-  `db`."
+  the current versions of existing resources, probing the ResourceAsOf index
+  of `db`."
   [db tid]
   (rao/resource-handle-type-xf db tid entry-id current-entry?))
 
 (defn type-list-desc
-  "Returns a reducible collection of the resource handles of all current,
-  non-deleted resources with type `tid` of `db`, in descending `t` (i.e.
+  "Returns a reducible collection of the resource handles of all existing
+  resources with type `tid` of `db`, in descending `t` (i.e.
   `_lastUpdated`) order, between `start-t` (inclusive) and `since-t` (exclusive),
   optionally starting at `start-id`.
 

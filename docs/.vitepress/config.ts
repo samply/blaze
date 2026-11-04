@@ -84,6 +84,10 @@ const config = defineConfig({
                     link: "/api/interaction/delete-history",
                   },
                   {
+                    text: "Delete History Version",
+                    link: "/api/interaction/delete-history-version",
+                  },
+                  {
                     text: "History",
                     link: "/api/interaction/history-instance",
                   },

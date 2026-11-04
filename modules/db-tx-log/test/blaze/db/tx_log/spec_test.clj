@@ -61,7 +61,11 @@
        :type "Patient"}
       {:op "delete-history"
        :type "Patient"
-       :id "0"}))
+       :id "0"}
+      {:op "delete-history-version"
+       :type "Patient"
+       :id "0"
+       :t 1}))
 
   (testing "invalid"
     (are [tx-cmd] (not (s/valid? :blaze.db/tx-cmd tx-cmd))
@@ -81,4 +85,11 @@
        :check-refs "i should be a boolean"}
       {:op "conditional-delete"}
       {:op "delete-history"
-       :type "Patient"})))
+       :type "Patient"}
+      {:op "delete-history-version"
+       :type "Patient"
+       :id "0"}
+      {:op "delete-history-version"
+       :type "Patient"
+       :id "0"
+       :t "1"})))

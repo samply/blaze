@@ -35,6 +35,12 @@
   [_ {::fhir-util/keys [type id] :as entry}]
   (assoc entry :tx-op [:delete type id]))
 
+(defmethod entry-tx-op "delete-history-version"
+  [_ {::fhir-util/keys [type id vid] :as entry}]
+  (let [t (iu/vid->t vid)]
+    (cond-> entry
+      t (assoc :tx-op [:delete-history-version type id t]))))
+
 (defmethod entry-tx-op "conditional-delete-type"
   [_ {{{url :value} :url} :request :as entry}]
   (let [[type query-params] (fhir-util/match-type-query-params url)

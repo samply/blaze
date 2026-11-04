@@ -7,11 +7,11 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 
 expand() {
-  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort
+  curl -sSfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1" | jq -r '.expansion.contains[] | [.system, .code, .display] | @csv' | sort
 }
 
 expand_filter() {
-  curl -sfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1&filter=$2" | jq -r '.expansion.contains[].code'
+  curl -sSfH "Accept: application/fhir+json" "$base/ValueSet/\$expand?url=$1&filter=$2" | jq -r '.expansion.contains[].code'
 }
 
 test_csv() {

@@ -6,7 +6,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 ca_cert_blaze="$script_dir/../../../modules/ingress/blaze-cert.pem"
 ca_cert_keycloak="$script_dir/../../../modules/ingress/keycloak-cert.pem"
-access_token=$(curl -sfH 'Accept: application/json' -d 'grant_type=client_credentials' --cacert "$ca_cert_keycloak" -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f "https://keycloak.localhost/realms/blaze/protocol/openid-connect/token" | jq -r .access_token)
+access_token=$(curl -sSfH 'Accept: application/json' -d 'grant_type=client_credentials' --cacert "$ca_cert_keycloak" -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f "https://keycloak.localhost/realms/blaze/protocol/openid-connect/token" | jq -r .access_token)
 
 if [ -z "$access_token" ]; then
   echo "Missing access token"

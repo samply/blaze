@@ -13,12 +13,12 @@ else
 fi
 
 base="http://localhost:8080/fhir"
-headers=$(curl -sfH 'Accept: application/fhir+json' -H 'Prefer: respond-async' -o /dev/null -D - "$base/Observation?code=http://loinc.org|8310-5&_summary=count")
+headers=$(curl -sSfH 'Accept: application/fhir+json' -H 'Prefer: respond-async' -o /dev/null -D - "$base/Observation?code=http://loinc.org|8310-5&_summary=count")
 job_id=$(echo "$headers" | grep -i content-location | tr -d '\r' | cut -d '/' -f6)
 
 # wait to fetch the completed job
 sleep 1
-job=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id")
+job=$(curl -sSfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id")
 
 # the job carries both the current and the legacy (IG 0.1.0) canonical, current first
 test "profile count" "$(echo "$job" | jq -r '.meta.profile | length')" "2"
@@ -55,7 +55,7 @@ test "processing-duration unit system" "$(echo "$processing_duration" | jq -r .s
 test "processing-duration unit code" "$(echo "$processing_duration" | jq -r .code)" "s"
 
 # History
-job_history=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task/$job_id/_history")
+job_history=$(fetch_instance_history "$base/__admin" Task "$job_id")
 
 test "history resource type" "$(echo "$job_history" | jq -r '.resourceType')" "Bundle"
 test "history bundle type" "$(echo "$job_history" | jq -r '.type')" "history"

@@ -20,14 +20,14 @@ END
 }
 
 # Create a Binary resource that contains that data, and get its ID (via JSON)
-id_via_json=$(curl -sfH 'Content-Type: application/fhir+json' -d "$(binary)" "$base/Binary" | jq -r '.id')
+id_via_json=$(curl -sSfH 'Content-Type: application/fhir+json' -d "$(binary)" "$base/Binary" | jq -r '.id')
 
 echo "Created Binary resource that contains the Random Data"
 echo "  - via JSON, with ID: $id_via_json"
 
 
 # Retrieve the Binary resource, and Base64 encode it so it can be safely handled by Bash (JSON)
-base64_encoded_binary_resource_via_json=$(curl -sfH 'Accept: application/pdf' "$base/Binary/$id_via_json" | base64 -w 0)
+base64_encoded_binary_resource_via_json=$(curl -sSfH 'Accept: application/pdf' "$base/Binary/$id_via_json" | base64 -w 0)
 
 
 echo "Binary data retrieved. Verifying content... (JSON version)"

@@ -9,6 +9,7 @@
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.kv.spec]
+   [blaze.db.node.duplicates :as dup]
    [blaze.db.node.stats :as node-stats]
    [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.search-param-registry :as sr]
@@ -27,27 +28,11 @@
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
 
-(defmulti format-command :op)
-
-(defmethod format-command "hold" [{:keys [type id if-none-exist]}]
-  (format "create %s?%s (resolved to id %s)" type
-          (tx-u/clauses->query-params if-none-exist) id))
-
-(defmethod format-command :default [{:keys [op type id]}]
-  (format "%s %s/%s" op type id))
-
-(defn- duplicate-tx-cmds-msg [cmd-a cmd-b]
-  (format "Duplicate transaction commands `%s` and `%s`."
-          (format-command cmd-a) (format-command cmd-b)))
-
-(defn- detect-duplicate-commands! [cmds]
-  (reduce
-   (fn [index {:keys [type id] :as cmd}]
-     (if-let [existing-cmd (get index [type id])]
-       (throw-anom (ba/conflict (duplicate-tx-cmds-msg cmd existing-cmd)))
-       (assoc index [type id] cmd)))
-   {}
-   cmds))
+(defn- detect-duplicate-commands!
+  "Throws a conflict anomaly if two of `cmds` act on the same resource."
+  [cmds]
+  (when-let [{:keys [cmd existing-cmd]} (dup/find-duplicate cmds)]
+    (throw-anom (ba/conflict (dup/duplicate-msg existing-cmd cmd)))))
 
 (defmulti verify
   "Verifies `command`. Returns `res` with added index entries and statistics of
@@ -273,6 +258,24 @@
 
         :else
         (add-purge-entries res (codec/tid type) id t instance-history)))))
+
+(defn- current-version-msg [type id t]
+  (format "Can't delete the current version `%d` of the resource `%s/%s`."
+          t type id))
+
+(defn- current-version? [db type id t]
+  (= t (:t (d/resource-handle db type id))))
+
+;; like delete-history but purges only the version with t
+(defmethod verify "delete-history-version"
+  [{:keys [db-before]} t res {:keys [type id] vid :t}]
+  (log/trace "verify-tx-cmd :delete-history-version" (str type "/" id "/_history/" vid))
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history-version")]
+    (if-let [handle (d/historic-resource-handle db-before type id vid)]
+      (if (current-version? db-before type id vid)
+        (throw-anom (ba/conflict (current-version-msg type id vid)))
+        (add-purge-entries res (codec/tid type) id t [handle]))
+      res)))
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"

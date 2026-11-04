@@ -29,22 +29,22 @@ END
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient=$(curl -sfH "Accept: application/fhir+json" "$base/Patient?identifier=$patient_identifier" | jq -cM '.entry[0].resource')
+patient=$(curl -sSfH "Accept: application/fhir+json" "$base/Patient?identifier=$patient_identifier" | jq -cM '.entry[0].resource')
 id="$(echo "$patient" | jq -r .id)"
 version_id="$(echo "$patient" | jq -r .meta.versionId)"
 
 # Update Interaction
-result=$(curl -sf -XPUT -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$patient" "$base/Patient/$id")
+result=$(curl -sSf -XPUT -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$patient" "$base/Patient/$id")
 result_version_id="$(echo "$result" | jq -r .meta.versionId)"
 
 test "update versionId" "$result_version_id" "$version_id"
 
 # Transaction Interaction
-result=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d "$(bundle "$patient" "$id")" "$base")
+result=$(curl -sSfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -H "Prefer: return=representation" -d "$(bundle "$patient" "$id")" "$base")
 result_version_id="$(echo "$result" | jq -r '.entry[0].resource.meta.versionId')"
 
 test "transaction versionId" "$result_version_id" "$version_id"
 
-history_total=$(curl -sfH "Accept: application/fhir+json" "$base/Patient/$id/_history" | jq -r '.total')
+history_total=$(fetch_instance_history "$base" Patient "$id" | jq -r '.total')
 
 test "history total" "$history_total" "1"

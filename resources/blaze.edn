@@ -158,6 +158,9 @@
   :blaze.interaction/delete-history
   {:node #blaze/ref :blaze.db.main/node}
 
+  :blaze.interaction/delete-history-version
+  {:node #blaze/ref :blaze.db.main/node}
+
   :blaze.interaction/conditional-delete-type
   {:node #blaze/ref :blaze.db.main/node}
 
@@ -1512,6 +1515,19 @@
        {:handler #blaze/ref :blaze.interaction/delete-history}}}
 
     :blaze.interaction/delete-history
+    {:node #blaze/ref :blaze.db.main/node}}}
+
+  {:key :delete-history-version
+   :name "Interaction delete-history-version"
+   :toggle "ENABLE_INTERACTION_DELETE_HISTORY_VERSION"
+   :config
+   {:blaze.rest-api/resource-patterns
+    {:default
+     {:delete-history-version
+      #:blaze.rest-api.interaction
+       {:handler #blaze/ref :blaze.interaction/delete-history-version}}}
+
+    :blaze.interaction/delete-history-version
     {:node #blaze/ref :blaze.db.main/node}}}
 
   {:key :patient-purge

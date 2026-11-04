@@ -26,7 +26,7 @@ cat <<END
 }
 END
 }
-result=$(curl -sfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
+result=$(curl -sSfH 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d "$(bundle)" "$base")
 
 test "resource type" "$(echo "$result" | jq -r .resourceType)" "Bundle"
 test "bundle type" "$(echo "$result" | jq -r .type)" "batch-response"

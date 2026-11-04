@@ -92,6 +92,14 @@
     :type type
     :id id}})
 
+(defmethod prepare-op :delete-history-version
+  [_ [_ type id t]]
+  {:blaze.db/tx-cmd
+   {:op "delete-history-version"
+    :type type
+    :id id
+    :t t}})
+
 (defmethod prepare-op :patient-purge
   [{:blaze.db/keys [enforce-referential-integrity]} [_ id]]
   {:blaze.db/tx-cmd

@@ -48,6 +48,21 @@
       "identifier="
       "_sort=a")))
 
+(deftest vid->t-test
+  (testing "valid version ids"
+    (are [vid t] (= t (iu/vid->t vid))
+      "0" 0
+      "1" 1
+      "72057594037927935" 72057594037927935))
+
+  (testing "invalid version ids"
+    (are [vid] (nil? (iu/vid->t vid))
+      "a"
+      "-1"
+      "1.1"
+      "72057594037927936"
+      "9223372036854775808")))
+
 (deftest put-tx-op-test
   (testing "on empty database"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]

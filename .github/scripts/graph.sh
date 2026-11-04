@@ -9,9 +9,9 @@ base="http://localhost:8080/fhir"
 create "$base/GraphDefinition" < "$script_dir/graph/GraphDefinition-patient-observation-encounter.json" > /dev/null
 
 patient_identifier="X79746011X"
-patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+patient_id=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 echo "$patient_id"
-bundle=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$graph?graph=patient-observation-encounter")
+bundle=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$graph?graph=patient-observation-encounter")
 actual_size=$(echo "$bundle" | jq -r .total)
 ids="$(echo "$bundle" | jq -r '.entry[].resource.id')"
 

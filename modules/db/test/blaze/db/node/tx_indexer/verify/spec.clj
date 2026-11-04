@@ -30,7 +30,8 @@
                    ::verify/stats]))
 
 (s/def ::verify/op
-  #{"create" "hold" "put" "keep" "delete" "delete-history" "purge"})
+  #{"create" "hold" "put" "keep" "delete" "delete-history"
+    "delete-history-version" "purge"})
 
 (defmulti terminal-tx-cmd "Terminal transaction command after expansion." :op)
 
@@ -75,6 +76,12 @@
   (s/keys :req-un [::verify/op
                    :fhir.resource/type
                    :blaze.resource/id]))
+
+(defmethod terminal-tx-cmd "delete-history-version" [_]
+  (s/keys :req-un [::verify/op
+                   :fhir.resource/type
+                   :blaze.resource/id
+                   :blaze.db/t]))
 
 (defmethod terminal-tx-cmd "purge" [_]
   (s/keys :req-un [::verify/op

@@ -18,7 +18,7 @@
 (def ^:private item-c-hash (codec/c-hash "item"))
 
 (defn- list-handle [db list-id]
-  (u/non-deleted-resource-handle db list-tid list-id))
+  (u/existing-resource-handle db list-tid list-id))
 
 (defn- list-hash-prefix [db list-id]
   (:hash-prefix (list-handle db list-id)))

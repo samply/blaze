@@ -10,7 +10,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+patient_id=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 
 parameters() {
 cat <<END
@@ -30,7 +30,7 @@ cat <<END
 END
 }
 
-result="$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "$(parameters)" "$base/\$cql")"
+result="$(curl -sSfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d "$(parameters)" "$base/\$cql")"
 
 test "result resource type" "$(echo "$result" | jq -r '.resourceType')" "Parameters"
 test "number of return parameters" "$(echo "$result" | jq -r '.parameter | length')" "1"

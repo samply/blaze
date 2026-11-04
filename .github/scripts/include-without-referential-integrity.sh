@@ -11,11 +11,11 @@ set -euo pipefail
 
 base="http://localhost:8080/fhir"
 
-curl -sf -XPUT -d '{"resourceType": "Observation", "id": "0", "subject": {"reference": "Patient/0"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/0" > /dev/null
-curl -sf -XPUT -d '{"resourceType": "Observation", "id": "1", "subject": {"reference": "Patient/1"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/1" > /dev/null
-curl -sf -XPUT -d '{"resourceType" : "Patient", "id": "0"}' -H 'Content-Type: application/fhir+json' "$base/Patient/0" > /dev/null
+curl -sSf -XPUT -d '{"resourceType": "Observation", "id": "0", "subject": {"reference": "Patient/0"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/0" > /dev/null
+curl -sSf -XPUT -d '{"resourceType": "Observation", "id": "1", "subject": {"reference": "Patient/1"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/1" > /dev/null
+curl -sSf -XPUT -d '{"resourceType" : "Patient", "id": "0"}' -H 'Content-Type: application/fhir+json' "$base/Patient/0" > /dev/null
 
-result=$(curl -sfH 'Accept: application/fhir+json' "$base/Observation?_include=Observation:subject" | jq -r '[.entry[].search.mode] | join(",")')
+result=$(curl -sSfH 'Accept: application/fhir+json' "$base/Observation?_include=Observation:subject" | jq -r '[.entry[].search.mode] | join(",")')
 
 if [ "$result" = "match,match,include" ]; then
   echo "✅ include works"
