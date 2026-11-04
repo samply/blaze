@@ -174,6 +174,11 @@
 (defmethod ig/init-key ::context [_ context] context)
 
 (deftest build-bundle-test
+  (testing "without total"
+    (with-system [{::keys [context]} config]
+      (is (not (contains? (history-util/build-bundle context nil (history-util/decode-params {} {}))
+                          :total)))))
+
   (testing "total"
     (testing "minimum allowed FHIR unsignedInt value"
       (let [min-int 0]

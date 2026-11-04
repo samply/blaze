@@ -24,14 +24,15 @@
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
-   [blaze.time :as bt]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.time Instant]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -160,9 +161,11 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def system-clock-config
-  (-> (assoc config :blaze.test/system-clock {})
-      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
+(def ^:private step-clock-config
+  "Like `config` but with a step clock, so that the transaction with t = n
+  happens at epoch + n seconds."
+  (-> (assoc config :blaze.test/step-clock {:start (Instant/ofEpochSecond 1)})
+      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/step-clock))))
 
 (defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
@@ -529,24 +532,18 @@
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]
-                        :blaze.test/keys [system-clock page-id-cipher]
+                        :blaze.test/keys [page-id-cipher]
                         handler :blaze.interaction.history/instance}
-                       system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+                       step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
-      (Thread/sleep 2000)
-      (let [after-init (bt/instant system-clock)
-            handler (wrap-middleware handler node page-id-cipher)]
-
-        (Thread/sleep 2000)
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                  :gender #fhir/code "female"}]])
-
-        (testing "since after initialization"
+      (let [handler (wrap-middleware handler node page-id-cipher)]
+        (testing "since the first transaction"
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
                 @(handler
                   {:path-params {:id "0"}
-                   :params {"_since" (str after-init)}})]
+                   :params {"_since" "1970-01-01T00:00:01Z"}})]
 
             (is (= 200 status))
 

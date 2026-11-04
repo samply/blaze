@@ -23,7 +23,6 @@
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
-   [blaze.time :as bt]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -31,7 +30,9 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.time Instant]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -138,9 +139,11 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
-(def system-clock-config
-  (-> (assoc config :blaze.test/system-clock {})
-      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
+(def ^:private step-clock-config
+  "Like `config` but with a step clock, so that the transaction with t = n
+  happens at epoch + n seconds."
+  (-> (assoc config :blaze.test/step-clock {:start (Instant/ofEpochSecond 1)})
+      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/step-clock))))
 
 (defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
@@ -506,28 +509,22 @@
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node]
-                        :blaze.test/keys [system-clock page-id-cipher]
+                        :blaze.test/keys [page-id-cipher]
                         handler :blaze.interaction.history/system}
-                       system-clock-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+                       step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
-      (Thread/sleep 2000)
-      (let [after-init (bt/instant system-clock)
-            handler (wrap-middleware handler node page-id-cipher)]
-
-        (Thread/sleep 2000)
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                  :gender #fhir/code "female"}]])
-
-        (testing "since after initialization"
+      (let [handler (wrap-middleware handler node page-id-cipher)]
+        (testing "since the first transaction"
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
                 @(handler
-                  {:params {"_since" (str after-init)}})]
+                  {:params {"_since" "1970-01-01T00:00:01Z"}})]
 
             (is (= 200 status))
 
-            (testing "the total count is 1"
-              (is (= #fhir/unsignedInt 1 (:total body))))
+            (testing "there is no total count"
+              (is (not (contains? body :total))))
 
             (testing "it shows the second version"
               (given (:resource first-entry)
@@ -536,21 +533,44 @@
         (testing "since ends up in the self and next link"
           (let [{:keys [body]}
                 @(handler
-                  {:params {"_count" "1" "_since" "2000-01-01T00:00:00Z"}})]
+                  {:params {"_count" "1" "_since" "1970-01-01T00:00:00Z"}})]
 
-            (is (= (str base-url context-path "/_history?_count=1&_since=2000-01-01T00%3A00%3A00Z")
+            (is (= (str base-url context-path "/_history?_count=1&_since=1970-01-01T00%3A00%3A00Z")
                    (link-url body "self")))
 
-            (is (= (page-url page-id-cipher {"_count" "1" "_since" "2000-01-01T00:00:00Z" "__t" "2" "__page-t" "1" "__page-type" "Patient" "__page-id" "0"})
+            (is (= (page-url page-id-cipher {"_count" "1" "_since" "1970-01-01T00:00:00Z" "__t" "2" "__page-t" "1" "__page-type" "Patient" "__page-id" "0"})
                    (link-url body "next")))))
 
         (testing "since is normalized to UTC"
           (let [{:keys [body]}
                 @(handler
-                  {:params {"_count" "1" "_since" "2000-01-01T01:00:00+01:00"}})]
+                  {:params {"_count" "1" "_since" "1970-01-01T01:00:00+01:00"}})]
 
-            (is (= (page-url page-id-cipher {"_count" "1" "_since" "2000-01-01T00:00:00Z" "__t" "2" "__page-t" "1" "__page-type" "Patient" "__page-id" "0"})
+            (is (= (page-url page-id-cipher {"_count" "1" "_since" "1970-01-01T00:00:00Z" "__t" "2" "__page-t" "1" "__page-type" "Patient" "__page-id" "0"})
                    (link-url body "next"))))))))
+
+  (testing "with purged history, using since"
+    (with-system-data [{:blaze.db/keys [node]
+                        :blaze.test/keys [page-id-cipher]
+                        handler :blaze.interaction.history/system}
+                       step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:delete-history "Patient" "0"]]]
+
+      (let [handler (wrap-middleware handler node page-id-cipher)]
+        (testing "since the second transaction"
+          (let [{:keys [status body]}
+                @(handler
+                  {:params {"_since" "1970-01-01T00:00:02Z"}})]
+
+            (is (= 200 status))
+
+            (testing "there is no total count"
+              (is (not (contains? body :total))))
+
+            (testing "there are no entries"
+              (is (empty? (:entry body)))))))))
 
   (testing "missing resource contents"
     (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]

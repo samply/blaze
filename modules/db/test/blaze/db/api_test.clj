@@ -2648,20 +2648,19 @@
 (def ^:private plus-2 (time/plus Instant/EPOCH (time/seconds 2)))
 (def ^:private plus-4 (time/plus Instant/EPOCH (time/seconds 4)))
 
+(def ^:private since-step-clock-config
+  "Like `step-clock-config` but with the first transaction at `plus-1`."
+  (assoc step-clock-config :blaze.test/step-clock {:start plus-1}))
+
 (deftest since-test
   (testing "with one patient only"
-    (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
+    (with-system-data [{:blaze.db/keys [node]} since-step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
-      ;; take one tick from the clock so that the first transaction happens on epoch + 1
-      (bt/offset-date-time step-clock)
-
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
-
-      (with-db [db node]
+      (with-db [db node 1]
         (is (= 1 (:t (d/resource-handle db "Patient" "0")))))
       (is (= plus-1 (:blaze.db.tx/instant (d/tx node 1))))
-
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
 
       (with-db [db-2 node]
         (is (= 2 (:t (d/resource-handle db-2 "Patient" "0"))))
@@ -2687,12 +2686,22 @@
             (is (apply = (map d/t dbs))))
 
           (testing "total on since-db is not implemented"
-            (is (ba/anomaly? (d/type-total db-1->2 "Patient")))
-            (is (ba/anomaly? (d/system-total db-1->2))))
+            (given (d/type-total db-1->2 "Patient")
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Total is not supported on since-dbs.")
+            (given (d/system-total db-1->2)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Total is not supported on since-dbs."))
+
+          (testing "total number of type and system changes on since-db is not implemented"
+            (given (d/total-num-of-type-changes db-1->2 "Patient")
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Total number of changes is not supported on since-dbs.")
+            (given (d/total-num-of-system-changes db-1->2)
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Total number of changes is not supported on since-dbs."))
 
           (testing "since-db history is truncated"
-            (is (apply < (map d/total-num-of-system-changes dbs)))
-            (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
             (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
             (doseq [val [(pull-instance-history db-1->2 "Patient" "0")
                          (pull-type-history db-1->2 "Patient")
@@ -2701,28 +2710,22 @@
                 count := 1
                 [0 :gender] := #fhir/code "female"
                 [0 :meta :versionId] := #fhir/id "2"))
-            (is (= (d/total-num-of-system-changes db-1->2) 1))
-            (is (= (d/total-num-of-type-changes db-1->2 "Patient") 1))
             (is (= (d/total-num-of-instance-changes db-1->2 "Patient" "0") 1)))))))
 
   (testing "with multiple resources"
-    (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
-
-      ;; take one tick from the clock so that the first transaction happens on epoch + 1
-      (bt/offset-date-time step-clock)
-
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
-                         [:put {:fhir/type :fhir/Condition :id "2"
-                                :code
-                                #fhir/CodeableConcept
-                                 {:coding
-                                  [#fhir/Coding
-                                    {:system #fhir/uri "system"
-                                     :code #fhir/code "code-a"}]}
-                                :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]])
+    (with-system-data [{:blaze.db/keys [node]} since-step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+        [:put {:fhir/type :fhir/Condition :id "2"
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri "system"
+                    :code #fhir/code "code-a"}]}
+               :subject #fhir/Reference{:reference #fhir/string "Patient/1"}}]]
+       [[:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]]]
 
       (with-db [db-4 node]
         (testing "since-t"
@@ -2772,8 +2775,6 @@
             (is (apply = (map #(d/total-num-of-instance-changes % "Patient" "1") dbs))))
 
           (testing "since db has limited view"
-            (is (apply < (map d/total-num-of-system-changes dbs)))
-            (is (apply < (map #(d/total-num-of-type-changes % "Patient") dbs)))
             (is (apply < (map #(d/total-num-of-instance-changes % "Patient" "0") dbs)))
 
             (given (pull-type-list db2->4 "Patient")
@@ -2853,35 +2854,47 @@
             (is (nil? (d/resource-handle db-4->4 "Patient" "0")))
             (is (nil? (d/resource-handle db-4->4 "Patient" "1")))
             (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "0")))
-            (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "1")))
-            (is (zero? (d/total-num-of-type-changes db-4->4 "Patient")))
-            (is (zero? (d/total-num-of-type-changes db-4->4 "Patient")))
-            (is (zero? (d/total-num-of-system-changes db-4->4)))
-            (is (zero? (d/total-num-of-system-changes db-4->4))))))))
+            (is (zero? (d/total-num-of-instance-changes db-4->4 "Patient" "1"))))))))
 
   (testing "an instant of a transaction newer than the database"
-    (with-system [{:blaze.db/keys [node] :blaze.test/keys [step-clock]} step-clock-config]
-
-      ;; take one tick from the clock so that the first transaction happens on epoch + 1
-      (bt/offset-date-time step-clock)
-
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]])
+    (with-system-data [{:blaze.db/keys [node]} since-step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
 
       (with-db [db node 1]
         (let [db (d/since db plus-2)]
           (testing "since-t doesn't exceed t"
             (is (= 1 (d/since-t db))))
 
-          (testing "the totals are zero"
-            (is (= 0 (d/total-num-of-system-changes db)))
-            (is (= 0 (d/total-num-of-type-changes db "Patient")))
+          (testing "the instance total is zero"
             (is (= 0 (d/total-num-of-instance-changes db "Patient" "0"))))
 
           (testing "the history is empty"
             (is (coll/empty? (d/system-history db)))
             (is (coll/empty? (d/type-history db "Patient")))
-            (is (coll/empty? (d/instance-history db "Patient" "0")))))))))
+            (is (coll/empty? (d/instance-history db "Patient" "0"))))))))
+
+  (testing "a history purge after since-t of versions created before"
+    (with-system-data [{:blaze.db/keys [node]} since-step-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+       [[:delete-history "Patient" "0"]]]
+
+      (with-db [db node]
+        (let [db (d/since db plus-2)]
+          (testing "the history is empty"
+            (is (coll/empty? (d/system-history db)))
+            (is (coll/empty? (d/type-history db "Patient")))
+            (is (coll/empty? (d/instance-history db "Patient" "0"))))
+
+          (testing "the instance total is zero"
+            (is (zero? (d/total-num-of-instance-changes db "Patient" "0"))))
+
+          (testing "the total number of type and system changes is not supported"
+            (given (d/total-num-of-type-changes db "Patient")
+              ::anom/category := ::anom/unsupported)
+            (given (d/total-num-of-system-changes db)
+              ::anom/category := ::anom/unsupported)))))))
 
 (deftest t-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -12311,8 +12324,9 @@
       (let [since (bt/instant system-clock)
             _ (Thread/sleep 200)]
         (with-db [db node @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
-          (testing "has one history entry"
-            (is (= 1 (d/total-num-of-type-changes (d/since db since) "Patient"))))
+          (testing "the total number of changes is not supported"
+            (given (d/total-num-of-type-changes (d/since db since) "Patient")
+              ::anom/category := ::anom/unsupported))
 
           (testing "contains the patient"
             (given (pull-type-history (d/since db since) "Patient")
@@ -12484,8 +12498,9 @@
       (let [since (bt/instant system-clock)
             _ (Thread/sleep 200)]
         (with-db [db node @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
-          (testing "has one history entry"
-            (is (= 1 (d/total-num-of-system-changes (d/since db since)))))
+          (testing "the total number of changes is not supported"
+            (given (d/total-num-of-system-changes (d/since db since))
+              ::anom/category := ::anom/unsupported))
 
           (testing "contains the patient"
             (given (pull-system-history (d/since db since))

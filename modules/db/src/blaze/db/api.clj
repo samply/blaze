@@ -516,7 +516,8 @@
   "Returns the total number of changes (versions) of resources with the given
   `type` starting as-of `db`.
 
-  Only changes after the `since-t` of `db` are counted."
+  Returns an unsupported anomaly on a since-db, because purges of versions
+  created before its `since-t` make an exact number unavailable."
   [db type]
   (p/-total-num-of-type-changes db (codec/tid type)))
 
@@ -544,7 +545,8 @@
   "Returns the total number of changes (versions) of resources starting as-of
   `db`.
 
-  Only changes after the `since-t` of `db` are counted."
+  Returns an unsupported anomaly on a since-db, because purges of versions
+  created before its `since-t` make an exact number unavailable."
   [db]
   (p/-total-num-of-system-changes db))
 

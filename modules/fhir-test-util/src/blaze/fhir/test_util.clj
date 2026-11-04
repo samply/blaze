@@ -30,8 +30,8 @@
   (time/system-clock))
 
 (defmethod ig/init-key :blaze.test/step-clock
-  [_ _]
-  (let [current (AtomicReference. Instant/EPOCH)]
+  [_ {:keys [start] :or {start Instant/EPOCH}}]
+  (let [current (AtomicReference. start)]
     (.withZone
      (reify InstantSource
        (instant [_]
