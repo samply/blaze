@@ -67,7 +67,7 @@
           page-type (when page-t page-type)
           page-id (when page-type page-id)
           db (cond-> db since (d/since since))
-          total (d/total-num-of-system-changes db)
+          total (when-not since (d/total-num-of-system-changes db))
           version-handles (d/system-history db page-t page-type page-id)
           context (assoc context
                          :blaze/base-url base-url

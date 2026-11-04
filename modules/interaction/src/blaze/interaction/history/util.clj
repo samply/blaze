@@ -130,12 +130,17 @@
      {:extension (canonical/extensions "StructureDefinition/grand-total"
                                        (type/string (str total)))})))
 
-(defn build-bundle [context total params]
-  {:fhir/type :fhir/Bundle
-   :id (m/luid context)
-   :type #fhir/code "history"
-   :total (total-value total)
-   :link [(self-link context params)]})
+(defn build-bundle
+  "Builds a history bundle without entries.
+
+  The bundle contains `total` only if it isn't nil."
+  [context total params]
+  (cond->
+   {:fhir/type :fhir/Bundle
+    :id (m/luid context)
+    :type #fhir/code "history"
+    :link [(self-link context params)]}
+    total (assoc :total (total-value total))))
 
 (defn build-page [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]

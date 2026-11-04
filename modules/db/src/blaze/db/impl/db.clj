@@ -159,9 +159,9 @@
       (tao/type-history snapshot t since-t tid start-t start-id)))
 
   (-total-num-of-type-changes [_ tid]
-    (cond-> (:num-changes (type-stats/seek-value snapshot tid t) 0)
-      (pos? since-t)
-      (- (:num-changes (type-stats/seek-value snapshot tid since-t) 0))))
+    (if (zero? since-t)
+      (:num-changes (type-stats/seek-value snapshot tid t) 0)
+      (ba/unsupported "Total number of changes is not supported on since-dbs.")))
 
   ;; ---- System-Level History Functions --------------------------------------
 
@@ -170,9 +170,9 @@
       (sao/system-history db start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_]
-    (cond-> (:num-changes (system-stats/seek-value snapshot t) 0)
-      (pos? since-t)
-      (- (:num-changes (system-stats/seek-value snapshot since-t) 0))))
+    (if (zero? since-t)
+      (:num-changes (system-stats/seek-value snapshot t) 0)
+      (ba/unsupported "Total number of changes is not supported on since-dbs.")))
 
   (-changes [_]
     (sao/changes snapshot t))

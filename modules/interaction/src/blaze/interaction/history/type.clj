@@ -62,7 +62,7 @@
           (history-util/decode-params params paging-params)
           page-id (when page-t page-id)
           db (cond-> db since (d/since since))
-          total (d/total-num-of-type-changes db type)
+          total (when-not since (d/total-num-of-type-changes db type))
           version-handles (d/type-history db type page-t page-id)
           context (assoc context
                          :blaze/base-url base-url

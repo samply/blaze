@@ -77,7 +77,7 @@
 
 (s/fdef d/type-total
   :args (s/cat :db :blaze.db/db :type :fhir.resource/type)
-  :ret nat-int?)
+  :ret (s/or :value nat-int? :anomaly ::anom/anomaly))
 
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :fhir.resource/type
@@ -114,7 +114,7 @@
 
 (s/fdef d/system-total
   :args (s/cat :db :blaze.db/db)
-  :ret nat-int?)
+  :ret (s/or :value nat-int? :anomaly ::anom/anomaly))
 
 (s/fdef d/system-query
   :args (s/cat :db :blaze.db/db
@@ -242,7 +242,7 @@
 (s/fdef d/total-num-of-type-changes
   :args (s/cat :db :blaze.db/db
                :type :fhir.resource/type)
-  :ret nat-int?)
+  :ret (s/or :value nat-int? :anomaly ::anom/anomaly))
 
 ;; ---- System-Level History Functions ----------------------------------------
 
@@ -260,7 +260,7 @@
 
 (s/fdef d/total-num-of-system-changes
   :args (s/cat :db :blaze.db/db)
-  :ret nat-int?)
+  :ret (s/or :value nat-int? :anomaly ::anom/anomaly))
 
 (s/fdef d/changes
   :args (s/cat :db :blaze.db/db)

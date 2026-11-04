@@ -38,5 +38,6 @@
 (s/fdef util/build-bundle
   :args (s/cat
          :context (s/keys :req [::search-util/link :blaze/base-url ::reitit/match])
-         :total nat-int?
-         :params ::util/params))
+         :total (s/nilable nat-int?)
+         :params ::util/params)
+  :ret :fhir/Bundle)
