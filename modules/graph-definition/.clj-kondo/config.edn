@@ -1,0 +1,3 @@
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"]}

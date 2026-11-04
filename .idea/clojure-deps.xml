@@ -134,6 +134,10 @@
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
         <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/modules/graph-definition/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+        <FolderState>
           <option name="dirUrl" value="file://$PROJECT_DIR$/modules/http-client/test" />
           <option name="type" value="TEST_SOURCE" />
         </FolderState>
@@ -385,6 +389,7 @@
         <option value="file://$PROJECT_DIR$/modules/fhir-path/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/fhir-structure/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/fhir-test-util/deps.edn" />
+        <option value="file://$PROJECT_DIR$/modules/graph-definition/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/http-client/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/interaction/deps.edn" />
         <option value="file://$PROJECT_DIR$/modules/jepsen/deps.edn" />
