@@ -1,4 +1,8 @@
-(ns blaze.operation.graph.test-util
+(ns blaze.fhir.test-util.graph-definition
+  "Helpers to build GraphDefinition resources in tests.
+
+  Blaze uses the R5 structure of GraphDefinition through cross-version
+  extensions."
   (:require
    [blaze.fhir.spec.type :as type]))
 

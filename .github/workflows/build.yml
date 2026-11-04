@@ -211,6 +211,7 @@ jobs:
         - fhir-client
         - fhir-path
         - fhir-structure
+        - graph-definition
         - http-client
         - interaction
         - jepsen

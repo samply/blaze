@@ -1,13 +1,14 @@
 (ns blaze.operation.graph.compiler-test
   (:require
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util.graph-definition :as g-tu]
    [blaze.fhir.util-spec]
+   [blaze.graph-definition-spec]
    [blaze.handler.fhir.util-spec]
    [blaze.interaction.search.util-spec]
    [blaze.middleware.fhir.page-id-spec]
    [blaze.operation.graph.compiler :as c]
    [blaze.operation.graph.compiler-spec]
-   [blaze.operation.graph.test-util :as g-tu]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
    [blaze.util.clauses-spec]
@@ -21,42 +22,22 @@
 (test/use-fixtures :each tu/fixture)
 
 (deftest compile-test
-  (testing "fails on"
-    (testing "link with both params and path"
-      (given (c/compile
-              {:fhir/type :fhir/GraphDefinition :id "0"
+  (testing "fails on invalid graph definition"
+    (given (c/compile
+            {:fhir/type :fhir/GraphDefinition :id "0"
+             :extension
+             [(g-tu/extension-start :value #fhir/id "patient")]
+             :url #fhir/uri "144200"
+             :name #fhir/string "fails"
+             :status #fhir/code "active"
+             :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+             :link
+             [{:fhir/type :fhir.GraphDefinition/link
                :extension
-               [(g-tu/extension-start :value #fhir/id "patient")]
-               :url #fhir/uri "144200"
-               :name #fhir/string "fails"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
-               :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "observation")
-                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]
-                 :path #fhir/string "encounter"}]})
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid link with path and params."))
-
-    (testing "link with neither params or path"
-      (given (c/compile
-              {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")]
-               :url #fhir/uri "144200"
-               :name #fhir/string "fails"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
-               :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "observation")]}]})
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Invalid link without path and params.")))
+               [(g-tu/extension-link-source-id :value #fhir/id "patient")
+                (g-tu/extension-link-target-id :value #fhir/id "observation")]}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid link without path and params."))
 
   (testing "patient-only"
     (is (= (c/compile

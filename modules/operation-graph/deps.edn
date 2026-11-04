@@ -5,6 +5,9 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
+  blaze/graph-definition
+  {:local/root "../graph-definition"}
+
   blaze/metrics
   {:local/root "../metrics"}
 

@@ -196,6 +196,7 @@
     "-d" "modules/fhir-client"
     "-d" "modules/fhir-path"
     "-d" "modules/fhir-structure"
+    "-d" "modules/graph-definition"
     "-d" "modules/http-client"
     "-d" "modules/interaction"
     "-d" "modules/jepsen"
