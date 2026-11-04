@@ -2,7 +2,7 @@
   "Main entry point into the Resource $graph operation.
 
   See: https://build.fhir.org/resource-operation-graph.html"
-  (:refer-clojure :exclude [compile str])
+  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -12,7 +12,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.module :as m]
-   [blaze.operation.graph.compiler :as c]
+   [blaze.operation.graph.cache :as cache]
    [blaze.operation.graph.spec]
    [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
@@ -21,7 +21,7 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Cache Caffeine]))
+   [com.github.benmanes.caffeine.cache Caffeine]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,11 +33,6 @@
            (or (first (fu/sort-by-priority graph-defs))
                (ba/not-found (format "The graph definition `%s` was not found." uri)
                              :http/status 400)))))))
-
-(defn- compile
-  [compiled-graph-cache {:keys [id] {version :versionId} :meta :as graph-def}]
-  (let [key [id (:value version)]]
-    (.get ^Cache compiled-graph-cache key (fn [_] (c/compile graph-def)))))
 
 (defn- find-node [{:keys [nodes]} id]
   (nodes id))
@@ -102,14 +97,15 @@
         (-> (find-graph-def db graph)
             (ac/then-compose
              (fn [graph-def]
-               (when-let [{:keys [start-node-id] :as graph} (compile compiled-graph-cache graph-def)]
+               (if-ok [{:keys [start-node-id] :as graph} (cache/compile compiled-graph-cache graph-def)]
                  (do-sync [resources (process-start-node db graph start-node-id resource-handle)]
                    (ring/response
                     {:fhir/type :fhir/Bundle
                      :id (m/luid context)
                      :type #fhir/code "searchset"
                      :total (type/unsignedInt (count resources))
-                     :entry (mapv (partial search-util/match-entry request) resources)}))))))
+                     :entry (mapv (partial search-util/match-entry request) resources)}))
+                 ac/completed-future))))
         (ac/completed-future (ba/incorrect "Missing param `graph`")))
       ac/completed-future)))
 
@@ -121,13 +117,20 @@
   (handler context))
 
 (defmethod m/pre-init-spec ::compiled-graph-cache [_]
-  (s/keys :opt-un [::num-concepts]))
+  (s/keys :opt-un [::num-nodes]))
+
+(defn- weight
+  "Returns the weight of a compiled graph or anomaly in the compiled graph
+  cache, which is the number of nodes, but at least one, because Caffeine
+  never evicts entries with a weight of zero."
+  [_ {:keys [nodes]}]
+  (max 1 (count nodes)))
 
 (defmethod ig/init-key ::compiled-graph-cache
   [_ {:keys [num-nodes] :or {num-nodes 10000}}]
   (log/info "Init operation $graph graph cache with a size of" num-nodes "nodes")
   (-> (Caffeine/newBuilder)
       (.maximumWeight num-nodes)
-      (.weigher (fn [_ {:keys [nodes]}] (count nodes)))
+      (.weigher weight)
       (.recordStats)
       (.build)))

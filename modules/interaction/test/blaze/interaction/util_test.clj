@@ -29,6 +29,25 @@
       "W/1"
       "W/\"a\"")))
 
+(deftest conditional-clauses-test
+  (testing "blank query string"
+    (are [query-string] (nil? (iu/conditional-clauses query-string))
+      nil
+      ""
+      "  "))
+
+  (testing "query string with search parameters"
+    (are [query-string clauses] (= clauses (iu/conditional-clauses query-string))
+      "identifier=foo" [["identifier" "foo"]]
+      "identifier=foo&name=bar,baz" [["identifier" "foo"] ["name" "bar" "baz"]]
+      "identifier=%7Bfoo%7D" [["identifier" "{foo}"]]))
+
+  (testing "query string with search parameters which are ignored"
+    (are [query-string] (= [] (iu/conditional-clauses query-string))
+      "identifier"
+      "identifier="
+      "_sort=a")))
+
 (deftest put-tx-op-test
   (testing "on empty database"
     (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]

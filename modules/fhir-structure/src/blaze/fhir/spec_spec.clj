@@ -16,6 +16,10 @@
   :args (s/cat :type string?)
   :ret boolean?)
 
+(s/fdef fhir-spec/resource-type?
+  :args (s/cat :type string?)
+  :ret boolean?)
+
 (s/def :blaze.fhir.spec/choices-spec
   (s/spec (s/cat :op #(= `s2/or %)
                  :choices (s/* (s/cat :key keyword? :spec some?)))))

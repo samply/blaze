@@ -9,9 +9,7 @@
    [blaze.graph-definition :as gd]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.operation.graph.spec]
-   [blaze.util :refer [str]]
-   [blaze.util.clauses :as uc]
-   [ring.util.codec :as ring-codec]))
+   [blaze.util :refer [str]]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,26 +25,25 @@
            (when-let [[type id] (fsr/split-literal-ref ref)]
              (ba/map (fhir-util/resource-handle db type id) vector))))))))
 
-(defn- clauses [params]
-  (->> (ring-codec/form-decode params)
-       (uc/search-clauses)
-       (mapv
-        (fn [[code value & more :as clause]]
-          (if (and (= "{ref}" value) (nil? more))
-            (fn [ref]
-              [code ref])
-            (fn [_ref]
-              clause))))))
+(defn- clause-fn
+  "Returns a function of the reference to the source resource returning
+  `clause` with that reference if it's a ref clause."
+  [[code :as clause]]
+  (if (gd/ref-clause? clause)
+    (fn [ref]
+      [code ref])
+    (fn [_ref]
+      clause)))
 
 (defn- link-params-resource-handles [clauses]
   (fn [db {:fhir/keys [type] :keys [id]} target-node]
     (let [ref (str (name type) "/" id)]
       (d/type-query db (:type target-node) (mapv #(% ref) clauses)))))
 
-(defn- resource-handles [{:keys [path params]}]
+(defn- resource-handles [{:keys [path clauses]}]
   (if path
     (link-path-resource-handles path)
-    (link-params-resource-handles (clauses params))))
+    (link-params-resource-handles (mapv clause-fn clauses))))
 
 (defn- assoc-resource-handles [link]
   (assoc link :resource-handles (resource-handles link)))

@@ -71,6 +71,7 @@
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
     blaze.executors ex
+    blaze.fhir.search-clauses fsc
     blaze.fhir.spec fhir-spec
     blaze.fhir.spec.references fsr
     blaze.fhir.spec.type type
@@ -89,7 +90,6 @@
     blaze.test-util tu
     blaze.time bt
     blaze.util u
-    blaze.util.clauses uc
     buddy.auth auth
     cognitect.anomalies anom
     clojure.data.xml xml

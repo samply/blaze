@@ -1,5 +1,6 @@
 (ns blaze.operation.graph.compiler-test
   (:require
+   [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util.graph-definition :as g-tu]
    [blaze.fhir.util-spec]
@@ -11,7 +12,6 @@
    [blaze.operation.graph.compiler-spec]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
-   [blaze.util.clauses-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -37,7 +37,7 @@
                [(g-tu/extension-link-source-id :value #fhir/id "patient")
                 (g-tu/extension-link-target-id :value #fhir/id "observation")]}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Invalid link without path and params."))
+      ::anom/message := "Invalid start node id `patient` not referring to a node."))
 
   (testing "patient-only"
     (is (= (c/compile

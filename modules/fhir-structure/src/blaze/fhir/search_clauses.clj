@@ -1,4 +1,4 @@
-(ns blaze.util.clauses
+(ns blaze.fhir.search-clauses
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.coll.core :as coll]

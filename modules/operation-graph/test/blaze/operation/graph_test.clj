@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util.graph-definition :as g-tu]
    [blaze.fhir.util-spec]
@@ -14,10 +15,10 @@
    [blaze.middleware.fhir.page-id-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.operation.graph :as graph]
+   [blaze.operation.graph.cache-spec]
    [blaze.operation.graph.compiler-spec]
    [blaze.page-id-cipher.spec]
    [blaze.test-util :as tu]
-   [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -103,6 +104,15 @@
       :key := :blaze.operation/graph
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(deftest compiled-graph-cache-init-test
+  (testing "invalid num-nodes"
+    (given-failed-system {::graph/compiled-graph-cache {:num-nodes ::invalid}}
+      :key := ::graph/compiled-graph-cache
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [::graph/num-nodes]
+      [:cause-data ::s/problems 0 :pred] := `nat-int?
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def base-url "base-url-113047")
@@ -208,6 +218,32 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := #fhir/string "The graph definition `151647` was not found."))))
+
+  (testing "invalid GraphDefinition"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "145711"}]
+        [:put {:fhir/type :fhir/GraphDefinition :id "0"
+               :extension
+               [(g-tu/extension-node
+                 :extension
+                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
+                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
+               :url #fhir/uri "151647"
+               :name #fhir/string "without-start"
+               :status #fhir/code "active"
+               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})}]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "145711"}
+                       :query-params {"graph" "151647"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Invalid GraphDefinition without start node."))))
 
   (testing "only returning the patient itself"
     (with-handler [handler]

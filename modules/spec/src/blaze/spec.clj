@@ -57,6 +57,15 @@
 (s/def :blaze.db.query/search-clauses
   (s/coll-of :blaze.db.query/search-clause :kind vector?))
 
+(s/def :ring.request.query-params/key
+  string?)
+
+(s/def :ring.request.query-params/value
+  (s/or :string string? :strings (s/coll-of string? :min-count 1)))
+
+(s/def :ring.request/query-params
+  (s/map-of :ring.request.query-params/key :ring.request.query-params/value))
+
 (s/def :blaze.db.query/sort-direction
   #{:asc :desc})
 

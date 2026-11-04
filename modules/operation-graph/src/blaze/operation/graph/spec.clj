@@ -7,3 +7,6 @@
 
 (s/def ::graph/compiled-graph-cache
   #(instance? Cache %))
+
+(s/def ::graph/num-nodes
+  nat-int?)
