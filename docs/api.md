@@ -1,6 +1,8 @@
 # FHIR API
 
-Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`. The [CapabilityStatement][2] exposed under `/fhir/metadata` can be used to discover the capabilities of Blaze. Everything stated there can be considered to be implemented correctly. If you find any discrepancies, please open an [issue][3]. 
+Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`. The [CapabilityStatement][2] exposed under `/fhir/metadata` can be used to discover the capabilities of Blaze. Everything stated there can be considered to be implemented correctly. If you find any discrepancies, please open an [issue][3].
+
+A public demo server is available at [https://r4.blaze-server.org/fhir/][9] to try out the API.
 
 ## Interactions
 
@@ -185,3 +187,4 @@ Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy hea
 [6]: <https://semver.org>
 [7]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>
 [8]: <http://hl7.org/fhir/R5/async-bundle.html>
+[9]: <https://r4.blaze-server.org/fhir/>
