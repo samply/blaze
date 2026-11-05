@@ -18,7 +18,7 @@ The request body has to be a Bundle of type `transaction`. The following methods
 | `PUT`    | [update](update.md), including version-aware updates via `Bundle.entry.request.ifMatch` and updates of not yet existing resources via `Bundle.entry.request.ifNoneMatch`.      |
 | `DELETE` | [delete](delete.md) by id and [conditional delete](delete-type.md) via `DELETE [type]?[search parameters]`.                                                                    |
 
-The methods `HEAD` and `PATCH` are not supported and will result in a `422 Unprocessable Entity`, unknown methods in a `400 Bad Request`, each with an `OperationOutcome`.
+The methods `HEAD` and `PATCH` are not supported and will result in a `422 Unprocessable Entity`, unknown methods in a `400 Bad Request`, each with an `OperationOutcome`. Other writes, like operations, searches via `POST` or [delete history](delete-history.md), are only supported in [batches](batch.md) and will result in a `422 Unprocessable Entity` in transactions.
 
 ## Processing Rules 
 

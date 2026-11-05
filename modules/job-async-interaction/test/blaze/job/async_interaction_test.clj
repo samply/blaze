@@ -38,6 +38,7 @@
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
+   [reitit.ring]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -296,7 +297,7 @@
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
 
-(defmethod ig/init-key ::batch-handler [_ {:keys [cancelled-promise observed-promise]}]
+(defn- search-observation-handler [{:keys [cancelled-promise observed-promise]}]
   (fn [{:blaze/keys [cancelled?]}]
     ;; if a cancellation is expected, wait until it was handled in order to make
     ;; the interleaving with the cancellation deterministic
@@ -306,6 +307,14 @@
       (if anom
         (ac/completed-future anom)
         (ac/completed-future (ring/response {:fhir/type :fhir/Observation}))))))
+
+(defmethod ig/init-key ::batch-handler [_ config]
+  (reitit.ring/ring-handler
+   (reitit.ring/router
+    [["/Observation"
+      {:get {:interaction "search-type"
+             :handler (search-observation-handler config)}}]]
+    {:path "/fhir"})))
 
 (defmethod ig/init-key ::cancellation-signaling-job-handler [_ {:keys [handler cancelled-promise]}]
   (reify p/JobHandler

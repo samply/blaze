@@ -17,7 +17,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
-   [reitit.core :as reitit])
+   [reitit.core :as reitit]
+   [reitit.ring])
   (:import
    [java.time Instant OffsetDateTime ZonedDateTime ZoneId]
    [java.time.format DateTimeFormatter DateTimeParseException]))
@@ -260,27 +261,35 @@
 (defn- find-return-preference [{extensions :extension}]
   (some return-preference-pred extensions))
 
+(defn- request-method
+  "Returns the Ring request method of the FHIR request `method`."
+  [method]
+  (keyword (str/lower-case method)))
+
+(defn- base-path
+  "Returns the path all routes of `router` are prefixed with."
+  [router]
+  (:path (reitit/options router)))
+
 (defn- batch-request
-  {:arglists '([context bundle-entry])}
-  [{:keys [context-path]
-    :blaze/keys [base-url db cancelled?]
-    return-preference :blaze.preference/return
-    :or {context-path ""}}
+  {:arglists '([context router bundle-entry])}
+  [{:blaze/keys [base-url db cancelled?]
+    return-preference :blaze.preference/return}
+   router
    {{:keys [method url]
      {if-none-match :value} :ifNoneMatch
      {if-match :value} :ifMatch
      {if-none-exist :value} :ifNoneExist
      :as request}
     :request :keys [resource]}]
-  (let [url (-> url :value u/strip-leading-slashes)
-        [url query-string] (str/split url #"\?")
-        method (keyword (str/lower-case (:value method)))
+  (let [[url query-string] (str/split (:value url) #"\?")
+        method (request-method (:value method))
         return-preference (or (find-return-preference request)
                               return-preference
                               (when (#{:post :put} method)
                                 :blaze.preference.return/minimal))]
     (cond->
-     {:uri (str context-path "/" url)
+     {:uri (str (base-path router) "/" url)
       :request-method method
       :blaze/base-url base-url}
 
@@ -361,16 +370,7 @@
 (def ^:private id-part (format "[%s]{1,%d}" id-chars id-max-length))
 
 (def ^:private type-pattern
-  (re-pattern (format "(%s)" type-part)))
-
-(def ^:private type-id-pattern
-  (re-pattern (format "(%s)/(%s)" type-part id-part)))
-
-(def ^:private type-operation-pattern
-  (re-pattern (format "(%s)/[^/]+" type-part)))
-
-(def ^:private type-id-operation-pattern
-  (re-pattern (format "(%s)/(%s)/[^/]+" type-part id-part)))
+  (re-pattern type-part))
 
 (def ^:private type-query-params-pattern
   (re-pattern (format "(%s)(?:\\?(.*))?" type-part)))
@@ -378,11 +378,8 @@
 (def ^:private id-chars-pattern
   (re-pattern (format "[%s]+" id-chars)))
 
-(defn match-type-id
-  "Tries to parse a `type` and `id` from `url`. Returns a tuple with `type` and
-  `id` if successful. Otherwise nil."
-  [url]
-  (next (re-matches type-id-pattern url)))
+(def ^:private id-pattern
+  (re-pattern id-part))
 
 (defn match-type-query-params
   "Tries to parse a `type` and `query-params` from `url`. Returns a tuple with
@@ -390,20 +387,43 @@
   [url]
   (next (re-matches type-query-params-pattern url)))
 
-(defn match-url
-  "Tries to parse a `type` and `id` from `url`. Returns a map with :type and :id
-  if successful. Otherwise nil.
+(defn- too-long-id-anom [label id url]
+  (ba/incorrect
+   (format "The %s `%s` in URL `%s` is too long. A FHIR id has to be %d characters at most but is %d characters long."
+           label id url id-max-length (count id))
+   :fhir/issue "value"
+   :fhir/operation-outcome "MSG_ID_TOO_LONG"))
 
-  If `url` contains an operation, adds :kind :operation to the map."
-  [url]
-  (or (when-let [[_ type] (re-matches type-pattern url)]
-        {:type type})
-      (when-let [[_ type id] (re-matches type-id-pattern url)]
-        {:type type :id id})
-      (when-let [[_ type] (re-matches type-operation-pattern url)]
-        {:type type :kind :operation})
-      (when-let [[_ type id] (re-matches type-id-operation-pattern url)]
-        {:type type :id id :kind :operation})))
+(defn- invalid-id-anom [label id url]
+  (ba/incorrect
+   (format "The %s `%s` in URL `%s` is invalid. A FHIR id has to match the regular expression `%s`."
+           label id url id-part)
+   :fhir/issue "value"
+   :fhir/operation-outcome "MSG_ID_INVALID"))
+
+(defn- id-anom
+  "Returns an anomaly naming `id` with `label` if it isn't a valid FHIR id.
+
+  Distinguishes between an id that is too long and an id containing invalid
+  characters."
+  [label id url]
+  (cond
+    (re-matches id-pattern id) nil
+    (re-matches id-chars-pattern id) (too-long-id-anom label id url)
+    :else (invalid-id-anom label id url)))
+
+(defn- path-params-anom
+  "Returns an anomaly if the id or the version id of the matched route
+  `path-params` isn't a valid FHIR id."
+  [{:keys [id vid]} url]
+  (or (when id (id-anom "id" id url))
+      (when vid (id-anom "version id" vid url))))
+
+(defn- match-route
+  "Matches the bundle entry request `url` against the routes of `router`, which
+  are prefixed by the router's base path."
+  [router url]
+  (reitit/match-by-path router (str (base-path router) "/" url)))
 
 (defn- missing-request-anom [idx]
   (ba/incorrect
@@ -447,6 +467,16 @@
    :fhir/issue "value"
    :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
 
+(defn- method-not-allowed-anom [method url idx]
+  (assoc (handler-util/method-not-allowed-anom method url)
+         :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)))
+
+(defn- unknown-request-url-anom [url idx]
+  (ba/not-found
+   (format "Unknown request URL `%s`." url)
+   :fhir/issue "not-found"
+   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
+
 (defn- missing-resource-type-anom [idx]
   (ba/incorrect
    "Missing resource type."
@@ -463,39 +493,8 @@
     (format "Bundle.entry[%d].resource.resourceType" idx)]
    :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"))
 
-(defn- missing-request-url-id-anom [url idx]
-  (ba/incorrect
-   (format "Can't parse id from URL `%s`." url)
-   :fhir/issue "value"
-   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
-
-(defn- too-long-request-url-id-anom [id url idx]
-  (ba/incorrect
-   (format "The id `%s` in URL `%s` is too long. A FHIR id has to be %d characters at most but is %d characters long."
-           id url id-max-length (count id))
-   :fhir/issue "value"
-   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
-   :fhir/operation-outcome "MSG_ID_TOO_LONG"))
-
-(defn- invalid-request-url-id-anom [id url idx]
-  (ba/incorrect
-   (format "The id `%s` in URL `%s` is invalid. A FHIR id has to match the regular expression `%s`."
-           id url id-part)
-   :fhir/issue "value"
-   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)
-   :fhir/operation-outcome "MSG_ID_INVALID"))
-
-(defn- request-url-id-anom
-  "Returns an anomaly for a PUT request `url` from which no id could be parsed.
-
-  Distinguishes between a URL without any id part, a URL with an id that is too
-  long and a URL with an id containing invalid characters."
-  [url idx]
-  (if-let [id (second (str/split url #"/" 2))]
-    (if (re-matches id-chars-pattern id)
-      (too-long-request-url-id-anom id url idx)
-      (invalid-request-url-id-anom id url idx))
-    (missing-request-url-id-anom url idx)))
+(defn- url-anom [anom idx]
+  (assoc anom :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
 
 (defn- missing-resource-id-anom [idx]
   (ba/incorrect
@@ -520,16 +519,75 @@
     (format "Bundle.entry[%d].resource.id" idx)]
    :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"))
 
+(defn- with-request-url
+  "Returns `entry` with its request URL set to `url`. Returns `entry` itself if
+  its request URL is already `url`, so that unchanged entries aren't copied."
+  [entry url]
+  (cond-> entry
+    (not= url (-> entry :request :url :value))
+    (assoc-in [:request :url :value] url)))
+
+(defn- expected-resource-type
+  "Returns the name of the resource type a POST or PUT request with
+  `interaction` on a URL of `type` has to carry.
+
+  Creates and updates carry a resource of the URL's type, all other requests,
+  like operations, carry Parameters."
+  [interaction type]
+  (if (#{"create" "update"} interaction) type "Parameters"))
+
+(defn- validate-routed-entry
+  "Validates `entry` against the route `match` of its request URL."
+  [idx method type url full-url {:keys [resource] :as entry}
+   {{:keys [id] :as path-params} :path-params :keys [result]}]
+  (let [{{:keys [interaction]} :data :keys [handler]} (get result (request-method method))
+        params-anom (path-params-anom path-params url)
+        write? (#{"POST" "PUT"} method)]
+    (cond
+      (nil? handler)
+      (method-not-allowed-anom method url idx)
+
+      params-anom
+      (url-anom params-anom idx)
+
+      (and write? (nil? (:fhir/type resource)))
+      (missing-resource-type-anom idx)
+
+      (and write? (not= (expected-resource-type interaction type) (-> resource :fhir/type name)))
+      (type-mismatch-anom resource url idx)
+
+      (and write? (->> resource :meta :tag (some fu/subsetted?)))
+      (subsetted-anom idx)
+
+      (and (= "PUT" method) (not (contains? resource :id)))
+      (missing-resource-id-anom idx)
+
+      (and (= "PUT" method) (not= id (:id resource)))
+      (id-mismatch-anom resource url idx)
+
+      :else
+      (cond-> (-> (with-request-url entry full-url)
+                  (assoc ::interaction interaction ::type type))
+        id (assoc ::id id)))))
+
 (defn validate-entry
   "Validates that bundle `entry` can be used in a transaction or batch.
 
-  Returns `entry` unmodified or an anomaly in case it isn't valid. Uses `idx` in
-  anomalies to indicate the position of the entry in the bundle."
-  {:arglists '([idx entry])}
-  [idx {:keys [request resource] :as entry}]
+  Matches the request URL of `entry` against the routes of `router`, which
+  has to be the router of the batch handler. Returns an anomaly if no route
+  matches or the route doesn't allow the request method.
+
+  Returns `entry` with leading slashes stripped from its request URL, the
+  interaction of the matched route under ::interaction, the resource type of
+  the request URL under ::type and its id, if any, under ::id or an anomaly in
+  case it isn't valid. Uses `idx` in anomalies to indicate the position of the entry
+  in the bundle."
+  {:arglists '([router idx entry])}
+  [router idx {:keys [request] :as entry}]
   (let [method (some-> request :method :value)
-        [url] (some-> request :url :value u/strip-leading-slashes (str/split #"\?"))
-        {:keys [type id kind]} (some-> url match-url)]
+        full-url (some-> request :url :value u/strip-leading-slashes)
+        [url] (some-> full-url (str/split #"\?"))
+        type (some-> url (str/split #"/" 2) first)]
     (cond
       (nil? request)
       (missing-request-anom idx)
@@ -547,51 +605,42 @@
       (unsupported-request-method-anom method idx)
 
       (and (= "GET" method) (= "metadata" url))
-      entry
+      (with-request-url entry full-url)
 
-      (nil? type)
+      (not (re-matches type-pattern type))
       (missing-request-url-type-anom url idx)
 
       (not (fhir-spec/type-exists? type))
       (unknown-request-url-type-anom type url idx)
 
-      (and (#{"POST" "PUT"} method) (nil? (:fhir/type resource)))
-      (missing-resource-type-anom idx)
-
-      (and (#{"POST" "PUT"} method) (not= :operation kind) (not= type (-> resource :fhir/type name)))
-      (type-mismatch-anom resource url idx)
-
-      (and (= "POST" method) (= :operation kind) (not= "Parameters" (-> resource :fhir/type name)))
-      (type-mismatch-anom resource url idx)
-
-      (and (#{"POST" "PUT"} method) (->> resource :meta :tag (some fu/subsetted?)))
-      (subsetted-anom idx)
-
-      (and (= "PUT" method) (nil? id))
-      (request-url-id-anom url idx)
-
-      (and (= "PUT" method) (not (contains? resource :id)))
-      (missing-resource-id-anom idx)
-
-      (and (= "PUT" method) (not= id (:id resource)))
-      (id-mismatch-anom resource url idx)
-
       :else
-      entry)))
+      (if-let [match (match-route router url)]
+        (validate-routed-entry idx method type url full-url entry match)
+        (unknown-request-url-anom url idx)))))
 
-(defn process-batch-entry
-  "Processes `entry` from `idx` of a batch bundle using :batch-handler from
-  `context`."
+(defn execute-batch-entry
+  "Executes `entry` from `idx` of a batch bundle using :batch-handler from
+  `context`.
+
+  The `entry` has to be already validated by `validate-entry`."
   {:arglists '([context idx entry])}
   [{:keys [batch-handler] :as context} idx entry]
-  (if-ok [_ (validate-entry idx entry)]
-    (-> (batch-handler (batch-request context entry))
-        (ac/then-apply bundle-response)
-        (ac/exceptionally
-         (fn [anom]
-           (if (ba/interrupted? anom)
-             anom
-             ((bundle-error-response idx) anom)))))
+  (-> (batch-handler
+       (batch-request context (reitit.ring/get-router batch-handler) entry))
+      (ac/then-apply bundle-response)
+      (ac/exceptionally
+       (fn [anom]
+         (if (ba/interrupted? anom)
+           anom
+           ((bundle-error-response idx) anom))))))
+
+(defn process-batch-entry
+  "Validates and executes `entry` from `idx` of a batch bundle using
+  :batch-handler from `context`."
+  {:arglists '([context idx entry])}
+  [{:keys [batch-handler] :as context} idx entry]
+  (if-ok [entry (validate-entry (reitit.ring/get-router batch-handler) idx entry)]
+    (execute-batch-entry context idx entry)
     (comp ac/completed-future response-entry
           handler-util/bundle-error-response)))
 

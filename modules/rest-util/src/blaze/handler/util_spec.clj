@@ -4,7 +4,8 @@
    [blaze.fhir.spec]
    [blaze.handler.util :as handler-util]
    [blaze.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef handler-util/format-request
   :args (s/cat :request map?)
@@ -17,6 +18,10 @@
 (s/fdef handler-util/error-response
   :args (s/cat :error some?)
   :ret map?)
+
+(s/fdef handler-util/method-not-allowed-anom
+  :args (s/cat :method string? :uri string?)
+  :ret ::anom/anomaly)
 
 (s/fdef handler-util/instant
   :args (s/cat :tx :blaze.db/tx)

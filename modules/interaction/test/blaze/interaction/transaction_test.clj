@@ -7,6 +7,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
@@ -17,6 +18,7 @@
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.create]
    [blaze.interaction.delete]
+   [blaze.interaction.delete-history]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
@@ -25,6 +27,7 @@
    [blaze.interaction.transaction]
    [blaze.interaction.update]
    [blaze.interaction.util-spec]
+   [blaze.interaction.vread]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.module-spec]
@@ -60,60 +63,77 @@
   {:name :db
    :wrap db/wrap-db})
 
+(defn- type-route
+  [type {:keys [node create-handler search-type-handler
+                conditional-delete-type-handler]}]
+  [(str "/" type)
+   {:name (keyword type "type")
+    :fhir.resource/type type
+    :get {:interaction "search-type"
+          :middleware [[wrap-db node]]
+          :handler (wrap-params search-type-handler)}
+    :post {:interaction "create" :handler create-handler}
+    :delete {:interaction "conditional-delete-type"
+             :handler conditional-delete-type-handler}}])
+
+(defn- page-route [type {:keys [node search-type-handler]}]
+  [(str "/" type "/__page")
+   {:name (keyword type "page")
+    :conflicting true
+    :fhir.resource/type type
+    :get {:interaction "search-type"
+          :middleware [[wrap-db node]]
+          :handler (wrap-params search-type-handler)}}])
+
+(defn- instance-route
+  [type {:keys [node read-handler delete-handler update-handler]}]
+  [(str "/" type "/{id}")
+   {:name (keyword type "instance")
+    :conflicting true
+    :fhir.resource/type type
+    :get {:interaction "read"
+          :middleware [[wrap-db node]]
+          :handler read-handler}
+    :delete {:interaction "delete" :handler delete-handler}
+    :put {:interaction "update" :handler update-handler}}])
+
 (defmethod ig/init-key ::router
-  [_ {:keys [node create-handler search-type-handler
-             read-handler delete-handler update-handler
-             conditional-delete-type-handler history-instance-handler batch?]}]
+  [_ {:keys [node vread-handler history-instance-handler delete-history-handler
+             batch?]
+      :as config}]
   (reitit.ring/router
    [["/metadata"
-     {:get
+     {:interaction "capabilities"
+      :get
       (fn [_]
         (ac/completed-future
          (ring/response {:fhir/type :fhir/CapabilityStatement})))}]
-    ["/Observation"
-     {:name :Observation/type
-      :conflicting true
-      :fhir.resource/type "Observation"
-      :get {:middleware [[wrap-db node]]
-            :handler (wrap-params search-type-handler)}
-      :post create-handler
-      :delete conditional-delete-type-handler}]
-    ["/Observation/__page"
-     {:name :Observation/page
-      :conflicting true
-      :fhir.resource/type "Observation"
-      :get {:middleware [[wrap-db node]]
-            :handler (wrap-params search-type-handler)}}]
-    ["/Patient"
-     {:name :Patient/type
-      :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node]]
-            :handler (wrap-params search-type-handler)}
-      :post create-handler
-      :delete conditional-delete-type-handler}]
-    ["/Patient/__page"
-     {:name :Patient/page
-      :conflicting true
-      :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node]]
-            :handler (wrap-params search-type-handler)}}]
-    ["/Patient/{id}"
-     {:name :Patient/instance
-      :conflicting true
-      :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node]] :handler read-handler}
-      :delete delete-handler
-      :put update-handler}]
+    (type-route "Binary" config)
+    (instance-route "Binary" config)
+    (type-route "DocumentReference" config)
+    (instance-route "DocumentReference" config)
+    (type-route "Observation" config)
+    (page-route "Observation" config)
+    (instance-route "Observation" config)
+    (type-route "Patient" config)
+    (page-route "Patient" config)
+    (instance-route "Patient" config)
     ["/Patient/{id}/_history"
      {:name :Patient/history-instance
       :fhir.resource/type "Patient"
-      :get {:middleware [[wrap-db node]]
-            :handler (wrap-params history-instance-handler)}}]
+      :get {:interaction "history-instance"
+            :middleware [[wrap-db node]]
+            :handler (wrap-params history-instance-handler)}
+      :delete {:interaction "delete-history" :handler delete-history-handler}}]
     ["/Patient/{id}/__history-page/{page-id}"
      {:name :Patient/history-instance-page
       :fhir.resource/type "Patient"}]
     ["/Patient/{id}/_history/{vid}"
-     {:name :Patient/versioned-instance}]]
+     {:name :Patient/versioned-instance
+      :fhir.resource/type "Patient"
+      :get {:interaction "vread"
+            :middleware [[wrap-db node]]
+            :handler vread-handler}}]]
    (cond-> {:syntax :bracket}
      batch?
      (assoc :reitit.middleware/transform
@@ -149,6 +169,8 @@
    :blaze.interaction/read
    {:node (ig/ref :blaze.db/node)}
 
+   :blaze.interaction/vread {}
+
    :blaze.interaction/delete
    {:node (ig/ref :blaze.db/node)}
 
@@ -156,6 +178,9 @@
    {:node (ig/ref :blaze.db/node)}
 
    :blaze.interaction/conditional-delete-type
+   {:node (ig/ref :blaze.db/node)}
+
+   :blaze.interaction/delete-history
    {:node (ig/ref :blaze.db/node)}
 
    :blaze.interaction.history/instance
@@ -172,10 +197,12 @@
     :create-handler (ig/ref :blaze.interaction/create)
     :search-type-handler (ig/ref :blaze.interaction/search-type)
     :read-handler (ig/ref :blaze.interaction/read)
+    :vread-handler (ig/ref :blaze.interaction/vread)
     :delete-handler (ig/ref :blaze.interaction/delete)
     :update-handler (ig/ref :blaze.interaction/update)
     :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
-    :history-instance-handler (ig/ref :blaze.interaction.history/instance)}
+    :history-instance-handler (ig/ref :blaze.interaction.history/instance)
+    :delete-history-handler (ig/ref :blaze.interaction/delete-history)}
 
    ::batch-router
    {:batch? true
@@ -183,10 +210,12 @@
     :create-handler (ig/ref :blaze.interaction/create)
     :search-type-handler (ig/ref :blaze.interaction/search-type)
     :read-handler (ig/ref :blaze.interaction/read)
+    :vread-handler (ig/ref :blaze.interaction/vread)
     :delete-handler (ig/ref :blaze.interaction/delete)
     :update-handler (ig/ref :blaze.interaction/update)
     :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
-    :history-instance-handler (ig/ref :blaze.interaction.history/instance)}
+    :history-instance-handler (ig/ref :blaze.interaction.history/instance)
+    :delete-history-handler (ig/ref :blaze.interaction/delete-history)}
 
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
@@ -1036,6 +1065,244 @@
                 :etag := #fhir/string "W/\"1\""
                 :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))
 
+(deftest handler-vread-interaction-test
+  (doseq [type ["transaction" "batch"]]
+    (testing (format "On %s bundle" type)
+      (testing "returns the requested version of the resource"
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+          (let [{:keys [status]
+                 {[{:keys [resource response]}] :entry :as body} :body}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type (type/code type)
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "GET"
+                       :url #fhir/uri "Patient/0/_history/1"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "bundle"
+              (given body
+                :fhir/type := :fhir/Bundle
+                :type := (type/code (str type "-response"))))
+
+            (testing "entry resource"
+              (given resource
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                :active := nil
+                [:meta :versionId] := #fhir/id "1"))
+
+            (testing "entry response"
+              (given response
+                :status := #fhir/string "200"
+                :etag := #fhir/string "W/\"1\""))))))))
+
+(deftest handler-create-on-instance-url-test
+  (testing "On transaction bundle"
+    (testing "returns error"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :resource {:fhir/type :fhir/Patient}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "POST"
+                     :url #fhir/uri "Patient/0"}}]}})]
+
+          (is (= 405 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "processing"
+            [:issue 0 :diagnostics] := #fhir/string "Method POST not allowed on `Patient/0` endpoint."
+            [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.method"))))))
+
+(deftest handler-update-on-non-instance-url-test
+  (testing "On transaction bundle"
+    (doseq [url ["Patient/0/_history/1" "Patient/0/_history"]]
+      (testing (format "with URL `%s`" url)
+        (testing "returns error"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                    {:body
+                     {:fhir/type :fhir/Bundle
+                      :type #fhir/code "transaction"
+                      :entry
+                      [{:fhir/type :fhir.Bundle/entry
+                        :resource {:fhir/type :fhir/Patient :id "0"
+                                   :active #fhir/boolean true}
+                        :request
+                        {:fhir/type :fhir.Bundle.entry/request
+                         :method #fhir/code "PUT"
+                         :url (type/uri url)}}]}})]
+
+              (is (= 405 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :code] := #fhir/code "processing"
+                [:issue 0 :diagnostics] := (type/string (format "Method PUT not allowed on `%s` endpoint." url))
+                [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.method"))))))))
+
+(deftest handler-delete-with-leading-slash-test
+  (testing "On transaction bundle"
+    (testing "deletes the resource"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status]
+               {[{:keys [response]}] :entry} :body}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "/Patient/0"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "204"))
+
+          (testing "the resource is deleted"
+            (is (= :delete @(d/with-sync-db node #(ac/completed-future (:op (d/resource-handle % "Patient" "0"))))))))))))
+
+(deftest handler-delete-with-query-test
+  (testing "On transaction bundle"
+    (testing "deletes the resource"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status]
+               {[{:keys [response]}] :entry} :body}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0?foo=bar"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "204"))
+
+          (testing "the resource is deleted"
+            (is (= :delete @(d/with-sync-db node #(ac/completed-future (:op (d/resource-handle % "Patient" "0"))))))))))))
+
+(defn- delete-bundle [type url]
+  {:fhir/type :fhir/Bundle
+   :type (type/code type)
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code "DELETE"
+      :url (type/uri url)}}]})
+
+(deftest handler-unknown-url-test
+  (testing "On transaction bundle"
+    (testing "returns error"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler {:body (delete-bundle "transaction" "Patient/0/foo/bar")})]
+
+          (is (= 404 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "not-found"
+            [:issue 0 :diagnostics] := #fhir/string "Unknown request URL `Patient/0/foo/bar`."
+            [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.url"))))))
+
+(deftest handler-delete-on-versioned-instance-url-test
+  (testing "On transaction bundle"
+    (testing "returns error"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler {:body (delete-bundle "transaction" "Patient/0/_history/1")})]
+
+          (is (= 405 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "processing"
+            [:issue 0 :diagnostics] := #fhir/string "Method DELETE not allowed on `Patient/0/_history/1` endpoint."
+            [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.method"))))))
+
+(deftest handler-delete-history-test
+  (testing "On transaction bundle"
+    (testing "returns error"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status body]}
+              @(handler {:body (delete-bundle "transaction" "Patient/0/_history")})]
+
+          (is (= 422 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "not-supported"
+            [:issue 0 :diagnostics] := #fhir/string "Unsupported DELETE request URL `Patient/0/_history` in transactions."
+            [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.url")))))
+
+  (testing "On batch bundle"
+    (testing "deletes the history"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler {:body (delete-bundle "batch" "Patient/0/_history")})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "204"))
+
+          (testing "only the current version remains"
+            (is (= 1 @(d/with-sync-db node #(ac/completed-future (d/total-num-of-instance-changes % "Patient" "0")))))))))))
+
 (deftest handler-history-since-test
   (doseq [type ["transaction" "batch"]]
     (testing (format "On %s bundle" type)
@@ -1362,14 +1629,14 @@
                    :url #fhir/uri "Patient"}}]}})]
 
         (testing "returns error"
-          (is (= 400 status))
+          (is (= 405 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
-            [:issue 0 :code] := #fhir/code "value"
-            [:issue 0 :diagnostics] := #fhir/string "Can't parse id from URL `Patient`."
-            [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0].request.url")))))
+            [:issue 0 :code] := #fhir/code "processing"
+            [:issue 0 :diagnostics] := #fhir/string "Method PUT not allowed on `Patient` endpoint."
+            [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0].request.method")))))
 
   (testing "on ID mismatch"
     (with-handler [handler]
@@ -2124,15 +2391,15 @@
 
         (testing "returns error"
           (testing "with status"
-            (is (= #fhir/string "400" (:status response))))
+            (is (= #fhir/string "405" (:status response))))
 
           (testing "with outcome"
             (given (:outcome response)
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code "error"
-              [:issue 0 :code] := #fhir/code "value"
-              [:issue 0 :diagnostics] := #fhir/string "Can't parse id from URL `Patient`."
-              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0].request.url"))))))
+              [:issue 0 :code] := #fhir/code "processing"
+              [:issue 0 :diagnostics] := #fhir/string "Method PUT not allowed on `Patient` endpoint."
+              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0].request.method"))))))
 
   (testing "on optimistic locking failure"
     (testing "with different content"
@@ -2474,8 +2741,8 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code "error"
               [:issue 0 :code] := #fhir/code "processing"
-              [:issue 0 :diagnostics] := #fhir/string "Method POST not allowed on `/Patient/0` endpoint."
-              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]"))))))
+              [:issue 0 :diagnostics] := #fhir/string "Method POST not allowed on `Patient/0` endpoint."
+              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0].request.method"))))))
 
   (testing "on violated referential integrity"
     (with-handler [handler]

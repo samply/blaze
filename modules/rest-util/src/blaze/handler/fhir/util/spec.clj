@@ -14,3 +14,12 @@
 
 (s/def ::rest-api/batch-handler
   fn?)
+
+(s/def :blaze.handler.fhir.util/interaction
+  string?)
+
+(s/def :blaze.handler.fhir.util/type
+  :fhir.resource/type)
+
+(s/def :blaze.handler.fhir.util/id
+  :blaze.resource/id)

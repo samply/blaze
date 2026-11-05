@@ -9,13 +9,18 @@
    [clojure.string :as str]
    [ring.util.codec :as ring-codec]))
 
-(defmulti entry-tx-op (fn [_ {{:keys [method]} :request}] (:value method)))
+(defmulti entry-tx-op
+  "Returns `entry` with the transaction operation of its interaction associated
+  under :tx-op. Returns `entry` unchanged if its interaction doesn't need a
+  transaction operation."
+  {:arglists '([db entry])}
+  (fn [_ entry] (::fhir-util/interaction entry)))
 
 (defn- conditional-clauses [if-none-exist]
   (when-not (str/blank? if-none-exist)
     (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
-(defmethod entry-tx-op "POST"
+(defmethod entry-tx-op "create"
   [_ {:keys [resource] {{if-none-exist :value} :ifNoneExist} :request :as entry}]
   (let [clauses (conditional-clauses if-none-exist)]
     (assoc entry
@@ -25,7 +30,7 @@
              (seq clauses)
              (conj clauses)))))
 
-(defmethod entry-tx-op "PUT"
+(defmethod entry-tx-op "update"
   [db
    {{{if-match :value} :ifMatch {if-none-match :value} :ifNoneMatch} :request
     :keys [resource] :as entry}]
@@ -33,12 +38,14 @@
                                    if-none-match)]
     (assoc entry :tx-op tx-op)))
 
-(defmethod entry-tx-op "DELETE"
-  [_ {{:keys [url]} :request :as entry}]
-  (if-let [[type id] (fhir-util/match-type-id (:value url))]
-    (assoc entry :tx-op [:delete type id])
-    (when-let [[type query-params] (fhir-util/match-type-query-params (:value url))]
-      (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode uc/search-clauses)))))))
+(defmethod entry-tx-op "delete"
+  [_ {::fhir-util/keys [type id] :as entry}]
+  (assoc entry :tx-op [:delete type id]))
+
+(defmethod entry-tx-op "conditional-delete-type"
+  [_ {{{url :value} :url} :request :as entry}]
+  (let [[type query-params] (fhir-util/match-type-query-params url)]
+    (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode uc/search-clauses))))))
 
 (defmethod entry-tx-op :default
   [_ entry]
