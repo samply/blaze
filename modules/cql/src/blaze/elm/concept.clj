@@ -9,10 +9,10 @@
 
 (defrecord Concept [codes]
   p/Equivalent
-  (equivalent [_ other]
+  (equivalent [_ other now]
     (reduce
      (fn [_ code]
-       (if (some (partial p/equivalent code) (:codes other))
+       (if (some #(p/equivalent code % now) (:codes other))
          (reduced true)
          false))
      false

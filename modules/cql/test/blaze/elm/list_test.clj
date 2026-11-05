@@ -15,12 +15,12 @@
 ;; 12.1. Equal
 (deftest equal-test
   (testing "works on eductions"
-    (is (true? (p/equal (coll/eduction (map identity) [1 2]) [1 2])))))
+    (is (true? (p/equal (coll/eduction (map identity) [1 2]) [1 2] nil)))))
 
 ;; 12.2. Equivalent
 (deftest equivalent-test
   (testing "works on eductions"
-    (is (true? (p/equivalent (coll/eduction (map identity) [1 2]) [1 2])))))
+    (is (true? (p/equivalent (coll/eduction (map identity) [1 2]) [1 2] nil)))))
 
 ;; 17.6. Indexer
 (deftest indexer-test
@@ -30,37 +30,37 @@
 ;; 19.5. Contains
 (deftest contains-test
   (testing "works on eductions"
-    (is (true? (p/contains (coll/eduction (map identity) [1 2]) 1 nil)))))
+    (is (true? (p/contains (coll/eduction (map identity) [1 2]) 1 nil nil)))))
 
 ;; 19.10. Except
 (deftest except-test
   (testing "works on eductions"
-    (is (= [2] (p/except (coll/eduction (map identity) [1 2]) [1])))))
+    (is (= [2] (p/except (coll/eduction (map identity) [1 2]) [1] nil)))))
 
 ;; 19.13. Includes
 (deftest includes-test
   (testing "works on eductions"
-    (is (true? (p/includes (coll/eduction (map identity) [1 2]) [1] nil)))))
+    (is (true? (p/includes (coll/eduction (map identity) [1 2]) [1] nil nil)))))
 
 ;; 19.15. Intersect
 (deftest intersect-test
   (testing "works on eductions"
-    (is (= [2] (p/intersect (coll/eduction (map identity) [1 2]) [2 3])))))
+    (is (= [2] (p/intersect (coll/eduction (map identity) [1 2]) [2 3] nil)))))
 
 ;; 19.24. ProperContains
 (deftest proper-contains-test
   (testing "works on eductions"
-    (is (true? (p/proper-contains (coll/eduction (map identity) [1 2]) 1 nil)))))
+    (is (true? (p/proper-contains (coll/eduction (map identity) [1 2]) 1 nil nil)))))
 
 ;; 19.26. ProperIncludes
 (deftest proper-includes-test
   (testing "works on eductions"
-    (is (true? (p/proper-includes (coll/eduction (map identity) [1 2]) [1] nil)))))
+    (is (true? (p/proper-includes (coll/eduction (map identity) [1 2]) [1] nil nil)))))
 
 ;; 19.31. Union
 (deftest union-test
   (testing "works on eductions"
-    (is (= [1 2 3] (p/union (coll/eduction (map identity) [1 2]) [3])))))
+    (is (= [1 2 3] (p/union (coll/eduction (map identity) [1 2]) [3] nil)))))
 
 ;; 20.25. SingletonFrom
 (deftest singleton-from-test

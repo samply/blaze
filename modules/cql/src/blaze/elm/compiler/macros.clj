@@ -51,12 +51,31 @@
      (~'hashCode [~'this]
        (.hashCode ^Object (core/-form ~'this)))))
 
+(defn- now-binding-vector
+  "Returns a binding vector that binds `now` to `now-binding` if given."
+  [now-binding now]
+  (if now-binding [now-binding now] []))
+
 (defn- generate-binding-vector
   "Creates a binding vector of at least `[operand-binding operand]` and
   optionally `[operand-binding operand elm-elm-expr-binding elm-expr]` if
-  `elm-elm-expr-binding` is given."
-  [operand-binding operand elm-expr-binding elm-expr]
-  (cond-> [operand-binding operand] elm-expr-binding (conj elm-expr-binding elm-expr)))
+  `elm-elm-expr-binding` is given. Also binds `now` to `now-binding` if given."
+  [operand-binding operand elm-expr-binding elm-expr now-binding now]
+  (into (cond-> [operand-binding operand]
+          elm-expr-binding (conj elm-expr-binding elm-expr))
+        (now-binding-vector now-binding now)))
+
+(defn- split-now-binding
+  "Splits `bindings` into the bindings of the operands and the optional binding
+  of the timestamp of the evaluation request.
+
+  The binding of the timestamp has to be the last binding and marked with
+  `:now` metadata. It's bound to nil if the operator is evaluated at compile
+  time, because all operands are static."
+  [bindings]
+  (if (:now (meta (peek bindings)))
+    [(pop bindings) (peek bindings)]
+    [bindings nil]))
 
 (defn- compile-kw [name]
   (keyword "elm.compiler.type" (clojure.core/name name)))
@@ -66,7 +85,8 @@
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
-        [[operand-binding elm-expr-binding] & body] more
+        [bindings & body] more
+        [[operand-binding elm-expr-binding] now-binding] (split-now-binding bindings)
         operand-key (or (:operand-key attr-map) :operand)
         attr-map (dissoc attr-map :operand-key)
         op (symbol (str name "-op"))
@@ -148,7 +168,8 @@
                                                                     ~context
                                                                     ~resource
                                                                     ~scope)
-                                       elm-expr-binding elm-expr)
+                                       elm-expr-binding elm-expr
+                                       now-binding `(:now ~context))
                                   ~@body)]
                        (prom/inc! ec/bloom-filter-not-useful-total ~(clojure.core/name name))
                        (when-not res#
@@ -207,14 +228,17 @@
                       `(~caching-op
                         (core/-optimize ~operand ~db)
                         ~elm-expr)
-                      `(let [~operand (core/-optimize ~operand ~db)]
-                         (if (core/static? ~operand)
-                           (let [~operand-binding ~operand] ~@body)
-                           (~caching-op ~operand)))))
+                      (if now-binding
+                        `(~caching-op (core/-optimize ~operand ~db))
+                        `(let [~operand (core/-optimize ~operand ~db)]
+                           (if (core/static? ~operand)
+                             (let [~operand-binding ~operand] ~@body)
+                             (~caching-op ~operand))))))
                  (~'-eval [~'_ ~context ~resource ~scope]
                    (let ~(generate-binding-vector
                           operand-binding `(core/-eval ~operand ~context ~resource ~scope)
-                          elm-expr-binding elm-expr)
+                          elm-expr-binding elm-expr
+                          now-binding `(:now ~context))
                      ~@body))
                  (~'-form [~'_]
                    (list (quote ~name) (core/-form ~operand)))))))
@@ -246,14 +270,17 @@
                 `(~op
                   (core/-optimize ~operand ~db)
                   ~elm-expr)
-                `(let [~operand (core/-optimize ~operand ~db)]
-                   (if (core/static? ~operand)
-                     (let [~operand-binding ~operand] ~@body)
-                     (~op ~operand)))))
+                (if now-binding
+                  `(~op (core/-optimize ~operand ~db))
+                  `(let [~operand (core/-optimize ~operand ~db)]
+                     (if (core/static? ~operand)
+                       (let [~operand-binding ~operand] ~@body)
+                       (~op ~operand))))))
            (~'-eval [~'_ ~context ~resource ~scope]
              (let ~(generate-binding-vector
                     operand-binding `(core/-eval ~operand ~context ~resource ~scope)
-                    elm-expr-binding elm-expr)
+                    elm-expr-binding elm-expr
+                    now-binding `(:now ~context))
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~operand)))))
@@ -265,7 +292,8 @@
            (if (core/static? ~operand)
              (let ~(generate-binding-vector
                     operand-binding operand
-                    elm-expr-binding elm-expr)
+                    elm-expr-binding elm-expr
+                    now-binding nil)
                ~@body)
              ~(if (:cache attr-map)
                 `(if (= "Patient" ~eval-context)
@@ -284,7 +312,8 @@
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
-        [[op-1-binding op-2-binding] & body] more
+        [bindings & body] more
+        [[op-1-binding op-2-binding] now-binding] (split-now-binding bindings)
         context (gensym "context")
         op (symbol (str name "-op"))
         op-1 (gensym "op-1")
@@ -302,9 +331,10 @@
              (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
            (~'-optimize [~'_ ~'node]
              (core/optimize-helper ~op ~'node ~op-1 ~op-2))
-           (~'-eval [~'_ context# resource# scope#]
-             (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                   ~op-2-binding (core/-eval ~op-2 context# resource# scope#)]
+           (~'-eval [~'_ ~context resource# scope#]
+             (let [~op-1-binding (core/-eval ~op-1 ~context resource# scope#)
+                   ~op-2-binding (core/-eval ~op-2 ~context resource# scope#)
+                   ~@(now-binding-vector now-binding `(:now ~context))]
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)))))
@@ -316,7 +346,8 @@
                ~op-2 (core/compile* context# ~op-2)]
            (if (and (core/static? ~op-1) (core/static? ~op-2))
              (let [~op-1-binding ~op-1
-                   ~op-2-binding ~op-2]
+                   ~op-2-binding ~op-2
+                   ~@(now-binding-vector now-binding nil)]
                ~@body)
              (~op ~op-1 ~op-2)))))))
 
@@ -391,8 +422,10 @@
 
 (defmacro defaggop
   {:arglists '([name bindings & body])}
-  [name [source-binding] & body]
-  (let [op (symbol (str name "-op"))]
+  [name bindings & body]
+  (let [[[source-binding] now-binding] (split-now-binding bindings)
+        op (symbol (str name "-op"))
+        context (gensym "context")]
     `(do
        (defn ~op [~source-binding]
          (reify-expr core/Expression
@@ -404,8 +437,9 @@
              (~op (core/-resolve-params ~source-binding ~'parameters)))
            (~'-optimize [~'_ ~'db]
              (~op (core/-optimize ~source-binding ~'db)))
-           (~'-eval [~'_ context# resource# scope#]
-             (let [~source-binding (core/-eval ~source-binding context# resource# scope#)]
+           (~'-eval [~'_ ~context resource# scope#]
+             (let [~source-binding (core/-eval ~source-binding ~context resource# scope#)
+                   ~@(now-binding-vector now-binding `(:now ~context))]
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~source-binding)))))
@@ -456,7 +490,8 @@
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
-        [[op-1-binding op-2-binding precision-binding] & body] more
+        [bindings & body] more
+        [[op-1-binding op-2-binding precision-binding] now-binding] (split-now-binding bindings)
         precision-required (:required (meta precision-binding))
         context (gensym "context")
         op (symbol (str name "-op"))
@@ -478,10 +513,11 @@
                  (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
                (~'-optimize [~'_ ~'node]
                  (core/optimize-helper ~op ~'node ~op-1 ~op-2))
-               (~'-eval [~'_ context# resource# scope#]
-                 (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                       ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
-                       ~precision-binding nil]
+               (~'-eval [~'_ ~context resource# scope#]
+                 (let [~op-1-binding (core/-eval ~op-1 ~context resource# scope#)
+                       ~op-2-binding (core/-eval ~op-2 ~context resource# scope#)
+                       ~precision-binding nil
+                       ~@(now-binding-vector now-binding `(:now ~context))]
                    ~@body))
                (~'-form [~'_]
                  (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2))))))
@@ -507,9 +543,10 @@
               (core/-optimize ~op-1 ~'db)
               (core/-optimize ~op-2 ~'db)
               ~precision-binding ~precision))
-           (~'-eval [~'_ context# resource# scope#]
-             (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                   ~op-2-binding (core/-eval ~op-2 context# resource# scope#)]
+           (~'-eval [~'_ ~context resource# scope#]
+             (let [~op-1-binding (core/-eval ~op-1 ~context resource# scope#)
+                   ~op-2-binding (core/-eval ~op-2 ~context resource# scope#)
+                   ~@(now-binding-vector now-binding `(:now ~context))]
                ~@body))
            (~'-form [~'_]
              (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)
@@ -524,7 +561,8 @@
                    ~precision-binding (core/to-chrono-unit ~precision)]
                (if (and (core/static? ~op-1) (core/static? ~op-2))
                  (let [~op-1-binding ~op-1
-                       ~op-2-binding ~op-2]
+                       ~op-2-binding ~op-2
+                       ~@(now-binding-vector now-binding nil)]
                    ~@body)
                  (~precision-op ~op-1 ~op-2 ~precision-binding ~precision))))
 
@@ -536,7 +574,8 @@
                    ~precision-binding (some-> ~precision core/to-chrono-unit)]
                (if (and (core/static? ~op-1) (core/static? ~op-2))
                  (let [~op-1-binding ~op-1
-                       ~op-2-binding ~op-2]
+                       ~op-2-binding ~op-2
+                       ~@(now-binding-vector now-binding nil)]
                    ~@body)
                  (if ~precision
                    (~precision-op ~op-1 ~op-2 ~precision-binding ~precision)

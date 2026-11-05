@@ -224,14 +224,35 @@
     #elm/list [#elm/quantity [100 "cm"] #elm/quantity [1 "m"]] [(quantity 100 "cm")]
     #elm/list [#elm/quantity [1 "m"] #elm/quantity [100 "cm"]] [(quantity 1 "m")])
 
+  (testing "DateTime with offset is compared in the offset of now"
+    (are [now list n] (= n (count (ctu/eval-with-now
+                                   (elm/distinct #elm/parameter-ref "x")
+                                   now list nil)))
+      ctu/now
+      [#system/date-time "2025-02-18T00:30:00+01:00"
+       #system/date-time "2025-02-17T23:30:00"]
+      1
+
+      ctu/now
+      [#system/date-time "2025-02-17T23:30:00"
+       #system/date-time "2025-02-18T00:30:00+01:00"]
+      1
+
+      ctu/now-plus-one
+      [#system/date-time "2025-02-18T00:30:00+01:00"
+       #system/date-time "2025-02-17T23:30:00"]
+      2))
+
   (ctu/testing-unary-null elm/distinct)
 
   (ctu/testing-unary-op elm/distinct)
 
-  (ctu/testing-optimize elm/distinct
-    (testing "[1 1]"
-      #ctu/optimize-to [1 1]
-      [1])))
+  (testing "isn't evaluated while optimizing, because it compares relative to
+           the timestamp of the evaluation request"
+    (ctu/testing-optimize elm/distinct
+      (testing "[1 1]"
+        #ctu/optimize-to [1 1]
+        '(distinct [1 1])))))
 
 ;; 20.5. Equal
 ;;

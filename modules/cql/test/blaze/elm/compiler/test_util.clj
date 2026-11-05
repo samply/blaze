@@ -47,7 +47,13 @@
 (def patient-retrieve-elm
   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"})
 
-(def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
+(def now
+  "The current date-time with an offset of 00:00."
+  (OffsetDateTime/now (ZoneOffset/ofHours 0)))
+
+(def now-plus-one
+  "Like `now` but with an offset of +01:00."
+  (OffsetDateTime/now (ZoneOffset/ofHours 1)))
 
 (def dynamic-compile-ctx
   {:eval-context "Patient"
@@ -118,6 +124,15 @@
 
 (defn dynamic-compile-eval [elm]
   (dynamic-eval (dynamic-compile elm)))
+
+(defn eval-with-now
+  "Compiles `elm`, which can refer to the parameters `x` and `y`, and evaluates
+  it with `x` and `y` as parameter values relative to `now`."
+  [elm now x y]
+  (core/-eval
+   (c/compile {:library {:parameters {:def [{:name "x"} {:name "y"}]}}} elm)
+   {:now now :parameters {"x" x "y" y}}
+   nil nil))
 
 (defn binary-operand [type]
   {:type type :operand [{:type "Null"} {:type "Null"}]})

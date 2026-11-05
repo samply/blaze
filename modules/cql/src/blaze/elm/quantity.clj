@@ -103,7 +103,7 @@
 ;; 12.1. Equal
 (extend-protocol p/Equal
   ComparableQuantity
-  (equal [a b]
+  (equal [a b _]
     (when b
       (try
         (.isEquivalentTo a b)
@@ -112,7 +112,7 @@
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
   ComparableQuantity
-  (equivalent [a b]
+  (equivalent [a b _]
     (if b
       (try
         (.isEquivalentTo a b)
@@ -122,7 +122,7 @@
 ;; 12.3. Greater
 (extend-protocol p/Greater
   ComparableQuantity
-  (greater [x y]
+  (greater [x y _]
     (when y
       (try
         (.isGreaterThan x y)
@@ -131,7 +131,7 @@
 ;; 12.4. GreaterOrEqual
 (extend-protocol p/GreaterOrEqual
   ComparableQuantity
-  (greater-or-equal [x y]
+  (greater-or-equal [x y _]
     (when y
       (try
         (.isGreaterThanOrEqualTo x y)
@@ -140,7 +140,7 @@
 ;; 12.5. Less
 (extend-protocol p/Less
   ComparableQuantity
-  (less [x y]
+  (less [x y _]
     (when y
       (try
         (.isLessThan x y)
@@ -149,7 +149,7 @@
 ;; 12.6. LessOrEqual
 (extend-protocol p/LessOrEqual
   ComparableQuantity
-  (less-or-equal [x y]
+  (less-or-equal [x y _]
     (when y
       (try
         (.isLessThanOrEqualTo x y)

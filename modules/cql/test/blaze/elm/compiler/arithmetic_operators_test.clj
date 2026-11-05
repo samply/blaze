@@ -238,7 +238,7 @@
       [1 "year"] [13.1M "month"] (date-time/period 2 1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y))
+    (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y) nil)
       [1 "m"] [1 "m"] (quantity 2 "m")
       [1 "m"] [1 "cm"] (quantity 1.01M "m")))
 
@@ -366,6 +366,16 @@
       #elm/date-time"2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2019 1 1 0 1 0)
       #elm/date-time"2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2019 1 1 0 0 1)))
 
+  (testing "DateTime with offset + Quantity keeps the offset"
+    (are [y res] (= res (ctu/eval-with-now
+                         (elm/add [#elm/parameter-ref "x" y]) ctu/now
+                         #system/date-time "2025-02-18T00:30:00+01:00" nil))
+      #elm/quantity [1 "year"] #system/date-time "2026-02-18T00:30:00+01:00"
+      #elm/quantity [1 "month"] #system/date-time "2025-03-18T00:30:00+01:00"
+      #elm/quantity [1 "day"] #system/date-time "2025-02-19T00:30:00+01:00"
+      #elm/quantity [1 "hour"] #system/date-time "2025-02-18T01:30:00+01:00"
+      #elm/quantity [1 "second"] #system/date-time "2025-02-18T00:30:01+01:00"))
+
   (testing "Time + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
       #elm/time "00:00:00" #elm/quantity [1 "hour"] (date-time/local-time 1 0 0)
@@ -457,7 +467,7 @@
 
   (testing "Quantity"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y) nil)
         [1 "m"] [1 "s"] (quantity 1 "m/s")
         [1M "m"] [1M "s"] (quantity 1M "m/s")
 
@@ -467,14 +477,14 @@
 
   (testing "Quantity/Integer"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y) nil)
         [1M "m"] "2" (quantity 0.5M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/integer "1"))
 
   (testing "Quantity/Decimal"
     (testing "Static"
-      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y) nil)
         [2.5M "m"] "2.5" (quantity 1M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/decimal "1.1"))
@@ -786,7 +796,7 @@
         "99999999999999999999.99999999" "2")))
 
   (testing "Quantity"
-    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/multiply [x y])) {} nil nil))
+    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/multiply [x y])) {} nil nil) nil)
       #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
@@ -931,6 +941,13 @@
       #elm/date-time"2019-01" #system/date-time"2018-12"
       #elm/date-time"2019-01-01" #system/date-time"2018-12-31"
       #elm/date-time"2019-01-01T00" (system/date-time 2018 12 31 23 59 59 999)))
+
+  (testing "DateTime with offset keeps the offset"
+    (are [x res] (= res (ctu/eval-with-now (elm/predecessor #elm/parameter-ref "x")
+                                           ctu/now x nil))
+      #system/date-time "0001-01-01T00:00:00+01:00" nil
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:29:59.999+01:00"))
 
   (testing "Time"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
@@ -1115,7 +1132,7 @@
       #elm/quantity [1 "year"] #elm/quantity [13.1M "month"] (date-time/period 0 -1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil))
+    (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil) nil)
       #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
       #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 
@@ -1220,6 +1237,24 @@
       #elm/date-time"2022-07" #elm/quantity [2022 "year"] nil
       #elm/date-time"2022-07-07" #elm/quantity [2022 "year"] nil))
 
+  (testing "DateTime with offset - Quantity keeps the offset"
+    (are [x y res] (= res (ctu/eval-with-now
+                           (elm/subtract [#elm/parameter-ref "x" y]) ctu/now x nil))
+      #system/date-time "2025-02-18T00:30:00+01:00" #elm/quantity [1 "year"]
+      #system/date-time "2024-02-18T00:30:00+01:00"
+
+      #system/date-time "2025-02-18T00:30:00+01:00" #elm/quantity [1 "month"]
+      #system/date-time "2025-01-18T00:30:00+01:00"
+
+      #system/date-time "2025-02-18T00:30:00+01:00" #elm/quantity [1 "day"]
+      #system/date-time "2025-02-17T00:30:00+01:00"
+
+      #system/date-time "2025-02-18T00:30:00+01:00" #elm/quantity [1 "hour"]
+      #system/date-time "2025-02-17T23:30:00+01:00"
+
+      #system/date-time "2022-07-07T00:30:00+01:00" #elm/quantity [2022 "year"]
+      nil))
+
   (testing "Time - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
       #elm/time "00:00:00" #elm/quantity [1 "hour"] (date-time/local-time 23 0 0)
@@ -1282,6 +1317,13 @@
       #elm/date-time"2019-01" #system/date-time"2019-02"
       #elm/date-time"2019-01-01" #system/date-time"2019-01-02"
       #elm/date-time"2019-01-01T00" (system/date-time 2019 1 1 0 0 0 1)))
+
+  (testing "DateTime with offset keeps the offset"
+    (are [x res] (= res (ctu/eval-with-now (elm/successor #elm/parameter-ref "x")
+                                           ctu/now x nil))
+      #system/date-time "9999-12-31T23:59:59.999+01:00" nil
+      #system/date-time "2025-02-18T00:30:00+01:00"
+      #system/date-time "2025-02-18T00:30:00.001+01:00"))
 
   (testing "Time"
     (are [x res] (= res (c/compile {} (elm/successor x)))

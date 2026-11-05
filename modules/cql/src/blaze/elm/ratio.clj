@@ -13,15 +13,16 @@
 
 (defrecord Ratio [numerator denominator]
   p/Equal
-  (equal [_ other]
-    (and (p/equal numerator (:numerator other))
-         (p/equal denominator (:denominator other))))
+  (equal [_ other now]
+    (and (p/equal numerator (:numerator other) now)
+         (p/equal denominator (:denominator other) now)))
 
   p/Equivalent
-  (equivalent [_ other]
+  (equivalent [_ other now]
     (if other
       (p/equivalent (p/divide numerator denominator)
-                    (p/divide (:numerator other) (:denominator other)))
+                    (p/divide (:numerator other) (:denominator other))
+                    now)
       false))
 
   core/Expression

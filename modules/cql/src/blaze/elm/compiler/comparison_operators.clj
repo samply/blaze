@@ -11,28 +11,28 @@
 (set! *warn-on-reflection* true)
 
 ;; 12.1. Equal
-(defbinop equal [operand-1 operand-2]
-  (p/equal operand-1 operand-2))
+(defbinop equal [operand-1 operand-2 ^:now now]
+  (p/equal operand-1 operand-2 now))
 
 ;; 12.2. Equivalent
-(defbinop equivalent [operand-1 operand-2]
-  (p/equivalent operand-1 operand-2))
+(defbinop equivalent [operand-1 operand-2 ^:now now]
+  (p/equivalent operand-1 operand-2 now))
 
 ;; 12.3. Greater
-(defbinop greater [operand-1 operand-2]
-  (p/greater operand-1 operand-2))
+(defbinop greater [operand-1 operand-2 ^:now now]
+  (p/greater operand-1 operand-2 now))
 
 ;; 12.4. GreaterOrEqual
-(defbinop greater-or-equal [operand-1 operand-2]
-  (p/greater-or-equal operand-1 operand-2))
+(defbinop greater-or-equal [operand-1 operand-2 ^:now now]
+  (p/greater-or-equal operand-1 operand-2 now))
 
 ;; 12.5. Less
-(defbinop less [operand-1 operand-2]
-  (p/less operand-1 operand-2))
+(defbinop less [operand-1 operand-2 ^:now now]
+  (p/less operand-1 operand-2 now))
 
 ;; 12.6. LessOrEqual
-(defbinop less-or-equal [operand-1 operand-2]
-  (p/less-or-equal operand-1 operand-2))
+(defbinop less-or-equal [operand-1 operand-2 ^:now now]
+  (p/less-or-equal operand-1 operand-2 now))
 
 ;; 12.7. NotEqual
 (defmethod core/compile* :elm.compiler.type/not-equal

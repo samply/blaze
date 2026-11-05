@@ -35,12 +35,13 @@
   (transduce identity aggregates/product-reducer source))
 
 ;; 21.7. Max
-(defaggop max [source]
-  (transduce identity aggregates/max-reducer source))
+(defaggop max [source ^:now now]
+  (transduce identity (aggregates/max-reducer now) source))
 
 ;; 21.8. Median
-(defaggop median [source]
-  (let [sorted (vec (sort-by identity queries/asc-comparator (remove nil? source)))]
+(defaggop median [source ^:now now]
+  (let [sorted (vec (sort-by identity (queries/comparator "asc" now)
+                             (remove nil? source)))]
     (when (seq sorted)
       (if (zero? (rem (coll/count sorted) 2))
         (let [upper-idx (quot (coll/count sorted) 2)]
@@ -50,8 +51,8 @@
         (coll/nth sorted (quot (coll/count sorted) 2))))))
 
 ;; 21.9. Min
-(defaggop min [source]
-  (transduce identity aggregates/min-reducer source))
+(defaggop min [source ^:now now]
+  (transduce identity (aggregates/min-reducer now) source))
 
 ;; 21.10. Mode
 (defaggop mode [source]

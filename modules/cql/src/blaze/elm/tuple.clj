@@ -8,11 +8,11 @@
 ;; 12.1. Equal
 (extend-protocol p/Equal
   Map
-  (equal [x y]
+  (equal [x y now]
     (loop [[[k vx] & xs] x]
       (if (some? k)
         (if-let [vy (get y k)]
-          (if (p/equal vx vy)
+          (if (p/equal vx vy now)
             (recur xs)
             false)
           false)

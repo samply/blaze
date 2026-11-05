@@ -12,28 +12,28 @@
 
 (extend-protocol p/Equal
   nil
-  (equal [_ _]))
+  (equal [_ _ _]))
 
 (extend-protocol p/Equivalent
   nil
-  (equivalent [_ y]
+  (equivalent [_ y _]
     (nil? y)))
 
 (extend-protocol p/Greater
   nil
-  (greater [_ _]))
+  (greater [_ _ _]))
 
 (extend-protocol p/GreaterOrEqual
   nil
-  (greater-or-equal [_ _]))
+  (greater-or-equal [_ _ _]))
 
 (extend-protocol p/Less
   nil
-  (less [_ _]))
+  (less [_ _ _]))
 
 (extend-protocol p/LessOrEqual
   nil
-  (less-or-equal [_ _]))
+  (less-or-equal [_ _ _]))
 
 (extend-protocol p/Abs
   nil
@@ -130,73 +130,73 @@
 ;; 18.10. DifferenceBetween
 (extend-protocol p/DifferenceBetween
   nil
-  (difference-between [_ _ _]))
+  (difference-between [_ _ _ _]))
 
 ;; 18.11. DurationBetween
 (extend-protocol p/DurationBetween
   nil
-  (duration-between [_ _ _]))
+  (duration-between [_ _ _ _]))
 
 ;; 18.14. SameAs
 (extend-protocol p/SameAs
   nil
-  (same-as [_ _ _]))
+  (same-as [_ _ _ _]))
 
 ;; 18.15. SameOrBefore
 (extend-protocol p/SameOrBefore
   nil
-  (same-or-before [_ _ _]))
+  (same-or-before [_ _ _ _]))
 
 ;; 18.16. SameOrAfter
 (extend-protocol p/SameOrAfter
   nil
-  (same-or-after [_ _ _]))
+  (same-or-after [_ _ _ _]))
 
 ;; 19.2. After
 (extend-protocol p/After
   nil
-  (after [_ _ _]))
+  (after [_ _ _ _]))
 
 ;; 19.3. Before
 (extend-protocol p/Before
   nil
-  (before [_ _ _]))
+  (before [_ _ _ _]))
 
 ;; 19.5. Contains
 (extend-protocol p/Contains
   nil
-  (contains [_ _ _]
+  (contains [_ _ _ _]
     false))
 
 ;; 19.10. Except
 (extend-protocol p/Except
   nil
-  (except [_ _]))
+  (except [_ _ _]))
 
 ;; 19.13. Includes
 (extend-protocol p/Includes
   nil
-  (includes [_ _ _]))
+  (includes [_ _ _ _]))
 
 ;; 19.15. Intersect
 (extend-protocol p/Intersect
   nil
-  (intersect [_ _]))
+  (intersect [_ _ _]))
 
 ;; 19.24. ProperContains
 (extend-protocol p/ProperContains
   nil
-  (proper-contains [_ _ _]))
+  (proper-contains [_ _ _ _]))
 
 ;; 19.26. ProperIncludes
 (extend-protocol p/ProperIncludes
   nil
-  (proper-includes [_ _ _]))
+  (proper-includes [_ _ _ _]))
 
 ;; 19.31. Union
 (extend-protocol p/Union
   nil
-  (union [_ _]))
+  (union [_ _ _]))
 
 ;; 20. List Operators
 

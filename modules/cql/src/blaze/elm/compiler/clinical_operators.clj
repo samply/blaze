@@ -35,7 +35,8 @@
       (p/duration-between
        (core/-eval birth-date context resource scope)
        (core/-eval date context resource scope)
-       chrono-precision))
+       chrono-precision
+       (:now context)))
     (-form [_]
       (list 'calculate-age-at (core/-form birth-date) (core/-form date)
             precision))))

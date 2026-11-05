@@ -56,11 +56,11 @@
 ;; 20.4. Distinct
 ;;
 ;; TODO: implementation is O(n^2)
-(defunop distinct [list]
+(defunop distinct [list ^:now now]
   (when list
     (reduce
      (fn [result x]
-       (if (p/contains result x nil)
+       (if (p/contains result x nil now)
          result
          (conj result x)))
      []
@@ -198,7 +198,7 @@
             (keep-indexed
              (fn [idx x]
                (when
-                (p/equal element x)
+                (p/equal element x (:now context))
                  idx))
              source))
            -1))))
@@ -272,14 +272,14 @@
      (fn [source {:keys [type direction]}]
        (case type
          "ByDirection"
-         (let [comp (queries/comparator direction)]
-           (reify-expr core/Expression
-             ;; TODO: other methods
-             (-eval [_ context resource scopes]
-               (when-let [source (core/-eval source context resource scopes)]
-                 (sort-by identity comp source)))
-             (-form [_]
-               (list 'sort (core/-form source) (keyword direction)))))))
+         (reify-expr core/Expression
+           ;; TODO: other methods
+           (-eval [_ context resource scopes]
+             (when-let [source (core/-eval source context resource scopes)]
+               (sort-by identity (queries/comparator direction (:now context))
+                        source)))
+           (-form [_]
+             (list 'sort (core/-form source) (keyword direction))))))
      source
      sort-by-items)))
 
