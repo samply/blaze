@@ -2,6 +2,7 @@
   (:require
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.transaction.bundle-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -22,6 +23,7 @@
         (given (bundle/assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "create"
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220129"
                    :meta (type/meta {:versionId #fhir/id "1"
@@ -37,6 +39,7 @@
         (given (bundle/assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "create"
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
                    :meta (type/meta {:versionId #fhir/id "1"
@@ -55,6 +58,7 @@
           (given (bundle/assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "create"
                     :resource
                     {:fhir/type :fhir/Patient :id "id-220200"
                      :meta (type/meta {:versionId #fhir/id "1"
@@ -71,6 +75,7 @@
           (given (bundle/assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "create"
                     :resource
                     {:fhir/type :fhir/Patient :id "id-220200"
                      :meta (type/meta {:versionId #fhir/id "1"
@@ -87,6 +92,7 @@
         (given (bundle/assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "update"
                   :resource
                   {:fhir/type :fhir/Patient :id "id-214728"
                    :meta (type/meta {:versionId #fhir/id "1"
@@ -102,6 +108,7 @@
           (given (bundle/assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "update"
                     :resource
                     {:fhir/type :fhir/Patient :id "id-214728"
                      :meta (type/meta {:versionId #fhir/id "1"
@@ -120,6 +127,7 @@
         (given (bundle/assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "update"
                   :resource
                   {:fhir/type :fhir/Patient :id "id-214728"
                    :meta (type/meta {:versionId #fhir/id "1"
@@ -138,6 +146,9 @@
         (given (bundle/assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "delete"
+                  ::fhir-util/type "Patient"
+                  ::fhir-util/id "id-215232"
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code "DELETE"
@@ -151,6 +162,7 @@
             (given (bundle/assoc-tx-ops
                     db
                     [{:fhir/type :fhir.Bundle/entry
+                      ::fhir-util/interaction "conditional-delete-type"
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code "DELETE"
@@ -162,6 +174,7 @@
           (given (bundle/assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "conditional-delete-type"
                     :request
                     {:fhir/type :fhir.Bundle.entry/request
                      :method #fhir/code "DELETE"
@@ -179,6 +192,7 @@
           (given (bundle/assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "update"
                     :resource
                     {:fhir/type :fhir/Patient :id "0"
                      :meta (type/meta {:versionId #fhir/id "1"

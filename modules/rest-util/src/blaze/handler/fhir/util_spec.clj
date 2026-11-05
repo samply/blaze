@@ -91,21 +91,21 @@
                :t :blaze.db/t)
   :ret ac/completable-future?)
 
-(s/fdef fhir-util/match-type-id
-  :args (s/cat :url string?)
-  :ret (s/nilable (s/tuple :fhir.resource/type :blaze.resource/id)))
-
 (s/fdef fhir-util/match-type-query-params
   :args (s/cat :url string?)
   :ret (s/nilable (s/tuple :fhir.resource/type (s/nilable string?))))
 
-(s/fdef fhir-util/match-url
-  :args (s/cat :url string?)
-  :ret map?)
-
 (s/fdef fhir-util/validate-entry
-  :args (s/cat :idx nat-int? :entry :fhir.Bundle/entry)
+  :args (s/cat :router reitit/router? :idx nat-int? :entry :fhir.Bundle/entry)
   :ret (s/or :entry :fhir.Bundle/entry :anomaly ::anom/anomaly))
+
+(s/fdef fhir-util/execute-batch-entry
+  :args (s/cat :context (s/keys :req [:blaze/base-url]
+                                :req-un [::rest-api/batch-handler]
+                                :opt [:blaze/db :blaze/cancelled?
+                                      :blaze.preference/return])
+               :idx nat-int? :entry :fhir.Bundle/entry)
+  :ret ac/completable-future?)
 
 (s/fdef fhir-util/process-batch-entry
   :args (s/cat :context (s/keys :req [:blaze/base-url]

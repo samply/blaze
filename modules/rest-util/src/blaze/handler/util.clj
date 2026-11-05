@@ -222,15 +222,17 @@
 (defn not-found-handler [_]
   (ring/not-found not-found-outcome))
 
-(defn- method-not-allowed-msg [{:keys [uri request-method]}]
-  (format "Method %s not allowed on `%s` endpoint."
-          (str/upper-case (name request-method)) uri))
+(defn- method-not-allowed-msg [method uri]
+  (format "Method %s not allowed on `%s` endpoint." method uri))
+
+(defn- request-method-not-allowed-msg [{:keys [uri] :as request}]
+  (method-not-allowed-msg (format-request-method request) uri))
 
 (defn- method-not-allowed-issue [request]
   {:fhir/type :fhir.OperationOutcome/issue
    :severity #fhir/code "error"
    :code #fhir/code "processing"
-   :diagnostics (type/string (method-not-allowed-msg request))})
+   :diagnostics (type/string (request-method-not-allowed-msg request))})
 
 (defn- method-not-allowed-outcome [request]
   {:fhir/type :fhir/OperationOutcome
@@ -245,12 +247,18 @@
    {:not-found not-found-handler
     :method-not-allowed method-not-allowed-handler}))
 
-(defn method-not-allowed-batch-handler [request]
+(defn method-not-allowed-anom
+  "Returns an anomaly stating that the HTTP `method` isn't allowed on the
+  endpoint at `uri`."
+  [method uri]
+  (ba/forbidden
+   (method-not-allowed-msg method uri)
+   :http/status 405
+   :fhir/issue "processing"))
+
+(defn method-not-allowed-batch-handler [{:keys [uri] :as request}]
   (ac/completed-future
-   (ba/forbidden
-    (method-not-allowed-msg request)
-    :http/status 405
-    :fhir/issue "processing")))
+   (method-not-allowed-anom (format-request-method request) uri)))
 
 (def default-batch-handler
   "A handler returning failed futures."

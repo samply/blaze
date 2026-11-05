@@ -23,6 +23,7 @@
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
+   [reitit.ring]
    [ring.util.response :as ring])
   (:import
    [java.time Instant ZoneId ZoneOffset ZonedDateTime]
@@ -395,14 +396,6 @@
             ::anom/category := ::anom/fault
             :fhir/issue := "incomplete"))))))
 
-(deftest match-type-id-test
-  (is (= ["Patient" "164325"] (fhir-util/match-type-id "Patient/164325")))
-
-  (are [url] (nil? (fhir-util/match-type-id url))
-    "Patient"
-    "Patient/"
-    "Patient?"))
-
 (deftest match-type-query-params-test
   (is (= ["Patient" nil] (fhir-util/match-type-query-params "Patient")))
   (is (= ["Patient" ""] (fhir-util/match-type-query-params "Patient?")))
@@ -413,27 +406,84 @@
     "a"
     "0"))
 
-(deftest match-url-test
-  (testing "system-level"
-    (is (nil? (fhir-util/match-url ""))))
+(defn- endpoint [interaction handler]
+  {:interaction interaction :handler handler})
 
-  (testing "type-level"
-    (is (= {:type "Patient"} (fhir-util/match-url "Patient")))
+(defn- resource-routes [type handler]
+  [[(str "/" type)
+    {:get (endpoint "search-type" handler)
+     :post (endpoint "create" handler)
+     :delete (endpoint "conditional-delete-type" handler)}]
+   [(str "/" type "/_history")
+    {:conflicting true
+     :get (endpoint "history-type" handler)}]
+   [(str "/" type "/_search")
+    {:conflicting true
+     :post (endpoint "search-type" handler)}]
+   [(str "/" type "/{id}")
+    {:conflicting true
+     :get (endpoint "read" handler)
+     :put (endpoint "update" handler)
+     :delete (endpoint "delete" handler)}]
+   [(str "/" type "/{id}/_history")
+    {:conflicting true
+     :get (endpoint "history-instance" handler)
+     :delete (endpoint "delete-history" handler)}]
+   [(str "/" type "/{id}/_history/{vid}")
+    {:conflicting true
+     :get (endpoint "vread" handler)}]])
 
-    (testing "operation"
-      (is (= {:type "Measure" :kind :operation} (fhir-util/match-url "Measure/$evaluate-measure")))))
+(defn- create-router
+  "Returns a router with routes shaped like the ones of the batch router of the
+  REST API under `context-path`, all handled by `handler`."
+  [context-path handler]
+  (reitit.ring/router
+   (-> [["/metadata"
+         {:interaction "capabilities" :get handler}]
+        ["/Measure/$evaluate-measure"
+         {:conflicting true :interaction "operation-type-evaluate-measure"
+          :get handler :post handler}]
+        ["/Measure/{id}/$evaluate-measure"
+         {:conflicting true :interaction "operation-instance-evaluate-measure"
+          :get handler :post handler}]
+        ["/Patient/$match"
+         {:conflicting true :interaction "operation-type-match"
+          :post handler}]
+        ["/Patient/{id}/$everything"
+         {:conflicting true :interaction "operation-instance-everything"
+          :get handler :post handler}]]
+       (into (mapcat #(resource-routes % handler)) ["Measure" "Observation" "Patient"])
+       (conj ["/Patient/{id}/{type}"
+              {:conflicting true
+               :get (endpoint "search-compartment" handler)}]))
+   {:path (str context-path) :syntax :bracket}))
 
-  (testing "instance-level"
-    (is (= {:type "Patient" :id "135825"} (fhir-util/match-url "Patient/135825")))
+(def ^:private entry-router
+  (create-router "" (fn [_])))
 
-    (testing "operation"
-      (is (= {:type "Measure" :id "172940" :kind :operation} (fhir-util/match-url "Measure/172940/$evaluate-measure"))))))
+(defn- strip-routing-info [request]
+  (dissoc request :path-params ::reitit/match ::reitit/router))
+
+(defn- batch-handler
+  "Returns a batch handler with the routes of `router` under `context-path`.
+
+  The routes call `handler` with requests stripped of routing information, so
+  that `handler` gets the requests created from bundle entries."
+  [context-path handler]
+  (reitit.ring/ring-handler
+   (create-router context-path (comp handler strip-routing-info))))
+
+(defn- request-entry [method url]
+  {:fhir/type :fhir.Bundle/entry
+   :request {:fhir/type :fhir.Bundle.entry/request
+             :method (type/code method)
+             :url (type/uri url)}})
 
 (deftest validate-entry-test
   (testing "missing request"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry})
            {::anom/category ::anom/incorrect
             ::anom/message "Missing request."
             :fhir/issue "value"
@@ -442,8 +492,8 @@
   (testing "missing request URL"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request}})
            {::anom/category ::anom/incorrect
             ::anom/message "Missing request URL."
             :fhir/issue "value"
@@ -452,9 +502,9 @@
   (testing "missing request method"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :url #fhir/uri "foo"}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :url #fhir/uri "foo"}})
            {::anom/category ::anom/incorrect
             ::anom/message "Missing request method."
             :fhir/issue "value"
@@ -464,10 +514,10 @@
     (satisfies-prop 10
       (prop/for-all [method (gen/such-that (complement #{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"}) gen/string)
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method (type/code method)
-                                                    :url #fhir/uri "foo"}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method (type/code method)
+                                                                 :url #fhir/uri "foo"}})
            {::anom/category ::anom/incorrect
             ::anom/message (format "Unknown request method `%s`." method)
             :fhir/issue "value"
@@ -476,10 +526,10 @@
   (testing "unsupported request method"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "PATCH"
-                                                    :url #fhir/uri "foo"}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "PATCH"
+                                                                 :url #fhir/uri "foo"}})
            {::anom/category ::anom/unsupported
             ::anom/message "Unsupported request method `PATCH`."
             :fhir/issue "not-supported"
@@ -489,10 +539,10 @@
     (satisfies-prop 10
       (prop/for-all [url (gen/fmap (partial str "missing-type-") gen/nat)
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "GET"
-                                                    :url (type/uri url)}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "GET"
+                                                                 :url (type/uri url)}})
            {::anom/category ::anom/incorrect
             ::anom/message (format "Can't parse type from request URL `%s`." url)
             :fhir/issue "value"
@@ -502,10 +552,10 @@
     (satisfies-prop 10
       (prop/for-all [url (gen/fmap (partial str "UnknownType/") gen/nat)
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "GET"
-                                                    :url (type/uri url)}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "GET"
+                                                                 :url (type/uri url)}})
            {::anom/category ::anom/incorrect
             ::anom/message (format "Unknown type `UnknownType` in bundle entry request URL `%s`." url)
             :fhir/issue "value"
@@ -513,12 +563,12 @@
 
   (testing "missing resource type"
     (satisfies-prop 10
-      (prop/for-all [method (gen/elements ["POST" "PUT"])
+      (prop/for-all [[method url] (gen/elements [["POST" "Patient"] ["PUT" "Patient/0"]])
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method (type/code method)
-                                                    :url #fhir/uri "Patient"}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method (type/code method)
+                                                                 :url (type/uri url)}})
            {::anom/category ::anom/incorrect
             ::anom/message "Missing resource type."
             :fhir/issue "required"
@@ -526,15 +576,15 @@
 
   (testing "type mismatch"
     (satisfies-prop 10
-      (prop/for-all [method (gen/elements ["POST" "PUT"])
+      (prop/for-all [[method url] (gen/elements [["POST" "Patient"] ["PUT" "Patient/0"]])
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method (type/code method)
-                                                    :url #fhir/uri "Patient"}
-                                          :resource {:fhir/type :fhir/Observation}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method (type/code method)
+                                                                 :url (type/uri url)}
+                                                       :resource {:fhir/type :fhir/Observation}})
            {::anom/category ::anom/incorrect
-            ::anom/message "Type mismatch between resource type `Observation` and URL `Patient`."
+            ::anom/message (format "Type mismatch between resource type `Observation` and URL `%s`." url)
             :fhir/issue "invariant"
             :fhir.issue/expression
             [(format "Bundle.entry[%d].request.url" idx)
@@ -544,11 +594,11 @@
   (testing "operation type mismatch"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "POST"
-                                                    :url #fhir/uri "Measure/$evaluate-measure"}
-                                          :resource {:fhir/type :fhir/Observation}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "POST"
+                                                                 :url #fhir/uri "Measure/$evaluate-measure"}
+                                                       :resource {:fhir/type :fhir/Observation}})
            {::anom/category ::anom/incorrect
             ::anom/message "Type mismatch between resource type `Observation` and URL `Measure/$evaluate-measure`."
             :fhir/issue "invariant"
@@ -557,31 +607,17 @@
              (format "Bundle.entry[%d].resource.resourceType" idx)]
             :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}))))
 
-  (testing "missing request URL id"
-    (satisfies-prop 10
-      (prop/for-all [type (gen/elements ["Patient" "Observation"])
-                     idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "PUT"
-                                                    :url (type/uri type)}
-                                          :resource {:fhir/type (keyword "fhir" type)}})
-           {::anom/category ::anom/incorrect
-            ::anom/message (format "Can't parse id from URL `%s`." type)
-            :fhir/issue "value"
-            :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}))))
-
   (testing "too long request URL id"
     (satisfies-prop 10
       (prop/for-all [type (gen/elements ["Patient" "Observation"])
                      id (gen/fmap #(str/join (repeat % "a")) (gen/choose 65 100))
                      idx gen/nat]
         (let [url (str type "/" id)]
-          (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                            :request {:fhir/type :fhir.Bundle.entry/request
-                                                      :method #fhir/code "PUT"
-                                                      :url (type/uri url)}
-                                            :resource {:fhir/type (keyword "fhir" type)}})
+          (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                         :request {:fhir/type :fhir.Bundle.entry/request
+                                                                   :method #fhir/code "PUT"
+                                                                   :url (type/uri url)}
+                                                         :resource {:fhir/type (keyword "fhir" type)}})
              {::anom/category ::anom/incorrect
               ::anom/message (format "The id `%s` in URL `%s` is too long. A FHIR id has to be 64 characters at most but is %d characters long." id url (count id))
               :fhir/issue "value"
@@ -594,11 +630,11 @@
                      id (gen/elements ["A_B" "a b" "a$b" "föö"])
                      idx gen/nat]
         (let [url (str type "/" id)]
-          (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                            :request {:fhir/type :fhir.Bundle.entry/request
-                                                      :method #fhir/code "PUT"
-                                                      :url (type/uri url)}
-                                            :resource {:fhir/type (keyword "fhir" type)}})
+          (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                         :request {:fhir/type :fhir.Bundle.entry/request
+                                                                   :method #fhir/code "PUT"
+                                                                   :url (type/uri url)}
+                                                         :resource {:fhir/type (keyword "fhir" type)}})
              {::anom/category ::anom/incorrect
               ::anom/message (format "The id `%s` in URL `%s` is invalid. A FHIR id has to match the regular expression `[A-Za-z0-9-.]{1,64}`." id url)
               :fhir/issue "value"
@@ -610,11 +646,11 @@
       (prop/for-all [type (gen/elements ["Patient" "Observation"])
                      id (s/gen :blaze.resource/id)
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "PUT"
-                                                    :url (type/uri (str type "/" id))}
-                                          :resource {:fhir/type (keyword "fhir" type)}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "PUT"
+                                                                 :url (type/uri (str type "/" id))}
+                                                       :resource {:fhir/type (keyword "fhir" type)}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resource id is missing."
             :fhir/issue "required"
@@ -630,12 +666,12 @@
                                                       (s/gen :blaze.resource/id)))
                      idx gen/nat]
         (let [url (str type "/" url-id)]
-          (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                            :request {:fhir/type :fhir.Bundle.entry/request
-                                                      :method #fhir/code "PUT"
-                                                      :url (type/uri url)}
-                                            :resource {:fhir/type (keyword "fhir" type)
-                                                       :id resource-id}})
+          (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                         :request {:fhir/type :fhir.Bundle.entry/request
+                                                                   :method #fhir/code "PUT"
+                                                                   :url (type/uri url)}
+                                                         :resource {:fhir/type (keyword "fhir" type)
+                                                                    :id resource-id}})
              {::anom/category ::anom/incorrect
               ::anom/message (format "Id mismatch between resource id `%s` and URL `%s`." resource-id url)
               :fhir/issue "invariant"
@@ -647,12 +683,12 @@
   (testing "SUBSETTED create"
     (satisfies-prop 10
       (prop/for-all [idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "PUT"
-                                                    :url #fhir/uri "Patient"}
-                                          :resource {:fhir/type :fhir/Patient
-                                                     :meta (type/meta {:tag [fu/subsetted]})}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "POST"
+                                                                 :url #fhir/uri "Patient"}
+                                                       :resource {:fhir/type :fhir/Patient
+                                                                  :meta (type/meta {:tag [fu/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"
@@ -662,38 +698,136 @@
     (satisfies-prop 10
       (prop/for-all [id (s/gen :blaze.resource/id)
                      idx gen/nat]
-        (= (fhir-util/validate-entry idx {:fhir/type :fhir.Bundle/entry
-                                          :request {:fhir/type :fhir.Bundle.entry/request
-                                                    :method #fhir/code "PUT"
-                                                    :url (type/uri (str "Patient/" id))}
-                                          :resource {:fhir/type :fhir/Patient :id id
-                                                     :meta (type/meta {:tag [fu/subsetted]})}})
+        (= (fhir-util/validate-entry entry-router idx {:fhir/type :fhir.Bundle/entry
+                                                       :request {:fhir/type :fhir.Bundle.entry/request
+                                                                 :method #fhir/code "PUT"
+                                                                 :url (type/uri (str "Patient/" id))}
+                                                       :resource {:fhir/type :fhir/Patient :id id
+                                                                  :meta (type/meta {:tag [fu/subsetted]})}})
            {::anom/category ::anom/incorrect
             ::anom/message "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
             :fhir/issue "processing"
             :fhir.issue/expression (format "Bundle.entry[%d].resource" idx)}))))
 
   (testing "metadata GET request"
-    (let [entry {:fhir/type :fhir.Bundle/entry
-                 :request {:fhir/type :fhir.Bundle.entry/request
-                           :method #fhir/code "GET"
-                           :url #fhir/uri "metadata"}}]
-      (is (= entry (fhir-util/validate-entry 0 entry)))))
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "GET" "metadata"))
+      :fhir/type := :fhir.Bundle/entry
+      [:request :method] := #fhir/code "GET"
+      [:request :url] := #fhir/uri "metadata"))
 
   (testing "Patient GET request"
-    (let [entry {:fhir/type :fhir.Bundle/entry
-                 :request {:fhir/type :fhir.Bundle.entry/request
-                           :method #fhir/code "GET"
-                           :url #fhir/uri "Patient"}}]
-      (is (= entry (fhir-util/validate-entry 0 entry)))))
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "GET" "Patient"))
+      :fhir/type := :fhir.Bundle/entry
+      [:request :method] := #fhir/code "GET"
+      [:request :url] := #fhir/uri "Patient"
+      ::fhir-util/interaction := "search-type"))
 
   (testing "Measure/$evaluate-measure POST request"
-    (let [entry {:fhir/type :fhir.Bundle/entry
-                 :request {:fhir/type :fhir.Bundle.entry/request
-                           :method #fhir/code "POST"
-                           :url #fhir/uri "Measure/$evaluate-measure"}
-                 :resource {:fhir/type :fhir/Parameters}}]
-      (is (= entry (fhir-util/validate-entry 0 entry))))))
+    (given (fhir-util/validate-entry entry-router
+                                     0 (assoc (request-entry "POST" "Measure/$evaluate-measure")
+                                              :resource {:fhir/type :fhir/Parameters}))
+      :fhir/type := :fhir.Bundle/entry
+      [:request :method] := #fhir/code "POST"
+      [:request :url] := #fhir/uri "Measure/$evaluate-measure"
+      [:resource :fhir/type] := :fhir/Parameters
+      ::fhir-util/interaction := "operation-type-evaluate-measure"))
+
+  (testing "strips leading slashes from the request URL"
+    (doseq [url ["/Patient/0" "//Patient/0"]]
+      (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" url))
+        [:request :url] := #fhir/uri "Patient/0"))
+
+    (testing "keeps the query"
+      (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "/Patient?name=foo"))
+        [:request :url] := #fhir/uri "Patient?name=foo")))
+
+  (testing "invalid id in versioned URL"
+    (given (fhir-util/validate-entry entry-router 3 (request-entry "GET" "Patient/a_b/_history/1"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "The id `a_b` in URL `Patient/a_b/_history/1` is invalid. A FHIR id has to match the regular expression `[A-Za-z0-9-.]{1,64}`."
+      :fhir/issue := "value"
+      :fhir.issue/expression := "Bundle.entry[3].request.url"
+      :fhir/operation-outcome := "MSG_ID_INVALID"))
+
+  (testing "invalid version id"
+    (given (fhir-util/validate-entry entry-router 3 (request-entry "GET" "Patient/0/_history/a_b"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "The version id `a_b` in URL `Patient/0/_history/a_b` is invalid. A FHIR id has to match the regular expression `[A-Za-z0-9-.]{1,64}`."
+      :fhir/issue := "value"
+      :fhir.issue/expression := "Bundle.entry[3].request.url"
+      :fhir/operation-outcome := "MSG_ID_INVALID"))
+
+  (testing "versioned read request"
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "GET" "Patient/0/_history/2"))
+      :fhir/type := :fhir.Bundle/entry
+      [:request :method] := #fhir/code "GET"
+      [:request :url] := #fhir/uri "Patient/0/_history/2"
+      ::fhir-util/interaction := "vread"))
+
+  (testing "delete request with query"
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "Patient/0?foo=bar"))
+      [:request :url] := #fhir/uri "Patient/0?foo=bar"
+      ::fhir-util/interaction := "delete"
+      ::fhir-util/type := "Patient"
+      ::fhir-util/id := "0"))
+
+  (testing "type request has no id"
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "GET" "Patient"))
+      ::fhir-util/type := "Patient"
+      ::fhir-util/id := nil))
+
+  (testing "delete history request"
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "Patient/0/_history"))
+      [:request :url] := #fhir/uri "Patient/0/_history"
+      ::fhir-util/interaction := "delete-history"))
+
+  (testing "search request via POST"
+    (given (fhir-util/validate-entry
+            entry-router 0 (assoc (request-entry "POST" "Patient/_search")
+                                  :resource {:fhir/type :fhir/Parameters}))
+      [:request :url] := #fhir/uri "Patient/_search"
+      ::fhir-util/interaction := "search-type"))
+
+  (testing "keeps the request of an entry without leading slashes"
+    (let [entry (request-entry "GET" "Patient/0")]
+      (is (identical? (:request entry) (:request (fhir-util/validate-entry entry-router 0 entry))))))
+
+  (testing "unknown URL"
+    (doseq [url ["Patient/0/_history/1/foo" "Patient/0/Observation/foo"]]
+      (given (fhir-util/validate-entry entry-router 3 (request-entry "GET" url))
+        ::anom/category := ::anom/not-found
+        ::anom/message := (format "Unknown request URL `%s`." url)
+        :fhir/issue := "not-found"
+        :fhir.issue/expression := "Bundle.entry[3].request.url")))
+
+  (testing "method not allowed"
+    (doseq [[method url] [["POST" "Patient/0"]
+                          ["POST" "Patient/0/_history/2"]
+                          ["PUT" "Patient"]
+                          ["PUT" "Observation"]
+                          ["PUT" "Patient/0/_history/2"]
+                          ["PUT" "Patient/0/_history"]
+                          ["PUT" "Patient/0/$everything"]
+                          ["PUT" "Patient/$match"]
+                          ["PUT" "Patient/_history"]
+                          ["PUT" "Patient/_search"]
+                          ["POST" "Patient/_history"]
+                          ["POST" "Patient/0/_history"]
+                          ["POST" "Patient/0/Observation"]
+                          ["DELETE" "Patient/0/_history/2"]
+                          ["DELETE" "Patient/0/$everything"]
+                          ["DELETE" "Patient/0/Observation"]
+                          ["DELETE" "Patient/$match"]
+                          ["DELETE" "Patient/_history"]
+                          ["DELETE" "Patient/_search"]]]
+      (given (fhir-util/validate-entry entry-router
+                                       3 (assoc (request-entry method url)
+                                                :resource {:fhir/type :fhir/Patient :id "0"}))
+        ::anom/category := ::anom/forbidden
+        ::anom/message := (format "Method %s not allowed on `%s` endpoint." method url)
+        :http/status := 405
+        :fhir/issue := "processing"
+        :fhir.issue/expression := "Bundle.entry[3].request.method"))))
 
 (deftest process-batch-entry-test
   (testing "missing request"
@@ -701,7 +835,7 @@
       (prop/for-all [base-url (s/gen :blaze/base-url)
                      idx gen/nat]
         (= @(fhir-util/process-batch-entry
-             {:batch-handler (comp ac/completed-future ring/response)
+             {:batch-handler (batch-handler "" (comp ac/completed-future ring/response))
               :blaze/base-url base-url}
              idx
              {:fhir/type :fhir.Bundle/entry})
@@ -721,7 +855,7 @@
                      error-msg gen/string
                      idx gen/nat]
         (= @(fhir-util/process-batch-entry
-             {:batch-handler (fn [_] (ac/completed-future (ba/fault error-msg)))
+             {:batch-handler (batch-handler "" (fn [_] (ac/completed-future (ba/fault error-msg))))
               :blaze/base-url base-url}
              idx
              {:fhir/type :fhir.Bundle/entry
@@ -745,8 +879,9 @@
                      idx gen/nat
                      location gen/string-alphanumeric]
         (= @(fhir-util/process-batch-entry
-             (cond->
-              {:batch-handler
+             {:batch-handler
+              (batch-handler
+               context-path
                (fn [{:keys [headers]}]
                  (ac/completed-future
                   (ring/created
@@ -755,9 +890,8 @@
                     :extension
                     [(type/extension
                       {:url "https://samply.github.io/blaze/fhir/StructureDefinition/return-preference"
-                       :value (type/code (name (handler-util/preference headers "return")))})]})))
-               :blaze/base-url base-url}
-               context-path (assoc :context-path context-path))
+                       :value (type/code (name (handler-util/preference headers "return")))})]}))))
+              :blaze/base-url base-url}
              idx
              {:fhir/type :fhir.Bundle/entry
               :request {:fhir/type :fhir.Bundle.entry/request
@@ -786,10 +920,8 @@
                      context-path (gen/elements [nil "" "/fhir" "/other"])
                      idx gen/nat]
         (= @(fhir-util/process-batch-entry
-             (cond->
-              {:batch-handler (constantly (ac/completed-future (ring/status 204)))
-               :blaze/base-url base-url}
-               context-path (assoc :context-path context-path))
+             {:batch-handler (batch-handler context-path (constantly (ac/completed-future (ring/status 204))))
+              :blaze/base-url base-url}
              idx
              {:fhir/type :fhir.Bundle/entry
               :request {:fhir/type :fhir.Bundle.entry/request
@@ -801,18 +933,15 @@
                        :status #fhir/string "204"}}))))
 
   (testing "Observation?code=code-100815 GET request"
-    (st/unstrument `fhir-util/process-batch-entry)
+    (st/unstrument [`fhir-util/process-batch-entry `fhir-util/execute-batch-entry])
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)
                      context-path (gen/elements [nil "" "/fhir" "/other"])
                      idx gen/nat]
         (= @(fhir-util/process-batch-entry
-             (cond->
-              {:batch-handler (comp ac/completed-future ring/response)
-               :blaze/base-url base-url
-               :blaze/db ::db}
-               context-path
-               (assoc :context-path context-path))
+             {:batch-handler (batch-handler context-path (comp ac/completed-future ring/response))
+              :blaze/base-url base-url
+              :blaze/db ::db}
              idx
              {:fhir/type :fhir.Bundle/entry
               :request {:fhir/type :fhir.Bundle.entry/request
@@ -826,7 +955,7 @@
                        :request-method :get
                        :uri (str context-path "/Observation")
                        :query-string "code=code-100815"}})))
-    (st/instrument `fhir-util/process-batch-entry))
+    (st/instrument [`fhir-util/process-batch-entry `fhir-util/execute-batch-entry]))
 
   (testing "Patient/<id> PUT request"
     (satisfies-prop 10
@@ -846,15 +975,15 @@
               @(fhir-util/process-batch-entry
                 (cond->
                  {:batch-handler
-                  (fn [request]
-                    (-> (ring/response request)
-                        (ring/header "Last-Modified" (fhir-util/last-modified tx))
-                        (ring/header "ETag" (fhir-util/etag tx))
-                        (ring/header "Location" location)
-                        (ac/completed-future)))
+                  (batch-handler
+                   context-path
+                   (fn [request]
+                     (-> (ring/response request)
+                         (ring/header "Last-Modified" (fhir-util/last-modified tx))
+                         (ring/header "ETag" (fhir-util/etag tx))
+                         (ring/header "Location" location)
+                         (ac/completed-future))))
                   :blaze/base-url base-url}
-                  context-path
-                  (assoc :context-path context-path)
                   return-preference
                   (assoc :blaze.preference/return return-preference))
                 idx
@@ -896,8 +1025,10 @@
   (testing "cancel"
     (given-failed-future (fhir-util/process-batch-entry
                           {:batch-handler
-                           (fn [{:blaze/keys [cancelled?]}]
-                             (ac/completed-future (cancelled?)))
+                           (batch-handler
+                            ""
+                            (fn [{:blaze/keys [cancelled?]}]
+                              (ac/completed-future (cancelled?))))
                            :blaze/base-url "foo"
                            :blaze/cancelled?
                            (constantly (ba/interrupted "msg-152801"))}
@@ -909,12 +1040,22 @@
       ::anom/category := ::anom/interrupted
       ::anom/message := "msg-152801")))
 
+(deftest execute-batch-entry-test
+  (testing "doesn't validate the entry again"
+    (given @(fhir-util/execute-batch-entry
+             {:batch-handler (batch-handler "/fhir" (comp ac/completed-future ring/response))
+              :blaze/base-url "base-url-111417"}
+             0
+             (request-entry "GET" "Patient/a_b"))
+      [:response :status] := #fhir/string "200"
+      [:resource :uri] := "/fhir/Patient/a_b")))
+
 (deftest process-batch-entries-test
   (testing "no entry"
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)]
         (empty? @(fhir-util/process-batch-entries
-                  {:batch-handler (comp ac/completed-future ring/response)
+                  {:batch-handler (batch-handler "" (comp ac/completed-future ring/response))
                    :blaze/base-url base-url}
                   [])))))
 
@@ -923,11 +1064,8 @@
       (prop/for-all [base-url (s/gen :blaze/base-url)
                      context-path (gen/elements [nil "" "/fhir" "/other"])]
         (= @(fhir-util/process-batch-entries
-             (cond->
-              {:batch-handler (comp ac/completed-future ring/response)
-               :blaze/base-url base-url}
-               context-path
-               (assoc :context-path context-path))
+             {:batch-handler (batch-handler context-path (comp ac/completed-future ring/response))
+              :blaze/base-url base-url}
              [{:fhir/type :fhir.Bundle/entry
                :request {:fhir/type :fhir.Bundle.entry/request
                          :method #fhir/code "GET"
@@ -942,9 +1080,8 @@
   (testing "processing isn't bound to stack size"
     (let [num-entries 100000]
       (given @(fhir-util/process-batch-entries
-               {:batch-handler (fn [_] (ac/completed-future (ring/response nil)))
-                :blaze/base-url ""
-                :context-path "/fhir"}
+               {:batch-handler (batch-handler "/fhir" (fn [_] (ac/completed-future (ring/response nil))))
+                :blaze/base-url ""}
                (repeat
                 num-entries
                 {:fhir/type :fhir.Bundle/entry
@@ -957,7 +1094,7 @@
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)]
         (= @(fhir-util/process-batch-entries
-             {:batch-handler (comp ac/completed-future ring/response)
+             {:batch-handler (batch-handler "" (comp ac/completed-future ring/response))
               :blaze/base-url base-url}
              [{:fhir/type :fhir.Bundle/entry}])
            [{:fhir/type :fhir.Bundle/entry
@@ -974,7 +1111,7 @@
     (satisfies-prop 10
       (prop/for-all [base-url (s/gen :blaze/base-url)]
         (= @(fhir-util/process-batch-entries
-             {:batch-handler (comp ac/completed-future ring/response)
+             {:batch-handler (batch-handler "" (comp ac/completed-future ring/response))
               :blaze/base-url base-url}
              [{:fhir/type :fhir.Bundle/entry}
               {:fhir/type :fhir.Bundle/entry
@@ -1000,8 +1137,10 @@
   (testing "cancel"
     (given-failed-future (fhir-util/process-batch-entries
                           {:batch-handler
-                           (fn [{:blaze/keys [cancelled?]}]
-                             (ac/completed-future (cancelled?)))
+                           (batch-handler
+                            ""
+                            (fn [{:blaze/keys [cancelled?]}]
+                              (ac/completed-future (cancelled?))))
                            :blaze/base-url "foo"
                            :blaze/cancelled?
                            (constantly (ba/interrupted "msg-152801"))}

@@ -33,12 +33,41 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private check-entry-xf
-  (comp (map-indexed fhir-util/validate-entry)
-        (halt-when ba/anomaly?)))
+(def ^:private transaction-interactions
+  "The interactions of write requests, that are executed as transaction
+  operations."
+  #{"create" "update" "delete" "conditional-delete-type"})
 
-(defn- check-entries [entries]
-  (transduce check-entry-xf conj [] entries))
+(defn- unsupported-request-anom [{{:keys [method url]} :request} idx]
+  (ba/unsupported
+   (format "Unsupported %s request URL `%s` in transactions." (:value method)
+           (:value url))
+   :fhir/issue "not-supported"
+   :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
+
+(defn- check-transaction-entry
+  "Returns the validated `entry` if it can be executed in a transaction.
+  Otherwise returns an anomaly.
+
+  Read requests are executed by the batch handler after the transaction. Write
+  requests have to have an interaction that is executed as transaction
+  operation."
+  [{{:keys [method]} :request ::fhir-util/keys [interaction] :as entry} idx]
+  (if (or (= "GET" (:value method)) (transaction-interactions interaction))
+    entry
+    (unsupported-request-anom entry idx)))
+
+(defn- check-entry [router idx entry]
+  (when-ok [entry (fhir-util/validate-entry router idx entry)]
+    (check-transaction-entry entry idx)))
+
+(defn- check-entries [batch-handler entries]
+  (transduce
+   (comp (map-indexed (partial check-entry (reitit.ring/get-router batch-handler)))
+         (halt-when ba/anomaly?))
+   conj
+   []
+   entries))
 
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
   (case (:value method)
@@ -53,7 +82,8 @@
   "Checks the bundle and returns its entries.
 
   Returns an anomaly in case of errors."
-  [context {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
+  [{:keys [batch-handler] :as context}
+   {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
   (let [type (:value type)]
     (cond
       (nil? bundle)
@@ -74,7 +104,7 @@
 
       :else
       (if (= "transaction" type)
-        (when-ok [entries (check-entries entries)]
+        (when-ok [entries (check-entries batch-handler entries)]
           (-> (reduce
                prepare-entry
                {::luid/generator (m/luid-generator context) :entries []}
@@ -194,7 +224,7 @@
        :lastModified (handler-util/instant (d/tx db t))}})))
 
 (defmethod build-response-entry "GET" [context idx entry]
-  (fhir-util/process-batch-entry context idx entry))
+  (fhir-util/execute-batch-entry context idx entry))
 
 (defn- build-response-entries* [context entries]
   (into [] (map-indexed (partial build-response-entry context)) entries))
@@ -264,13 +294,12 @@
     (process-transaction-entries context entries)))
 
 (defn- process-context
-  [context {:keys [headers] :blaze/keys [base-url] ::reitit/keys [router match]}]
+  [context {:keys [headers] :blaze/keys [base-url] ::reitit/keys [router]}]
   (let [return-preference (handler-util/preference headers "return")]
     (cond->
      (assoc context
             :blaze/base-url base-url
-            ::reitit/router router
-            :context-path (-> match :data :blaze/context-path))
+            ::reitit/router router)
       return-preference
       (assoc :blaze.preference/return return-preference))))
 

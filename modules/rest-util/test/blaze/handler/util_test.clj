@@ -214,6 +214,13 @@
     [:body :issue 0 :code] := #fhir/code "processing"
     [:body :issue 0 :diagnostics] := #fhir/string "Method PUT not allowed on `/Patient` endpoint."))
 
+(deftest method-not-allowed-anom-test
+  (given (handler-util/method-not-allowed-anom "PUT" "Patient/0/_history")
+    ::anom/category := ::anom/forbidden
+    ::anom/message := "Method PUT not allowed on `Patient/0/_history` endpoint."
+    :http/status := 405
+    :fhir/issue := "processing"))
+
 (deftest method-not-allowed-batch-handler-test
   (given-failed-future (handler-util/method-not-allowed-batch-handler
                         {:uri "/Patient/0" :request-method :post})
