@@ -13,6 +13,9 @@ hero:
     text: Get Started
     link: /deployment
   - theme: alt
+    text: Try the Demo
+    link: https://r4.blaze-server.org/fhir/
+  - theme: alt
     text: View on GitHub
     link: https://github.com/samply/blaze
 

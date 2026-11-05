@@ -19,7 +19,7 @@ The goal of this project is to provide a FHIR® Server with an internal CQL Eval
 
 ## Demo
 
-A demo installation can be found [here](https://blaze.life.uni-leipzig.de/fhir) (user/password: demo).
+A demo installation can be found [here](https://r4.blaze-server.org/fhir/).
 
 ## State
 
