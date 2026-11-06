@@ -53,6 +53,10 @@ Transactions are processed atomically: if any entry fails, no changes are applie
 
 A transaction can act on each resource only once. The only exception are [delete history version](delete-history-version.md) entries, which can delete several versions of the same resource. Two entries acting on the same resource, like an update and a delete of `Patient/0`, result in a `400 Bad Request`. Its `OperationOutcome` names both actions in `issue.diagnostics` and gives both entries in `issue.expression`, e.g. `Bundle.entry[0]` and `Bundle.entry[1]`, each in the order they appear in the Bundle. If the conflict only shows once a conditional create or conditional delete is resolved to a resource, the transaction fails with a `409 Conflict` instead, without the entries.
 
+## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
+
+The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` also apply to the entries of a transaction. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails the whole transaction with a `409 Conflict`.
+
 ## Conditional Create
 
 It's possible to use conditional create in transaction requests. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).

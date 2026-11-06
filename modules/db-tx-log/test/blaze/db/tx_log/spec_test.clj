@@ -8,7 +8,9 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest testing]]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -45,6 +47,16 @@
        :id "0"
        :hash patient-hash-0
        :if-match 1}
+      {:op "create"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :access-control ["read-only"]}
+      {:op "put"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :access-control ["internal" "read-only"]}
       {:op "keep"
        :type "Patient"
        :id "0"
@@ -84,6 +96,21 @@
        :id "0"
        :check-refs "i should be a boolean"}
       {:op "conditional-delete"}
+      {:op "create"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :access-control []}
+      {:op "put"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :access-control #{"read-only"}}
+      {:op "put"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :access-control [1]}
       {:op "delete-history"
        :type "Patient"}
       {:op "delete-history-version"
@@ -93,3 +120,23 @@
        :type "Patient"
        :id "0"
        :t "1"})))
+
+(def tx-data
+  {:t 1
+   :instant Instant/EPOCH
+   :tx-cmds [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]})
+
+(deftest tx-data-test
+  (testing "valid"
+    (are [tx-data] (s/valid? :blaze.db/tx-data tx-data)
+      tx-data
+      (assoc tx-data :permissions {})
+      (assoc tx-data :permissions {:write-access-control #{}})
+      (assoc tx-data :permissions {:write-access-control #{"internal" "read-only"}})))
+
+  (testing "invalid"
+    (are [tx-data] (not (s/valid? :blaze.db/tx-data tx-data))
+      (assoc tx-data :permissions nil)
+      (assoc tx-data :permissions [])
+      (assoc tx-data :permissions {:write-access-control ["read-only"]})
+      (assoc tx-data :permissions {:write-access-control #{1}}))))

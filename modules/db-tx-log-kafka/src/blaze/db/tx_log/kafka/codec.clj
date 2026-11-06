@@ -1,6 +1,7 @@
 (ns blaze.db.tx-log.kafka.codec
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.db.permissions :as p]
    [blaze.fhir.hash :as hash]
    [jsonista.core :as j]
    [taoensso.timbre :as log])
@@ -44,3 +45,24 @@
     (decode-hashes (parse-cbor data))))
 
 (def ^Deserializer deserializer (CborDeserializer.))
+
+(def permissions-header
+  "The key of the record header holding the permissions of a transaction.
+
+  The permissions are stored in a header instead of the record value, because
+  older nodes expect the value to be the bare transaction commands. A record
+  value of any other shape would make them skip the transaction."
+  "blaze-permissions")
+
+(defn encode-permissions
+  "Encodes `permissions` into the value of the permissions record header."
+  [permissions]
+  (j/write-value-as-bytes permissions cbor-object-mapper))
+
+(defn decode-permissions
+  "Decodes the `value` of the permissions record header.
+
+  Returns nil if `value` isn't valid CBOR. The result has to be validated,
+  because it can be anything."
+  [value]
+  (p/decode (parse-cbor value)))

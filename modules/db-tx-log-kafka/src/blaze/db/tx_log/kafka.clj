@@ -23,7 +23,8 @@
    [org.apache.kafka.clients.consumer Consumer KafkaConsumer]
    [org.apache.kafka.clients.producer Callback KafkaProducer Producer ProducerRecord RecordMetadata]
    [org.apache.kafka.common TopicPartition]
-   [org.apache.kafka.common.errors RecordTooLargeException]))
+   [org.apache.kafka.common.errors RecordTooLargeException]
+   [org.apache.kafka.common.header.internals RecordHeader]))
 
 (set! *warn-on-reflection* true)
 
@@ -66,6 +67,22 @@
                            (ex-message e)))
     (ba/fault (ex-message e))))
 
+(defn- headers
+  "Returns the record headers of a transaction with `permissions`."
+  [permissions]
+  (cond-> []
+    permissions
+    (conj (RecordHeader. ^String codec/permissions-header
+                         ^bytes (codec/encode-permissions permissions)))))
+
+(defn- producer-record
+  "Returns a record without partition and key, so that the producer assigns
+  them."
+  [topic tx-cmds permissions]
+  (let [partition nil key nil]
+    (ProducerRecord. ^String topic ^Integer partition ^Object key tx-cmds
+                     ^Iterable (headers permissions))))
+
 (defn- end-offset [node-name ^Consumer consumer tx-partition]
   (with-open [_ (prom/timer duration-seconds node-name "end-offset")]
     (get (.endOffsets consumer [tx-partition]) tx-partition)))
@@ -74,11 +91,11 @@
                      ^Consumer poll-consumer poll-position last-t-consumer
                      last-t-executor]
   tx-log/TxLog
-  (-submit [_ tx-cmds _]
+  (-submit [_ tx-cmds permissions _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
     (let [timer (prom/timer duration-seconds node-name "submit")
           future (ac/future)]
-      (.send producer (ProducerRecord. (:topic config) tx-cmds)
+      (.send producer (producer-record (:topic config) tx-cmds permissions)
              (reify Callback
                (onCompletion [_ metadata e]
                  (prom/observe-duration! timer)

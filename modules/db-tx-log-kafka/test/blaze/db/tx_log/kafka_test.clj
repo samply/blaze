@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.kafka :as kafka]
+   [blaze.db.tx-log.kafka.codec :as codec]
    [blaze.db.tx-log.kafka.spec]
    [blaze.db.tx-log.kafka.util-test :refer [consumer-record]]
    [blaze.executors :as ex]
@@ -27,7 +28,7 @@
    [java.util Map]
    [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
    [org.apache.kafka.clients.producer
-    Callback KafkaProducer Producer RecordMetadata]
+    Callback KafkaProducer Producer ProducerRecord RecordMetadata]
    [org.apache.kafka.common TopicPartition]
    [org.apache.kafka.common.errors
     AuthorizationException RecordTooLargeException]
@@ -71,6 +72,31 @@
     Consumer
     AutoCloseable
     (close [_])))
+
+(defn- recording-producer
+  "Returns a function creating a producer that delivers the record it sends to
+  the promise `record`."
+  [record]
+  (fn [{servers :bootstrap-servers}]
+    (assert (= bootstrap-servers servers))
+    (reify
+      Producer
+      (send [_ producer-record callback]
+        (deliver record producer-record)
+        (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
+      AutoCloseable
+      (close [_]))))
+
+(defn- record-topic [record]
+  (.topic ^ProducerRecord record))
+
+(defn- record-value [record]
+  (.value ^ProducerRecord record))
+
+(defn- record-permissions [record]
+  (some-> (.lastHeader (.headers ^ProducerRecord record) codec/permissions-header)
+          (.value)
+          (codec/decode-permissions)))
 
 (deftest init-test
   (testing "nil config"
@@ -168,7 +194,35 @@
       kafka/create-consumer no-op-consumer
       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} config]
-        (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))))
+        (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil nil)))))
+
+    (testing "the record value are the transaction commands"
+      (let [record (promise)]
+        (with-redefs
+         [kafka/create-producer (recording-producer record)
+          kafka/create-consumer no-op-consumer
+          kafka/create-last-t-consumer no-op-consumer]
+          (with-system [{tx-log ::tx-log/kafka} config]
+            @(tx-log/submit tx-log [tx-cmd] nil nil)
+
+            (given @record
+              record-topic := "tx"
+              record-value := [tx-cmd]
+              record-permissions := nil)))))
+
+    (testing "permissions are sent in a record header"
+      (let [record (promise)
+            permissions {:write-access-control #{"internal" "read-only"}}]
+        (with-redefs
+         [kafka/create-producer (recording-producer record)
+          kafka/create-consumer no-op-consumer
+          kafka/create-last-t-consumer no-op-consumer]
+          (with-system [{tx-log ::tx-log/kafka} config]
+            @(tx-log/submit tx-log [tx-cmd] permissions nil)
+
+            (given @record
+              record-value := [tx-cmd]
+              record-permissions := permissions)))))
 
     (testing "RecordTooLargeException"
       (with-redefs
@@ -185,7 +239,7 @@
         kafka/create-consumer no-op-consumer
         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} config]
-          (given-failed-future (tx-log/submit tx-log [tx-cmd] nil)
+          (given-failed-future (tx-log/submit tx-log [tx-cmd] nil nil)
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
 
@@ -204,7 +258,7 @@
         kafka/create-consumer no-op-consumer
         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} config]
-          (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil)
+          (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil nil)
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
 
@@ -354,7 +408,7 @@
       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} config]
         (let [durations (submit-durations)]
-          (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))
+          (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil nil)))
 
           (is (= (inc durations) (submit-durations))))))))
 
@@ -393,7 +447,7 @@
         (with-system [{tx-log ::tx-log/kafka} config]
           ;; the producer waits with its callback, so the continuation is
           ;; registered before the future of the submit is completed
-          (let [thread-name (mtu/thread-name (tx-log/submit tx-log [tx-cmd] nil))]
+          (let [thread-name (mtu/thread-name (tx-log/submit tx-log [tx-cmd] nil nil))]
             (deliver release nil)
 
             (is (mtu/common-pool-thread? (deref thread-name 1000 "timeout")))))))))

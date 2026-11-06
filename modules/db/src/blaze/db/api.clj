@@ -57,9 +57,20 @@
   ([node t f]
    (np/-with-sync-db node t f)))
 
+(defn- submit-tx [node tx-ops permissions]
+  (-> (np/-submit-tx node tx-ops permissions)
+      (ac/then-compose #(np/-tx-result node %))))
+
 (defn transact
-  "Submits `tx-ops` (transaction operators) to the central transaction log and
-  waits for the transaction to commit on `node`.
+  "Submits `tx-ops` (transaction operators) with the `permissions` of the
+  caller to the central transaction log and waits for the transaction to commit
+  on `node`.
+
+  Without `permissions`, the transaction can't touch resources labelled with
+  an AccessControl code, like the read-only tag. Only internal code may pass
+  permissions (see `blaze.db.permissions`), and only in transactions whose
+  resources Blaze generated itself. It must never pass them for a write
+  carrying content from a client request.
 
   The collection of `tx-ops` has to be non-empty.
 
@@ -77,9 +88,10 @@
   transaction up anymore. Fails with a busy anomaly if `node` already has the
   maximum number of transactions submitted but not yet indexed, before anything
   of the transaction is written."
-  [node tx-ops]
-  (-> (np/-submit-tx node tx-ops)
-      (ac/then-compose #(np/-tx-result node %))))
+  ([node tx-ops]
+   (submit-tx node tx-ops nil))
+  ([node tx-ops permissions]
+   (submit-tx node tx-ops permissions)))
 
 (defn subscribe-changes!
   "Subscribes `subscriber` to the resource handles of `type` changed in each

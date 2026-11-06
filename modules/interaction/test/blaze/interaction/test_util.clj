@@ -42,9 +42,9 @@
         orig-submit tx-log/submit
         orig-put kv/put!]
     (with-redefs [tx-log/submit
-                  (fn [tx-log tx-cmds local-payload]
+                  (fn [tx-log tx-cmds permissions local-payload]
                     (.countDown second-tx)
-                    (orig-submit tx-log tx-cmds local-payload))
+                    (orig-submit tx-log tx-cmds permissions local-payload))
                   kv/put!
                   (fn [store entries]
                     (when (identical? index-kv-store store)

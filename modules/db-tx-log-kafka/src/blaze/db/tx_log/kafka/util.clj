@@ -1,12 +1,13 @@
 (ns blaze.db.tx-log.kafka.util
   (:require
-   [blaze.db.tx-log.spec]
-   [clojure.spec.alpha :as s]
+   [blaze.db.tx-log.kafka.codec :as codec]
+   [blaze.db.tx-log.util :as tx-log-u]
    [clojure.string :as str]
    [taoensso.timbre :as log])
   (:import
    [java.time Instant]
    [org.apache.kafka.clients.consumer ConsumerRecord]
+   [org.apache.kafka.common.header Header]
    [org.apache.kafka.common.record TimestampType]))
 
 (set! *warn-on-reflection* true)
@@ -23,21 +24,29 @@
   (format "Skip transaction with point in time of %d because the timestamp type is `%s` instead of `LogAppendTime`."
           t timestamp-type))
 
-(defn- invalid-tx-data-msg [t cause]
-  (format "Skip transaction with point in time of %d because tx-data is invalid: %s"
-          t (str/replace cause #"\s" " ")))
+(defn- permissions-header ^Header [^ConsumerRecord record]
+  (.lastHeader (.headers record) codec/permissions-header))
+
+(defn- tx-data
+  "Returns the transaction data of `record` or nil if it is invalid.
+
+  A record without permissions header has no permissions. A record with an
+  invalid permissions header is skipped like one with invalid transaction
+  commands."
+  [t ^ConsumerRecord record]
+  (let [header (permissions-header record)]
+    (tx-log-u/valid-tx-data
+     (cond-> {:t t
+              :instant (Instant/ofEpochMilli (.timestamp record))
+              :tx-cmds (.value record)}
+       header (assoc :permissions (codec/decode-permissions (.value header)))))))
 
 (def record-transformer
-  (mapcat
+  (keep
    (fn [^ConsumerRecord record]
      (let [t (record->t record)]
        (if (= TimestampType/LOG_APPEND_TIME (.timestampType record))
-         (let [tx-cmds (.value record)]
-           (if (s/valid? :blaze.db/tx-cmds tx-cmds)
-             [{:t t
-               :instant (Instant/ofEpochMilli (.timestamp record))
-               :tx-cmds tx-cmds}]
-             (log/warn (invalid-tx-data-msg t (s/explain-str :blaze.db/tx-cmds tx-cmds)))))
+         (tx-data t record)
          (log/warn (invalid-timestamp-type-msg t (.timestampType record))))))))
 
 (defn integrant-key-name-part [[_ key]]

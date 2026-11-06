@@ -129,8 +129,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn submit-tx [node tx-ops]
-  (np/-submit-tx node tx-ops))
+(defn submit-tx
+  "Submits `tx-ops` without permissions to `node`."
+  [node tx-ops]
+  (np/-submit-tx node tx-ops nil))
 
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
@@ -803,12 +805,14 @@
   a transaction that produces no version references none of the index entries
   they would write. The ones already dispatched are still awaited, so that no
   task outlives the loop."
-  [{:keys [node-name kv-store resource-handle-cache read-only-matcher stats]
+  [{:keys [node-name kv-store resource-handle-cache read-only-matcher
+           internal-matcher stats]
     :as node}
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (let [result (index-tx node {:read-only-matcher read-only-matcher
+                               :internal-matcher internal-matcher
                                :stats @stats} tx-data)]
     (if (ba/anomaly? result)
       (do
@@ -1243,8 +1247,8 @@
   (map (subset-resource-fn elements)))
 
 (defn- compile-system-matcher [search-param-registry clauses]
-  (-> (index/resolve-search-params search-param-registry "Resource" clauses false)
-      (ac/then-apply (fn [clauses] (db/->Matcher (:search-clauses clauses))))))
+  (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses false)]
+    (db/->Matcher (:search-clauses clauses))))
 
 (defn- sync-timeout-msg [timeout]
   (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." timeout))
@@ -1261,7 +1265,8 @@
 
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-handle-cache resource-store sync-fn search-param-registry resource-indexer
-                 index-bounds read-only-matcher acquire-in-flight! state stats
+                 index-bounds read-only-matcher internal-matcher
+                 acquire-in-flight! state stats
                  poll-timeout queue-capacity sync-timeout index-finished
                  publish-finished]
   np/Node
@@ -1280,7 +1285,7 @@
         (or-sync-timeout sync-timeout #(sync-t-timeout-msg t sync-timeout))
         (ac/then-compose (fn [_] (db/with-db node t f)))))
 
-  (-submit-tx [_ tx-ops]
+  (-submit-tx [_ tx-ops permissions]
     (log/trace "submit" (count tx-ops) "tx-ops")
     (let [{:keys [run? failed?]} @state]
       (cond
@@ -1301,7 +1306,7 @@
                 ;; submits on the common ForkJoinPool, because the resource
                 ;; store may complete the put on one of its I/O threads
                 (ac/then-compose-async
-                 (fn [_] (tx-log/submit tx-log tx-cmds entries)))
+                 (fn [_] (tx-log/submit tx-log tx-cmds permissions entries)))
                 (ac/when-complete (fn [t _] (swap! state settle-in-flight t))))
             ac/completed-future)))))
 
@@ -1514,11 +1519,26 @@
       (store-tx-entries! node-name kv-store (initial-plc-index-entries node))
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
-(defn- compile-read-only-matcher [search-param-registry]
+(defn- compile-read-only-matcher
+  "Compiles a matcher of resources tagged read-only in the current or legacy
+  AccessControl system."
+  [search-param-registry]
   (ac/join
    (compile-system-matcher
     search-param-registry
     [(into ["_tag"] (map #(str % "|read-only")) (canonical/urls "CodeSystem/AccessControl"))])))
+
+(defn- compile-internal-matcher
+  "Compiles a matcher of resources carrying the security label internal in the
+  current AccessControl system.
+
+  The legacy system isn't matched, because the internal label was introduced
+  after the canonical base changed."
+  [search-param-registry]
+  (ac/join
+   (compile-system-matcher
+    search-param-registry
+    [["_security" (str (canonical/url "CodeSystem/AccessControl") "|internal")]])))
 
 (defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys
@@ -1564,6 +1584,7 @@
                      (node-util/index-bounds
                       (resource-indexer/pool-size resource-indexer))
                      (compile-read-only-matcher search-param-registry)
+                     (compile-internal-matcher search-param-registry)
                      (acquire-in-flight-fn node-name state
                                            max-in-flight-transactions)
                      state

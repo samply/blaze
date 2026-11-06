@@ -127,5 +127,5 @@
          (let [tx-ops (cs-u/tx-ops context existing-versions code-systems)]
            (if (seq tx-ops)
              (do (log/debug "Create" (count tx-ops) "new LOINC CodeSystem resources...")
-                 (d/transact node tx-ops))
+                 (cs-u/create-code-systems node tx-ops))
              (ac/completed-future nil)))))))

@@ -24,6 +24,10 @@ The methods `HEAD` and `PATCH` are not supported and will result in an error ent
 
 Blaze returns a `200 OK` with a Bundle of type `batch-response`. The response bundle contains one entry for each entry of the request bundle, in the same order. Each entry contains the status and further details like `ETag` value, last modified time and location under `Bundle.entry.response`. For successful reads and searches, the resource or search result Bundle is returned under `Bundle.entry.resource`.
 
+## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
+
+The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` also apply to the entries of a batch. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails with status `409`.
+
 ## Handling Errors
 
 In contrast to the [transaction](transaction.md) interaction, actions in a batch are processed independently: a failing action doesn't affect the other actions. Errors are reported per entry via `Bundle.entry.response.status` and an `OperationOutcome` under `Bundle.entry.response.outcome`, while the batch request itself still returns a `200 OK`:

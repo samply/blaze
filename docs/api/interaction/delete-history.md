@@ -22,4 +22,8 @@ Deleting the history of a resource means that the historical versions of that re
 
 A single historical version can be deleted via the [delete history version](delete-history-version.md) interaction.
 
+## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
+
+Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. The history of such a resource can't be deleted, neither at once nor version by version via the [delete history version](delete-history-version.md) interaction. Blaze returns a `409 Conflict` with an `OperationOutcome` instead.
+
 [1]: <https://github.com/samply/blaze/issues>

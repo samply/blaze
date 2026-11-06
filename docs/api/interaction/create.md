@@ -32,6 +32,12 @@ By default, the response body contains the created resource. This can be control
 
 By default, Blaze enforces referential integrity, so all resources referenced by the resource to create have to exist already. Otherwise, Blaze returns a `409 Conflict` with an `OperationOutcome`. That behaviour can be changed by setting the [environment variable](../../deployment/environment-variables.md) `ENFORCE_REFERENTIAL_INTEGRITY` to `false`.
 
+## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
+
+The codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` belong to Blaze alone. Blaze uses them to label resources it owns itself, like base FHIR StructureDefinition resources, which are tagged `read-only`. Clients can't set them. So a resource carrying any code of that CodeSystem, or of its legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`, in `meta.tag` or in `meta.security` can't be created. Blaze returns a `409 Conflict` with an `OperationOutcome` instead. This also applies to copies of Blaze-owned resources that still carry the `read-only` tag, so these codes have to be removed before creating such a copy.
+
+A [conditional create](#conditional-create) matching an existing resource doesn't create anything, so it succeeds regardless of these codes.
+
 ## Conditional Create
 
 Blaze supports the [conditional create][1] via an `If-None-Exist` header containing the search parameters that should be used to check for existing resources:

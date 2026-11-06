@@ -1,6 +1,29 @@
 (ns blaze.db.node.tx-indexer.verify
   "Verifies terminal transaction commands. Non-terminal transaction commands
-  are first expanded."
+  are first expanded.
+
+  Authorizes each command against the permissions of the transaction (see
+  `blaze.db.permissions`). A command touching a resource labelled with an
+  AccessControl code is only allowed if the permissions allow to write that
+  code:
+
+  * the current version tagged `read-only` can't be updated or deleted
+  * the current version labelled `internal` can't be updated or deleted and its
+    history can't be deleted or purged, neither at once nor version by version
+  * a new version labelled with any AccessControl code can't be created
+
+  Only the current version is checked, because the labels are found through
+  index entries, and the index entries of historical versions are removed
+  eventually. A deleted resource carries no labels, so its historical versions
+  are unprotected. That is why internal code
+  has to purge a resource labelled internal instead of deleting it (see
+  `blaze.db.permissions/internal`).
+
+  The check of the current version tagged `read-only` stays restricted to
+  updates and deletes, because transactions accepted before have to be
+  accepted again on replay. For the same reason, commands without extracted
+  AccessControl codes of the new version, like ones logged before they were
+  extracted, aren't checked."
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
@@ -12,6 +35,7 @@
    [blaze.db.node.duplicates :as dup]
    [blaze.db.node.stats :as node-stats]
    [blaze.db.node.tx-indexer.util :as tx-u]
+   [blaze.db.permissions :as p]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
    [blaze.util :as u :refer [str]]
@@ -81,11 +105,27 @@
   (-> (update stat :num-changes inc-0)
       (update :total inc-0)))
 
+(defn- labelled-new-version-msg [verb type id code]
+  (format "Can't %s the resource `%s/%s` labelled with the AccessControl code `%s`."
+          verb type id code))
+
+(defn- check-new-version!
+  "Throws a conflict anomaly if the permissions of `context` don't allow to
+  write one of the AccessControl codes the new version of `tx-cmd` is labelled
+  with.
+
+  The `verb` names the command in the message."
+  {:arglists '([context verb tx-cmd])}
+  [{:keys [permissions]} verb {:keys [type id access-control]}]
+  (when-let [code (first (remove (partial p/may-write? permissions) access-control))]
+    (throw-anom (ba/conflict (labelled-new-version-msg verb type id code)))))
+
 (defmethod verify "create"
-  [{:keys [db-before]} t res {:keys [type id hash refs]}]
+  [{:keys [db-before] :as context} t res {:keys [type id hash refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
+    (check-new-version! context "create" tx-cmd)
     (let [tid (codec/tid type)]
       (-> (add-version res tid id t hash 1 :create refs)
           (update :new-resources conj [type id])
@@ -126,8 +166,30 @@
 (defn- precondition-version-failed-anomaly [type id if-none-match]
   (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
 
-(defn- read-only? [{:keys [db-before read-only-matcher]} resource-handle]
-  (d/matches? db-before read-only-matcher resource-handle))
+(defn- labelled-current-version-anom
+  "Returns the anomaly of a command, named by `verb`, touching the current
+  version of the resource with `type` and `id` labelled with the
+  AccessControl `code`."
+  [verb code type id]
+  (ba/conflict (format "Can't %s the %s resource `%s/%s`." verb code type id)))
+
+(defn- read-only?
+  "Returns true if the `resource-handle` of the current version is tagged
+  read-only and the permissions of `context` don't allow to write such
+  resources."
+  {:arglists '([context resource-handle])}
+  [{:keys [db-before read-only-matcher permissions]} resource-handle]
+  (and (not (p/may-write? permissions "read-only"))
+       (d/matches? db-before read-only-matcher resource-handle)))
+
+(defn- internal?
+  "Returns true if the `resource-handle` of the current version is labelled
+  internal and the permissions of `context` don't allow to write such
+  resources."
+  {:arglists '([context resource-handle])}
+  [{:keys [db-before internal-matcher permissions]} resource-handle]
+  (and (not (p/may-write? permissions "internal"))
+       (d/matches? db-before internal-matcher resource-handle)))
 
 (defmethod verify "put"
   [{:keys [db-before] :as context} t res
@@ -154,15 +216,19 @@
         res
 
         (some->> old-resource-handle (read-only? context))
-        (throw-anom (ba/conflict (format "Can't update the read-only resource `%s/%s`." type id)))
+        (throw-anom (labelled-current-version-anom "update" "read-only" type id))
+
+        (some->> old-resource-handle (internal? context))
+        (throw-anom (labelled-current-version-anom "update" "internal" type id))
 
         :else
-        (cond->
-         (-> (add-version res tid id t hash (inc num-changes) :put refs)
-             (update :new-resources conj [type id])
-             (update-in [:stats tid :num-changes] inc-0))
-          (or (nil? old-t) (identical? :delete op))
-          (update-in [:stats tid :total] inc-0))))))
+        (do (check-new-version! context "update" tx-cmd)
+            (cond->
+             (-> (add-version res tid id t hash (inc num-changes) :put refs)
+                 (update :new-resources conj [type id])
+                 (update-in [:stats tid :num-changes] inc-0))
+              (or (nil? old-t) (identical? :delete op))
+              (update-in [:stats tid :total] inc-0)))))))
 
 (defn- verify-tx-cmd-keep-msg [type id if-match]
   (if if-match
@@ -208,7 +274,10 @@
         (identical? :delete op) res
 
         (some->> old-resource-handle (read-only? context))
-        (throw-anom (ba/conflict (format "Can't delete the read-only resource `%s/%s`." type id)))
+        (throw-anom (labelled-current-version-anom "delete" "read-only" type id))
+
+        (some->> old-resource-handle (internal? context))
+        (throw-anom (labelled-current-version-anom "delete" "internal" type id))
 
         :else
         (cond->
@@ -220,9 +289,18 @@
 
 (def ^:private ^:const ^long delete-history-max 100000)
 
-(defn- limited-instance-history [db type id]
-  (into [] (comp (drop 1) (take delete-history-max))
-        (d/instance-history db type id)))
+(defn- limited-instance-history
+  "Returns a vector of the current version of the resource with `type` and `id`
+  followed by at most `delete-history-max` historical versions, so that a
+  history exceeding the limit is detected without reading it completely."
+  [db type id]
+  (into [] (take (inc delete-history-max)) (d/instance-history db type id)))
+
+(defn- too-many-history-entries?
+  "Returns true if `instance-history`, returned by `limited-instance-history`,
+  has more than `delete-history-max` historical versions."
+  [instance-history]
+  (= (inc delete-history-max) (count instance-history)))
 
 (defn- too-many-history-entries-msg [type id]
   (format "Deleting the history of `%s/%s` failed because there are more than %,d history entries."
@@ -246,18 +324,22 @@
       (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
-  [{:keys [db-before]} t res {:keys [type id]}]
+  [{:keys [db-before] :as context} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history")]
-    (let [instance-history (limited-instance-history db-before type id)]
+    (let [[current-handle :as instance-history]
+          (limited-instance-history db-before type id)]
       (cond
-        (empty? instance-history) res
+        (< (count instance-history) 2) res
 
-        (= delete-history-max (count instance-history))
+        (internal? context current-handle)
+        (throw-anom (labelled-current-version-anom "delete the history of" "internal" type id))
+
+        (too-many-history-entries? instance-history)
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (add-purge-entries res (codec/tid type) id t instance-history)))))
+        (add-purge-entries res (codec/tid type) id t (subvec instance-history 1))))))
 
 (defn- current-version-msg [type id t]
   (format "Can't delete the current version `%d` of the resource `%s/%s`."
@@ -268,27 +350,35 @@
 
 ;; like delete-history but purges only the version with t
 (defmethod verify "delete-history-version"
-  [{:keys [db-before]} t res {:keys [type id] vid :t}]
+  [{:keys [db-before] :as context} t res {:keys [type id] vid :t}]
   (log/trace "verify-tx-cmd :delete-history-version" (str type "/" id "/_history/" vid))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history-version")]
     (if-let [handle (d/historic-resource-handle db-before type id vid)]
-      (if (current-version? db-before type id vid)
+      (cond
+        (internal? context (d/resource-handle db-before type id))
+        (throw-anom (labelled-current-version-anom "delete a history version of" "internal" type id))
+
+        (current-version? db-before type id vid)
         (throw-anom (ba/conflict (current-version-msg type id vid)))
+
+        :else
         (add-purge-entries res (codec/tid type) id t [handle]))
       res)))
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
-  [{:keys [db-before]} t res {:keys [type id]}]
+  [{:keys [db-before] :as context} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :purge" (str type "/" id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-purge")]
     (let [tid (codec/tid type)
-          instance-history (into [] (take (inc delete-history-max))
-                                 (d/instance-history db-before type id))]
+          instance-history (limited-instance-history db-before type id)]
       (cond
         (empty? instance-history) res
 
-        (= (inc delete-history-max) (count instance-history))
+        (internal? context (first instance-history))
+        (throw-anom (labelled-current-version-anom "purge" "internal" type id))
+
+        (too-many-history-entries? instance-history)
         (throw-anom (too-many-history-entries-anom type id))
 
         :else

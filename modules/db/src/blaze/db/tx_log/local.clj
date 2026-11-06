@@ -99,12 +99,13 @@
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)]
     (let [start-key (bs/from-byte-array (codec/encode-key offset))
-          tx-data (i/entries snapshot :default (map codec/decode-tx-data)
+          tx-data (i/entries snapshot :default (keep codec/decode-tx-data)
                              start-key)]
       (into [] (take max-poll-size) tx-data))))
 
-(defn- tx-data [tx-cmds local-payload future]
+(defn- tx-data [tx-cmds permissions local-payload future]
   (cond-> {:tx-cmds tx-cmds :future future}
+    permissions (assoc :permissions permissions)
     local-payload (assoc :local-payload local-payload)))
 
 (defn- add-entry
@@ -124,8 +125,8 @@
   [{:keys [stored-t buffer]}]
   (mapv val (subseq buffer > stored-t)))
 
-(defn- encode-entry [{:keys [t instant tx-cmds]}]
-  (codec/encode-entry t instant tx-cmds))
+(defn- encode-entry [{:keys [t instant tx-cmds permissions]}]
+  (codec/encode-entry t instant tx-cmds permissions))
 
 (defn- store-entries!
   "Stores `entries` in one atomic batch, observing the number of entries stored.
@@ -261,10 +262,10 @@
 
 (deftype LocalTxLog [node-name kv-store clock state store-finished]
   tx-log/TxLog
-  (-submit [_ tx-cmds local-payload]
+  (-submit [_ tx-cmds permissions local-payload]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
     (let [future (ac/future)
-          tx-data (tx-data tx-cmds local-payload future)
+          tx-data (tx-data tx-cmds permissions local-payload future)
           [old new] (swap-vals! state add-entry clock tx-data)]
       (if (identical? old new)
         (ac/completed-future (ba/unavailable "The transaction log is closed."))
