@@ -18,16 +18,13 @@
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
    [blaze.util :refer [str]]
-   [blaze.util.clauses :as uc]
    [blaze.validator :as validator]
    [blaze.validator.spec]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [reitit.core :as reitit]
    [reitit.ring]
-   [ring.util.codec :as ring-codec]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -143,10 +140,6 @@
       :etag (type/string (str "W/\"" vid "\""))
       :lastModified (handler-util/instant tx)}}))
 
-(defn- conditional-clauses [if-none-exist]
-  (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
-
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The transaction was successful but the resource content of `%s/%s` with hash `%s` was not found during response creation."
           (name (:fhir/type resource-handle)) (:id resource-handle)
@@ -165,7 +158,7 @@
 (defmethod build-response-entry "POST"
   [{:blaze/keys [db] return-preference :blaze.preference/return :as context}
    _
-   {{:fhir/keys [type] :keys [id]} :resource :as entry}]
+   {{:fhir/keys [type] :keys [id]} :resource [_ _ clauses] :tx-op}]
   (let [type (name type)]
     ;; if the resource handle with `id` exists, it was created in the
     ;; transaction because a new id is created for POST requests
@@ -174,16 +167,14 @@
         (do-sync [resource (pull db handle)]
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
-      (let [if-none-exist (-> entry :request :ifNoneExist :value)
-            clauses (conditional-clauses if-none-exist)]
-        (-> (d/type-query db type clauses)
-            (ac/then-compose
-             (fn [handles]
-               (let [handle (coll/first handles)]
-                 (if (identical? :blaze.preference.return/representation return-preference)
-                   (do-sync [resource (pull db handle)]
-                     (assoc (noop-entry db handle) :resource resource))
-                   (ac/completed-future (noop-entry db handle)))))))))))
+      (-> (d/type-query db type clauses)
+          (ac/then-compose
+           (fn [handles]
+             (let [handle (coll/first handles)]
+               (if (identical? :blaze.preference.return/representation return-preference)
+                 (do-sync [resource (pull db handle)]
+                   (assoc (noop-entry db handle) :resource resource))
+                 (ac/completed-future (noop-entry db handle))))))))))
 
 (defn- update-entry
   [{:blaze/keys [db] :as context} type tx-op old-handle {:keys [id] :as handle}]

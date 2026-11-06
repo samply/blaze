@@ -11,6 +11,7 @@
    [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.link-headers :as link-headers]
    [blaze.middleware.output :as output]
+   [blaze.middleware.params :as params]
    [blaze.rest-api.middleware.ensure-form-body :as ensure-form-body]
    [blaze.rest-api.middleware.forwarded :as forwarded]
    [blaze.rest-api.middleware.metrics :as metrics]
@@ -21,14 +22,13 @@
    [blaze.spec]
    [blaze.util :refer [str]]
    [reitit.ring]
-   [reitit.ring.spec]
-   [ring.middleware.params :as ring-params]))
+   [reitit.ring.spec]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private wrap-params
   {:name :params
-   :wrap ring-params/wrap-params})
+   :wrap params/wrap-params})
 
 (def ^:private wrap-forwarded
   {:name :forwarded
@@ -49,6 +49,12 @@
    :compile (fn [route-data _]
               (when-not (guards-itself? route-data)
                 auth-guard/wrap-auth-guard))})
+
+(def ^:private wrap-invalid-params
+  {:name :invalid-params
+   :compile (fn [route-data _]
+              (when-not (guards-itself? route-data)
+                params/wrap-invalid-params))})
 
 (def ^:private wrap-invalid-id
   {:name :invalid-id
@@ -378,11 +384,12 @@
   (cond->
    [""
     {:middleware
-     (cond-> [wrap-observe-request-duration wrap-params
-              [wrap-output writing-context] wrap-error
-              [wrap-forwarded base-url] wrap-sync]
-       (seq auth-backends)
-       (conj wrap-auth-guard))
+     (-> (cond-> [wrap-observe-request-duration wrap-params
+                  [wrap-output writing-context] wrap-error
+                  [wrap-forwarded base-url] wrap-sync]
+           (seq auth-backends)
+           (conj wrap-auth-guard))
+         (conj wrap-invalid-params))
      :blaze/context-path context-path}
     [""
      (cond-> {}

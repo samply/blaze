@@ -7,11 +7,13 @@
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.batch-handler]
    [blaze.rest-api.routes-spec]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
 (st/instrument)
@@ -140,3 +142,22 @@
       "/Patient/0" :delete ::delete
       "/Patient/0/_history" :get ::history-instance
       "/Patient/0/_history/42" :get ::vread)))
+
+(deftest batch-handler-params-test
+  (testing "query params are decoded"
+    (with-system [{::rest-api/keys [batch-handler]}
+                  (assoc-in config [::rest-api/batch-handler :resource-patterns 0
+                                    :blaze.rest-api.resource-pattern/interactions
+                                    :search-type :blaze.rest-api.interaction/handler]
+                            (comp ac/completed-future :query-params))]
+      (given @(batch-handler {:request-method :get :uri "/Patient"
+                              :query-string "identifier=a%20b"})
+        identity := {"identifier" "a b"})))
+
+  (testing "invalid percent-encoding in the query string"
+    (with-handler [handler]
+      (given-failed-future (handler {:request-method :get :uri "/Patient"
+                                     :query-string "identifier=%ZZ"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."
+        :fhir/issue := "invalid"))))

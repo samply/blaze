@@ -5,6 +5,7 @@
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
+   [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
 (st/instrument)
@@ -73,3 +74,74 @@
       [0 :params 0 :value] := "d"
       [1 :name] := "e"
       [1 :value] := "f")))
+
+(deftest form-decode-test
+  (testing "empty string"
+    (given (hu/form-decode "")
+      identity := {}))
+
+  (testing "one param"
+    (given (hu/form-decode "a=b")
+      identity := {"a" "b"}))
+
+  (testing "two params"
+    (given (hu/form-decode "a=b&c=d")
+      identity := {"a" "b" "c" "d"}))
+
+  (testing "repeated param"
+    (given (hu/form-decode "a=b&a=c&a=d")
+      identity := {"a" ["b" "c" "d"]}))
+
+  (testing "param without value"
+    (given (hu/form-decode "a")
+      identity := {"a" ""}))
+
+  (testing "param with empty value"
+    (given (hu/form-decode "a=")
+      identity := {"a" ""}))
+
+  (testing "param with empty name"
+    (given (hu/form-decode "=b")
+      identity := {"" "b"}))
+
+  (testing "value containing an equals sign"
+    (given (hu/form-decode "a=b=c")
+      identity := {"a" "b=c"}))
+
+  (testing "empty params are skipped"
+    (given (hu/form-decode "&a=b&&c=d&")
+      identity := {"a" "b" "c" "d"}))
+
+  (testing "percent-encoded name and value"
+    (given (hu/form-decode "a%3Ab=c%2Cd%20e")
+      identity := {"a:b" "c,d e"}))
+
+  (testing "lower-case hex digits"
+    (given (hu/form-decode "a=%c3%a4")
+      identity := {"a" "ä"}))
+
+  (testing "plus sign is decoded as space"
+    (given (hu/form-decode "a+b=c+d")
+      identity := {"a b" "c d"}))
+
+  (testing "with encoding"
+    (given (hu/form-decode "a=%E4" "ISO-8859-1")
+      identity := {"a" "ä"}))
+
+  (testing "invalid percent-encoding"
+    (doseq [s ["%ZZ=b" "a=%ZZ" "a=%" "a=%2" "a=b%" "a=%-1" "a=%+1" "a=%2G"]]
+      (testing s
+        (given (hu/form-decode s)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid percent-encoding in parameter `%s`." s)
+          :fhir/issue := "invalid")))
+
+    (testing "after a valid param"
+      (given (hu/form-decode "a=b&identifier=%ZZ")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."))
+
+    (testing "the first invalid param is reported"
+      (given (hu/form-decode "a=%ZZ&b=%YY")
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid percent-encoding in parameter `a=%ZZ`."))))

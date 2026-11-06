@@ -8,7 +8,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
@@ -30,6 +30,8 @@
    [blaze.interaction.vread]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.middleware.params :as params]
+   [blaze.middleware.params-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.page-store-spec]
@@ -45,7 +47,6 @@
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
    [reitit.ring]
-   [ring.middleware.params :refer [wrap-params]]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -71,7 +72,7 @@
     :fhir.resource/type type
     :get {:interaction "search-type"
           :middleware [[wrap-db node]]
-          :handler (wrap-params search-type-handler)}
+          :handler search-type-handler}
     :post {:interaction "create" :handler create-handler}
     :delete {:interaction "conditional-delete-type"
              :handler conditional-delete-type-handler}}])
@@ -83,7 +84,7 @@
     :fhir.resource/type type
     :get {:interaction "search-type"
           :middleware [[wrap-db node]]
-          :handler (wrap-params search-type-handler)}}])
+          :handler search-type-handler}}])
 
 (defn- instance-route
   [type {:keys [node read-handler delete-handler update-handler]}]
@@ -123,7 +124,7 @@
       :fhir.resource/type "Patient"
       :get {:interaction "history-instance"
             :middleware [[wrap-db node]]
-            :handler (wrap-params history-instance-handler)}
+            :handler history-instance-handler}
       :delete {:interaction "delete-history" :handler delete-history-handler}}]
     ["/Patient/{id}/__history-page/{page-id}"
      {:name :Patient/history-instance-page
@@ -134,7 +135,8 @@
       :get {:interaction "vread"
             :middleware [[wrap-db node]]
             :handler vread-handler}}]]
-   (cond-> {:syntax :bracket}
+   (cond-> {:syntax :bracket
+            :data {:middleware [params/wrap-params params/wrap-invalid-params]}}
      batch?
      (assoc :reitit.middleware/transform
             (fn [middleware]
@@ -1942,7 +1944,38 @@
           [:entry 0 :resource :content 0 :attachment :url] := #fhir/url "Binary/AAAAAAAAAAAAAAAB"
           [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAB")))))
 
+(defn- invalid-conditional-create-bundle [type]
+  {:fhir/type :fhir/Bundle
+   :type (type/code type)
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :resource
+     {:fhir/type :fhir/Patient}
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code "POST"
+      :url #fhir/uri "Patient"
+      :ifNoneExist #fhir/string "identifier=%ZZ"}}]})
+
 (deftest handler-transaction-conditional-create-interaction-test
+  (testing "with invalid percent-encoding"
+    (with-handler [handler node]
+      (let [{:keys [status body]}
+            @(handler {:body (invalid-conditional-create-bundle "transaction")})]
+
+        (testing "returns error"
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."))
+
+        (testing "no patient is created"
+          (with-db [db node]
+            (is (zero? (d/type-total db "Patient"))))))))
+
   (testing "on multiple matching patients"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"
@@ -2041,6 +2074,26 @@
               [:issue 0 :diagnostics] := #fhir/string "Resource `Patient/0` already exists.")))))))
 
 (deftest handler-transaction-conditional-delete-interaction-test
+  (testing "with invalid percent-encoding"
+    (with-handler [handler node]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [{:keys [status body]}
+            @(handler {:body (delete-bundle "transaction" "Patient?identifier=%ZZ")})]
+
+        (testing "returns error"
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
+            [:issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."))
+
+        (testing "the patient isn't deleted"
+          (with-db [db node]
+            (is (= 1 (d/type-total db "Patient"))))))))
+
   (let [entries
         [{:fhir/type :fhir.Bundle/entry
           :request
@@ -2777,6 +2830,30 @@
               [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]")))))))
 
 (deftest handler-batch-conditional-create-interaction-test
+  (testing "with invalid percent-encoding"
+    (with-handler [handler node]
+      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+            @(handler {:body (invalid-conditional-create-bundle "batch")})]
+
+        (testing "response status"
+          (is (= 200 status)))
+
+        (testing "returns error"
+          (testing "with status"
+            (is (= #fhir/string "400" (:status response))))
+
+          (testing "with outcome"
+            (given (:outcome response)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."
+              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]")))
+
+        (testing "no patient is created"
+          (with-db [db node]
+            (is (zero? (d/type-total db "Patient"))))))))
+
   (testing "on multiple matching patients"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"
@@ -2887,6 +2964,32 @@
                 [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]"))))))))
 
 (deftest handler-batch-conditional-delete-interaction-test
+  (testing "with invalid percent-encoding"
+    (with-handler [handler node]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+            @(handler {:body (delete-bundle "batch" "Patient?identifier=%ZZ")})]
+
+        (testing "response status"
+          (is (= 200 status)))
+
+        (testing "returns error"
+          (testing "with status"
+            (is (= #fhir/string "400" (:status response))))
+
+          (testing "with outcome"
+            (given (:outcome response)
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."
+              [:issue 0 :expression 0] := #fhir/string "Bundle.entry[0]")))
+
+        (testing "the patient isn't deleted"
+          (with-db [db node]
+            (is (= 1 (d/type-total db "Patient"))))))))
+
   (let [entries
         [{:fhir/type :fhir.Bundle/entry
           :request

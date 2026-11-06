@@ -54,6 +54,21 @@
                          {:fhir/type :fhir/Patient :id "id-220200"}
                          [["birthdate" "2020"]]])
 
+        (testing "with invalid percent-encoding in :ifNoneExist"
+          (given (bundle/assoc-tx-ops
+                  db
+                  [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "create"
+                    :resource {:fhir/type :fhir/Patient :id "id-110626"}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "POST"
+                     :url #fhir/uri "Patient"
+                     :ifNoneExist #fhir/string "identifier=%ZZ"}}])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."
+            :fhir/issue := "invalid"))
+
         (testing "with empty :ifNoneExist"
           (given (bundle/assoc-tx-ops
                   db
@@ -180,7 +195,20 @@
                      :method #fhir/code "DELETE"
                      :url #fhir/uri "Patient?name-170043=value-170047"}}])
             count := 1
-            [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]])))))
+            [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]]))
+
+        (testing "with invalid percent-encoding in search params"
+          (given (bundle/assoc-tx-ops
+                  db
+                  [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "conditional-delete-type"
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient?identifier=%ZZ"}}])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."
+            :fhir/issue := "invalid")))))
 
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]

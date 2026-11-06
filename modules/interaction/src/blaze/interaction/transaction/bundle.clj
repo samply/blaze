@@ -4,10 +4,7 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle.links :as links]
-   [blaze.interaction.util :as iu]
-   [blaze.util.clauses :as uc]
-   [clojure.string :as str]
-   [ring.util.codec :as ring-codec]))
+   [blaze.interaction.util :as iu]))
 
 (defmulti entry-tx-op
   "Returns `entry` with the transaction operation of its interaction associated
@@ -16,13 +13,9 @@
   {:arglists '([db entry])}
   (fn [_ entry] (::fhir-util/interaction entry)))
 
-(defn- conditional-clauses [if-none-exist]
-  (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
-
 (defmethod entry-tx-op "create"
   [_ {:keys [resource] {{if-none-exist :value} :ifNoneExist} :request :as entry}]
-  (let [clauses (conditional-clauses if-none-exist)]
+  (when-ok [clauses (iu/conditional-clauses if-none-exist)]
     (assoc entry
            :tx-op
            (cond->
@@ -44,8 +37,9 @@
 
 (defmethod entry-tx-op "conditional-delete-type"
   [_ {{{url :value} :url} :request :as entry}]
-  (let [[type query-params] (fhir-util/match-type-query-params url)]
-    (assoc entry :tx-op (cond-> [:conditional-delete type] (not (str/blank? query-params)) (conj (-> query-params ring-codec/form-decode uc/search-clauses))))))
+  (let [[type query-string] (fhir-util/match-type-query-params url)]
+    (when-ok [clauses (iu/conditional-clauses query-string)]
+      (assoc entry :tx-op (cond-> [:conditional-delete type] (some? clauses) (conj clauses))))))
 
 (defmethod entry-tx-op :default
   [_ entry]

@@ -1,16 +1,27 @@
 (ns blaze.interaction.util
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.http.util :as hu]
+   [blaze.util.clauses :as uc]
    [clojure.string :as str]
    [ring.util.response :as ring]))
 
 (defn etag->t [etag]
   (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
     (some-> t parse-long)))
+
+(defn conditional-clauses
+  "Returns the search clauses of `query-string` as used in conditional
+  interactions, nil if `query-string` is blank or an anomaly if it isn't
+  properly percent-encoded."
+  [query-string]
+  (when-not (str/blank? query-string)
+    (when-ok [params (hu/form-decode query-string)]
+      (uc/search-clauses params))))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)

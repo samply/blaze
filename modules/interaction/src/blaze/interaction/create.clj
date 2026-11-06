@@ -12,25 +12,18 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
    [blaze.module :as m]
-   [blaze.util.clauses :as uc]
    [blaze.validator :as validator]
    [blaze.validator.spec]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [reitit.core :as reitit]
-   [ring.util.codec :as ring-codec]
    [taoensso.timbre :as log]))
 
 (defn- create-op [resource conditional-clauses]
   (cond-> [:create resource]
     (seq conditional-clauses)
     (conj conditional-clauses)))
-
-(defn- conditional-clauses [{:strs [if-none-exist]}]
-  (when-not (str/blank? if-none-exist)
-    (-> if-none-exist ring-codec/form-decode uc/search-clauses)))
 
 (defn- response-context [{:keys [headers] :as request} db-after]
   (let [return-preference (handler-util/preference headers "return")]
@@ -52,16 +45,17 @@
 (defn- create-resource
   [{:keys [node]}
    {{{:fhir.resource/keys [type]} :data} ::reitit/match
-    :keys [headers]
+    {if-none-exist "if-none-exist"} :headers
     :as request}
    {:keys [id] :as resource}]
-  (let [conditional-clauses (conditional-clauses headers)
-        tx-op (create-op resource conditional-clauses)]
-    (-> (d/transact node [tx-op])
-        (ac/then-compose
-         #(d/with-sync-db node %
-            (partial build-response request type id tx-op
-                     conditional-clauses))))))
+  (if-ok [conditional-clauses (iu/conditional-clauses if-none-exist)]
+    (let [tx-op (create-op resource conditional-clauses)]
+      (-> (d/transact node [tx-op])
+          (ac/then-compose
+           #(d/with-sync-db node %
+              (partial build-response request type id tx-op
+                       conditional-clauses)))))
+    ac/completed-future))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."

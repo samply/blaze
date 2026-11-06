@@ -49,7 +49,7 @@ By default, response entries of writes don't contain the resources themselves. S
 
 ## Handling Errors
 
-Transactions are processed atomically: if any entry fails, no changes are applied at all. In that case Blaze returns an error status matching the failed entry (e.g. `409 Conflict` on a referential integrity violation or `412 Precondition Failed` on a failed precondition) with a single `OperationOutcome` detailing the error. For errors detected while validating the bundle, the offending entry is given in `OperationOutcome.issue.expression`, e.g. `Bundle.entry[0].request.url`.
+Transactions are processed atomically: if any entry fails, no changes are applied at all. In that case Blaze returns an error status matching the failed entry (e.g. `409 Conflict` on a referential integrity violation or `412 Precondition Failed` on a failed precondition) with a single `OperationOutcome` detailing the error. For errors detected while validating the bundle, the offending entry is given in `OperationOutcome.issue.expression`, e.g. `Bundle.entry[0].request.url`. A conditional create or conditional delete with search parameters that aren't properly [percent-encoded](../../api.md#percent-encoding) fails the transaction with a `400 Bad Request`. <Badge type="warning" text="Since 1.14.0"/>
 
 ## Conditional Create
 

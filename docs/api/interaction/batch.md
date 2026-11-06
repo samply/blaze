@@ -52,3 +52,5 @@ In contrast to the [transaction](transaction.md) interaction, actions in a batch
   ]
 }
 ```
+
+An entry with search parameters that aren't properly [percent-encoded](../../api.md#percent-encoding), for example in a conditional create or conditional delete, results in an error entry with status `400`. <Badge type="warning" text="Since 1.14.0"/>

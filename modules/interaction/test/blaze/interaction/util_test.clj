@@ -3,6 +3,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
+   [blaze.http.util-spec]
    [blaze.interaction.util :as iu]
    [blaze.interaction.util-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -28,6 +29,27 @@
       "foo"
       "W/1"
       "W/\"a\"")))
+
+(deftest conditional-clauses-test
+  (testing "blank query string"
+    (are [s] (nil? (iu/conditional-clauses s))
+      nil
+      ""
+      " "))
+
+  (testing "one search param"
+    (given (iu/conditional-clauses "identifier=a%20b")
+      identity := [["identifier" "a b"]]))
+
+  (testing "ignorable search param"
+    (given (iu/conditional-clauses "_sort=a")
+      identity := []))
+
+  (testing "invalid percent-encoding"
+    (given (iu/conditional-clauses "identifier=%ZZ")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."
+      :fhir/issue := "invalid")))
 
 (deftest put-tx-op-test
   (testing "on empty database"

@@ -48,7 +48,7 @@ The outcome depends on the number of resources matching the search:
 | one     | No new resource is created. The already existing resource is returned with a `200 OK`.              |
 | many    | Blaze returns a `412 Precondition Failed` with an `OperationOutcome` and doesn't create a resource. |
 
-The search and the potential creation are executed in the same transaction, so conditional creates are safe against concurrent requests. An empty `If-None-Exist` header or one containing only ignorable search parameters like `_sort` results in a normal, unconditional create.
+The search and the potential creation are executed in the same transaction, so conditional creates are safe against concurrent requests. An empty `If-None-Exist` header or one containing only ignorable search parameters like `_sort` results in a normal, unconditional create. An `If-None-Exist` header containing a search parameter that isn't properly [percent-encoded](../../api.md#percent-encoding) is rejected with a `400 Bad Request` and doesn't create a resource. <Badge type="warning" text="Since 1.14.0"/>
 
 Conditional create can also be used in [transaction](transaction.md) and [batch](batch.md) requests via `Bundle.entry.request.ifNoneExist`. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
 

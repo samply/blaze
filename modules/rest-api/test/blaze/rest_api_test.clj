@@ -453,12 +453,41 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "invalid"
-            [:issue 0 :diagnostics] := #fhir/string "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
+            [:issue 0 :diagnostics] := #fhir/string "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))
+
+    (testing "with invalid percent-encoding in the body"
+      (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+        (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                               :headers {"content-type" "application/x-www-form-urlencoded"}
+                               :body (.getBytes "identifier=%ZZ")})
+          :status := 400
+          [:body json-parser :fhir/type] := :fhir/OperationOutcome
+          [:body json-parser :issue 0 :code] := #fhir/code "invalid"
+          [:body json-parser :issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`.")))))
 
 (deftest conditional-delete-type-test
   (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :delete :uri "/Patient"})
-      :status := 200)))
+      :status := 200))
+
+  (testing "with invalid percent-encoding in the query string"
+    (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+      (given (call rest-api {:request-method :delete :uri "/Patient"
+                             :query-string "identifier=%ZZ"})
+        :status := 400
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:body json-parser :issue 0 :severity] := #fhir/code "error"
+        [:body json-parser :issue 0 :code] := #fhir/code "invalid"
+        [:body json-parser :issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."))))
+
+(deftest invalid-percent-encoding-test
+  (testing "the OperationOutcome is returned in the format of the Accept header"
+    (with-system [{:blaze/keys [rest-api]} config]
+      (given (call rest-api {:request-method :get :uri "/Patient"
+                             :headers {"accept" "application/fhir+xml"}
+                             :query-string "_format=json&identifier=%ZZ"})
+        :status := 400
+        [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"))))
 
 (def ^:private binary-handler
   (constantly
@@ -552,10 +581,22 @@
         [:body json-parser :fhir/type] := :fhir/OperationOutcome
         [:body json-parser :issue 0 :code] := #fhir/code "login"))
 
+    (testing "FHIR interaction with invalid percent-encoding"
+      (given (call rest-api {:request-method :get :uri "/Patient"
+                             :query-string "identifier=%ZZ"})
+        :status := 401
+        [:body json-parser :issue 0 :code] := #fhir/code "login"))
+
     (testing "the admin handler guards itself"
       (given (call rest-api {:request-method :get :uri "/__admin/dbs"})
         :status := 200
-        [:body #(String. ^bytes %)] := "admin"))
+        [:body #(String. ^bytes %)] := "admin")
+
+      (testing "also against invalid percent-encoding"
+        (given (call rest-api {:request-method :get :uri "/__admin/dbs"
+                               :query-string "a=%ZZ"})
+          :status := 200
+          [:body #(String. ^bytes %)] := "admin")))
 
     (testing "JSON operation"
       (given (call rest-api {:request-method :get :uri "/$graphql"})

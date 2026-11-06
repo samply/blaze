@@ -8,7 +8,8 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.response.create-spec]
@@ -116,11 +117,13 @@
             :blaze/base-url base-url
             ::reitit/router router))))
 
-(defmacro with-handler [[handler-binding] & more]
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.interaction/create} config]
+    `(with-system-data [{handler# :blaze.interaction/create
+                         node# :blaze.db/node} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
+       (let [~handler-binding (-> handler# wrap-defaults wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 (def patient-match
@@ -347,6 +350,27 @@
 
           (testing "a unconditional create is executed"
             (is (= 201 status))))))
+
+    (testing "with invalid percent-encoding"
+      (with-handler [handler node]
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" "identifier=%ZZ"}
+                 :body {:fhir/type :fhir/Patient}})]
+
+          (testing "the request is rejected"
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := #fhir/string "Invalid percent-encoding in parameter `identifier=%ZZ`."))
+
+          (testing "no patient is created"
+            (with-db [db node]
+              (is (zero? (d/type-total db "Patient"))))))))
 
     (testing "with non-matching query"
       (testing "on empty database"

@@ -46,6 +46,10 @@ The following Operations are implemented:
 * [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="Since 0.32"/>
 * [ValueSet $validate-code](api/operation/value-set-validate-code.md) <Badge type="warning" text="Since 0.32"/>
 
+## Percent-Encoding <Badge type="warning" text="Since 1.14.0"/>
+
+Parameters have to be properly percent-encoded. That applies to the query string, to form bodies of type `application/x-www-form-urlencoded`, like in searches via `POST`, and to the search parameters of the `If-None-Exist` header, including `Bundle.entry.request.ifNoneExist`. A `%` has to be followed by two hexadecimal digits, so a literal `%` has to be encoded as `%25`. Blaze rejects parameters that aren't properly percent-encoded with a `400 Bad Request` and an `OperationOutcome` with the issue code `invalid`, instead of ignoring them.
+
 ## Asynchronous Requests
 
 Some requests like $evaluate-measure or complex FHIR searches with `_summary=count` can take longer as a typical HTTP request response cycle should be open. Typical HTTP request timeouts from client and intermediates are 30 seconds. Requests that take longer than that would require special handling. In oder to overcome that synchronous request handling, FHIR specifies [Asynchronous Request Patterns](http://hl7.org/fhir/R5/async.html).

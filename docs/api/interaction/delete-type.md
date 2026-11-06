@@ -1,6 +1,6 @@
 # Conditional Delete
 
-The conditional delete operation allows deleting all resources matching certain criteria. The same search parameter as in the search type interaction can be used. The search is always strict, so it will fail on any unknown search parameter.
+The conditional delete operation allows deleting all resources matching certain criteria. The same search parameter as in the search type interaction can be used. The search is always strict, so it will fail on any unknown search parameter. Search parameters that aren't properly [percent-encoded](../../api.md#percent-encoding) are rejected with a `400 Bad Request` as well, so that such a request never deletes all resources of the type. <Badge type="warning" text="Since 1.14.0"/>
 
 ```
 DELETE [base]/[type]?[search parameters]

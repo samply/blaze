@@ -3,17 +3,21 @@
 
   https://www.hl7.org/fhir/http.html#cdelete"
   (:require
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.spec]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.params :as params]
+   [blaze.middleware.params-spec]
    [blaze.module.test-util :refer [given-failed-system]]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-failed-future]]
    [blaze.util-spec]
    [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
@@ -52,11 +56,13 @@
           :executor (ig/ref :blaze.test/executor)}
          :blaze.test/executor {}))
 
-(defmacro with-handler [[handler-binding] & more]
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.interaction/conditional-delete-type} config]
+    `(with-system-data [{handler# :blaze.interaction/conditional-delete-type
+                         node# :blaze.db/node} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-error)]
+       (let [~handler-binding (-> handler# wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 (defmacro with-handler-allow-multiple [[handler-binding] & more]
@@ -67,6 +73,22 @@
          ~@body))))
 
 (deftest handler-test
+  (testing "returns error on invalid percent-encoding in the query string"
+    (with-handler [handler node]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given-failed-future
+       ((-> handler params/wrap-invalid-params params/wrap-params)
+        {::reitit/match {:data {:fhir.resource/type "Patient"}}
+         :query-string "identifier=%ZZ"})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid percent-encoding in parameter `identifier=%ZZ`."
+        :fhir/issue := "invalid")
+
+      (testing "the patient isn't deleted"
+        (with-db [db node]
+          (is (= 1 (d/type-total db "Patient")))))))
+
   (testing "returns error on unknown search parameter"
     (with-handler [handler]
       (let [{:keys [status body]}

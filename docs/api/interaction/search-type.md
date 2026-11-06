@@ -9,6 +9,8 @@ POST [base]/[type]/_search
 
 By default, Blaze ignores unknown or unsupported search parameters. If you prefer to get an error instead, you can set the `Prefer` header to `handling=strict`. In this case, Blaze will return a `400 Bad Request` with an `OperationOutcome` detailing the unknown or unsupported search parameters.
 
+Independent of the `handling` preference, parameters that aren't properly [percent-encoded](../../api.md#percent-encoding) are always rejected with a `400 Bad Request`. <Badge type="warning" text="Since 1.14.0"/>
+
 ## Implemented Modifiers
 
 The following search param modifiers are supported:
