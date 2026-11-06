@@ -10,6 +10,7 @@
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.delete]
    [blaze.interaction.delete-history]
+   [blaze.interaction.delete-history-version]
    [blaze.interaction.history.instance]
    [blaze.interaction.history.system]
    [blaze.interaction.history.type]
@@ -225,6 +226,8 @@
    {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/delete-history
    {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/delete-history-version
+   {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/conditional-delete-type
    {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/search-system
@@ -300,6 +303,9 @@
      :delete-history
      #:blaze.rest-api.interaction
       {:handler (ig/ref :blaze.interaction/delete-history)}
+     :delete-history-version
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/delete-history-version)}
      :conditional-delete-type
      #:blaze.rest-api.interaction
       {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
@@ -423,7 +429,19 @@
       (testing (format "version %d doesn't exist" t)
         (given (call rest-api {:request-method :get :uri (format "/Patient/0/_history/%d" t)})
           :status := 404
-          [:body json-parser :fhir/type] := :fhir/OperationOutcome))))
+          [:body json-parser :fhir/type] := :fhir/OperationOutcome)))
+
+    (testing "a valid version id that isn't a version number doesn't exist"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/a"})
+        :status := 404
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+    (testing "an invalid version id is rejected"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/1_2"})
+        :status := 400
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:body json-parser :issue 0 :code] := #fhir/code "value"
+        [:body json-parser :issue 0 :diagnostics] := #fhir/string "Version id `1_2` is invalid.")))
 
   (testing "with deleted history"
     (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
@@ -509,6 +527,50 @@
     (given (call rest-api {:request-method :get :uri "/Patient/0/_history/1"})
       :status := 404
       [:body json-parser :fhir/type] := :fhir/OperationOutcome)))
+
+(deftest delete-history-version-test
+  (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
+    ;; the first transaction (t = 1) loads the StructureDefinitions
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+    (testing "the current version can't be deleted"
+      (given (call rest-api {:request-method :delete :uri "/Patient/0/_history/3"})
+        :status := 409
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:body json-parser :issue 0 :code] := #fhir/code "conflict"
+        [:body json-parser :issue 0 :diagnostics] := #fhir/string "Can't delete the current version `3` of the resource `Patient/0`."))
+
+    (testing "the historic version can be deleted"
+      (given (call rest-api {:request-method :delete :uri "/Patient/0/_history/2"})
+        :status := 204
+        :body := nil)
+
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
+        :status := 404
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome))
+
+    (testing "deleting the version again has no effect"
+      (given (call rest-api {:request-method :delete :uri "/Patient/0/_history/2"})
+        :status := 204
+        :body := nil))
+
+    (testing "a valid version id that isn't a version number has no effect"
+      (given (call rest-api {:request-method :delete :uri "/Patient/0/_history/a"})
+        :status := 204
+        :body := nil))
+
+    (testing "an invalid version id is rejected"
+      (given (call rest-api {:request-method :delete :uri "/Patient/0/_history/1_2"})
+        :status := 400
+        [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:body json-parser :issue 0 :code] := #fhir/code "value"
+        [:body json-parser :issue 0 :diagnostics] := #fhir/string "Version id `1_2` is invalid."))
+
+    (testing "the current version still exists"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/3"})
+        :status := 200
+        [:body json-parser :active] := #fhir/boolean true))))
 
 (deftest conditional-delete-type-test
   (with-system [{:blaze/keys [rest-api]} config]

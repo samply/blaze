@@ -153,7 +153,7 @@ cat <<END
 END
 }
 
-curl -sfH "Content-Type: application/fhir+json" -d "$(bundle)" -o /dev/null "$base"
+curl -sSfH "Content-Type: application/fhir+json" -d "$(bundle)" -o /dev/null "$base"
 
 result="$(search_strict "$base/DocumentReference?author:Organization.identifier=system-105539|value-105542&_summary=count" | jq -r '.total')"
 

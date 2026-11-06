@@ -20,6 +20,7 @@
    [blaze.interaction.create]
    [blaze.interaction.delete]
    [blaze.interaction.delete-history]
+   [blaze.interaction.delete-history-version]
    [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
@@ -99,7 +100,7 @@
 
 (defmethod ig/init-key ::router
   [_ {:keys [node vread-handler history-instance-handler delete-history-handler
-             batch?]
+             delete-history-version-handler batch?]
       :as config}]
   (reitit.ring/router
    [["/metadata"
@@ -133,7 +134,9 @@
       :fhir.resource/type "Patient"
       :get {:interaction "vread"
             :middleware [[wrap-db node]]
-            :handler vread-handler}}]]
+            :handler vread-handler}
+      :delete {:interaction "delete-history-version"
+               :handler delete-history-version-handler}}]]
    (cond-> {:syntax :bracket}
      batch?
      (assoc :reitit.middleware/transform
@@ -183,6 +186,9 @@
    :blaze.interaction/delete-history
    {:node (ig/ref :blaze.db/node)}
 
+   :blaze.interaction/delete-history-version
+   {:node (ig/ref :blaze.db/node)}
+
    :blaze.interaction.history/instance
    {::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
@@ -202,7 +208,8 @@
     :update-handler (ig/ref :blaze.interaction/update)
     :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
     :history-instance-handler (ig/ref :blaze.interaction.history/instance)
-    :delete-history-handler (ig/ref :blaze.interaction/delete-history)}
+    :delete-history-handler (ig/ref :blaze.interaction/delete-history)
+    :delete-history-version-handler (ig/ref :blaze.interaction/delete-history-version)}
 
    ::batch-router
    {:batch? true
@@ -215,7 +222,8 @@
     :update-handler (ig/ref :blaze.interaction/update)
     :conditional-delete-type-handler (ig/ref :blaze.interaction/conditional-delete-type)
     :history-instance-handler (ig/ref :blaze.interaction.history/instance)
-    :delete-history-handler (ig/ref :blaze.interaction/delete-history)}
+    :delete-history-handler (ig/ref :blaze.interaction/delete-history)
+    :delete-history-version-handler (ig/ref :blaze.interaction/delete-history-version)}
 
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
@@ -1267,14 +1275,12 @@
             [:issue 0 :diagnostics] := #fhir/string "Unknown request URL `Patient/0/foo/bar`."
             [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.url"))))))
 
-(deftest handler-delete-on-versioned-instance-url-test
+(deftest handler-delete-on-url-without-delete-test
   (testing "On transaction bundle"
     (testing "returns error"
       (with-handler [handler]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
         (let [{:keys [status body]}
-              @(handler {:body (delete-bundle "transaction" "Patient/0/_history/1")})]
+              @(handler {:body (delete-bundle "transaction" "Patient/__page")})]
 
           (is (= 405 status))
 
@@ -1282,7 +1288,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "processing"
-            [:issue 0 :diagnostics] := #fhir/string "Method DELETE not allowed on `Patient/0/_history/1` endpoint."
+            [:issue 0 :diagnostics] := #fhir/string "Method DELETE not allowed on `Patient/__page` endpoint."
             [:issue 0 :expression first] := #fhir/string "Bundle.entry[0].request.method"))))))
 
 (deftest handler-delete-history-test
@@ -1322,6 +1328,245 @@
 
           (testing "only the current version remains"
             (is (= 1 @(d/with-sync-db node #(ac/completed-future (d/total-num-of-instance-changes % "Patient" "0")))))))))))
+
+(defn- instance-versions
+  "Returns the version ids of the resource with `type` and `id` in the current
+  database of `node`, newest first."
+  [node type id]
+  @(d/with-sync-db node #(ac/completed-future (mapv :t (d/instance-history % type id)))))
+
+(deftest handler-delete-history-version-test
+  (testing "On transaction bundle"
+    (testing "deletes the version"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status] {[{:keys [response] :as entry}] :entry} :body}
+              @(handler {:body (delete-bundle "transaction" "Patient/0/_history/1")})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "204"
+              :etag := nil))
+
+          (testing "entry has no resource"
+            (is (nil? (:resource entry))))
+
+          (testing "only the current version remains"
+            (is (= [2] (instance-versions node "Patient" "0")))))))
+
+    (testing "deletes the version together with other writes"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status] {[{response-0 :response} {response-1 :response}] :entry} :body}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0/_history/1"}}
+                   {:fhir/type :fhir.Bundle/entry
+                    :resource {:fhir/type :fhir/Patient :id "1"}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "PUT"
+                     :url #fhir/uri "Patient/1"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry responses"
+            (given response-0
+              :status := #fhir/string "204")
+            (given response-1
+              :status := #fhir/string "201"))
+
+          (testing "the version is deleted and the other patient created"
+            (is (= [2] (instance-versions node "Patient" "0")))
+            (is (= [3] (instance-versions node "Patient" "1")))))))
+
+    (testing "deletes several versions of the same resource"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]]
+
+        (let [{:keys [status] {[{response-0 :response} {response-1 :response}] :entry} :body}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0/_history/1"}}
+                   {:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0/_history/2"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry responses"
+            (given response-0
+              :status := #fhir/string "204")
+            (given response-1
+              :status := #fhir/string "204"))
+
+          (testing "only the current version remains"
+            (is (= [3] (instance-versions node "Patient" "0")))))))
+
+    (testing "fails on deleting the same version twice"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  (vec
+                   (repeat 2 {:fhir/type :fhir.Bundle/entry
+                              :request
+                              {:fhir/type :fhir.Bundle.entry/request
+                               :method #fhir/code "DELETE"
+                               :url #fhir/uri "Patient/0/_history/1"}}))}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :code] := #fhir/code "invariant"
+            [:issue 0 :diagnostics] := #fhir/string "Duplicate transaction commands `delete-history-version Patient/0/_history/1` and `delete-history-version Patient/0/_history/1`."
+            [:issue 0 :expression] := [#fhir/string "Bundle.entry[0]" #fhir/string "Bundle.entry[1]"])
+
+          (testing "both versions remain"
+            (is (= [2 1] (instance-versions node "Patient" "0")))))))
+
+    (testing "has no effect on a version that doesn't exist"
+      (doseq [vid ["3" "a"]]
+        (with-handler [handler node]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler {:body (delete-bundle "transaction" (str "Patient/0/_history/" vid))})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "entry response"
+              (given response
+                :status := #fhir/string "204"))
+
+            (testing "both versions remain"
+              (is (= [2 1] (instance-versions node "Patient" "0"))))))))
+
+    (testing "fails on deleting the current version"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status body]}
+              @(handler {:body (delete-bundle "transaction" "Patient/0/_history/2")})]
+
+          (is (= 409 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "conflict"
+            [:issue 0 :diagnostics] := #fhir/string "Can't delete the current version `2` of the resource `Patient/0`.")
+
+          (testing "both versions remain"
+            (is (= [2 1] (instance-versions node "Patient" "0")))))))
+
+    (testing "fails together with an update of the same resource"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0/_history/1"}}
+                   {:fhir/type :fhir.Bundle/entry
+                    :resource {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "PUT"
+                     :url #fhir/uri "Patient/0"}}]}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :code] := #fhir/code "invariant"
+            [:issue 0 :diagnostics] := #fhir/string "Duplicate transaction commands `delete-history-version Patient/0/_history/1` and `put Patient/0`."
+            [:issue 0 :expression] := [#fhir/string "Bundle.entry[0]" #fhir/string "Bundle.entry[1]"])
+
+          (testing "both versions remain"
+            (is (= [2 1] (instance-versions node "Patient" "0"))))))))
+
+  (testing "On batch bundle"
+    (testing "deletes the version"
+      (with-handler [handler node]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler {:body (delete-bundle "batch" "Patient/0/_history/1")})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "204"))
+
+          (testing "only the current version remains"
+            (is (= 1 @(d/with-sync-db node #(ac/completed-future (d/total-num-of-instance-changes % "Patient" "0")))))))))
+
+    (testing "returns an error entry on deleting the current version"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler {:body (delete-bundle "batch" "Patient/0/_history/2")})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry response"
+            (given response
+              :status := #fhir/string "409"
+              [:outcome :fhir/type] := :fhir/OperationOutcome
+              [:outcome :issue 0 :code] := #fhir/code "conflict"
+              [:outcome :issue 0 :diagnostics] := #fhir/string "Can't delete the current version `2` of the resource `Patient/0`.")))))))
 
 (deftest handler-history-since-test
   (doseq [type ["transaction" "batch"]]
@@ -1819,7 +2064,43 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "invariant"
-            [:issue 0 :diagnostics] := #fhir/string "Duplicate resource `Patient/0`.")))))
+            [:issue 0 :diagnostics] := #fhir/string "Duplicate transaction commands `put Patient/0` and `put Patient/0`."
+            [:issue 0 :expression] := [#fhir/string "Bundle.entry[0]" #fhir/string "Bundle.entry[1]"]))))
+
+    (testing "with a read entry before them"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                {:body
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code "transaction"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "GET"
+                     :url #fhir/uri "Patient/0"}}
+                   {:fhir/type :fhir.Bundle/entry
+                    :resource
+                    {:fhir/type :fhir/Patient :id "0"}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "PUT"
+                     :url #fhir/uri "Patient/0"}}
+                   {:fhir/type :fhir.Bundle/entry
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/0"}}]}})]
+
+          (testing "returns error"
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :code] := #fhir/code "invariant"
+              [:issue 0 :diagnostics] := #fhir/string "Duplicate transaction commands `put Patient/0` and `delete Patient/0`."
+              [:issue 0 :expression] := [#fhir/string "Bundle.entry[1]" #fhir/string "Bundle.entry[2]"]))))))
 
   (testing "on violated referential integrity"
     (with-handler [handler]

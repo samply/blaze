@@ -31,12 +31,12 @@ The `Content-Type` header of such a binary response is taken from `Binary.conten
 
 | Status Code       | Description                                                                                                                        |
 |-------------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| `400 Bad Request` | The id given in the URL is invalid. Ids are restricted to 64 characters of `A-Z`, `a-z`, `0-9`, `-` and `.`.                       |
-| `404 Not Found`   | The given version of the resource doesn't exist. This includes version ids that aren't non-negative integers.                      |
+| `400 Bad Request` | The id or the version id given in the URL is invalid. Both are restricted to 64 characters of `A-Z`, `a-z`, `0-9`, `-` and `.`.    |
+| `404 Not Found`   | The given version of the resource doesn't exist.                                                                                   |
 | `410 Gone`        | The given version marks the deletion of the resource. The `ETag` and `Last-Modified` headers refer to the deletion.                |
 
 All error responses contain an `OperationOutcome` with details in the body. `404 Not Found` responses carry a `Cache-Control: no-cache` header because a resource version with the given id may come into existence later.
 
 ## Deleted Histories
 
-Versions removed via the [delete history](delete-history.md) interaction are no longer accessible and will result in a `404 Not Found`. The current version of the resource stays accessible.
+Versions removed via the [delete history](delete-history.md) or the [delete history version](delete-history-version.md) interaction are no longer accessible and will result in a `404 Not Found`. The current version of the resource stays accessible.

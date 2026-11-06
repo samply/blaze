@@ -15,3 +15,6 @@
 
 (s/def :blaze.handler.fhir.util/id
   :blaze.resource/id)
+
+(s/def :blaze.handler.fhir.util/vid
+  :blaze.resource/id)

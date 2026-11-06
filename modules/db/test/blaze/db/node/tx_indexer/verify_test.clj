@@ -79,6 +79,9 @@
   {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)
    :if-none-exist [["foo" "bar"]]})
 
+(defmethod verify-cmd "delete-history-version" [op]
+  {:op op :type "Patient" :id "0" :t 1})
+
 (defmethod verify-cmd :default [op]
   {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)})
 
@@ -800,6 +803,163 @@
 
             ;; the current version stays, so there is nothing to update
             :resource-handle-updates := []))))))
+
+(deftest verify-delete-history-version-test
+  (testing "empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (is (empty? (verify-tx-cmds node 1 [{:op "delete-history-version" :type "Patient" :id "0" :t 1}])))))
+
+  (testing "one patient"
+    (testing "with one version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (testing "the current version can't be deleted"
+          (given (verify-tx-cmds node 2 [{:op "delete-history-version" :type "Patient" :id "0" :t 1}])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't delete the current version `1` of the resource `Patient/0`."))
+
+        (testing "nothing to do on a version that doesn't exist"
+          (is (empty? (verify-tx-cmds node 2 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}]))))))
+
+    (testing "with three versions"
+      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+            patient-v2 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}
+            patient-v3 {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}
+            hash-v1 (hash/generate patient-v1)
+            hash-v2 (hash/generate patient-v2)]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:create patient-v1]]
+           [[:put patient-v2]]
+           [[:put patient-v3]]
+           [[:create {:fhir/type :fhir/Patient :id "1"}]]]
+
+          (testing "deleting the middle version"
+            (given (verify-tx-cmds* node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}])
+              [:entries count] := 5
+
+              [:entries 0 0] := :resource-as-of-index
+              [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+              [:entries 0 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 5}
+
+              [:entries 1 0] := :type-as-of-index
+              [:entries 1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+              [:entries 1 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 5}
+
+              [:entries 2 0] := :system-as-of-index
+              [:entries 2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+              [:entries 2 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 5}
+
+              [:entries 3 0] := :type-stats-index
+              [:entries 3 1 ts-tu/decode-key] := {:type "Patient" :t 5}
+              [:entries 3 2 ts-tu/decode-val] := {:total 2 :num-changes 3}
+
+              [:entries 4 0] := :system-stats-index
+              [:entries 4 1 ss-tu/decode-key] := {:t 5}
+              [:entries 4 2 ss-tu/decode-val] := {:total 2 :num-changes 3}
+
+              ;; the current version stays, so there is nothing to update
+              :resource-handle-updates := []))
+
+          (testing "deleting the first version"
+            (given (verify-tx-cmds* node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 1}])
+              [:entries count] := 5
+
+              [:entries 0 0] := :resource-as-of-index
+              [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+              [:entries 0 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 5}))
+
+          (testing "the current version can't be deleted"
+            (given (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 3}])
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Can't delete the current version `3` of the resource `Patient/0`."))
+
+          (testing "nothing to do on a t at which only another resource changed"
+            (is (empty? (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 4}]))))
+
+          (testing "nothing to do on a version in the future"
+            (is (empty? (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 5}]))))
+
+          (testing "deleting the first and the middle version together"
+            (given (verify-tx-cmds* node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 1}
+                                            {:op "delete-history-version" :type "Patient" :id "0" :t 2}])
+              [:entries count] := 8
+
+              [:entries 0 0] := :resource-as-of-index
+              [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+              [:entries 0 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 5}
+
+              [:entries 3 0] := :resource-as-of-index
+              [:entries 3 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+              [:entries 3 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 5}
+
+              [:entries 6 0] := :type-stats-index
+              [:entries 6 2 ts-tu/decode-val] := {:total 2 :num-changes 2}
+
+              [:entries 7 0] := :system-stats-index
+              [:entries 7 2 ss-tu/decode-val] := {:total 2 :num-changes 2}))
+
+          (testing "the same version can't be deleted twice"
+            (given (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}
+                                           {:op "delete-history-version" :type "Patient" :id "0" :t 2}])
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Duplicate transaction commands `delete-history-version Patient/0/_history/2` and `delete-history-version Patient/0/_history/2`."))
+
+          (testing "a version can't be deleted together with other commands on the same resource"
+            (let [delete-version {:op "delete-history-version" :type "Patient" :id "0" :t 1}]
+              (doseq [[cmd formatted] [[{:op "put" :type "Patient" :id "0" :hash hash-v1} "put Patient/0"]
+                                       [{:op "delete" :type "Patient" :id "0"} "delete Patient/0"]
+                                       [{:op "delete-history" :type "Patient" :id "0"} "delete-history Patient/0"]]]
+                (testing "after the other command"
+                  (given (verify-tx-cmds node 5 [cmd delete-version])
+                    ::anom/category := ::anom/conflict
+                    ::anom/message := (format "Duplicate transaction commands `%s` and `delete-history-version Patient/0/_history/1`." formatted)))
+
+                (testing "before the other command"
+                  (given (verify-tx-cmds node 5 [delete-version cmd])
+                    ::anom/category := ::anom/conflict
+                    ::anom/message := (format "Duplicate transaction commands `delete-history-version Patient/0/_history/1` and `%s`." formatted)))
+
+                (testing "after another delete history version command"
+                  (given (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 2} delete-version cmd])
+                    ::anom/category := ::anom/conflict
+                    ::anom/message := (format "Duplicate transaction commands `delete-history-version Patient/0/_history/2` and `%s`." formatted)))))))))
+
+    (testing "with another resource changed between its versions"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+         [[:create {:fhir/type :fhir/Patient :id "1"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (testing "nothing to do on the t at which only the other resource changed"
+          (is (empty? (verify-tx-cmds node 4 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}]))))))
+
+    (testing "with an already deleted version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]]
+         [[:delete-history-version "Patient" "0" 2]]]
+
+        (testing "nothing to do"
+          (is (empty? (verify-tx-cmds node 5 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}]))))))
+
+    (testing "with a deleted current version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+         [[:delete "Patient" "0"]]]
+
+        (testing "the deletion version can't be deleted"
+          (given (verify-tx-cmds node 3 [{:op "delete-history-version" :type "Patient" :id "0" :t 2}])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't delete the current version `2` of the resource `Patient/0`."))
+
+        (testing "the version before the deletion can be deleted"
+          (given (verify-tx-cmds* node 3 [{:op "delete-history-version" :type "Patient" :id "0" :t 1}])
+            [:entries count] := 5
+            [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [:entries 3 2 ts-tu/decode-val] := {:total 0 :num-changes 1}))))))
 
 (deftest verify-purge-test
   (testing "empty database"

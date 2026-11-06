@@ -99,6 +99,12 @@
          :type :fhir.resource/type
          :id :blaze.resource/id))
 
+(defmethod tx-op :delete-history-version [_]
+  (s/cat :op #{:delete-history-version}
+         :type :fhir.resource/type
+         :id :blaze.resource/id
+         :t :blaze.db/t))
+
 (defmethod tx-op :patient-purge [_]
   (s/cat :op #{:patient-purge}
          :id :blaze.resource/id))

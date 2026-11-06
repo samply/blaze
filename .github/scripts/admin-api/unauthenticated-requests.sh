@@ -9,7 +9,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080"
 
-access_token=$(curl -sfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
+access_token=$(curl -sSfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
 test_non_empty "access token" "$access_token"
 
 fill_path_params() {
@@ -17,7 +17,7 @@ fill_path_params() {
 }
 
 # the OpenAPI spec lists all endpoints of the Admin API except itself
-endpoints=$(curl -sfH 'Accept: application/json' --oauth2-bearer "$access_token" "$base/fhir/__admin/openapi.json" \
+endpoints=$(curl -sSfH 'Accept: application/json' --oauth2-bearer "$access_token" "$base/fhir/__admin/openapi.json" \
   | jq -r '.paths | to_entries[] | .key as $path | .value | keys[] | "\(.) \($path)"' \
   | fill_path_params)
 endpoints="$endpoints

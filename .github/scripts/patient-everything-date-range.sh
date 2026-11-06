@@ -13,7 +13,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+patient_id=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
 
 # Checks the Bundle $2 of the $everything request $1.
 check_bundle() {
@@ -31,9 +31,9 @@ check_bundle() {
   test "type counts of the $name bundle" "$(echo "$bundle" | jq -r '.entry | group_by(.resource.resourceType)[] | [.[0].resource.resourceType, length] | @csv')" "$(cat "$script_dir/patient-everything/$patient_identifier-type-counts-2013-2014.csv")"
 }
 
-check_bundle "GET" "$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything?start=2013&end=2014")"
+check_bundle "GET" "$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything?start=2013&end=2014")"
 
-check_bundle "POST" "$(curl -sfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d @- "$base/Patient/$patient_id/\$everything" <<END
+check_bundle "POST" "$(curl -sSfH 'Accept: application/fhir+json' -H 'Content-Type: application/fhir+json' -d @- "$base/Patient/$patient_id/\$everything" <<END
 {
   "resourceType": "Parameters",
   "parameter": [

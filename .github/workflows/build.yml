@@ -1210,6 +1210,7 @@ jobs:
     - name: Run Blaze
       env:
         ENABLE_INTERACTION_DELETE_HISTORY: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
+        ENABLE_INTERACTION_DELETE_HISTORY_VERSION: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
         ENABLE_OPERATION_PATIENT_PURGE: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
         ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
         ENABLE_OPERATION_CQL: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
@@ -1863,6 +1864,22 @@ jobs:
       if: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
       run: .github/scripts/delete-history.sh
 
+    - name: Delete History Version
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
+      run: .github/scripts/delete-history-version.sh direct
+
+    - name: Delete History Version in Batch
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
+      run: .github/scripts/delete-history-version.sh batch
+
+    - name: Delete History Version in Transaction
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
+      run: .github/scripts/delete-history-version.sh transaction
+
+    - name: Delete History Version Disabled
+      if: ${{ matrix.feature != 'full' && matrix.feature != 'delete-history' }}
+      run: .github/scripts/delete-history-version-disabled.sh
+
     - name: Conditional Delete - Delete All List Resources
       run: .github/scripts/conditional-delete-type/delete-all-resources-of-type.sh "List"
 
@@ -1925,11 +1942,11 @@ jobs:
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Prometheus Metrics - Blaze 1
-      run: curl -sf http://localhost:8081/metrics
+      run: curl -sSf http://localhost:8081/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Prometheus Metrics - Blaze 2
-      run: curl -sf http://localhost:8082/metrics
+      run: curl -sSf http://localhost:8082/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Check JVM Metrics Log

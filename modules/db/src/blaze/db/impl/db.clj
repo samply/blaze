@@ -149,6 +149,9 @@
     (let [start-t (if (some-> start-t (<= t)) start-t t)]
       (rao/instance-history snapshot t since-t tid id start-t)))
 
+  (-historic-resource-handle [db tid id version-t]
+    (rao/historic-resource-handle db tid id version-t))
+
   (-total-num-of-instance-changes [_ tid id]
     (count (rao/instance-history snapshot t since-t tid id t)))
 

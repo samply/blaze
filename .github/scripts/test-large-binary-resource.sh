@@ -26,14 +26,14 @@ trap 'rm -f "$data_file" "$json_file" "$xml_file" "$download_file"' EXIT
 # returns the URL of the created version, taken from the Location header of the
 # response.
 create_binary() {
-  curl -sf -o /dev/null -D - -H "Content-Type: $1" -H 'Prefer: return=minimal' --data-binary "@$2" "$base/Binary" |
+  curl -sSf -o /dev/null -D - -H "Content-Type: $1" -H 'Prefer: return=minimal' --data-binary "@$2" "$base/Binary" |
     grep -i '^location:' | tr -d '\r' | sed 's/^[^:]*: *//'
 }
 
 # Reads the binary content of the Binary resource at the URL $2, which was
 # created via $1, and verifies that it's identical to the original data.
 check_binary_content() {
-  curl -sfH 'Accept: application/octet-stream' "$2" > "$download_file"
+  curl -sSfH 'Accept: application/octet-stream' "$2" > "$download_file"
 
   if cmp -s "$data_file" "$download_file"; then
     echo "✅ the binary content of the Binary resource created via $1 is identical to the original data"

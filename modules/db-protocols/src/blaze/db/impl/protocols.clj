@@ -35,6 +35,8 @@
 
   (-instance-history [db tid id start-t])
 
+  (-historic-resource-handle [db tid id t])
+
   (-total-num-of-instance-changes [db tid id])
 
   (-type-history [db type start-t start-id])

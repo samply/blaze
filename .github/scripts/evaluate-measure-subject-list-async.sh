@@ -39,7 +39,7 @@ eclipsed() {
 }
 
 evaluate_measure() {
-  parameters "$2" | curl -sfH "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
+  parameters "$2" | curl -sSfH "Prefer: respond-async,return=representation" -H "Content-Type: application/fhir+json" -d @- -o /dev/null -D - "$1/Measure/\$evaluate-measure"
 }
 
 base="http://localhost:8080/fhir"
@@ -58,7 +58,7 @@ while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}'
   sleep 0.1
 done
 
-bundle="$(curl -sfH 'Accept: application/fhir+json' "$status_url")"
+bundle="$(curl -sSfH 'Accept: application/fhir+json' "$status_url")"
 report=$(echo "$bundle" | jq -r ".entry[0].resource")
 count=$(echo "$report" | jq -r ".group[0].population[0].count")
 

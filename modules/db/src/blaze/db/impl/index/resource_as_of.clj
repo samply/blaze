@@ -327,13 +327,17 @@
      (decoder tid id tid-id-size t since-t)
      (inc tid-id-size) (start-key tid id start-t))))
 
-(defn- resource-handle* [iter target-buf key-buf value-buf tid id base-t since-t]
+(defn- resource-handle*
+  "Returns the resource handle of the newest version of the resource with `tid`
+  and `id` at or before `seek-t`, if that version isn't purged at `base-t` and
+  was changed after `since-t`."
+  [iter target-buf key-buf value-buf tid id seek-t base-t since-t]
   (let [tid-id-size (+ codec/tid-size (codec/id-size id))
         key-size (+ tid-id-size codec/t-size)]
     (bb/clear! target-buf)
     (bb/put-int! target-buf tid)
     (bb/put-iso-8859-1-string! target-buf id)
-    (bb/put-long! target-buf (codec/descending-long base-t))
+    (bb/put-long! target-buf (codec/descending-long seek-t))
     (bb/flip! target-buf)
     (kv/seek-buffer! iter target-buf)
     (when (kv/valid? iter)
@@ -396,16 +400,20 @@
         key-buf (bb/allocate max-key-size)
         value-buf (bb/allocate max-value-size)]
     (if resource-handle-cache
-      (let [seek #(resource-handle* iter target-buf key-buf value-buf %1 %2 t 0)]
+      (let [seek #(resource-handle* iter target-buf key-buf value-buf %1 %2 t t 0)]
         #(cached-resource-handle resource-handle-cache seek %1 %2 t since-t))
-      #(resource-handle* iter target-buf key-buf value-buf %1 %2 t since-t))))
+      #(resource-handle* iter target-buf key-buf value-buf %1 %2 t t since-t))))
 
-(defn- seek-resource-handle [snapshot t since-t tid id]
+(defn- seek-resource-handle
+  "Returns the resource handle of the newest version of the resource with `tid`
+  and `id` at or before `seek-t` in the database with the point in time `t`.
+  Opens its own iterator."
+  [snapshot seek-t t since-t tid id]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
         value-buf (bb/allocate max-value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-handle* iter target-buf key-buf value-buf tid id t since-t))))
+      (resource-handle* iter target-buf key-buf value-buf tid id seek-t t since-t))))
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` when found in `db` and
@@ -417,9 +425,20 @@
   [{:keys [snapshot resource-handle-cache t since-t]} tid id]
   (if resource-handle-cache
     (cached-resource-handle
-     resource-handle-cache #(seek-resource-handle snapshot t 0 %1 %2)
+     resource-handle-cache #(seek-resource-handle snapshot t t 0 %1 %2)
      tid id t since-t)
-    (seek-resource-handle snapshot t since-t tid id)))
+    (seek-resource-handle snapshot t t since-t tid id)))
+
+(defn historic-resource-handle
+  "Returns the resource handle of the version with `version-t` of the resource
+  with `tid` and `id` in `db` or nil if there is no such version, it's purged
+  or wasn't changed after the `since-t` of `db`."
+  {:arglists '([db tid id version-t])}
+  [{:keys [snapshot t since-t]} tid id version-t]
+  (when (<= (long version-t) (long t))
+    (when-let [handle (seek-resource-handle snapshot version-t t since-t tid id)]
+      (when (= (long version-t) (long (:t handle)))
+        handle))))
 
 (defn resource-handle-xf
   "Returns a stateful transducer that receives `[tid id]` tuples and emits

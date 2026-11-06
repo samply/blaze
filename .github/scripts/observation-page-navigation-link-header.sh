@@ -21,7 +21,7 @@ link_url() {
 
 # Returns the id of the first entry resource of a GET request to the URL $1.
 first_entry_id() {
-  curl -sfH 'Accept: application/fhir+json' "$1" | jq -r '.entry[0].resource.id'
+  curl -sSfH 'Accept: application/fhir+json' "$1" | jq -r '.entry[0].resource.id'
 }
 
 # first page

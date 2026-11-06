@@ -42,3 +42,28 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Resource id `` is invalid."
       :fhir/operation-outcome := "MSG_ID_INVALID")))
+
+(deftest wrap-invalid-id-version-id-test
+  (testing "valid version ids are passed through"
+    (doseq [vid ["1" "a" "72057594037927936" (str/join (repeat 64 "a"))]]
+      (let [request {:path-params {:id "0" :vid vid}}]
+        (is (= request @(handler request))))))
+
+  (testing "version id with invalid character"
+    (given-failed-future (handler {:path-params {:id "0" :vid "1_2"}})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Version id `1_2` is invalid."
+      :fhir/issue := "value"
+      :fhir/operation-outcome := "MSG_ID_INVALID"))
+
+  (testing "too long version id"
+    (let [vid (str/join (repeat 65 "1"))]
+      (given-failed-future (handler {:path-params {:id "0" :vid vid}})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := (format "Version id `%s` is invalid." vid)
+        :fhir/operation-outcome := "MSG_ID_INVALID")))
+
+  (testing "the id is checked first"
+    (given-failed-future (handler {:path-params {:id "A_B" :vid "1_2"}})
+      ::anom/message := "Resource id `A_B` is invalid.")))
+

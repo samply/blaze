@@ -7,13 +7,13 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 base="http://localhost:8080/fhir"
 
 url="$base/Patient?name=Le%C3%B3n"
-total=$(curl -sfH 'Accept: application/fhir+json' "$url&_summary=count" | jq .total)
+total=$(curl -sSfH 'Accept: application/fhir+json' "$url&_summary=count" | jq .total)
 
 test "number of patients found" "$total" "1"
 test "encoded search param value" "$(link_header "$url" | awk -F'[;,<>?&=]' '{print $9}')" "Le%C3%B3n"
 
 url="$base/Condition?code=59621000,10509002"
-total=$(curl -sfH 'Accept: application/fhir+json' "$url&_summary=count" | jq .total)
+total=$(curl -sSfH 'Accept: application/fhir+json' "$url&_summary=count" | jq .total)
 
 test "number of conditions found" "$total" "93"
 test "encoded search param value" "$(link_header "$url" | awk -F'[;,<>?&=]' '{print $9}')" "59621000%2C10509002"

@@ -8,7 +8,7 @@ base="${1:-http://localhost:8080/fhir}"
 
 echo "ℹ️ JSON Format"
 
-capability_statement=$(curl -sfH 'Accept: application/fhir+json' "$base/metadata")
+capability_statement=$(curl -sSfH 'Accept: application/fhir+json' "$base/metadata")
 
 test "status" "$(echo "$capability_statement" | jq -r .status)" "active"
 test "kind" "$(echo "$capability_statement" | jq -r .kind)" "instance"
@@ -27,7 +27,7 @@ test "Operation \$totals Documentation" "$(echo "$capability_statement" | jq -r 
 
 echo "ℹ️ XML Format"
 
-capability_statement=$(curl -sfH 'Accept: application/fhir+xml' "$base/metadata")
+capability_statement=$(curl -sSfH 'Accept: application/fhir+xml' "$base/metadata")
 
 test "status" "$(echo "$capability_statement" | xq -x //status/@value)" "active"
 test "kind" "$(echo "$capability_statement" | xq -x //kind/@value)" "instance"

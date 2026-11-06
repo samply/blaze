@@ -6,8 +6,8 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 patient_identifier="X79746011X"
-patient_id=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
-bundle=$(curl -sfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything")
+patient_id=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient?identifier=$patient_identifier" | jq -r '.entry[0].resource.id')
+bundle=$(curl -sSfH 'Accept: application/fhir+json' "$base/Patient/$patient_id/\$everything")
 actual_size=$(echo "$bundle" | jq -r .total)
 ids="$(echo "$bundle" | jq -r '.entry[].resource.id')"
 

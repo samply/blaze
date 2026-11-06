@@ -238,7 +238,11 @@
              (assoc :get {:interaction "vread"
                           :middleware [[wrap-db node]]
                           :handler (-> interactions :vread
-                                       :blaze.rest-api.interaction/handler)}))]]]
+                                       :blaze.rest-api.interaction/handler)})
+             (contains? interactions :delete-history-version)
+             (assoc :delete {:interaction "delete-history-version"
+                             :handler (-> interactions :delete-history-version
+                                          :blaze.rest-api.interaction/handler)}))]]]
          (not batch?)
          (conj
           ["/__history-page/{page-id}"

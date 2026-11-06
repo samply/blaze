@@ -60,7 +60,7 @@ allowlisted() {
   [[ " ${allowlist[*]} " == *" $1 "* ]]
 }
 
-metrics="$(curl -sf "$url")"
+metrics="$(curl -sSf "$url")"
 test_non_empty "metrics scrape of $url" "$metrics"
 
 checked=0

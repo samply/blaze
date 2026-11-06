@@ -14,8 +14,8 @@ base="http://localhost:8080/fhir"
 patient_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
 observation_id=$(uuidgen | tr '[:upper:]' '[:lower:]') 
 
-curl -sf -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}" -o /dev/null "$base/Patient/$patient_id"
-curl -sf -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$observation_id\", \"subject\": {\"reference\": \"Patient/$patient_id\"}}" -o /dev/null "$base/Observation/$observation_id"
+curl -sSf -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Patient\", \"id\": \"$patient_id\"}" -o /dev/null "$base/Patient/$patient_id"
+curl -sSf -XPUT -H 'Content-Type: application/fhir+json' -d "{\"resourceType\": \"Observation\", \"id\": \"$observation_id\", \"subject\": {\"reference\": \"Patient/$patient_id\"}}" -o /dev/null "$base/Observation/$observation_id"
 
 test "first delete Patient response" "$(curl -s -XDELETE -w '%{response_code}' -o /dev/null "$base/Patient/$patient_id")" "409"
 test "delete Observation response" "$(curl -s -XDELETE -w '%{response_code}' -o /dev/null "$base/Observation/$observation_id")" "204"

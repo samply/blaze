@@ -1678,6 +1678,23 @@
         (given (d/resource-handle db-after "Patient" "0")
           :t := 2))))
 
+  (testing "the indexer keeps the entry if only a history version is deleted"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
+
+      (with-db [db node]
+        (resource-handle-twice db "Patient" "0"))
+
+      (with-db [db-after node @(d/transact node [[:delete-history-version "Patient" "0" 1]])]
+
+        (given (cached-handle resource-handle-cache "0" 3)
+          :t := 2)
+
+        (given (d/resource-handle db-after "Patient" "0")
+          :t := 2))))
+
   (testing "a reader on an older database value inserts while later
             transactions write other resources"
     (with-system-data [{:blaze.db/keys [node resource-handle-cache]}

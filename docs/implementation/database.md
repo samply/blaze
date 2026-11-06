@@ -104,7 +104,7 @@ The fundamental principle of the cache is that an entry always holds the newest 
 
 **Reading.** A reader with a database value at `t` uses an entry only if the `t` of the cached handle isn't newer than its own `t`. In that case the cached handle is the newest version overall and so also the right one for that database value. Otherwise, on a miss or with an entry newer than its own `t` (older database values, like the ones of paging requests or `as-of` database values), the reader seeks in the index as without the cache. The `since-t` of a database value is applied to the handle after the lookup. Lookups that find nothing aren't cached.
 
-**Updating.** The update of the indexer only changes entries already present. It never inserts the new versions a transaction writes, so that imports don't flood the cache with handles no query asked for. The update covers every new version a transaction writes and every purged resource, whose entry it removes. Deleting the history of a resource doesn't touch its entry, because the cache only holds current versions. It runs as part of step 3 of [applying a transaction](#apply-time-mechanics), after the `TxSuccess` entry was written and before the new `t` becomes visible to readers. The lookups the indexer does itself while expanding and verifying a transaction, like the ones of the referential integrity check, are the ones of a reader at the `t` before the transaction. So they insert like any other reader, as described next. That way a resource referenced by many others, like a Patient referenced by the Observations created over time, ends up in the cache.
+**Updating.** The update of the indexer only changes entries already present. It never inserts the new versions a transaction writes, so that imports don't flood the cache with handles no query asked for. The update covers every new version a transaction writes and every purged resource, whose entry it removes. Deleting the history of a resource, or a single historical version of it, doesn't touch its entry, because the cache only holds current versions. It runs as part of step 3 of [applying a transaction](#apply-time-mechanics), after the `TxSuccess` entry was written and before the new `t` becomes visible to readers. The lookups the indexer does itself while expanding and verifying a transaction, like the ones of the referential integrity check, are the ones of a reader at the `t` before the transaction. So they insert like any other reader, as described next. That way a resource referenced by many others, like a Patient referenced by the Observations created over time, ends up in the cache.
 
 **Inserting.** A reader that misses inserts the handle it loaded only if it passes three checks, which the following paragraphs describe.
 
@@ -585,6 +585,7 @@ Blaze supports several transaction commands:
 *   **`delete`**: Deletes a resource.
 *   **`conditional-delete`**: Deletes resources based on search criteria.
 *   **`delete-history`**: Deletes the history of a resource.
+*   **`delete-history-version`**: Deletes a single historical version of a resource.
 *   **`patient-purge`**: Removes all data associated with a patient.
 
 ### Create
@@ -670,6 +671,27 @@ The `delete-history` command is used to delete the history of a resource.
 * get all instance history entries
 * add the `t` of the transaction as `purged-at?` to the value of each of the history entries not only in the ResourceAsOf index, but also in the TypeAsOf and SystemAsOf index
 * remove the number of history entries purged from the number of changes of `type` and the whole system
+
+### Delete History Version
+
+The `delete-history-version` command is used to delete a single historical version of a resource.
+
+#### Properties
+
+| Name       | Required | Data Type | Description                      |
+|------------|----------|-----------|----------------------------------|
+| type       | yes      | string    | resource type                    |
+| id         | yes      | string    | resource id                      |
+| t          | yes      | number    | the t of the version to delete   |
+
+#### Execution
+
+Unlike all other commands, a transaction can contain several `delete-history-version` commands for the same resource, as long as they delete different versions. They can't be combined with other commands on that resource.
+
+* get the historic resource handle with `t`; if there is none, do nothing
+* fail with a conflict if that handle is the current version of the resource
+* add the `t` of the transaction as `purged-at?` to the value of that entry not only in the ResourceAsOf index, but also in the TypeAsOf and SystemAsOf index
+* remove one from the number of changes of `type` and the whole system
 
 ### Patient Purge
 

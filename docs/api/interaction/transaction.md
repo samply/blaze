@@ -16,7 +16,7 @@ The request body has to be a Bundle of type `transaction`. The following methods
 | `GET`    | [read](read.md), [versioned read](vread.md), [search](search-type.md) and other read-only interactions. They are executed after the writes, against the new database state.    |
 | `POST`   | [create](create.md), including conditional create via `Bundle.entry.request.ifNoneExist`.                                                                                      |
 | `PUT`    | [update](update.md), including version-aware updates via `Bundle.entry.request.ifMatch` and updates of not yet existing resources via `Bundle.entry.request.ifNoneMatch`.      |
-| `DELETE` | [delete](delete.md) by id and [conditional delete](delete-type.md) via `DELETE [type]?[search parameters]`.                                                                    |
+| `DELETE` | [delete](delete.md) by id, [conditional delete](delete-type.md) via `DELETE [type]?[search parameters]` and [delete history version](delete-history-version.md).                |
 
 The methods `HEAD` and `PATCH` are not supported and will result in a `422 Unprocessable Entity`, unknown methods in a `400 Bad Request`, each with an `OperationOutcome`. Other writes, like operations, searches via `POST` or [delete history](delete-history.md), are only supported in [batches](batch.md) and will result in a `422 Unprocessable Entity` in transactions.
 
@@ -50,6 +50,8 @@ By default, response entries of writes don't contain the resources themselves. S
 ## Handling Errors
 
 Transactions are processed atomically: if any entry fails, no changes are applied at all. In that case Blaze returns an error status matching the failed entry (e.g. `409 Conflict` on a referential integrity violation or `412 Precondition Failed` on a failed precondition) with a single `OperationOutcome` detailing the error. For errors detected while validating the bundle, the offending entry is given in `OperationOutcome.issue.expression`, e.g. `Bundle.entry[0].request.url`.
+
+A transaction can act on each resource only once. The only exception are [delete history version](delete-history-version.md) entries, which can delete several versions of the same resource. Two entries acting on the same resource, like an update and a delete of `Patient/0`, result in a `400 Bad Request`. Its `OperationOutcome` names both actions in `issue.diagnostics` and gives both entries in `issue.expression`, e.g. `Bundle.entry[0]` and `Bundle.entry[1]`, each in the order they appear in the Bundle. If the conflict only shows once a conditional create or conditional delete is resolved to a resource, the transaction fails with a `409 Conflict` instead, without the entries.
 
 ## Conditional Create
 

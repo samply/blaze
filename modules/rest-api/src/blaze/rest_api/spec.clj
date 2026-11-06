@@ -51,6 +51,7 @@
     :patch
     :delete
     :delete-history
+    :delete-history-version
     :conditional-delete-type
     :history-instance
     :history-type

@@ -2,10 +2,10 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.db.node.validation :as validation]
-   [blaze.db.spec]
+   [blaze.db.tx-log.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
-(s/fdef validation/validate-ops
-  :args (s/cat :tx-ops :blaze.db/tx-ops)
+(s/fdef validation/validate-tx-cmds
+  :args (s/cat :tx-cmds :blaze.db/tx-cmds)
   :ret (s/nilable ::anom/anomaly))

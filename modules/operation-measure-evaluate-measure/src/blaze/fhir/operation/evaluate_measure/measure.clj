@@ -127,7 +127,7 @@
                           (ac/then-compose (fn [handles] (d/pull-many db (vec handles)))))]
     (first (fu/sort-by-priority libraries))))
 
-(defn- non-deleted-library-handle [db id]
+(defn- existing-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
     (when-not (d/deleted? handle)
       handle)))
@@ -140,7 +140,7 @@
     (when-not (s/invalid? literal-ref)
       (let [[type id] literal-ref]
         (when (= "Library" type)
-          (some->> (non-deleted-library-handle db id) (d/pull db)))))))
+          (some->> (existing-library-handle db id) (d/pull db)))))))
 
 (defn- library-not-found-msg [library-ref]
   (format "The Library resource with canonical URI `%s` was not found." library-ref))

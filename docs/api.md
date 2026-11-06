@@ -13,6 +13,7 @@ A public demo server is available at [https://r4.blaze-server.org/fhir/][9] to t
 * [Update](api/interaction/update.md)
 * [Delete](api/interaction/delete.md)
 * [Delete History](api/interaction/delete-history.md) <Badge type="warning" text="Since 0.30.1"/>
+* [Delete History Version](api/interaction/delete-history-version.md) <Badge type="warning" text="Since 1.14.0"/>
 * [History](api/interaction/history-instance.md)
 
 ### Type Level

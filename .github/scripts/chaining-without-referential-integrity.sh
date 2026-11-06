@@ -6,8 +6,8 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 
 base="http://localhost:8080/fhir"
 
-curl -sfXPUT -d '{"resourceType": "Observation", "id": "0", "subject": {"reference": "Patient/0"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/0" > /dev/null
-curl -sfXPUT -d '{"resourceType" : "Patient", "id": "0", "gender": "male"}' -H 'Content-Type: application/fhir+json' "$base/Patient/0" > /dev/null
+curl -sSfXPUT -d '{"resourceType": "Observation", "id": "0", "subject": {"reference": "Patient/0"}}' -H 'Content-Type: application/fhir+json' "$base/Observation/0" > /dev/null
+curl -sSfXPUT -d '{"resourceType" : "Patient", "id": "0", "gender": "male"}' -H 'Content-Type: application/fhir+json' "$base/Patient/0" > /dev/null
 
 result="$(search_strict "$base/Observation?patient.gender=male&_summary=count" | jq -r '.total')"
 

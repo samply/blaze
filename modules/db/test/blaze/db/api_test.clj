@@ -13,6 +13,7 @@
    [blaze.db.impl.db-spec]
    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
@@ -489,7 +490,7 @@
             [["identifier" "153229"]]]
            [:delete "Patient" "0"]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Duplicate transaction commands `delete Patient/0` and `create Patient?identifier=153229 (resolved to id 0)`."))))
+          ::anom/message := "Duplicate transaction commands `create Patient?identifier=153229 (resolved to id 0)` and `delete Patient/0`."))))
 
   (testing "failing query"
     (with-system [{:blaze.db/keys [node]} config]
@@ -1025,7 +1026,7 @@
           [[:conditional-delete "Patient" [["identifier" "140151"]]]
            [:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Duplicate transaction commands `put Patient/0` and `delete Patient/0`."))))
+          ::anom/message := "Duplicate transaction commands `delete Patient/0` and `put Patient/0`."))))
 
   (testing "failing query"
     (with-system [{:blaze.db/keys [node]} config]
@@ -1352,6 +1353,118 @@
         ::anom/message := "Deleting the history of `Patient/0` failed because there are more than 100,000 history entries."
         :fhir/issue := "too-costly"))))
 
+(deftest transact-delete-history-version-test
+  (testing "one patient with one version"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "the current version can't be deleted"
+        (given-failed-future (d/transact node [[:delete-history-version "Patient" "0" 1]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete the current version `1` of the resource `Patient/0`."))
+
+      (testing "deleting a non-existing version changes nothing"
+        (with-db [db-before node]
+          (with-db [db-after node @(d/transact node [[:delete-history-version "Patient" "0" 2]])]
+            (is (= (vec (d/instance-history db-before "Patient" "0"))
+                   (vec (d/instance-history db-after "Patient" "0"))))
+            (is (= (d/total-num-of-type-changes db-before "Patient")
+                   (d/total-num-of-type-changes db-after "Patient")))
+            (is (= (d/total-num-of-system-changes db-before)
+                   (d/total-num-of-system-changes db-after))))))))
+
+  (testing "one patient with three versions"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "other"}]]]
+
+      (with-db [db-before node]
+        (with-db [db-after node @(d/transact node [[:delete-history-version "Patient" "0" 2]])]
+          (testing "the patient is unchanged"
+            (given @(pull-resource db-after "Patient" "0")
+              :gender := #fhir/code "other"))
+
+          (testing "the instance history contains the other two versions"
+            (is (= 2 (d/total-num-of-instance-changes db-after "Patient" "0")))
+            (given (pull-instance-history db-after "Patient" "0")
+              count := 2
+              [0 :gender] := #fhir/code "other"
+              [1 :gender] := #fhir/code "male"))
+
+          (testing "the instance history starting at the deleted version skips it"
+            (given (pull-instance-history db-after "Patient" "0" 2)
+              count := 1
+              [0 :gender] := #fhir/code "male"))
+
+          (testing "the type history contains the other two versions"
+            (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
+            (given (pull-type-history db-after "Patient")
+              count := 2
+              [0 :gender] := #fhir/code "other"
+              [1 :gender] := #fhir/code "male"))
+
+          (testing "the system history contains the other two versions"
+            (is (= 2 (d/total-num-of-system-changes db-after)))
+            (given (pull-system-history db-after)
+              count := 2
+              [0 :gender] := #fhir/code "other"
+              [1 :gender] := #fhir/code "male"))
+
+          (testing "the instance history of db-before still contains three entries"
+            (given (pull-instance-history db-before "Patient" "0")
+              count := 3
+              [0 :gender] := #fhir/code "other"
+              [1 :gender] := #fhir/code "female"
+              [2 :gender] := #fhir/code "male"))
+
+          (testing "the type history of db-before still contains three entries"
+            (is (= 3 (d/total-num-of-type-changes db-before "Patient")))
+            (is (= 3 (count (pull-type-history db-before "Patient")))))
+
+          (testing "the system history of db-before still contains three entries"
+            (is (= 3 (d/total-num-of-system-changes db-before)))
+            (is (= 3 (count (pull-system-history db-before)))))
+
+          (testing "deleting the version again changes nothing"
+            (with-db [db-after-2 node @(d/transact node [[:delete-history-version "Patient" "0" 2]])]
+              (is (= 2 (d/total-num-of-instance-changes db-after-2 "Patient" "0")))
+              (is (= 2 (d/total-num-of-type-changes db-after-2 "Patient")))
+              (is (= 2 (d/total-num-of-system-changes db-after-2)))))))))
+
+  (testing "deleting two versions of one patient together"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "other"}]]]
+
+      (with-db [db-after node @(d/transact node [[:delete-history-version "Patient" "0" 1]
+                                                 [:delete-history-version "Patient" "0" 2]])]
+        (testing "the instance history contains only the current version"
+          (is (= 1 (d/total-num-of-instance-changes db-after "Patient" "0")))
+          (given (pull-instance-history db-after "Patient" "0")
+            count := 1
+            [0 :gender] := #fhir/code "other"))
+
+        (testing "the type and system history contain only the current version"
+          (is (= 1 (d/total-num-of-type-changes db-after "Patient")))
+          (is (= 1 (d/total-num-of-system-changes db-after)))))))
+
+  (testing "one deleted patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
+
+      (with-db [db-after node @(d/transact node [[:delete-history-version "Patient" "0" 1]])]
+        (testing "the patient is still deleted"
+          (given (d/resource-handle db-after "Patient" "0")
+            :op := :delete))
+
+        (testing "the instance history contains only the deletion"
+          (given (vec (d/instance-history db-after "Patient" "0"))
+            count := 1
+            [0 :op] := :delete))))))
+
 (deftest transact-patient-purge-test
   (testing "one created patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1625,7 +1738,7 @@
       (given-failed-future (d/transact node [[:patient-purge "0"]
                                              [:create {:fhir/type :fhir/Patient :id "0"}]])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Duplicate transaction commands `create Patient/0` and `purge Patient/0`."))))
+        ::anom/message := "Duplicate transaction commands `purge Patient/0` and `create Patient/0`."))))
 
 (deftest ^:slow transact-patient-purge-too-many-test
   (log/set-min-level! :info)
@@ -1674,7 +1787,8 @@
           [[:put {:fhir/type :fhir/Patient :id "0"}]
            [:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/incorrect
-          ::anom/message := "Duplicate resource `Patient/0`.")))
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `put Patient/0`."
+          :blaze.db/tx-cmd-indices := [0 1])))
 
     (testing "one put and one delete"
       (with-system [{:blaze.db/keys [node]} config]
@@ -1684,7 +1798,48 @@
           [[:put {:fhir/type :fhir/Patient :id "0"}]
            [:delete "Patient" "0"]])
           ::anom/category := ::anom/incorrect
-          ::anom/message := "Duplicate resource `Patient/0`."))))
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `delete Patient/0`."
+          :blaze.db/tx-cmd-indices := [0 1])))
+
+    (testing "one put and one delete history"
+      (with-system [{:blaze.db/keys [node]} config]
+        (given-failed-future
+         (d/transact
+          node
+          [[:put {:fhir/type :fhir/Patient :id "0"}]
+           [:delete-history "Patient" "0"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `delete-history Patient/0`."
+          :blaze.db/tx-cmd-indices := [0 1])))
+
+    (testing "one put and one delete history version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean true}]]]
+
+        (given-failed-future
+         (d/transact
+          node
+          [[:put {:fhir/type :fhir/Patient :id "0" :active #fhir/boolean false}]
+           [:delete-history-version "Patient" "0" 1]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `delete-history-version Patient/0/_history/1`."
+          :blaze.db/tx-cmd-indices := [0 1])
+
+        (testing "the transaction isn't submitted"
+          (with-db [db node]
+            (is (= 2 (d/t db)))))))
+
+    (testing "two delete history versions of the same version"
+      (with-system [{:blaze.db/keys [node]} config]
+        (given-failed-future
+         (d/transact
+          node
+          [[:delete-history-version "Patient" "0" 1]
+           [:delete-history-version "Patient" "0" 1]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Duplicate transaction commands `delete-history-version Patient/0/_history/1` and `delete-history-version Patient/0/_history/1`."
+          :blaze.db/tx-cmd-indices := [0 1]))))
 
   (testing "failed transactions don't leave behind any inspectable data"
     (with-system [{:blaze.db/keys [node]} config]
@@ -12209,6 +12364,84 @@
               [0 :fhir/type] := :fhir/Patient
               [0 :id] := "a"
               [0 :meta :versionId] := #fhir/id "1")))))))
+
+(deftest historic-resource-handle-test
+  (testing "a new node has no historic resource handles"
+    (with-system [{:blaze.db/keys [node]} config]
+      (with-db [db node]
+        (is (nil? (d/historic-resource-handle db "Patient" "0" 0))))))
+
+  (testing "a patient with three versions and another patient changed in between"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:delete "Patient" "0"]]]
+
+      (with-db [db node]
+        (testing "returns the historic version"
+          (given (d/historic-resource-handle db "Patient" "0" 1)
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            :t := 1
+            :op := :put)
+
+          (given (d/historic-resource-handle db "Patient" "0" 3)
+            :t := 3
+            :op := :put))
+
+        (testing "returns the current version, also if it's a deletion"
+          (given (d/historic-resource-handle db "Patient" "0" 4)
+            :t := 4
+            :op := :delete))
+
+        (testing "returns nil at a t at which only the other patient changed"
+          (is (nil? (d/historic-resource-handle db "Patient" "0" 2))))
+
+        (testing "returns nil at a t after the t of the database"
+          (is (nil? (d/historic-resource-handle db "Patient" "0" 5))))
+
+        (testing "returns nil on another patient at the t of a version"
+          (is (nil? (d/historic-resource-handle db "Patient" "1" 1)))))))
+
+  (testing "a deleted historic version"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "other"}]]
+       [[:delete-history-version "Patient" "0" 2]]]
+
+      (with-db [db node]
+        (testing "returns nil on the deleted version"
+          (is (nil? (d/historic-resource-handle db "Patient" "0" 2))))
+
+        (testing "doesn't return the older version instead"
+          (given (d/historic-resource-handle db "Patient" "0" 1)
+            :t := 1)))))
+
+  (testing "a history deleted with delete-history"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      (conj
+       (mapv (fn [i] [[:put {:fhir/type :fhir/Patient :id "0"
+                             :active (type/boolean (even? i))}]])
+             (range 10))
+       [[:delete-history "Patient" "0"]])
+
+      (with-db [db node]
+        (testing "returns nil on the purged versions"
+          (doseq [t (range 1 10)]
+            (is (nil? (d/historic-resource-handle db "Patient" "0" t)))))
+
+        (testing "looks up the version without walking the purged older versions"
+          (let [nexts (atom 0)
+                next! kv/next!]
+            (with-redefs [kv/next! (fn [iter] (swap! nexts inc) (next! iter))]
+              (is (nil? (d/historic-resource-handle db "Patient" "0" 9))))
+            (is (zero? @nexts))))
+
+        (testing "returns the current version"
+          (given (d/historic-resource-handle db "Patient" "0" 10)
+            :t := 10))))))
 
 ;; ---- Type-Level History Functions ------------------------------------------
 

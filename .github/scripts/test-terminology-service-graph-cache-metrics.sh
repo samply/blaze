@@ -9,7 +9,7 @@ url="http://localhost:8081/metrics"
 num-metrics() {
   local name="$1"
   local filter="$2"
-  curl -sf "$url" | grep "$name" | grep -c "$filter"
+  curl -sSf "$url" | grep "$name" | grep -c "$filter"
 }
 
 # terminology service graph cache is available

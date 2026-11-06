@@ -173,6 +173,36 @@
           count := 1
           [0 :tx-op] := [:delete "Patient" "id-215232"]))
 
+      (testing "delete history version"
+        (given (bundle/assoc-tx-ops
+                db
+                [{:fhir/type :fhir.Bundle/entry
+                  ::fhir-util/interaction "delete-history-version"
+                  ::fhir-util/type "Patient"
+                  ::fhir-util/id "id-215232"
+                  ::fhir-util/vid "1"
+                  :request
+                  {:fhir/type :fhir.Bundle.entry/request
+                   :method #fhir/code "DELETE"
+                   :url #fhir/uri "Patient/id-215232/_history/1"}}])
+          count := 1
+          [0 :tx-op] := [:delete-history-version "Patient" "id-215232" 1])
+
+        (testing "with a version id that can't denote a version"
+          (given (bundle/assoc-tx-ops
+                  db
+                  [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "delete-history-version"
+                    ::fhir-util/type "Patient"
+                    ::fhir-util/id "id-215232"
+                    ::fhir-util/vid "a"
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "DELETE"
+                     :url #fhir/uri "Patient/id-215232/_history/a"}}])
+            count := 1
+            [0 :tx-op] := nil)))
+
       (testing "conditional delete"
         (testing "without search params"
           (doseq [url [#fhir/uri "Patient" #fhir/uri "Patient?"]]

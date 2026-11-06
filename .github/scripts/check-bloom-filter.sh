@@ -8,4 +8,4 @@ base="http://localhost:8080/fhir"
 hash="$1"
 patient_count="$2"
 
-test "patient count" "$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/cql/bloom-filters" | jq -r ".[] | select(.hash == \"$hash\") | .patientCount")" "$patient_count"
+test "patient count" "$(curl -sSfH 'Accept: application/fhir+json' "$base/__admin/cql/bloom-filters" | jq -r ".[] | select(.hash == \"$hash\") | .patientCount")" "$patient_count"

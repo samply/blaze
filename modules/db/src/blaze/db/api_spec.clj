@@ -224,6 +224,13 @@
                :start-t (s/? (s/nilable :blaze.db/t)))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
+(s/fdef d/historic-resource-handle
+  :args (s/cat :db :blaze.db/db
+               :type :fhir.resource/type
+               :id :blaze.resource/id
+               :t :blaze.db/t)
+  :ret (s/nilable :blaze.db/resource-handle))
+
 (s/fdef d/total-num-of-instance-changes
   :args (s/cat :db :blaze.db/db
                :type :fhir.resource/type

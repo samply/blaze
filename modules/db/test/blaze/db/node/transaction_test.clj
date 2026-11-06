@@ -167,7 +167,12 @@
         [0 0 :type] := "Patient"
         [0 0 :clauses] := [["identifier" "111033"]]
         [0 0 :check-refs] := nil
-        [1] := {}))))
+        [1] := {})))
+
+  (testing "delete-history-version"
+    (given (tx/prepare-ops {} [[:delete-history-version "Patient" "0" 1]])
+      [0 0] := {:op "delete-history-version" :type "Patient" :id "0" :t 1}
+      [1] := {})))
 
 (deftest load-tx-result-test
   (with-redefs [tx-success/tx (fn [_ _])

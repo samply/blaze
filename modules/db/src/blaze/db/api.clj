@@ -486,6 +486,18 @@
   ([db type id start-t]
    (p/-instance-history db (codec/tid type) id start-t)))
 
+(defn historic-resource-handle
+  "Returns the resource handle of the version with `t` of the resource with
+  `type` and `id` or nil if there is no such version in `db`.
+
+  Returns only the version with exactly `t`, not the newest one at or before
+  `t`. So returns nil if the resource didn't change at `t` or that version was
+  deleted from the history.
+
+  Handles of deleted resources have an :op of :delete."
+  [db type id t]
+  (p/-historic-resource-handle db (codec/tid type) id t))
+
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
   `type` and `id` starting as-of `db`.

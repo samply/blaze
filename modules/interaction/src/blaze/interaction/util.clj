@@ -2,10 +2,12 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.db.api :as d]
+   [blaze.db.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.search-clauses :as fsc]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [ring.util.codec :as ring-codec]
    [ring.util.response :as ring]))
@@ -20,6 +22,14 @@
   [query-string]
   (when-not (str/blank? query-string)
     (-> query-string ring-codec/form-decode-map fsc/search-clauses)))
+
+(defn vid->t
+  "Returns the t of the version id `vid` or nil if `vid` can't denote a
+  version."
+  [vid]
+  (when-let [t (fhir-util/parse-nat-long vid)]
+    (when (s/valid? :blaze.db/t t)
+      t)))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)

@@ -16,7 +16,7 @@ The request body has to be a Bundle of type `batch`. The following methods are s
 | `GET`    | [read](read.md), [versioned read](vread.md), [search](search-type.md), [capabilities](capabilities.md) via `metadata` and read-only operations like [Measure $evaluate-measure](../operation/measure-evaluate-measure.md). |
 | `POST`   | [create](create.md), including conditional create via `Bundle.entry.request.ifNoneExist`, and operations invoked with a `Parameters` resource.                             |
 | `PUT`    | [update](update.md), including version-aware updates via `Bundle.entry.request.ifMatch` and updates of not yet existing resources via `Bundle.entry.request.ifNoneMatch`.  |
-| `DELETE` | [delete](delete.md) by id and [conditional delete](delete-type.md) via `DELETE [type]?[search parameters]`.                                                                |
+| `DELETE` | [delete](delete.md) by id, [conditional delete](delete-type.md) via `DELETE [type]?[search parameters]`, [delete history](delete-history.md) and [delete history version](delete-history-version.md). |
 
 The methods `HEAD` and `PATCH` are not supported and will result in an error entry with status `422`, unknown methods in an error entry with status `400`.
 

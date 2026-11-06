@@ -11,7 +11,7 @@
 
 (s/def :blaze.db.tx-cmd/op
   #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"
-    "patient-purge"})
+    "delete-history-version" "patient-purge"})
 
 (s/def :blaze.db.tx-cmd/refs
   (s/coll-of :blaze.fhir/literal-ref-tuple))
@@ -80,6 +80,12 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :fhir.resource/type
                    :blaze.resource/id]))
+
+(defmethod tx-cmd "delete-history-version" [_]
+  (s/keys :req-un [:blaze.db.tx-cmd/op
+                   :fhir.resource/type
+                   :blaze.resource/id
+                   :blaze.db/t]))
 
 (defmethod tx-cmd "patient-purge" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op

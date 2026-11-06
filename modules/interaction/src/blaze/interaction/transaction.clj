@@ -33,7 +33,8 @@
 (def ^:private transaction-interactions
   "The interactions of write requests, that are executed as transaction
   operations."
-  #{"create" "update" "delete" "conditional-delete-type"})
+  #{"create" "update" "delete" "conditional-delete-type"
+    "delete-history-version"})
 
 (defn- unsupported-request-anom [{{:keys [method url]} :request} idx]
   (ba/unsupported
@@ -205,16 +206,32 @@
         (assoc (update-entry context type tx-op old-handle new-handle) :resource resource))
       (ac/completed-future (update-entry context type tx-op old-handle new-handle)))))
 
-(defmethod build-response-entry "DELETE"
-  [{:blaze/keys [db]} _ _]
+(defn- deleted-entry
+  "Returns the response entry of a delete, which carries the version of the
+  deletion."
+  [db]
   (let [t (d/t db)]
-    (ac/completed-future
-     {:fhir/type :fhir.Bundle/entry
-      :response
-      {:fhir/type :fhir.Bundle.entry/response
-       :status #fhir/string "204"
-       :etag (type/string (str "W/\"" t "\""))
-       :lastModified (handler-util/instant (d/tx db t))}})))
+    {:fhir/type :fhir.Bundle/entry
+     :response
+     {:fhir/type :fhir.Bundle.entry/response
+      :status #fhir/string "204"
+      :etag (type/string (str "W/\"" t "\""))
+      :lastModified (handler-util/instant (d/tx db t))}}))
+
+(def ^:private deleted-history-version-entry
+  "The response entry of a delete history version, which carries no version,
+  because the deletion doesn't create one."
+  {:fhir/type :fhir.Bundle/entry
+   :response
+   {:fhir/type :fhir.Bundle.entry/response
+    :status #fhir/string "204"}})
+
+(defmethod build-response-entry "DELETE"
+  [{:blaze/keys [db]} _ {::fhir-util/keys [interaction]}]
+  (ac/completed-future
+   (if (= "delete-history-version" interaction)
+     deleted-history-version-entry
+     (deleted-entry db))))
 
 (defmethod build-response-entry "GET" [context idx entry]
   (fhir-util/execute-batch-entry context idx entry))
@@ -246,12 +263,32 @@
 (defn- build-response-entries-fn [context entries]
   #(build-response-entries (assoc context :blaze/db %) entries))
 
+(defn- tx-op-entry-indices
+  "Returns the positions in `entries` of the entries with a transaction
+  operation, in the order of their operations."
+  [entries]
+  (into [] (keep-indexed (fn [idx {:keys [tx-op]}] (when tx-op idx))) entries))
+
+(defn- entry-expression [idx]
+  (format "Bundle.entry[%d]" idx))
+
+(defn- with-entry-expressions
+  "Returns `anomaly` with the entries of `entries` as issue expressions, whose
+  transaction operations it names under :blaze.db/tx-cmd-indices, if any."
+  [entries {:blaze.db/keys [tx-cmd-indices] :as anomaly}]
+  (cond-> anomaly
+    tx-cmd-indices
+    (assoc :fhir.issue/expression
+           (mapv (comp entry-expression (tx-op-entry-indices entries))
+                 tx-cmd-indices))))
+
 (defn- transact* [{:keys [node] :as context} entries]
   (let [tx-ops (bundle/tx-ops entries)
         build-response-entries (build-response-entries-fn context entries)]
     (if (empty? tx-ops)
       (d/with-sync-db node build-response-entries)
       (-> (d/transact node tx-ops)
+          (ac/exceptionally (partial with-entry-expressions entries))
           (ac/then-compose #(d/with-sync-db node % build-response-entries))))))
 
 (defn- transact [{:keys [node] :as context} entries]

@@ -29,30 +29,9 @@ cat <<END
 END
 }
 
-create() {
-  curl -sfH "Content-Type: application/fhir+json" -d  "{\"resourceType\": \"Patient\"}" "$base/Patient"
-}
-
-update() {
-  echo "▶️update patient"
-  curl -XPUT -sfH "Content-Type: application/fhir+json" -d @- -o /dev/null "$base/Patient/$1"
-}
-
-get_instance_history() {
-  curl -sH "Accept: application/fhir+json" "$base/Patient/$1/_history"
-}
-
-get_type_history() {
-  curl -sH "Accept: application/fhir+json" "$base/Patient/_history"
-}
-
-get_system_history() {
-  curl -sH "Accept: application/fhir+json" "$base/_history"
-}
-
 delete_history() {
   echo "▶️delete history"
-  curl -XDELETE -sf -o /dev/null "$base/Patient/$1/_history"
+  curl -XDELETE -sSf -o /dev/null "$base/Patient/$1/_history"
 }
 
 vread() {
@@ -60,13 +39,14 @@ vread() {
 }
 
 echo "▶️create patient"
-patient_id=$(create | jq -r '.id')
+patient_id=$(echo '{"resourceType": "Patient"}' | create "$base/Patient" | jq -r '.id')
 
 # update the patient to create a second version
-patient "$patient_id" "male" | update "$patient_id" > /dev/null
+echo "▶️update patient"
+patient "$patient_id" "male" | update "$base/Patient/$patient_id" > /dev/null
 
 # expect the history to contain two entries
-history="$(get_instance_history "$patient_id")"
+history="$(fetch_instance_history "$base" Patient "$patient_id")"
 test "instance history total" "$(echo "$history" | jq -r .total)" "2"
 entry_1_vid="$(echo "$history" | jq -r '.entry[0].resource.meta.versionId')"
 entry_2_vid="$(echo "$history" | jq -r '.entry[1].resource.meta.versionId')"
@@ -75,7 +55,7 @@ entry_2_vid="$(echo "$history" | jq -r '.entry[1].resource.meta.versionId')"
 delete_history "$patient_id"
 
 # expect the history to contain only the current entry
-history="$(get_instance_history "$patient_id")"
+history="$(fetch_instance_history "$base" Patient "$patient_id")"
 test "instance history total" "$(echo "$history" | jq -r .total)" "1"
 test "instance history entry versionId" "$(echo "$history" | jq -r '.entry[0].resource.meta.versionId')" "$entry_1_vid"
 test "instance history entry gender" "$(echo "$history" | jq -r '.entry[0].resource.gender')" "male"
@@ -84,13 +64,13 @@ test "instance history entry gender" "$(echo "$history" | jq -r '.entry[0].resou
 test "read deleted history entry status code" "$(vread "$patient_id" "$entry_2_vid")" "404"
 
 # expect the type history doesn't contain the deleted history entry
-history="$(get_type_history)"
+history="$(fetch_type_history "$base" Patient)"
 test "type history first entry resource id" "$(echo "$history" | jq -r '.entry[0].resource.id')" "$patient_id"
 test "type history first entry resource versionId" "$(echo "$history" | jq -r '.entry[0].resource.meta.versionId')" "$entry_1_vid"
 test_not_equal "type history second entry resource id" "$(echo "$history" | jq -r '.entry[1].resource.id')" "$patient_id"
 
 # expect the system history doesn't contain the deleted history entry
-history="$(get_system_history)"
+history="$(fetch_system_history "$base")"
 test "system history first entry resource id" "$(echo "$history" | jq -r '.entry[0].resource.id')" "$patient_id"
 test "system history first entry resource versionId" "$(echo "$history" | jq -r '.entry[0].resource.meta.versionId')" "$entry_1_vid"
 test_not_equal "system history second entry resource id" "$(echo "$history" | jq -r '.entry[1].resource.id')" "$patient_id"

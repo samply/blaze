@@ -514,7 +514,7 @@
         (coll/eduction (mapcat index-handles) compiled-values))))
 
   (-index-handles [_ db tid _ compiled-value]
-    (or (some-> (u/non-deleted-resource-handle db tid compiled-value)
+    (or (some-> (u/existing-resource-handle db tid compiled-value)
                 (ih/from-resource-handle)
                 (vector))
         []))

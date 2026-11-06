@@ -15,7 +15,7 @@
    [blaze.rest-api.routes-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
@@ -123,6 +123,9 @@
        :delete-history
        #:blaze.rest-api.interaction
         {:handler (handler ::delete-history)}
+       :delete-history-version
+       #:blaze.rest-api.interaction
+        {:handler (handler ::delete-history-version)}
        :conditional-delete-type
        #:blaze.rest-api.interaction
         {:handler (handler ::conditional-delete-type)}
@@ -223,6 +226,7 @@
           "/Patient/0/_history" :delete "delete-history"
           "/Patient/0/__history-page/0" :get "history-instance"
           "/Patient/0/_history/42" :get "vread"
+          "/Patient/0/_history/42" :delete "delete-history-version"
           "/Patient/0/$everything" :get "operation-instance-everything"
           "/Patient/0/$everything" :post "operation-instance-everything"
           "/Patient/0/__everything-page/0" :get "operation-instance-everything"
@@ -271,6 +275,7 @@
         "/Patient/0/_history" :delete ::delete-history
         "/Patient/0/__history-page/0" :get ::history-instance
         "/Patient/0/_history/42" :get ::vread
+        "/Patient/0/_history/42" :delete ::delete-history-version
         "/Patient/0/$everything" :get ::everything
         "/Patient/0/$everything" :post ::everything
         "/Patient/0/__everything-page/0" :get ::everything-page
@@ -291,6 +296,37 @@
         "/Measure/0" :get ::read
         "/__admin" :get ::admin
         "/__admin/more" :get ::admin))))
+
+(defn- without-interaction
+  "Returns `config` without the `interaction` in its resource pattern."
+  [config interaction]
+  (update-in config [:resource-patterns 0 :blaze.rest-api.resource-pattern/interactions]
+             dissoc interaction))
+
+(defn- versioned-instance-handler [router request-method]
+  (get-in (reitit/match-by-path router "/Patient/0/_history/42")
+          [:result request-method :data :handler]))
+
+(deftest delete-history-version-route-test
+  (with-system [system system-config]
+    (doseq [batch? [false true]]
+      (testing (if batch? "as batch" "as regular router")
+        (let [config (assoc config :batch? batch?)]
+          (testing "with the delete-history-version interaction"
+            (let [router (router config system)]
+              (is (= ::delete-history-version
+                     ((versioned-instance-handler router :delete) {}))))))
+
+        (testing "without the delete-history-version interaction, which is the default"
+          (let [router (router (-> (assoc config :batch? batch?)
+                                   (without-interaction :delete-history-version))
+                               system)]
+            (testing "the versioned instance has no DELETE"
+              (is (nil? (get-in (reitit/match-by-path router "/Patient/0/_history/42")
+                                [:result :delete]))))
+
+            (testing "but still has the versioned read"
+              (is (= ::vread ((versioned-instance-handler router :get) {}))))))))))
 
 (deftest resource-type-test
   (with-system [system system-config]
@@ -335,6 +371,7 @@
         "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
         "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+        "/Patient/0/_history/42" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
         "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
         "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
         "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :decrypt-page-id :snapshot-db]
@@ -377,6 +414,7 @@
           "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :link-headers]
           "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
           "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
+          "/Patient/0/_history/42" :delete [:observe-request-duration :params :output :error :forwarded :sync :invalid-id]
           "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db]
           "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
           "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]

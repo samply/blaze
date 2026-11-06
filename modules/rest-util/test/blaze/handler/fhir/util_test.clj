@@ -431,7 +431,8 @@
      :delete (endpoint "delete-history" handler)}]
    [(str "/" type "/{id}/_history/{vid}")
     {:conflicting true
-     :get (endpoint "vread" handler)}]])
+     :get (endpoint "vread" handler)
+     :delete (endpoint "delete-history-version" handler)}]])
 
 (defn- create-router
   "Returns a router with routes shaped like the ones of the batch router of the
@@ -762,7 +763,9 @@
       :fhir/type := :fhir.Bundle/entry
       [:request :method] := #fhir/code "GET"
       [:request :url] := #fhir/uri "Patient/0/_history/2"
-      ::fhir-util/interaction := "vread"))
+      ::fhir-util/interaction := "vread"
+      ::fhir-util/id := "0"
+      ::fhir-util/vid := "2"))
 
   (testing "delete request with query"
     (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "Patient/0?foo=bar"))
@@ -779,7 +782,16 @@
   (testing "delete history request"
     (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "Patient/0/_history"))
       [:request :url] := #fhir/uri "Patient/0/_history"
-      ::fhir-util/interaction := "delete-history"))
+      ::fhir-util/interaction := "delete-history"
+      ::fhir-util/vid := nil))
+
+  (testing "delete history version request"
+    (given (fhir-util/validate-entry entry-router 0 (request-entry "DELETE" "Patient/0/_history/2"))
+      [:request :url] := #fhir/uri "Patient/0/_history/2"
+      ::fhir-util/interaction := "delete-history-version"
+      ::fhir-util/type := "Patient"
+      ::fhir-util/id := "0"
+      ::fhir-util/vid := "2"))
 
   (testing "search request via POST"
     (given (fhir-util/validate-entry
@@ -814,7 +826,6 @@
                           ["POST" "Patient/_history"]
                           ["POST" "Patient/0/_history"]
                           ["POST" "Patient/0/Observation"]
-                          ["DELETE" "Patient/0/_history/2"]
                           ["DELETE" "Patient/0/$everything"]
                           ["DELETE" "Patient/0/Observation"]
                           ["DELETE" "Patient/$match"]

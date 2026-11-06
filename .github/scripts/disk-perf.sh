@@ -43,7 +43,7 @@ test "processing-duration unit code" "$(echo "$output" | jq -r "$(param_expr "pr
 
 # the underlying job is available via the admin API and carries the same
 # results as Task outputs
-job=$(curl -sfH 'Accept: application/fhir+json' "$base/__admin/Task?_profile=https://blaze-server.org/fhir/StructureDefinition/DiskPerfJob&_sort=-_lastUpdated&_count=1" | jq '.entry[0].resource')
+job=$(curl -sSfH 'Accept: application/fhir+json' "$base/__admin/Task?_profile=https://blaze-server.org/fhir/StructureDefinition/DiskPerfJob&_sort=-_lastUpdated&_count=1" | jq '.entry[0].resource')
 
 # the disk-perf job type never existed in IG version 0.1.0, so it carries only
 # the current canonical
