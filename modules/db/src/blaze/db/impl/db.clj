@@ -258,6 +258,9 @@
   (-compile-compartment-query-lenient [_ code type clauses]
     (p/-compile-compartment-query-lenient node code type clauses))
 
+  (-in-compartment? [_ code type]
+    (p/-in-compartment? node code type))
+
   ;; ---- Pull ----------------------------------------------------------------
 
   p/Pull

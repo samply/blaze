@@ -376,6 +376,18 @@
   [node-or-db code type clauses]
   (p/-compile-compartment-query-lenient node-or-db code type clauses))
 
+(defn in-compartment?
+  "Returns true if resources of `type` can be linked to compartments with `code`.
+
+  The code is the code of the compartment not necessary the same as a resource
+  type. One common compartment is `Patient`.
+
+  Example:
+    (in-compartment? node \"Patient\" \"Observation\") ;=> true
+    (in-compartment? node \"Patient\" \"Medication\")  ;=> false"
+  [node-or-db code type]
+  (p/-in-compartment? node-or-db code type))
+
 ;; ---- Patient-Compartment-Level Functions -----------------------------------
 
 (defn patient-compartment-last-change-t

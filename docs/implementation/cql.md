@@ -73,6 +73,7 @@ The ELM expression are compiled into instances of the `blaze.elm.compiler.core/E
 * we'll use one Bloom filter per expression
 * that Bloom filters will be stored in a Caffeine cache by expression hash
 * each Bloom filter will be assigned the t of its creation
+* expressions that retrieve resources outside of the Patient compartment, like Medication, get no Bloom filter, because changes to such resources don't change the last change t of any patient
 * the Bloom filters of all expressions of a query will be collected at the start of the query evaluation
 * if a Bloom filter isn't found, its calculation will be queued and carried out asynchronously
 * existing Bloom filters are immutable and will be used in query evaluation

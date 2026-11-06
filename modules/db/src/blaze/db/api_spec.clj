@@ -169,6 +169,12 @@
                :clauses :blaze.db.query/clauses)
   :ret ac/completable-future?)
 
+(s/fdef d/in-compartment?
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :code string?
+               :type :fhir.resource/type)
+  :ret boolean?)
+
 (s/fdef d/patient-compartment-last-change-t
   :args (s/cat :db :blaze.db/db :patient-id :blaze.resource/id)
   :ret (s/nilable :blaze.db/t))

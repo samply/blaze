@@ -1345,6 +1345,9 @@
   (-compile-compartment-query-lenient [_ code type clauses]
     (compile-compartment-query search-param-registry code type clauses true))
 
+  (-in-compartment? [_ code type]
+    (boolean (seq (sr/compartment-resources search-param-registry code type))))
+
   p/Pull
   (-pull [_ resource-handle variant]
     (do-sync [resource (get-resource resource-cache rc/get resource-handle variant)]

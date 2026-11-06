@@ -118,6 +118,10 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 11.1. | Retrieve       | !          | no date ranges |       |
 | 11.2. | IncludeElement | ✗          |                |       |
 
+#### Retrieves of Types Outside the Patient Compartment <Badge type="warning" text="Since 1.14.0"/>
+
+In the Patient context, a retrieve of a type that has no search parameter in the Patient compartment, for example `Medication`, returns all resources of that type. This is the same behavior as in the Unfiltered context.
+
 ### 12. Comparison Operators
 
 | Num   | Group          | Expression | State | Notes |

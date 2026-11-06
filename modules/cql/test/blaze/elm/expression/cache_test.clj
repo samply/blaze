@@ -171,7 +171,20 @@
         ::bloom-filter/t := 0
         ::bloom-filter/expr-form := "(exists (retrieve \"Observation\"))"
         ::bloom-filter/patient-count := 0
-        ::bloom-filter/mem-size := 11981))))
+        ::bloom-filter/mem-size := 11981)))
+
+  (testing "no Bloom filter for an expression with a nested retrieve outside of the Patient compartment"
+    (with-system [{:blaze.db/keys [node] ::expr/keys [cache]
+                   executor :blaze.test/manual-executor} config]
+      (let [compile-expr
+            #(c/compile
+              {:node node :eval-context "Patient"}
+              (elm/exists
+               (elm/union [(elm/retrieve {:type "Observation"})
+                           (elm/retrieve {:type "Medication"})])))]
+        (create-bloom-filter! (compile-expr) cache executor)
+
+        (is (nil? (ec/get cache (compile-expr))))))))
 
 (deftest with-max-t-test
   (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]

@@ -75,7 +75,9 @@
 
   (-compile-compartment-query [compiler code type] [compiler code type clauses])
 
-  (-compile-compartment-query-lenient [compiler code type clauses]))
+  (-compile-compartment-query-lenient [compiler code type clauses])
+
+  (-in-compartment? [compiler code type]))
 
 (defprotocol Query
   (-count [query db]

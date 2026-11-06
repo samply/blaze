@@ -11371,6 +11371,22 @@
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"))))))
 
+(deftest in-compartment?-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (with-db [db node]
+      (doseq [target [node db]]
+        (testing "Observation is in the Patient compartment"
+          (is (true? (d/in-compartment? target "Patient" "Observation"))))
+
+        (testing "Patient is in its own compartment"
+          (is (true? (d/in-compartment? target "Patient" "Patient"))))
+
+        (testing "Medication is not in the Patient compartment"
+          (is (false? (d/in-compartment? target "Patient" "Medication"))))
+
+        (testing "unknown compartment"
+          (is (false? (d/in-compartment? target "Foo" "Observation"))))))))
+
 (deftest compile-compartment-query-lenient-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]

@@ -356,6 +356,36 @@
                   (let [[expr] (c/attach-cache expr cache)]
                     (is (false? (expr/eval eval-context expr patient)))))))))))
 
+    (testing "with a retrieve outside of the Patient compartment"
+      (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]
+                          executor :blaze.test/manual-executor} exists-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (with-db [db node]
+          (let [elm #elm/exists #elm/retrieve{:type "Medication"}
+                compile-context
+                {:node node
+                 :eval-context "Patient"
+                 :library {}}
+                expr (c/compile compile-context elm)]
+
+            (c/attach-cache expr cache)
+            (run-all! executor)
+
+            (testing "no Bloom filter is created"
+              (let [[_ bloom-filters] (c/attach-cache expr cache)]
+                (is (= 1 (count bloom-filters)))
+                (is (ba/unavailable? (first bloom-filters)))))
+
+            (let [tx-op [:put {:fhir/type :fhir/Medication :id "0"}]]
+              (with-db [db-after node @(d/transact node [tx-op])]
+
+                (testing "finds the Medication after its creation, although the patient didn't change"
+                  (let [[expr] (c/attach-cache expr cache)
+                        patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                    (is (true? (expr/eval {:db db-after :now (bt/offset-date-time)}
+                                          expr patient)))))))))))
+
     (testing "without caching expressions"
       (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]

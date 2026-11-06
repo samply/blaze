@@ -17,6 +17,7 @@
    [blaze.elm.spec]
    [blaze.elm.util :as elm-util]
    [blaze.elm.value-set :as vs]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]
    [blaze.util :refer [str]]
    [prometheus.alpha :as prom :refer [defcounter]]))
@@ -173,15 +174,32 @@
     :else
     (type-query-expr node data-type [(codes-clause code-property codes-expr)])))
 
+(defn- unfiltered-type?
+  "Returns true if a retrieve of `data-type` in `eval-context` has to return all
+  resources of the type, as in Unfiltered context.
+
+  That is the case for types outside the Patient compartment, for example
+  Medication. Only the Patient compartment is defined, so the rule is limited to
+  the Patient context. Unknown types return false, so the compartment query
+  reports them."
+  [node eval-context data-type]
+  (and (= "Patient" eval-context)
+       (fhir-spec/type-exists? data-type)
+       (not (d/in-compartment? node eval-context data-type))))
+
 (defn- expr* [node eval-context data-type code-property codes-expr]
   (cond
+    (and (empty? codes-expr) (= data-type eval-context))
+    resource-expr
+
+    (unfiltered-type? node eval-context data-type)
+    (unfiltered-context-expr node data-type code-property codes-expr)
+
     (vs/value-set? codes-expr)
     (compartment-query-expr node eval-context data-type [(value-set-clause code-property codes-expr)])
 
     (empty? codes-expr)
-    (if (= data-type eval-context)
-      resource-expr
-      (context-expr node eval-context data-type))
+    (context-expr node eval-context data-type)
 
     :else
     (compartment-query-expr node eval-context data-type [(codes-clause code-property codes-expr)])))

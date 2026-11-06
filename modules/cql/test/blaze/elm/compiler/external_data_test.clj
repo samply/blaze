@@ -461,6 +461,179 @@
               ::anom/category := ::anom/not-found
               ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))))
 
+  (testing "Patient context, type outside the Patient compartment"
+    (testing "Medication"
+      (testing "with one code"
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Patient :id "1"}]
+            [:put {:fhir/type :fhir/Medication :id "0"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "system-225806"
+                        :code #fhir/code "code-225809"}]}}]
+            [:put {:fhir/type :fhir/Medication :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "system-225806"
+                        :code #fhir/code "code-other"}]}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:codeSystems
+                  {:def
+                   [{:name "sys-def-225944"
+                     :id "system-225806"}]}}
+                 :terminology-service terminology-service}
+                elm #elm/retrieve
+                     {:type "Medication"
+                      :codes #elm/list [#elm/code ["sys-def-225944"
+                                                   "code-225809"]]}
+                expr (c/compile context elm)]
+            (with-db [db node]
+
+              (testing "eval"
+                (doseq [patient-id ["0" "1"]]
+                  (given (expr/eval (eval-context db) expr (ctu/resource db "Patient" patient-id))
+                    count := 1
+                    [0 :fhir/type] := :fhir/Medication
+                    [0 :id] := "0")))
+
+              (testing "expression is dynamic"
+                (is (false? (core/-static expr))))
+
+              (ctu/testing-constant-attach-cache expr)
+
+              (ctu/testing-constant-patient-count expr)
+
+              (ctu/testing-constant-resolve-refs expr)
+
+              (ctu/testing-constant-resolve-params expr)
+
+              (ctu/testing-constant-optimize expr)
+
+              (testing "form"
+                (has-form expr
+                  '(retrieve "Medication" [["code" "system-225806|code-225809"]])))))))
+
+      (testing "with value set reference"
+        (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} api-stub/mem-node-config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri "http://system-115910"
+                   :content #fhir/code "complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-115927"}
+                    {:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code "code-140541"}]}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Medication :id "0"}]
+            [:put {:fhir/type :fhir/Medication :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-115927"}]}}]
+            [:put {:fhir/type :fhir/Medication :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri "http://system-115910"
+                        :code #fhir/code "code-140541"}]}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:valueSets
+                  {:def
+                   [{:name "vs1"
+                     :id "http://fhir.org/VCL?v1=(http://system-115910)*"}]}}
+                 :terminology-service terminology-service}
+                elm #elm/retrieve
+                     {:type "Medication"
+                      :codes #elm/value-set-ref "vs1"
+                      :codeComparator "in"}
+                expr (c/compile context elm)]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
+
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 2
+                    [0 :fhir/type] := :fhir/Medication
+                    [0 :id] := "1"
+                    [1 :fhir/type] := :fhir/Medication
+                    [1 :id] := "2"))
+
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
+
+                (ctu/testing-constant-attach-cache expr)
+
+                (ctu/testing-constant-patient-count expr)
+
+                (ctu/testing-constant-resolve-refs expr)
+
+                (ctu/testing-constant-resolve-params expr)
+
+                (testing "optimize"
+                  (is (= expr (c/optimize expr db))))
+
+                (testing "form"
+                  (has-form expr
+                    '(retrieve
+                      "Medication"
+                      [["code:in"
+                        "http://fhir.org/VCL?v1=(http://system-115910)*"]]))))))))
+
+      (testing "without codes"
+        (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Medication :id "0"}]
+            [:put {:fhir/type :fhir/Medication :id "1"}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library {}}
+                expr (c/compile context #elm/retrieve{:type "Medication"})]
+            (with-db [db node]
+              (let [patient (ctu/resource db "Patient" "0")]
+
+                (testing "eval"
+                  (given (expr/eval (eval-context db) expr patient)
+                    count := 2
+                    [0 :fhir/type] := :fhir/Medication
+                    [0 :id] := "0"
+                    [1 :fhir/type] := :fhir/Medication
+                    [1 :id] := "1"))
+
+                (testing "expression is dynamic"
+                  (is (false? (core/-static expr))))
+
+                (ctu/testing-constant-attach-cache expr)
+
+                (ctu/testing-constant-patient-count expr)
+
+                (ctu/testing-constant-resolve-refs expr)
+
+                (ctu/testing-constant-resolve-params expr)
+
+                (ctu/testing-constant-optimize expr)
+
+                (testing "form"
+                  (has-form expr
+                    '(retrieve "Medication"))))))))))
+
   (testing "Specimen context"
     (testing "Patient"
       (with-system-data [{:blaze.db/keys [node]} (assoc-in api-stub/mem-node-config [:blaze.db/node :enforce-referential-integrity] false)]
