@@ -6,4 +6,5 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.operation.graph-test/with-handler clojure.core/fn}}
+ {blaze.operation.graph-test/with-handler clojure.core/fn
+  blaze.operation.graph-test/with-handler-non-ref clojure.core/fn}}

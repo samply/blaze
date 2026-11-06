@@ -118,6 +118,9 @@
 (s/def :fhir/GraphDefinition
   #(s2/valid? :fhir/GraphDefinition %))
 
+(s/def :fhir.GraphDefinition/link
+  #(s2/valid? :fhir.GraphDefinition/link %))
+
 (s/def :fhir/Location
   #(s2/valid? :fhir/Location %))
 

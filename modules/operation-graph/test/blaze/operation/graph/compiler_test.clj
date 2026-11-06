@@ -1,8 +1,8 @@
 (ns blaze.operation.graph.compiler-test
   (:require
    [blaze.fhir.search-clauses-spec]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util.graph-definition :as g-tu]
+   [blaze.fhir.test-util.graph-definition-spec]
    [blaze.fhir.util-spec]
    [blaze.graph-definition-spec]
    [blaze.handler.fhir.util-spec]
@@ -24,70 +24,31 @@
 (deftest compile-test
   (testing "fails on invalid graph definition"
     (given (c/compile
-            {:fhir/type :fhir/GraphDefinition :id "0"
-             :extension
-             [(g-tu/extension-start :value #fhir/id "patient")]
-             :url #fhir/uri "144200"
-             :name #fhir/string "fails"
-             :status #fhir/code "active"
-             :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+            (g-tu/graph-def
              :link
-             [{:fhir/type :fhir.GraphDefinition/link
-               :extension
-               [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                (g-tu/extension-link-target-id :value #fhir/id "observation")]}]})
+             [(g-tu/link "patient" "observation")]))
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid start node id `patient` not referring to a node."))
 
   (testing "patient-only"
     (is (= (c/compile
-            {:fhir/type :fhir/GraphDefinition :id "0"
-             :extension
-             [(g-tu/extension-start :value #fhir/id "patient")
-              (g-tu/extension-node
-               :extension
-               [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
-             :url #fhir/uri "151647"
-             :name #fhir/string "patient-only"
-             :status #fhir/code "active"
-             :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})})
+            (g-tu/graph-def
+             :nodes
+             [(g-tu/node "patient" "Patient")]))
            {:start-node-id "patient"
             :nodes {"patient" {:id "patient" :type "Patient"}}
             :links {}})))
 
   (testing "patient -> observation -> encounter"
     (given (c/compile
-            {:fhir/type :fhir/GraphDefinition :id "0"
-             :extension
-             [(g-tu/extension-start :value #fhir/id "patient")
-              (g-tu/extension-node
-               :extension
-               [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
-              (g-tu/extension-node
-               :extension
-               [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
-                #fhir/Extension{:url "type" :value #fhir/code "Observation"}])
-              (g-tu/extension-node
-               :extension
-               [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
-                #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
-             :url #fhir/uri "144200"
-             :name #fhir/string "patient-observation-encounter"
-             :status #fhir/code "active"
-             :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+            (g-tu/graph-def
+             :nodes
+             [(g-tu/node "patient" "Patient")
+              (g-tu/node "observation" "Observation")
+              (g-tu/node "encounter" "Encounter")]
              :link
-             [{:fhir/type :fhir.GraphDefinition/link
-               :extension
-               [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                (g-tu/extension-link-target-id :value #fhir/id "observation")
-                (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
-              {:fhir/type :fhir.GraphDefinition/link
-               :extension
-               [(g-tu/extension-link-source-id :value #fhir/id "observation")
-                (g-tu/extension-link-target-id :value #fhir/id "encounter")]
-               :path #fhir/string "encounter"}]})
+             [(g-tu/link "patient" "observation" :params "patient={ref}")
+              (g-tu/link "observation" "encounter" :path "encounter")]))
       :start-node-id := "patient"
       [:nodes "patient"] := {:id "patient", :type "Patient"}
       [:nodes "observation"] := {:id "observation", :type "Observation"}

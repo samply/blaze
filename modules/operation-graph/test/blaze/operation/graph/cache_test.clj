@@ -4,6 +4,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.fhir.test-util.graph-definition :as g-tu]
+   [blaze.fhir.test-util.graph-definition-spec]
    [blaze.graph-definition-spec]
    [blaze.operation.graph :as graph]
    [blaze.operation.graph.cache :as cache]
@@ -36,19 +37,12 @@
   (.cleanUp ^Cache cache)
   (count (.asMap ^Cache cache)))
 
-(defn- graph-def [version-id & {:keys [start] :or {start "patient"}}]
-  {:fhir/type :fhir/GraphDefinition :id "0"
-   :meta (type/meta {:versionId (type/id version-id)})
-   :extension
-   [(g-tu/extension-start :value (type/id start))
-    (g-tu/extension-node
-     :extension
-     [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-      #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
-   :url #fhir/uri "151647"
-   :name #fhir/string "patient-only"
-   :status #fhir/code "active"
-   :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})})
+(defn- graph-def
+  "Creates a GraphDefinition with a single `patient` node and `version-id`,
+  which is part of the cache key."
+  [version-id & {:keys [start] :or {start "patient"}}]
+  (assoc (g-tu/graph-def :start start :nodes [(g-tu/node "patient" "Patient")])
+         :meta (type/meta {:versionId (type/id version-id)})))
 
 (deftest compile-test
   (testing "valid graph definition"

@@ -5,6 +5,7 @@
    [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util.graph-definition :as g-tu]
+   [blaze.fhir.test-util.graph-definition-spec]
    [blaze.fhir.util-spec]
    [blaze.graph-definition-spec]
    [blaze.handler.fhir.util-spec]
@@ -123,7 +124,7 @@
    (into
     [["/Patient/{id}/__graph-page/{page-id}" {:name :Patient.operation/graph-page}]]
     (map (fn [type] [(str "/" type) {:name (keyword type "type")}]))
-    ["Patient" "Condition" "Observation" "Encounter"])
+    ["Patient" "Condition" "Observation" "Encounter" "Practitioner" "Organization"])
    {:syntax :bracket
     :path context-path}))
 
@@ -158,11 +159,12 @@
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
 
-(defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
+(defn- with-handler-form
+  [config [handler-binding & [node-binding page-id-cipher-binding]] more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          page-id-cipher# :blaze.test/page-id-cipher
-                         handler# :blaze.operation/graph} config]
+                         handler# :blaze.operation/graph} ~config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults
                                   (wrap-db node# page-id-cipher#)
@@ -170,6 +172,14 @@
              ~(or node-binding '_) node#
              ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
+
+(defmacro with-handler [bindings & more]
+  (with-handler-form `config bindings more))
+
+(defmacro with-handler-non-ref [bindings & more]
+  (with-handler-form
+    `(assoc-in config [:blaze.db/node :enforce-referential-integrity] false)
+    bindings more))
 
 (deftest handler-test
   (testing "Patient not found"
@@ -222,20 +232,14 @@
   (testing "invalid GraphDefinition"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
-               :url #fhir/uri "151647"
-               :name #fhir/string "without-start"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})}]]]
+        [:put (g-tu/graph-def
+               :start nil
+               :nodes
+               [(g-tu/node "patient" "Patient")])]]]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "145711"}
-                       :query-params {"graph" "151647"}})]
+                       :query-params {"graph" "144200"}})]
 
         (is (= 400 status))
 
@@ -245,24 +249,31 @@
           [:issue 0 :code] := #fhir/code "invalid"
           [:issue 0 :diagnostics] := #fhir/string "Invalid GraphDefinition without start node."))))
 
+  (testing "missing param graph"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "145711"}]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "145711"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "Missing param `graph`"))))
+
   (testing "only returning the patient itself"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])]
-               :url #fhir/uri "151647"
-               :name #fhir/string "patient-only"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})}]]]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")])]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {:path-params {:id "145711"}
-                       :query-params {"graph" "151647"}})]
+                       :query-params {"graph" "144200"}})]
 
         (is (= 200 status))
 
@@ -300,27 +311,12 @@
       [[[:put {:fhir/type :fhir/Patient :id "145711"}]
         [:put {:fhir/type :fhir/Observation :id "144115"
                :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])]
-               :url #fhir/uri "144200"
-               :name #fhir/string "patient-observation"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")]
                :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "observation")
-                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}]}]]]
+               [(g-tu/link "patient" "observation" :params "patient={ref}")])]]]
 
       (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "145711"}
@@ -381,36 +377,14 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
                :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
-               :url #fhir/uri "144200"
-               :name #fhir/string "patient-observation-encounter"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "encounter" "Encounter")]
                :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "observation")
-                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
-                {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "observation")
-                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
-                 :path #fhir/string "encounter"}]}]]]
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "encounter" :path "encounter")])]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -489,36 +463,14 @@
                :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
         [:put {:fhir/type :fhir/Encounter :id "other-144453"
                :subject #fhir/Reference{:reference #fhir/string "Patient/145711"}}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "observation"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Observation"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
-               :url #fhir/uri "144200"
-               :name #fhir/string "patient-observation-encounter"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "encounter" "Encounter")]
                :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "observation")
-                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
-                {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "observation")
-                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
-                 :path #fhir/string "encounter"}]}]]]
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "encounter" :path "encounter")])]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry fourth-entry] :entry
@@ -610,41 +562,15 @@
                :diagnosis
                [{:fhir/type :fhir.Encounter/diagnosis
                  :condition #fhir/Reference{:reference #fhir/string "Condition/191241"}}]}]
-        [:put {:fhir/type :fhir/GraphDefinition :id "0"
-               :extension
-               [(g-tu/extension-start :value #fhir/id "patient")
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "patient"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Patient"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "condition"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Condition"}])
-                (g-tu/extension-node
-                 :extension
-                 [#fhir/Extension{:url "nodeId" :value #fhir/id "encounter"}
-                  #fhir/Extension{:url "type" :value #fhir/code "Encounter"}])]
-               :url #fhir/uri "144200"
-               :name #fhir/string "patient-condition-encounter"
-               :status #fhir/code "active"
-               :start (type/code {:extension [g-tu/data-absent-reason-unsupported]})
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "condition" "Condition")
+                (g-tu/node "encounter" "Encounter")]
                :link
-               [{:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "patient")
-                  (g-tu/extension-link-target-id :value #fhir/id "condition")
-                  (g-tu/extension-link-params :value #fhir/string "patient={ref}")]}
-                {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "condition")
-                  (g-tu/extension-link-target-id :value #fhir/id "encounter")]
-                 :path #fhir/string "encounter"}
-                {:fhir/type :fhir.GraphDefinition/link
-                 :extension
-                 [(g-tu/extension-link-source-id :value #fhir/id "encounter")
-                  (g-tu/extension-link-target-id :value #fhir/id "condition")]
-                 :path #fhir/string "diagnosis.condition"}]}]]]
+               [(g-tu/link "patient" "condition" :params "patient={ref}")
+                (g-tu/link "condition" "encounter" :path "encounter")
+                (g-tu/link "encounter" "condition" :path "diagnosis.condition")])]]]
 
       (let [{:keys [status]
              {[first-entry second-entry third-entry] :entry :as body} :body}
@@ -709,3 +635,325 @@
           (given (:search third-entry)
             :fhir/type := :fhir.Bundle.entry/search
             :mode := #fhir/code "match"))))))
+
+(def ^:private patient-observation-practitioner-graph-def
+  (g-tu/graph-def
+   :nodes
+   [(g-tu/node "patient" "Patient")
+    (g-tu/node "observation" "Observation")
+    (g-tu/node "practitioner" "Practitioner")]
+   :link
+   [(g-tu/link "patient" "observation" :params "patient={ref}")
+    (g-tu/link "observation" "practitioner" :path "performer")]))
+
+(defn- entry-urls [{:keys [entry]}]
+  (mapv (comp :value :fullUrl) entry))
+
+(defn- url [type id]
+  (str base-url context-path "/" type "/" id))
+
+(deftest handler-link-path-test
+  (testing "follows all references returned by the path"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Practitioner/0"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/1"}]}]
+        [:put patient-observation-practitioner-graph-def]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 4
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "0")
+                         (url "Practitioner" "1")]))))
+
+  (testing "only follows references to resources of the target node type"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Organization :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Organization/0"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put patient-observation-practitioner-graph-def]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 3
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "0")]))))
+
+  (testing "follows references of any type for target node type Resource"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "performer" "Resource")]
+               :link
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "performer" :path "performer")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 3
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "0")]))))
+
+  (testing "follows references to domain resources for target node type DomainResource"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Bundle :id "0" :type #fhir/code "collection"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :focus
+               [#fhir/Reference{:reference #fhir/string "Bundle/0"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "focus" "DomainResource")]
+               :link
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "focus" :path "focus")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 3
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "0")]))))
+
+  (testing "skips a single reference to a missing resource"
+    (with-handler-non-ref [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put patient-observation-practitioner-graph-def]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")]))))
+
+  (testing "skips references without a relative literal reference"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:display #fhir/string "Dr. Foo"}
+                (type/reference
+                 {:reference
+                  (type/string {:extension [g-tu/data-absent-reason-unsupported]})})
+                #fhir/Reference{:reference #fhir/string "http://example.com/Practitioner/1"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put patient-observation-practitioner-graph-def]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 3
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "0")]))))
+
+  (testing "skips values which aren't references"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code "final"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "practitioner" "Practitioner")]
+               :link
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "practitioner" :path "status")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")]))))
+
+  (testing "fails on FHIRPath evaluation error"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Practitioner/0"}]}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "practitioner" "Practitioner")]
+               :link
+               [(g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "practitioner" :path "performer.where(reference)")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "non-boolean result `#fhir/string \"Practitioner/0\"` of type `:fhir/string` while evaluating where function criteria"))))
+
+  (testing "skips references to missing or deleted resources"
+    (with-handler-non-ref [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "0"}]
+        [:put {:fhir/type :fhir/Practitioner :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :performer
+               [#fhir/Reference{:reference #fhir/string "Practitioner/0"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/1"}
+                #fhir/Reference{:reference #fhir/string "Practitioner/2"}]}]
+        [:put patient-observation-practitioner-graph-def]]
+       [[:delete "Practitioner" "0"]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 3
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")
+                         (url "Practitioner" "1")])))))
+
+(deftest handler-multiple-nodes-test
+  (testing "follows the links of every node a resource is reached through"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference #fhir/string "Condition/0"}}]}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "encounter-a" "Encounter")
+                (g-tu/node "observation" "Observation")
+                (g-tu/node "encounter-b" "Encounter")
+                (g-tu/node "condition" "Condition")]
+               :link
+               [(g-tu/link "patient" "encounter-a" :params "patient={ref}")
+                (g-tu/link "patient" "observation" :params "patient={ref}")
+                (g-tu/link "observation" "encounter-b" :path "encounter")
+                (g-tu/link "encounter-b" "condition" :path "diagnosis.condition")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 4
+          entry-urls := [(url "Patient" "0")
+                         (url "Encounter" "0")
+                         (url "Observation" "0")
+                         (url "Condition" "0")])))))
+
+(deftest handler-link-params-test
+  (testing "applies non-reference search clauses"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :status #fhir/code "final"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :status #fhir/code "preliminary"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")
+                (g-tu/node "observation" "Observation")]
+               :link
+               [(g-tu/link "patient" "observation" :params "patient={ref}&status=final")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          entry-urls := [(url "Patient" "0")
+                         (url "Observation" "0")])))))
