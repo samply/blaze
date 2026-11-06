@@ -1186,6 +1186,8 @@
 
   (testing-query "q70-period-without-end-overlaps" 2)
 
+  (testing-query "q71-medication-with" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :fhir/Resource (:resource result))))

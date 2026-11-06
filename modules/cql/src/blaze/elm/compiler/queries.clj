@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [comparator sort-by str])
   (:require
-   [blaze.anomaly :refer [if-ok try-anomaly]]
+   [blaze.anomaly :refer [if-ok try-anomaly when-ok]]
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -147,8 +147,101 @@
   (when (= 'filter name)
     (filter-medication-refs arg)))
 
-(defn- compile-medication-matcher [db source-type medication-refs]
-  (try-anomaly (ac/join (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)]))))
+(defn- compile-medication-matcher [db source-type search-param values]
+  (try-anomaly (ac/join (d/compile-type-matcher db source-type [(into [search-param] values)]))))
+
+(defn- form-args
+  "Returns the arguments of `form` if it is a list starting with `sym` followed
+  by `n` arguments."
+  [sym n form]
+  (when (and (seq? form) (= sym (first form)) (= (inc n) (count form)))
+    (rest form)))
+
+(defn- medication-reference-string? [lhs-alias form]
+  (contains?
+   #{(list 'call "ToString" (list :reference (list :medication lhs-alias)))
+     (list 'call "ToString" (list :reference (list 'as 'fhir/Reference (list :medication lhs-alias))))}
+   form))
+
+(defn- medication-id-string? [rhs-alias form]
+  (= (list 'concatenate "Medication/" (list 'call "ToString" (list :id rhs-alias))) form))
+
+(defn- medication-reference-equal?
+  "Returns true if `form` compares the medication reference of `lhs-alias` with
+  the reference to the Medication `rhs-alias` in any order."
+  [lhs-alias rhs-alias form]
+  (when-let [[a b] (form-args 'equal 2 form)]
+    (or (and (medication-reference-string? lhs-alias a) (medication-id-string? rhs-alias b))
+        (and (medication-id-string? rhs-alias a) (medication-reference-string? lhs-alias b)))))
+
+(defn- medication-code-clause
+  "Returns the clause of `form` if it is a retrieve of Medications by code.
+
+  Retrieves by value set are not supported, because the chained search
+  parameter `medication:Medication.code:in` fails in matchers."
+  [form]
+  (when-let [[type [[code-param :as clause] :as clauses]] (form-args 'retrieve 2 form)]
+    (when (and (= "Medication" type)
+               (vector? clauses)
+               (= 1 (count clauses))
+               (= "code" code-param))
+      clause)))
+
+(defn- with-medication-code-clause
+  "Returns the clause of the Medication retrieve if `xform-form` is the form of
+  a `with` clause which relates the medication reference of the source to
+  Medications retrieved by code."
+  [xform-form]
+  (when-let [[f] (form-args 'filter 1 xform-form)]
+    (when-let [[[lhs-alias] exists-form] (form-args 'fn 2 f)]
+      (when-let [[g rhs] (form-args 'exists 2 exists-form)]
+        (when-let [[[rhs-alias] such-that] (form-args 'fn 2 g)]
+          (when (medication-reference-equal? lhs-alias rhs-alias such-that)
+            (medication-code-clause rhs)))))))
+
+(defn- medication-exists?
+  "Returns true if a Medication matching `clause` exists or an anomaly."
+  [db clause]
+  (when-ok [handles (try-anomaly (ac/join (d/type-query db "Medication" [clause])))]
+    (some? (coll/first handles))))
+
+(defn- log-optimize-error [expr]
+  (fn [{::anom/keys [message]}]
+    (log/warn "Error while trying to optimize a query expression:" message)
+    expr))
+
+(declare eduction-expr)
+
+(defn- optimize-medication-refs [expr db source source-type medication-refs]
+  (if (empty? medication-refs)
+    []
+    (if-ok [matcher (compile-medication-matcher db source-type "medication" medication-refs)]
+      (eduction-expr (where-search-param-xform-factory matcher) source)
+      (log-optimize-error expr))))
+
+(defn- optimize-with-medication-code
+  "Replaces the `with` clause over Medications with `clause` by a matcher that
+  follows the medication reference, so that the evaluation time doesn't depend
+  on the number of Medications.
+
+  The matcher reads Medications at evaluation time. Changes to them don't change
+  the last change t of any patient, so the expression cache creates no Bloom
+  filter for the resulting expression."
+  [expr db source source-type [_ & codes :as clause]]
+  (if-ok [exists (medication-exists? db clause)
+          matcher (compile-medication-matcher db source-type "medication:Medication.code" codes)]
+    (if exists
+      (eduction-expr (where-search-param-xform-factory matcher) source)
+      [])
+    (log-optimize-error expr)))
+
+(defn- optimize-medication-query [expr db xform-factory source source-type]
+  (let [xform-form (-form xform-factory)]
+    (if-let [medication-refs (where-medication-refs xform-form)]
+      (optimize-medication-refs expr db source source-type medication-refs)
+      (if-let [clause (with-medication-code-clause xform-form)]
+        (optimize-with-medication-code expr db source source-type clause)
+        expr))))
 
 (defn- eduction-expr [xform-factory source]
   (reify-expr core/Expression
@@ -163,15 +256,7 @@
         (if (= [] source)
           []
           (if-let [source-type (medication-source-type (core/-form source))]
-            (if-let [medication-refs (where-medication-refs (-form xform-factory))]
-              (if (empty? medication-refs)
-                []
-                (if-ok [matcher (compile-medication-matcher db source-type medication-refs)]
-                  (eduction-expr (where-search-param-xform-factory matcher) source)
-                  (fn [{::anom/keys [message]}]
-                    (log/warn "Error while trying to optimize a query expression:" message)
-                    expr)))
-              expr)
+            (optimize-medication-query expr db xform-factory source source-type)
             expr))))
     (-eval [_ context resource scope]
       (coll/eduction

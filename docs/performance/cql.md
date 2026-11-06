@@ -530,6 +530,36 @@ cql/search.sh medication-1
 cql/search.sh medication-7
 ```
 
+### Selecting Medications by Code <Badge type="warning" text="Since 1.14.0"/>
+
+To select MedicationAdministration or MedicationStatement resources by the code of their Medication, write the Medication retrieve inline in the Patient context:
+
+```text
+define InInitialPopulation:
+  exists from [MedicationAdministration] M
+    with [Medication: Code 'A10BF01' from atc] Med
+      such that M.medication.reference = 'Medication/' + Med.id
+```
+
+Blaze replaces the `with` clause by a search that follows the medication reference to the Medication and checks its code. So the evaluation time per patient doesn't depend on the number of Medications having that code. The same holds for `MedicationStatement`, for `(M.medication as Reference).reference` and for both orders of the equal operands.
+
+To select by several codes, use one `with` clause with a concept of all codes instead of one `exists` expression per code combined with `or`. So the resources of a patient are read only once:
+
+```text
+code "Metformin": 'A10BA02' from atc
+code "Glimepiride": 'A10BB12' from atc
+concept "Antidiabetics": {"Metformin", "Glimepiride"}
+
+define InInitialPopulation:
+  exists from [MedicationAdministration] M
+    with [Medication: "Antidiabetics"] Med
+      such that M.medication.reference = 'Medication/' + Med.id
+```
+
+The [CQL expression cache](../deployment/environment-variables.md#cql-expr-cache-size) creates no Bloom filter for such an expression, because a change of a Medication changes no patient.
+
+A Medication retrieve with a value set instead of codes isn't optimized this way. Neither is a `with` clause over a Medication list defined in the Unfiltered context. There, the evaluation time per patient grows with the number of Medications, and above about 10,000 Medications the expression cache can't build a Bloom filter, because the form of the expression gets too large.
+
 ## Medication Ten
 
 <BarChart src="cql/medication-ten-search-100k.txt"

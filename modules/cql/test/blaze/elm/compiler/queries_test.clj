@@ -4,6 +4,10 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.cql.translator :as t]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.code :as code]
    [blaze.elm.code-spec]
@@ -12,18 +16,24 @@
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.queries :as queries]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.protocols :as p]
    [blaze.elm.util-spec]
    [blaze.fhir.spec.generators :as fg]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system.spec]
+   [blaze.fhir.test-util :refer [run-all!]]
+   [blaze.terminology-service :as-alias ts]
    [blaze.test-util :refer [satisfies-prop]]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]])
   (:import
@@ -787,6 +797,254 @@
 
             (testing "form"
               (has-form expr []))))))))
+
+(def ^:private atc
+  "http://fhir.de/CodeSystem/dimdi/atc")
+
+(defn- atc-medication [id code]
+  [:put {:fhir/type :fhir/Medication :id id
+         :code
+         (type/codeable-concept
+          {:coding
+           [(type/coding
+             {:system (type/uri atc)
+              :code (type/code code)})]})}])
+
+(defn- medication-use [type id medication-ref]
+  [:put {:fhir/type (keyword "fhir" type) :id id
+         :medication (type/reference {:reference (type/string medication-ref)})
+         :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}])
+
+(def ^:private medication-reference-such-that
+  "M.medication.reference = 'Medication/' + Med.id")
+
+(defn- medication-with-query
+  "Compiles the query of the define `Q` of a library with `source-type` and a
+  `with` clause over the Medication retrieve `rhs` with `such-that`.
+
+  The library defines the code system `atc`, the value set `vs` and the concept
+  `two-codes` of the codes A10BF01 and B01AC06."
+  ([system source-type code]
+   (medication-with-query system source-type
+                          (str "[Medication: Code '" code "' from atc]")
+                          medication-reference-such-that ""))
+  ([{:blaze.db/keys [node] ::ts/keys [local]} source-type rhs such-that more]
+   (let [library (t/translate
+                  (str "library Test
+                        using FHIR version '4.0.0'
+                        include FHIRHelpers version '4.0.0'
+                        codesystem atc: '" atc "'
+                        valueset vs: 'value-set-162344'
+                        code c1: 'A10BF01' from atc
+                        code c2: 'B01AC06' from atc
+                        concept \"two-codes\": {c1, c2}
+                        context Patient
+                        define Q:
+                          from [" source-type "] M
+                            with " rhs " Med
+                              such that " such-that "
+                            " more))]
+     (c/compile {:node node :eval-context "Patient" :library library
+                 :terminology-service local
+                 :optimizations #{:first :non-distinct}}
+                (-> library :statements :def last :expression)))))
+
+(defn- eval-ids [expr db]
+  (mapv :id (core/-eval expr {:db db} (ctu/resource db "Patient" "0") nil)))
+
+(defn- query-form
+  "Returns the form of `expr` as map of :xform and :source, if `expr` is an
+  eduction query."
+  [expr]
+  (let [[sym xform source] (c/form expr)]
+    (when (= 'eduction-query sym)
+      {:xform xform :source source})))
+
+(deftest compile-query-medication-with-test
+  (with-system-data [system api-stub/mem-node-config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      (atc-medication "0" "A10BF01")
+      (atc-medication "1" "B01AC06")
+      (medication-use "MedicationAdministration" "0" "Medication/0")
+      (medication-use "MedicationAdministration" "1" "Medication/1")
+      (medication-use "MedicationStatement" "0" "Medication/0")
+      (medication-use "MedicationStatement" "1" "Medication/1")]]
+
+    (with-db [db (:blaze.db/node system)]
+      (doseq [source-type ["MedicationAdministration" "MedicationStatement"]
+              such-that [medication-reference-such-that
+                         "(M.medication as Reference).reference = 'Medication/' + Med.id"
+                         "'Medication/' + Med.id = M.medication.reference"]]
+        (let [expr (c/optimize (medication-with-query
+                                system source-type "[Medication: Code 'A10BF01' from atc]"
+                                such-that "")
+                               db)]
+
+          (testing "eval"
+            (is (= ["0"] (eval-ids expr db))))
+
+          (testing "form"
+            (let [{:keys [xform source]} (query-form expr)]
+              (is (= (list 'matcher [["medication:Medication.code" (str atc "|A10BF01")]]) xform))
+              (is (= (list 'retrieve source-type) source))))))
+
+      (testing "no Medication has the code"
+        (is (= [] (c/optimize (medication-with-query system "MedicationAdministration" "C01AA05")
+                              db)))))))
+
+(deftest compile-query-medication-with-concept-test
+  (testing "a concept of two codes is optimized into one matcher clause with both codes"
+    (with-system-data [system api-stub/mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        (atc-medication "0" "A10BF01")
+        (atc-medication "1" "B01AC06")
+        (atc-medication "2" "C01AA05")
+        (medication-use "MedicationAdministration" "0" "Medication/0")
+        (medication-use "MedicationAdministration" "1" "Medication/1")
+        (medication-use "MedicationAdministration" "2" "Medication/2")]]
+
+      (with-db [db (:blaze.db/node system)]
+        (let [expr (medication-with-query
+                    system "MedicationAdministration" "[Medication: \"two-codes\"]"
+                    medication-reference-such-that "")
+              optimized-expr (c/optimize expr db)]
+
+          (testing "eval"
+            (is (= ["0" "1"] (eval-ids optimized-expr db)))
+
+            (testing "returns the same as the original query"
+              (is (= (eval-ids expr db) (eval-ids optimized-expr db)))))
+
+          (testing "form"
+            (is (= (list 'matcher [["medication:Medication.code"
+                                    (str atc "|A10BF01") (str atc "|B01AC06")]])
+                   (:xform (query-form optimized-expr))))))))))
+
+(deftest compile-query-medication-with-value-set-test
+  (with-system-data [system api-stub/mem-node-config]
+    [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+             :url (type/uri atc)
+             :content #fhir/code "complete"
+             :concept
+             [{:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "A10BF01"}
+              {:fhir/type :fhir.CodeSystem/concept
+               :code #fhir/code "B01AC06"}]}]
+      [:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri "value-set-162344"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system (type/uri atc)
+                :concept
+                [{:fhir/type :fhir.ValueSet.compose.include/concept
+                  :code #fhir/code "A10BF01"}]}]}}]]
+     [[:put {:fhir/type :fhir/Patient :id "0"}]
+      (atc-medication "0" "A10BF01")
+      (atc-medication "1" "B01AC06")
+      (medication-use "MedicationAdministration" "0" "Medication/0")
+      (medication-use "MedicationAdministration" "1" "Medication/1")]]
+
+    (with-db [db (:blaze.db/node system)]
+      (let [expr (medication-with-query
+                  system "MedicationAdministration" "[Medication: vs]"
+                  medication-reference-such-that "")]
+
+        (testing "isn't optimized"
+          (is (= (c/form expr) (c/form (c/optimize expr db)))))
+
+        (testing "eval"
+          (is (= ["0"] (eval-ids (c/optimize expr db) db))))))))
+
+(deftest compile-query-medication-with-reference-test
+  (testing "the optimized query returns the same as the original query"
+    (doseq [reference ["Medication/0" "Medication/1" "Medication/2"
+                       "http://localhost/fhir/Medication/0" "#0"]]
+      (with-system-data [system (assoc-in api-stub/mem-node-config
+                                          [:blaze.db/node :enforce-referential-integrity]
+                                          false)]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          (atc-medication "0" "A10BF01")
+          (atc-medication "1" "B01AC06")
+          (medication-use "MedicationAdministration" "0" reference)]]
+
+        (with-db [db (:blaze.db/node system)]
+          (let [expr (medication-with-query system "MedicationAdministration" "A10BF01")]
+            (is (= (eval-ids expr db) (eval-ids (c/optimize expr db) db))
+                reference))))))
+
+  (testing "a deleted Medication doesn't match"
+    (with-system-data [system (assoc-in api-stub/mem-node-config
+                                        [:blaze.db/node :enforce-referential-integrity]
+                                        false)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        (atc-medication "0" "A10BF01")
+        (atc-medication "1" "A10BF01")
+        (medication-use "MedicationAdministration" "0" "Medication/0")]
+       [[:delete "Medication" "0"]]]
+
+      (with-db [db (:blaze.db/node system)]
+        (let [expr (medication-with-query system "MedicationAdministration" "A10BF01")]
+          (is (= [] (eval-ids (c/optimize expr db) db))))))))
+
+(def ^:private cache-config
+  (assoc
+   api-stub/mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/manual-executor)}
+   :blaze.test/manual-executor {}))
+
+(deftest compile-query-medication-with-bloom-filter-test
+  (testing "the optimized query gets no Bloom filter, because it reads Medications"
+    (with-system-data [{::expr/keys [cache] executor :blaze.test/manual-executor
+                        :as system} cache-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        (atc-medication "0" "A10BF01")
+        (medication-use "MedicationAdministration" "0" "Medication/0")]]
+
+      (with-db [db (:blaze.db/node system)]
+        (let [expr (c/optimize (medication-with-query system "MedicationAdministration" "A10BF01")
+                               db)]
+          (ec/get cache expr)
+          (run-all! executor)
+
+          (is (nil? (ec/get cache expr))))))))
+
+(deftest compile-query-medication-with-not-optimized-test
+  (with-system-data [system api-stub/mem-node-config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      (atc-medication "0" "A10BF01")
+      (medication-use "MedicationAdministration" "0" "Medication/0")]]
+
+    (with-db [db (:blaze.db/node system)]
+      (testing "with an additional where clause"
+        (let [expr (medication-with-query
+                    system "MedicationAdministration"
+                    "[Medication: Code 'A10BF01' from atc]"
+                    medication-reference-such-that
+                    "where M.status = 'completed'")]
+          (is (= (c/form expr) (c/form (c/optimize expr db))))))
+
+      (testing "with another relationship"
+        (let [expr (medication-with-query
+                    system "MedicationAdministration"
+                    "[Medication: Code 'A10BF01' from atc]"
+                    "M.id = Med.id" "")]
+          (is (= (c/form expr) (c/form (c/optimize expr db)))))))))
+
+(deftest compile-query-medication-with-anomaly-test
+  (with-system-data [system api-stub/mem-node-config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      (atc-medication "0" "A10BF01")]]
+
+    (with-db [db (:blaze.db/node system)]
+      (let [expr (medication-with-query system "MedicationAdministration" "A10BF01")]
+        (testing "keeps the query if the matcher can't be compiled"
+          (with-redefs [d/compile-type-matcher
+                        (fn [_ _ _] (ac/completed-future (ba/fault "msg-163521")))]
+            (is (= (c/form expr) (c/form (c/optimize expr db))))))))))
 
 ;; 10.3. AliasRef
 ;;

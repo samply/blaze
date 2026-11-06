@@ -189,17 +189,37 @@
   (when (and (seq? form) (= 'retrieve (first form)) (string? (second form)))
     (second form)))
 
+(defn- chained-type
+  "Returns the resource type the search param of a matcher `clause` chains to,
+  like `Medication` of `[\"medication:Medication.code\" \"...\"]`."
+  [[param]]
+  (second (re-find #":([A-Za-z]+)\." param)))
+
+(defn- matcher-chained-types
+  "Returns the resource types the clauses of `form` chain to if it is the form
+  of a matcher, like `(matcher [[\"medication:Medication.code\" \"...\"]])`."
+  [form]
+  (when (and (seq? form) (= 'matcher (first form)))
+    (keep chained-type (second form))))
+
+(defn- read-types
+  "Returns the resource types `form` itself reads, without its sub forms."
+  [form]
+  (if-let [type (retrieve-type form)]
+    [type]
+    (matcher-chained-types form)))
+
 (defn- reads-outside-patient-compartment?
-  "Returns true if the form of `expression` contains a retrieve of a resource
-  type outside of the Patient compartment, like Medication.
+  "Returns true if the form of `expression` contains a retrieve of or a matcher
+  chaining to a resource type outside of the Patient compartment, like
+  Medication.
 
   The Bloom filter of such an expression can get stale, because changes to such
   resources don't change the last change t of any patient."
   [node expression]
   (some
-   #(when-let [type (retrieve-type %)]
-      (not (d/in-compartment? node "Patient" type)))
-   (tree-seq coll? seq (core/-form expression))))
+   #(not (d/in-compartment? node "Patient" %))
+   (mapcat read-types (tree-seq coll? seq (core/-form expression)))))
 
 (defn- not-found-anom [hash]
   (ba/not-found (format "The Bloom filter with hash `%s` was not found." hash)))
@@ -212,7 +232,7 @@
       (log/warn "Skip caching overly large CQL expression.")
 
       (reads-outside-patient-compartment? node expression)
-      (log/debug "Skip caching CQL expression because it retrieves resources outside of the Patient compartment.")
+      (log/debug "Skip caching CQL expression because it reads resources outside of the Patient compartment.")
 
       :else
       (if-let [future (.getIfPresent mem-cache expression)]

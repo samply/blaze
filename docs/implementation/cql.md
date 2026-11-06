@@ -81,6 +81,14 @@ The ELM expression are compiled into instances of the `blaze.elm.compiler.core/E
   * if the Patient ID wasn't found, the expression will return false
   * if the Patient ID is found, the expression will be evaluated normally
 
+### Rewrites That Read Resources Outside of the Patient Compartment
+
+* an optimization can replace a retrieve of resources outside of the Patient compartment by a matcher that reads these resources at evaluation time
+* the `with` clause over Medications retrieved by code is replaced by a matcher with the chained search parameter `medication:Medication.code`
+* an expression with such a matcher gets no Bloom filter, for the same reason as an expression with such a retrieve
+  * the expression cache detects the matcher by the type its search parameter chains to
+  * a Bloom filter keyed by the set of matching Medications isn't used, because the Bloom filter is calculated at a newer database than the one of the optimization, so it could be calculated for another set than its key says
+
 ### Bloom Filter Calculation
 
 * the Bloom filter will be calculated for a particular exists expression
