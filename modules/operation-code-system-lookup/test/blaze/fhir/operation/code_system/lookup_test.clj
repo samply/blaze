@@ -11,7 +11,6 @@
    [blaze.middleware.fhir.db-spec]
    [blaze.module.test-util :refer [given-failed-system]]
    [blaze.terminology-service :as ts]
-   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -24,11 +23,6 @@
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(defn- body-parameter [name value]
-  {:fhir/type :fhir.Parameters/parameter
-   :name (type/string name)
-   :value value})
 
 (deftest init-test
   (testing "nil config"
@@ -54,14 +48,7 @@
   (assoc
    api-stub/mem-node-config
    :blaze.fhir.operation.code-system/lookup
-   {:terminology-service (ig/ref ::ts/local)}
-   ::ts/local
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :graph-cache (ig/ref ::ts-local/graph-cache)}
-   :blaze.test/fixed-rng-fn {}
-   ::ts-local/graph-cache {}))
+   {:terminology-service (ig/ref ::ts/local)}))
 
 (defn wrap-error [handler]
   (fn [request]
@@ -122,7 +109,7 @@
         (testing "POST"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:parameter [(body-parameter param "foo")]}})]
+                           :body (fu/parameters param #fhir/string "foo")})]
 
             (is (= 400 status))
             (given body
@@ -211,7 +198,7 @@
                                   "coding" #fhir/Coding{:system #fhir/uri "system-115910"
                                                         :version #fhir/string "version-152300"
                                                         :code #fhir/code "code-115927"}
-                                  "foo" "bar")})]
+                                  "foo" #fhir/string "bar")})]
 
             (is (= 200 status))
             (given body
@@ -272,7 +259,7 @@
                          :body (fu/parameters
                                 "coding" #fhir/Coding {:system #fhir/uri "system-115910"
                                                        :code #fhir/code "code-115927"}
-                                "foo" "bar")})]
+                                "foo" #fhir/string "bar")})]
 
           (is (= 200 status))
           (given body

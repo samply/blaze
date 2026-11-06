@@ -36,10 +36,8 @@
   (if-ok [params (validate-params* request)]
     (if id
       (do-sync [{:keys [url version]} (fhir-util/pull db "CodeSystem" id :summary)]
-        (update params :parameter
-                conj-vec
-                (fu/parameter "system" url)
-                (fu/parameter "version" version)))
+        (cond-> (update params :parameter conj-vec (fu/parameter "system" url))
+          version (update :parameter conj (fu/parameter "version" version))))
       (ac/completed-future params))
     ac/completed-future))
 

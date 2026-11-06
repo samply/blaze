@@ -6,7 +6,7 @@ lint:
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -Sthreads 1 -X:deps prep
+	clojure -Sthreads 1 -X:deps prep :aliases '[:test]'
 
 test: prep
 	clojure -Sthreads 1 -M:test:kaocha --profile :ci
