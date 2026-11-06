@@ -1,13 +1,12 @@
 (ns blaze.operation.graph.compiler
   (:refer-clojure :exclude [compile str])
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :refer [when-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec.references :as fsr]
    [blaze.graph-definition :as gd]
-   [blaze.handler.fhir.util :as fhir-util]
    [blaze.operation.graph.spec]
    [blaze.util :refer [str]]))
 
@@ -16,14 +15,47 @@
 (def ^:private noop-resolver
   (reify fhir-path/Resolver (-resolve [_ _])))
 
+(def ^:private non-domain-resource-types
+  "The resource types which don't inherit from `DomainResource`."
+  #{"Binary" "Bundle" "Parameters"})
+
+(defn- node-type-matches?
+  "Returns true if a resource of `type` can be the resource of a node with
+  `node-type`, which can be one of the abstract types `Resource` and
+  `DomainResource`."
+  [node-type type]
+  (case node-type
+    "Resource" true
+    "DomainResource" (not (contains? non-domain-resource-types type))
+    (= node-type type)))
+
+(defn- literal-ref
+  "Returns the type and id of the literal reference of `x` if it's a Reference."
+  [x]
+  (when (identical? :fhir/Reference (:fhir/type x))
+    (some-> (:reference x) :value fsr/split-literal-ref)))
+
+(defn- existing-resource-handle
+  "Returns the resource handle of the resource with `type` and `id` or nil if
+  it doesn't exist or is deleted."
+  [db [type id]]
+  (when-let [handle (d/resource-handle db type id)]
+    (when-not (d/deleted? handle)
+      handle)))
+
+(defn- reference-resource-handles
+  "Returns a transducer mapping values to the resource handles of resources
+  with a type matching `node-type`, they refer to."
+  [db node-type]
+  (comp (keep literal-ref)
+        (filter (comp (partial node-type-matches? node-type) first))
+        (keep (partial existing-resource-handle db))))
+
 (defn- link-path-resource-handles [path]
-  (fn [db source-resource _target-node]
+  (fn [db source-resource {node-type :type}]
     (ac/completed-future
-     (let [[res & more] (fhir-path/eval noop-resolver path source-resource)]
-       (when (and (nil? more) (= :fhir/Reference (:fhir/type res)))
-         (when-let [ref (-> res :reference :value)]
-           (when-let [[type id] (fsr/split-literal-ref ref)]
-             (ba/map (fhir-util/resource-handle db type id) vector))))))))
+     (when-ok [values (fhir-path/eval noop-resolver path source-resource)]
+       (into [] (reference-resource-handles db node-type) values)))))
 
 (defn- clause-fn
   "Returns a function of the reference to the source resource returning

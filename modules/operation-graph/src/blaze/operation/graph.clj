@@ -2,7 +2,6 @@
   "Main entry point into the Resource $graph operation.
 
   See: https://build.fhir.org/resource-operation-graph.html"
-  (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -14,7 +13,6 @@
    [blaze.module :as m]
    [blaze.operation.graph.cache :as cache]
    [blaze.operation.graph.spec]
-   [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.core :as reitit]
@@ -43,49 +41,73 @@
 (declare process-node)
 
 (defn- process-link
-  [db graph resource processed-resources {:keys [target-id resource-handles]}]
+  [db graph resource state {:keys [target-id resource-handles]}]
   (let [target-node (find-node graph target-id)]
     (-> (resource-handles db resource target-node)
         (ac/then-compose
          (fn [handles]
            (reduce
             (partial process-node db graph target-node)
-            processed-resources
+            state
             handles))))))
+
+(defn- pull-resource
+  "Returns a CompletableFuture that will complete with the resource of
+  `resource-handle`, taken from `resources` if already pulled."
+  [db resources resource-handle]
+  (if-let [resource (resources resource-handle)]
+    (ac/completed-future resource)
+    (d/pull db resource-handle)))
+
+(defn- add-visit
+  "Marks the resource of `resource-handle` as visited on the node with
+  `node-id` and adds `resource` to the resources of `state`."
+  [state node-id resource-handle resource]
+  (-> (update state :visits conj [node-id resource-handle])
+      (update :resources assoc resource-handle resource)))
 
 (defn- process-node
   "Processes `resource-handle` on `node`.
 
-  The future map `processed-resources` contains all already processed resources.
-  Terminates if the resource-handle is already processed. Otherwise fetches the
-  resource of `resource-handle` and adds it to processed resources and traverses
-  all links of node in depth-first manner, possibly adding more resources.
+  The future `state` contains the `:resources` already found, keyed by their
+  resource handle, and the `:visits` already done as tuples of node id and
+  resource handle. All resource handles come from `db`, so handles of the same
+  resource are equal. Terminates if the resource was already visited on `node`.
+  Otherwise adds the resource to the resources found, marks the visit as done
+  and traverses all links of `node` in depth-first manner, possibly adding more
+  resources.
 
-  Returns a CompletableFuture that will complete with the final map of processed
-  resources reachable from `node`."
-  [db graph node processed-resources
-   {:fhir/keys [type] :keys [id] :as resource-handle}]
-  (-> processed-resources
+  A resource reached through different nodes is returned only once, but the
+  links of all these nodes are followed.
+
+  Returns a CompletableFuture that will complete with the final state."
+  {:arglists '([db graph node state resource-handle])}
+  [db graph {node-id :id} state resource-handle]
+  (-> state
       (ac/then-compose
-       (fn [processed-resources]
-         (let [resource-identity (str (name type) "/" id)]
-           (if (contains? processed-resources resource-identity)
-             (ac/completed-future processed-resources)
-             (-> (d/pull db resource-handle)
-                 (ac/then-compose
-                  (fn [resource]
-                    (reduce
-                     (partial process-link db graph resource)
-                     (ac/completed-future (assoc processed-resources resource-identity resource))
-                     (find-links graph (:id node))))))))))))
+       (fn [{:keys [visits resources] :as state}]
+         (if (contains? visits [node-id resource-handle])
+           (ac/completed-future state)
+           (-> (pull-resource db resources resource-handle)
+               (ac/then-compose
+                (fn [resource]
+                  (reduce
+                   (partial process-link db graph resource)
+                   (ac/completed-future (add-visit state node-id resource-handle resource))
+                   (find-links graph node-id))))))))))
+
+(def ^:private initial-state
+  {:resources {} :visits #{}})
 
 (defn- process-start-node
   "Processes `resource-handle` on the node with `start-node-id` of `graph` in
   `db` and returns a CompletableFuture that will complete with the resulting
   resources."
   [db graph start-node-id resource-handle]
-  (-> (process-node db graph (find-node graph start-node-id) (ac/completed-future {}) resource-handle)
-      (ac/then-apply vals)))
+  (do-sync [{:keys [resources]} (process-node db graph (find-node graph start-node-id)
+                                              (ac/completed-future initial-state)
+                                              resource-handle)]
+    (vals resources)))
 
 (defn- handler [{:keys [compiled-graph-cache] :as context}]
   (fn [{:blaze/keys [db]
