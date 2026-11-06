@@ -12,13 +12,13 @@
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.response.create-spec]
+   [blaze.fhir.search-clauses-spec]
    [blaze.interaction.create]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.util-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu]
-   [blaze.util.clauses-spec]
    [blaze.validator.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -343,6 +343,17 @@
               @(handler
                 {::reitit/match patient-match
                  :headers {"if-none-exist" "_sort=a"}
+                 :body {:fhir/type :fhir/Patient}})]
+
+          (testing "a unconditional create is executed"
+            (is (= 201 status))))))
+
+    (testing "with search parameter without value"
+      (with-handler [handler]
+        (let [{:keys [status]}
+              @(handler
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" "identifier"}
                  :body {:fhir/type :fhir/Patient}})]
 
           (testing "a unconditional create is executed"

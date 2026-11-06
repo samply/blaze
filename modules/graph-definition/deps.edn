@@ -1,6 +1,9 @@
 {:deps
  {blaze/fhir-path
-  {:local/root "../fhir-path"}}
+  {:local/root "../fhir-path"}
+
+  ring/ring-codec
+  {:mvn/version "1.3.0"}}
 
  :aliases
  {:test

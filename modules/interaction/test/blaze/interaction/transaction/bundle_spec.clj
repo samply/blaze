@@ -1,10 +1,10 @@
 (ns blaze.interaction.transaction.bundle-spec
   (:require
    [blaze.db.spec]
+   [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.spec]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.util-spec]
-   [blaze.util.clauses-spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 

@@ -11,6 +11,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
+   [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type-spec]
    [blaze.fhir.util :as fu]
@@ -36,7 +37,6 @@
    [blaze.page-store.local]
    [blaze.test-util :as tu]
    [blaze.util-spec]
-   [blaze.util.clauses-spec]
    [blaze.validator.protocols :as p]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -764,6 +764,26 @@
                        :method #fhir/code "POST"
                        :url #fhir/uri "Patient"
                        :ifNoneExist #fhir/string "_sort=a"}}]}})]
+
+            (testing "a unconditional create is executed"
+              (is (= 200 status))))))
+
+      (testing "with search parameter without value"
+        (with-handler [handler]
+          (let [{:keys [status]}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type (type/code type)
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :resource
+                      {:fhir/type :fhir/Patient}
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "POST"
+                       :url #fhir/uri "Patient"
+                       :ifNoneExist #fhir/string "identifier"}}]}})]
 
             (testing "a unconditional create is executed"
               (is (= 200 status))))))

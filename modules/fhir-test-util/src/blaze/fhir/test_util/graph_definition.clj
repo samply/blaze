@@ -28,3 +28,6 @@
 
 (defn extension-link-params [& {:as kvs}]
   (type/extension (assoc kvs :url (str extension-base ".link.params"))))
+
+(defn extension-link-compartment [& {:as kvs}]
+  (type/extension (assoc kvs :url (str extension-base ".link.compartment"))))

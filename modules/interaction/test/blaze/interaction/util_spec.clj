@@ -13,6 +13,10 @@
   :args (s/cat :etag string?)
   :ret (s/nilable :blaze.db/t))
 
+(s/fdef iu/conditional-clauses
+  :args (s/cat :query-string (s/nilable string?))
+  :ret (s/nilable :blaze.db.query/search-clauses))
+
 (s/fdef iu/update-tx-op
   :args (s/cat :db :blaze.db/db :resource :fhir/Resource
                :if-match (s/nilable string?)

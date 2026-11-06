@@ -165,6 +165,27 @@
     (are [type] (false? (fhir-spec/type-exists? type))
       "Foo")))
 
+(deftest resource-type-test
+  (testing "true"
+    (are [type] (true? (fhir-spec/resource-type? type))
+      "Patient"
+      "Observation"
+      "Bundle"
+      "Parameters"
+      "Binary"))
+
+  (testing "false"
+    (are [type] (false? (fhir-spec/resource-type? type))
+      "Foo"
+      "Coding"
+      "Extension"
+      "Quantity"
+      "string"
+      "Resource"
+      "DomainResource"
+      "Bundle.entry"
+      "xml.Observation")))
+
 (deftest fhir-path-test
   (testing "key and number in vector"
     (let [result (fhir-spec/fhir-path [:contact 2] {:resourceType "Patient"

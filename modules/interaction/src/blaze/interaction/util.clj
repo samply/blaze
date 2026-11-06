@@ -3,14 +3,23 @@
    [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.fhir.hash :as hash]
+   [blaze.fhir.search-clauses :as fsc]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [clojure.string :as str]
+   [ring.util.codec :as ring-codec]
    [ring.util.response :as ring]))
 
 (defn etag->t [etag]
   (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
     (some-> t parse-long)))
+
+(defn conditional-clauses
+  "Returns the search clauses of `query-string` as used in conditional
+  interactions or nil if `query-string` is blank."
+  [query-string]
+  (when-not (str/blank? query-string)
+    (-> query-string ring-codec/form-decode-map fsc/search-clauses)))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)

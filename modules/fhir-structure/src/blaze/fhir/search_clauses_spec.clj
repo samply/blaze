@@ -1,15 +1,14 @@
-(ns blaze.util.clauses-spec
+(ns blaze.fhir.search-clauses-spec
   (:require
-   [blaze.handler.fhir.util.spec]
+   [blaze.fhir.search-clauses :as fsc]
    [blaze.spec]
-   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
-(s/fdef uc/clauses
+(s/fdef fsc/clauses
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/or :clauses :blaze.db.query/clauses :anomaly ::anom/anomaly))
 
-(s/fdef uc/search-clauses
+(s/fdef fsc/search-clauses
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret :blaze.db.query/search-clauses)

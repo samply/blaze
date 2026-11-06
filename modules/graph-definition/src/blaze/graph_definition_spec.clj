@@ -1,5 +1,6 @@
 (ns blaze.graph-definition-spec
   (:require
+   [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.spec]
    [blaze.graph-definition :as gd]
    [blaze.graph-definition.spec]
@@ -9,3 +10,7 @@
 (s/fdef gd/compile
   :args (s/cat :graph-def :fhir/GraphDefinition)
   :ret (s/or :compiled-graph ::gd/compiled-graph :anomaly ::anom/anomaly))
+
+(s/fdef gd/ref-clause?
+  :args (s/cat :clause (s/spec :blaze.db.query/search-clause))
+  :ret boolean?)

@@ -46,6 +46,18 @@
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
 
+(defn resource-type?
+  "Returns true if `type` is the name of a concrete FHIR resource type like
+  `Patient`.
+
+  Uses the fact that only resources have the element `meta`, which they inherit
+  from the abstract resource `Resource`. Data types like `Coding` don't have
+  it. Names of other specs with a `meta` element, like `xml.Patient`, aren't
+  valid resource type names."
+  [type]
+  (and (s/valid? :fhir.resource/type type)
+       (some? (s2/get-spec (keyword (str "fhir." type) "meta")))))
+
 (defn primitive-val?
   "Returns true if `x` is a primitive FHIR value."
   [x]

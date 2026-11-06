@@ -3,12 +3,12 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.fhir.search-clauses :as fsc]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.params.include :as include]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
    [blaze.util :as u :refer [str]]
-   [blaze.util.clauses :as uc]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
@@ -27,7 +27,7 @@
 
     :else
     (ac/completed-future
-     (when-ok [clauses (uc/clauses query-params)]
+     (when-ok [clauses (fsc/clauses query-params)]
        {:clauses clauses}))))
 
 (def ^:private summary-mode-values

@@ -86,6 +86,23 @@
                      :url #fhir/uri "Patient"
                      :ifNoneExist #fhir/string "_sort=a"}}])
             count := 1
+            [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}]))
+
+        (testing "with search parameter without value"
+          (given (bundle/assoc-tx-ops
+                  db
+                  [{:fhir/type :fhir.Bundle/entry
+                    ::fhir-util/interaction "create"
+                    :resource
+                    {:fhir/type :fhir/Patient :id "id-220200"
+                     :meta (type/meta {:versionId #fhir/id "1"
+                                       :lastUpdated #fhir/instant #system/date-time "1970-01-01T00:00:00Z"})}
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request
+                     :method #fhir/code "POST"
+                     :url #fhir/uri "Patient"
+                     :ifNoneExist #fhir/string "identifier"}}])
+            count := 1
             [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}])))
 
       (testing "update"
@@ -180,7 +197,20 @@
                      :method #fhir/code "DELETE"
                      :url #fhir/uri "Patient?name-170043=value-170047"}}])
             count := 1
-            [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]])))))
+            [0 :tx-op] := [:conditional-delete "Patient" [["name-170043" "value-170047"]]]))
+
+        (testing "with search params which are ignored"
+          (doseq [url [#fhir/uri "Patient?name-170043" #fhir/uri "Patient?_sort=a"]]
+            (given (bundle/assoc-tx-ops
+                    db
+                    [{:fhir/type :fhir.Bundle/entry
+                      ::fhir-util/interaction "conditional-delete-type"
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "DELETE"
+                       :url url}}])
+              count := 1
+              [0 :tx-op] := [:conditional-delete "Patient"]))))))
 
   (with-system-data [{:blaze.db/keys [node]} api-stub/mem-node-config]
     [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]
