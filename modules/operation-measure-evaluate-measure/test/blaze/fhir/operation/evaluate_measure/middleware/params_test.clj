@@ -252,6 +252,99 @@
 
         (is (not (contains? params :parameters))))))
 
+  (testing "measure as Measure resource"
+    (testing "is read from the Parameters resource"
+      (let [{::evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :post
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015"
+                "measure" {:fhir/type :fhir/Measure
+                           :url #fhir/uri "url-110328"})})]
+
+        (given params
+          [:measure-resource :fhir/type] := :fhir/Measure
+          [:measure-resource :url] := #fhir/uri "url-110328")
+
+        (testing "there is no measure reference"
+          (is (not (contains? params :measure))))))
+
+    (testing "is absent on a measure reference"
+      (let [{::evaluate-measure/keys [params]}
+            @(handler
+              {:request-method :post
+               :body
+               (fu/parameters
+                "periodStart" #fhir/date #system/date "2014"
+                "periodEnd" #fhir/date #system/date "2015"
+                "measure" #fhir/string "url-111038")})]
+
+        (given params
+          :measure := "url-111038")
+        (is (not (contains? params :measure-resource)))))
+
+    (testing "invalid"
+      (testing "no Measure resource"
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :body
+                 (fu/parameters
+                  "periodStart" #fhir/date #system/date "2014"
+                  "periodEnd" #fhir/date #system/date "2015"
+                  "measure" {:fhir/type :fhir/Library})})]
+
+          (is (= 400 status))
+
+          (given (-> body :issue first)
+            :severity := #fhir/code "error"
+            :code := #fhir/code "value"
+            [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
+            :diagnostics := #fhir/string "Invalid parameter `measure`. Should be a string or a Measure resource."
+            [:expression first] := #fhir/string "measure")))
+
+      (testing "Measure without url"
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :body
+                 (fu/parameters
+                  "periodStart" #fhir/date #system/date "2014"
+                  "periodEnd" #fhir/date #system/date "2015"
+                  "measure" {:fhir/type :fhir/Measure})})]
+
+          (is (= 400 status))
+
+          (given (-> body :issue first)
+            :severity := #fhir/code "error"
+            :code := #fhir/code "value"
+            [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
+            :diagnostics := #fhir/string "Invalid parameter `measure`. The Measure resource has to have a url."
+            [:expression first] := #fhir/string "measure")))
+
+      (testing "on a Measure instance"
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :path-params {:id "0"}
+                 :body
+                 (fu/parameters
+                  "periodStart" #fhir/date #system/date "2014"
+                  "periodEnd" #fhir/date #system/date "2015"
+                  "measure" {:fhir/type :fhir/Measure
+                             :url #fhir/uri "url-110328"})})]
+
+          (is (= 400 status))
+
+          (given (-> body :issue first)
+            :severity := #fhir/code "error"
+            :code := #fhir/code "value"
+            [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
+            :diagnostics := #fhir/string "The parameter `measure` can't be a Measure resource on a Measure instance."
+            [:expression first] := #fhir/string "measure")))))
+
   (testing "subject"
     (testing "local ref"
       (let [{::evaluate-measure/keys [params]}
