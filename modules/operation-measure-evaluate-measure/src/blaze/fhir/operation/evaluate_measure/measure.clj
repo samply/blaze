@@ -26,6 +26,7 @@
    [blaze.time :as bt]
    [blaze.util :refer [str]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [java-time.api :as time]
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
@@ -165,6 +166,35 @@
              (find-library-by-literal-ref db library-ref)
              (ac/completed-future (library-not-found-anom library-ref)))))))
 
+(defn- contained-library-not-found-anom [id]
+  (ba/incorrect
+   (format "The contained Library resource with id `%s` was not found." id)
+   :fhir/issue "value"
+   :fhir.issue/expression "Measure.library"))
+
+(defn- find-contained-library
+  "Returns the Library resource with `id` contained in `measure` or an anomaly
+  if there is none."
+  [{:keys [contained]} id]
+  (or (some #(when (and (identical? :fhir/Library (:fhir/type %)) (= id (:id %))) %)
+            contained)
+      (contained-library-not-found-anom id)))
+
+(defn- local-library-ref
+  "Returns the id of the contained resource `library-ref` points to if it is a
+  local reference of the form `#<id>`, or nil otherwise."
+  [library-ref]
+  (when (str/starts-with? library-ref "#")
+    (subs library-ref 1)))
+
+(defn- resolve-library
+  "Resolves `library-ref` of `measure` either to a Library contained in
+  `measure` (local reference `#<id>`) or to a Library stored in `db`."
+  [db measure library-ref]
+  (if-let [id (local-library-ref library-ref)]
+    (ac/completed-future (find-contained-library measure id))
+    (find-library db library-ref)))
+
 (defn- remove-unused-defs
   "Removes all expression definitions from `expression-defs` that are not
   referenced by `measure`.
@@ -184,7 +214,7 @@
   Returns an anomaly on errors."
   [db terminology-service measure opts]
   (if-let [library-ref (-> measure :library first :value)]
-    (do-sync [library (find-library db library-ref)]
+    (do-sync [library (resolve-library db measure library-ref)]
       (let [context (cond-> {:node (d/node db)}
                       terminology-service
                       (assoc :terminology-service terminology-service))]

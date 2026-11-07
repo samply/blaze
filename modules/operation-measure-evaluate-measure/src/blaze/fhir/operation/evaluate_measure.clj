@@ -89,7 +89,8 @@
       (-> (measure/evaluate-measure context measure params)
           (ac/then-compose
            (fn process-result [result]
-             (if (and (= :post request-method) report-persistence)
+             (if (and (= :post request-method) report-persistence
+                      (not (:measure-resource params)))
                (persist-response context request result)
                (inline-response context result))))))))
 
@@ -131,16 +132,28 @@
                     :fhir/issue "deleted")
       handle)))
 
+(defn- load-measure [db request]
+  (-> (find-measure-handle db request)
+      (ac/then-compose
+       (fn [measure-handle]
+         (-> (d/pull db measure-handle)
+             (ac/exceptionally
+              #(assoc %
+                      ::anom/category ::anom/fault
+                      :fhir/issue "incomplete")))))))
+
+(defn- measure
+  "Returns a CompletableFuture that will complete with the inline Measure
+  resource of the `measure` parameter, or the Measure resource loaded
+  from `db` otherwise."
+  [db {{:keys [measure-resource]} ::params :as request}]
+  (if measure-resource
+    (ac/completed-future measure-resource)
+    (load-measure db request)))
+
 (defn- handler [context]
   (fn [{:blaze/keys [db] :as request}]
-    (-> (find-measure-handle db request)
-        (ac/then-compose
-         (fn [measure-handle]
-           (-> (d/pull db measure-handle)
-               (ac/exceptionally
-                #(assoc %
-                        ::anom/category ::anom/fault
-                        :fhir/issue "incomplete")))))
+    (-> (measure db request)
         (ac/then-compose-async (partial handle (assoc context :db db) request)))))
 
 (defmethod m/pre-init-spec ::handler [_]

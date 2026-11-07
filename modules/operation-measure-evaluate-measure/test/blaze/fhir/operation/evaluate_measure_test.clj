@@ -265,13 +265,14 @@
       (wrap-job-scheduler job-scheduler)
       wrap-error))
 
-(defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{node# :blaze.db/node
+(defmacro with-handler [[handler-binding node-binding] & more]
+  (let [[txs body] (api-stub/extract-txs-body more)
+        node-binding (or node-binding (gensym "node"))]
+    `(with-system-data [{~node-binding :blaze.db/node
                          job-scheduler# :blaze/job-scheduler
                          handler# ::evaluate-measure/handler} config]
        ~txs
-       (let [~handler-binding (wrap-handler handler# node# job-scheduler#)]
+       (let [~handler-binding (wrap-handler handler# ~node-binding job-scheduler#)]
          ~@body))))
 
 (deftest handler-instance-test
@@ -1068,6 +1069,164 @@
           [:issue 0 :code] := #fhir/code "not-supported"
           [:issue 0 :diagnostics] := #fhir/string "Missing primary library. Currently only CQL expressions together with one primary library are supported."
           [:issue 0 :expression first] := #fhir/string "Measure.library")))))
+
+(def ^:private gender-group
+  {:fhir/type :fhir.Measure/group
+   :population
+   [{:fhir/type :fhir.Measure.group/population
+     :code (population-concept "initial-population")
+     :criteria (cql-expression "InInitialPopulation")}]
+   :stratifier
+   [{:fhir/type :fhir.Measure.group/stratifier
+     :code #fhir/CodeableConcept{:text #fhir/string "gender"}
+     :criteria (cql-expression "Gender")}]})
+
+(def ^:private contained-library
+  {:fhir/type :fhir/Library :id "library"
+   :content [cql-attachment]})
+
+(def ^:private gender-patients
+  [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+   [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]
+   [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]])
+
+(defn- inline-measure-request [measure & more]
+  {:request-method :post
+   :body
+   (apply fu/parameters
+          "periodStart" #fhir/date #system/date "2014"
+          "periodEnd" #fhir/date #system/date "2015"
+          "measure" measure
+          more)})
+
+(deftest handler-inline-measure-test
+  (testing "Returns Success"
+    (testing "with contained Library"
+      (with-handler [handler node]
+        [gender-patients]
+
+        (let [{:keys [status headers body]}
+              @(handler
+                (inline-measure-request
+                 {:fhir/type :fhir/Measure
+                  :url #fhir/uri "url-115248"
+                  :contained [contained-library]
+                  :library [#fhir/canonical "#library"]
+                  :group [gender-group]}))]
+
+          (testing "the report is returned inline"
+            (is (= 200 status))
+
+            (testing "without a Location header"
+              (is (nil? (get headers "Location"))))
+
+            (given body
+              :fhir/type := :fhir/MeasureReport
+              :status := #fhir/code "complete"
+              :type := #fhir/code "summary"
+              :measure := #fhir/canonical "url-115248"
+              [:group 0 :population 0 :count] := #fhir/integer 3
+              [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string "male"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := #fhir/integer 1
+              [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string "female"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := #fhir/integer 2))
+
+          (testing "nothing is persisted"
+            (with-db [db node]
+              (is (zero? (d/type-total db "MeasureReport")))
+              (is (zero? (d/type-total db "Measure"))))))))
+
+    (testing "with stored Library"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Library :id "0"
+                 :url #fhir/uri "library-url-094115"
+                 :content [cql-attachment]}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                (inline-measure-request
+                 {:fhir/type :fhir/Measure
+                  :url #fhir/uri "url-115248"
+                  :library [#fhir/canonical "library-url-094115"]
+                  :group [gender-group]}))]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/MeasureReport
+            :measure := #fhir/canonical "url-115248"
+            [:group 0 :population 0 :count] := #fhir/integer 0))))
+
+    (testing "with subject-list report type"
+      (with-handler [handler node]
+        [gender-patients]
+
+        (let [{:keys [status body]}
+              @(handler
+                (inline-measure-request
+                 {:fhir/type :fhir/Measure
+                  :url #fhir/uri "url-115248"
+                  :contained [contained-library]
+                  :library [#fhir/canonical "#library"]
+                  :group [gender-group]}
+                 "reportType" #fhir/code "subject-list"))]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/MeasureReport
+            :type := #fhir/code "subject-list"
+            [:group 0 :population 0 :count] := #fhir/integer 3)
+
+          (testing "only the List resources are persisted"
+            (with-db [db node]
+              (is (zero? (d/type-total db "MeasureReport")))
+              (is (pos? (d/type-total db "List")))))))))
+
+  (testing "Returns Bad Request on non-existing contained Library"
+    (doseq [contained [[] [{:fhir/type :fhir/Library :id "other"}]
+                       [{:fhir/type :fhir/ValueSet :id "library"}]]]
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                (inline-measure-request
+                 {:fhir/type :fhir/Measure
+                  :url #fhir/uri "url-115248"
+                  :contained contained
+                  :library [#fhir/canonical "#library"]
+                  :group [gender-group]}))]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "value"
+            [:issue 0 :diagnostics] := #fhir/string "The contained Library resource with id `library` was not found."
+            [:issue 0 :expression 0] := #fhir/string "Measure.library"))))))
+
+(deftest handler-stored-measure-with-contained-library-test
+  (with-handler [handler]
+    [(conj gender-patients
+           [:put {:fhir/type :fhir/Measure :id "0"
+                  :url #fhir/uri "url-181501"
+                  :contained [contained-library]
+                  :library [#fhir/canonical "#library"]
+                  :group [gender-group]}])]
+
+    (let [{:keys [status body]}
+          @(handler
+            {:request-method :get
+             :path-params {:id "0"}
+             :params {"periodStart" "2014"
+                      "periodEnd" "2015"}})]
+
+      (is (= 200 status))
+
+      (given body
+        :fhir/type := :fhir/MeasureReport
+        :measure := #fhir/canonical "url-181501"
+        [:group 0 :population 0 :count] := #fhir/integer 3))))
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}

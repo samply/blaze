@@ -15,7 +15,7 @@ POST [base]/Measure/[id]/$evaluate-measure
 |-------------|-------------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | periodStart | 1..1        | date               | The start of the measurement period. In keeping with the semantics of the FHIR search date parameter, the period starts at the beginning of the period implied by the timestamp (e.g. `2014` → `2014-01-01`).  |
 | periodEnd   | 1..1        | date               | The end of the measurement period. The period ends at the end of the period implied by the timestamp (e.g. `2014` → `2014-12-31`).                                                                             |
-| measure     | 0..1        | string (reference) | The measure to evaluate. Only required — and only used — when the operation is invoked on the `Measure` type rather than on a `Measure` instance.                                                              |
+| measure     | 0..1        | string (reference) \| Measure | The measure to evaluate, either as reference or, as in FHIR R5, as `Measure` resource. Only required — and only used — when the operation is invoked on the `Measure` type rather than on a `Measure` instance. A `Measure` resource is only supported via `POST`. See [Inline Measure](#inline-measure). <Badge type="warning" text="Measure resource since 1.14.0"/> |
 | reportType  | 0..1        | code               | The type of measure report: `subject`, `subject-list` or `population`. Defaults to `subject` if a `subject` is supplied, otherwise `population`. The value `subject-list` is only supported via `POST`.        |
 | subject     | 0..1        | string (reference) | The subject the measure is calculated for, either a reference like `Patient/123` or a bare resource id. If omitted, the measure is calculated over all subjects.                                               |
 | parameters  | 0..1        | Parameters         | Input parameters that are made available by name to the CQL evaluation, overriding the default values declared in the measure's library. Only supported via `POST`. See [Parameters Input](#parameters-input). <Badge type="warning" text="Since 1.10.0"/> |
@@ -40,6 +40,7 @@ Blaze doesn't support the `practitioner` and `lastReceivedOn` input parameters d
 * Without a version, Blaze picks the Library with the highest priority among all matching `.url`, ranked by `status` (`active` first), then `version` (highest first, compared numerically per dot-separated part), then recency.
 * A blank version, e.g. `http://example.com/library-x|`, is ignored and resolved like a reference without a version. Resolving the `|` syntax is equivalent to a search with a `version` query param, and blank query param values are ignored per [FHIR R4 §3.1.1.3][9].
 * If no canonical match is found, Blaze falls back to resolving `Measure.library` as a literal reference (e.g. `Library/123`).
+* A local reference of the form `#<id>`, e.g. `#library`, is resolved to the `Library` with that id contained in the `Measure`. <Badge type="warning" text="Since 1.14.0"/>
 
 ## Persistence
 
@@ -57,7 +58,74 @@ With persistence disabled (`FHIR_OPERATION_EVALUATE_MEASURE_REPORT_PERSISTENCE=f
 
 For `reportType=subject-list` the `List` resources holding the subject ids are still persisted, because the `MeasureReport.group.population.subjectResults` references point at them and they have to be retrievable. The `MeasureReport` itself is never persisted when the option is off.
 
+A `MeasureReport` of an [inline measure](#inline-measure) is never persisted, regardless of this option. <Badge type="warning" text="Since 1.14.0"/>
+
 A `Prefer: return=minimal` header is honored only on the persisting `POST` path, where it relies on the persisted resource and the `Location` header. With persistence disabled there is no persisted resource to reference, so the preference is ignored and the `MeasureReport` is always returned in the body.
+
+## Inline Measure <Badge type="warning" text="Since 1.14.0"/>
+
+Instead of evaluating a stored `Measure`, a client can send the `Measure` resource itself in the `measure` input parameter of a `POST [base]/Measure/$evaluate-measure` request. Although Blaze is an R4 server, where the `measure` parameter is a reference, it supports the `Measure` resource of the [R5 operation][4] in a forward-compatible way. This allows ad-hoc aggregate queries without creating `Measure` or `Library` resources first.
+
+The following rules apply:
+
+* the `Measure` has to have a `url`, which is used as `MeasureReport.measure`
+* the `Library` holding the CQL can be contained in the `Measure` and referenced by a local reference like `#library`, or be a stored `Library` resolved as described in [Library Resolution](#library-resolution)
+* a `Measure` resource can't be used on a `Measure` instance
+* the `MeasureReport` is always returned inline with `200 OK` and never persisted. For `reportType=subject-list` the `List` resources holding the subject ids are still persisted, so that the references in the report resolve.
+
+```json
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    { "name": "periodStart", "valueDate": "2000" },
+    { "name": "periodEnd", "valueDate": "2030" },
+    {
+      "name": "measure",
+      "resource": {
+        "resourceType": "Measure",
+        "url": "urn:uuid:6b2ab3e8-6f7d-4a4c-9a4e-4d6b8f2a7b5e",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [{ "system": "http://hl7.org/fhir/resource-types", "code": "Patient" }]
+        },
+        "contained": [
+          {
+            "resourceType": "Library",
+            "id": "library",
+            "status": "active",
+            "type": {
+              "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/library-type", "code": "logic-library" }]
+            },
+            "content": [{ "contentType": "text/cql", "data": "<base64 encoded CQL>" }]
+          }
+        ],
+        "library": ["#library"],
+        "scoring": {
+          "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/measure-scoring", "code": "cohort" }]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [{ "system": "http://terminology.hl7.org/CodeSystem/measure-population", "code": "initial-population" }]
+                },
+                "criteria": { "language": "text/cql-identifier", "expression": "InInitialPopulation" }
+              }
+            ],
+            "stratifier": [
+              {
+                "code": { "text": "gender" },
+                "criteria": { "language": "text/cql-identifier", "expression": "Gender" }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+```
 
 ## Parameters Input <Badge type="warning" text="Since 1.10.0"/>
 

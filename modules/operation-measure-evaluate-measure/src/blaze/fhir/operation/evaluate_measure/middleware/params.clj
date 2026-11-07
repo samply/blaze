@@ -121,6 +121,37 @@
 (def ^:private no-subject-list-on-get-msg
   "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")
 
+(defn- invalid-measure-resource-anom [msg]
+  (ba/incorrect
+   msg
+   :fhir/issue "value"
+   :fhir/operation-outcome "MSG_PARAM_INVALID"
+   :fhir.issue/expression "measure"))
+
+(defn- validate-measure-resource
+  "Returns the inline Measure resource of the `measure` parameter, nil if the
+  parameter is absent or a reference, or an anomaly if it's invalid.
+
+  In FHIR R5, the `measure` parameter is a Measure resource instead of a
+  reference."
+  [{:keys [body] {:keys [id]} :path-params}]
+  (when-let [measure (get-param-value-from-resource body "measure" :resource)]
+    (cond
+      (not (identical? :fhir/Measure (:fhir/type measure)))
+      (invalid-measure-resource-anom
+       "Invalid parameter `measure`. Should be a string or a Measure resource.")
+
+      (nil? (-> measure :url :value))
+      (invalid-measure-resource-anom
+       "Invalid parameter `measure`. The Measure resource has to have a url.")
+
+      id
+      (invalid-measure-resource-anom
+       "The parameter `measure` can't be a Measure resource on a Measure instance.")
+
+      :else
+      measure)))
+
 (defn- params-request [{:keys [request-method body] :as request}]
   (when-ok [period-start (get-required-param-value
                           request "periodStart" coerce-date validate-date)
@@ -130,7 +161,8 @@
                      request "measure" coerce-noop validate-string)
             report-type (get-param-value
                          request "reportType" coerce-and-validate-report-type)
-            subject-ref (coerce-subject-ref-param request)]
+            subject-ref (coerce-subject-ref-param request)
+            measure-resource (validate-measure-resource request)]
     (if (and (= :get request-method) (= "subject-list" report-type))
       (ba/unsupported no-subject-list-on-get-msg)
       (let [parameters (get-param-value-from-resource body "parameters" :resource)]
@@ -141,6 +173,8 @@
                                          (if subject-ref "subject" "population"))}
                  measure
                  (assoc :measure measure)
+                 measure-resource
+                 (assoc :measure-resource measure-resource)
                  subject-ref
                  (assoc :subject-ref subject-ref)
                  parameters
