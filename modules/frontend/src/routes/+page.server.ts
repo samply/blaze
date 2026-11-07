@@ -2,24 +2,8 @@ import type { Parameters } from 'fhir/r4';
 import { backendUrl } from '#lib/backend.js';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-
-interface ResourceTypeTotal {
-  name: string;
-  total: number;
-}
-
-function resourceTypeTotals(parameters: Parameters): ResourceTypeTotal[] {
-  return (
-    parameters.parameter?.map((p) => ({
-      name: p.name,
-      total: p.valueUnsignedInt || 0
-    })) || []
-  );
-}
-
-export interface Data {
-  resourceTypeTotals: ResourceTypeTotal[];
-}
+import { patientTotal, resourceTypeTotals } from '#lib/home/resource-type-totals.js';
+import { fetchDemographics } from '#lib/home/fetch-demographics.js';
 
 export const load: PageServerLoad = async ({ fetch }) => {
   const res = await fetch(backendUrl('/$totals'), { headers: { Accept: 'application/fhir+json' } });
@@ -28,5 +12,14 @@ export const load: PageServerLoad = async ({ fetch }) => {
     error(res.status, 'error while executing the $totals operation');
   }
 
-  return { resourceTypeTotals: resourceTypeTotals(await res.json()) };
+  const totals = resourceTypeTotals((await res.json()) as Parameters);
+
+  return {
+    resourceTypeTotals: totals,
+    streamed: {
+      start: Date.now(),
+      demographics:
+        patientTotal(totals) > 0 ? fetchDemographics(fetch, new Date().getFullYear()) : undefined
+    }
+  };
 };
