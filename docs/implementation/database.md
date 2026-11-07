@@ -695,14 +695,24 @@ Unlike all other commands, a transaction can contain several `delete-history-ver
 
 ### Patient Purge
 
-The `patient-purge` command is used to remove all current and historical versions for all resources in a patient compartment.
+The `patient-purge` command is used to remove all current and historical versions of a patient and of the resources about it.
 
 #### Properties
 
-| Name       | Required | Data Type | Description                      |
-|------------|----------|-----------|----------------------------------|
-| id         | yes      | string    | patient id                       |
-| check-refs | no       | boolean   | use referential integrity checks |
+| Name       | Required | Data Type | Description                                                     |
+|------------|----------|-----------|-----------------------------------------------------------------|
+| id         | yes      | string    | patient id                                                      |
+| check-refs | no       | boolean   | use referential integrity checks                                |
+| graph      | no       | string    | canonical `url\|version` of the GraphDefinition selecting the resources |
+
+#### Expansion
+
+The command expands into one `purge` command for the patient and one for each resource selected:
+
+* if `graph` is given, the GraphDefinition with that `url` and `version` and the security label `internal` is resolved in the database before the transaction. Only a GraphDefinition Blaze installed itself carries that label. It must consist only of one hop reverse links from the Patient with params of the form `<code>={ref}`, where `code` is a reference search parameter targeting Patient. Each link selects the resources of its type referencing the patient through that search parameter. Because the GraphDefinition is resolved in the database before the transaction, a replay of the transaction log uses the revision valid at that time.
+* without `graph`, all resources of the patient compartment are selected
+
+The expansion fails if the GraphDefinition can't be found or is invalid.
 
 ## Queries
 

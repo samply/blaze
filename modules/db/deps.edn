@@ -25,6 +25,9 @@
   blaze/fhir-path
   {:local/root "../fhir-path"}
 
+  blaze/graph-definition
+  {:local/root "../graph-definition"}
+
   blaze/kv
   {:local/root "../kv"}
 

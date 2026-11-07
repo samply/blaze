@@ -243,7 +243,25 @@
   (testing "delete-history-version"
     (given (tx/prepare-ops {} [[:delete-history-version "Patient" "0" 1]])
       [0 0] := {:op "delete-history-version" :type "Patient" :id "0" :t 1}
-      [1] := {})))
+      [1] := {}))
+
+  (testing "patient-purge"
+    (testing "without graph"
+      (given (tx/prepare-ops {} [[:patient-purge "0"]])
+        [0 0] := {:op "patient-purge" :id "0" :check-refs true}
+        [1] := {}))
+
+    (testing "with graph"
+      (given (tx/prepare-ops {} [[:patient-purge "0" "http://example.com/purge|1"]])
+        [0 0] := {:op "patient-purge" :id "0" :check-refs true
+                  :graph "http://example.com/purge|1"}
+        [1] := {}))
+
+    (testing "with referential integrity disabled"
+      (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false}
+                             [[:patient-purge "0" "http://example.com/purge|1"]])
+        [0 0] := {:op "patient-purge" :id "0" :graph "http://example.com/purge|1"}
+        [1] := {}))))
 
 (deftest load-tx-result-test
   (with-redefs [tx-success/tx (fn [_ _])

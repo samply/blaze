@@ -46,3 +46,6 @@
    [::compiled-graph/start-node-id
     ::compiled-graph/nodes
     ::compiled-graph/links]))
+
+(s/def ::gd/rev-link
+  (s/tuple :fhir.resource/type string?))

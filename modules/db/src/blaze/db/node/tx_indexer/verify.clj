@@ -423,12 +423,25 @@
   (when-let [{:keys [op]} (d/resource-handle db type id)]
     (not (identical? :delete op))))
 
-(defn- ref-integrity-del-msg [src-type src-id type id more?]
-  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`%s."
-          type id src-type src-id (if more? " and others" "")))
+(def ^:private ^:const ^long max-listed-referencing-resources 10)
 
-(defn- ref-integrity-del-anom [src-type src-id type id more?]
-  (ba/conflict (ref-integrity-del-msg src-type src-id type id more?)))
+(defn- format-references [references]
+  (str/join ", " (map (fn [[type id]] (format "`%s/%s`" type id)) references)))
+
+(defn- ref-integrity-del-msg
+  "Returns the message for the resource with `type` and `id` that should be
+  deleted but is still referenced from `references`.
+
+  Lists at most `max-listed-referencing-resources` references, so that the
+  message stays small, and adds \"and others\" if there are more."
+  [references type id]
+  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from %s%s."
+          type id
+          (format-references (take max-listed-referencing-resources references))
+          (if (< max-listed-referencing-resources (count references)) " and others" "")))
+
+(defn- ref-integrity-del-anom [references type id]
+  (ba/conflict (ref-integrity-del-msg references type id)))
 
 (defn- ref-integrity-msg [type id]
   (format "Referential integrity violated. Resource `%s/%s` doesn't exist."
@@ -445,7 +458,7 @@
    (fn [existing [type id :as reference]]
      (cond
        (contains? del-resources reference)
-       (throw-anom (ref-integrity-del-anom src-type src-id type id false))
+       (throw-anom (ref-integrity-del-anom [[src-type src-id]] type id))
 
        (or (contains? new-resources reference) (contains? existing reference))
        existing
@@ -461,19 +474,23 @@
 (defn- local-ref-tuple [rh]
   [(name (:fhir/type rh)) (:id rh)])
 
-(defn- rev-tuples [db-before resource-handle del-resources]
+(defn- rev-tuples
+  "Returns the tuples of type and id of the resources referencing
+  `resource-handle`, without the ones in `del-resources`, and at most one more
+  than `max-listed-referencing-resources`, which is enough to decide whether
+  the message has to state that there are others."
+  [db-before resource-handle del-resources]
   (into
    []
-   (comp (map local-ref-tuple) (remove del-resources) (take 2))
+   (comp (map local-ref-tuple) (remove del-resources)
+         (take (inc max-listed-referencing-resources)))
    (d/rev-include db-before resource-handle)))
 
 (defn- check-referential-integrity-delete!
   [db-before del-resources type id]
   (when-let [resource-handle (d/resource-handle db-before type id)]
-    (let [[[type-ref id-ref] second] (rev-tuples db-before resource-handle
-                                                 del-resources)]
-      (when type-ref
-        (throw-anom (ref-integrity-del-anom type-ref id-ref type id second))))))
+    (when-let [references (seq (rev-tuples db-before resource-handle del-resources))]
+      (throw-anom (ref-integrity-del-anom references type id)))))
 
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]

@@ -33,6 +33,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.fhir.test-util.graph-definition :as g-tu]
    [blaze.metrics.core :as metrics]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
@@ -41,6 +42,7 @@
    [clojure.math.combinatorics :as combo]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
@@ -1832,6 +1834,204 @@
                                              [:create {:fhir/type :fhir/Patient :id "0"}]])
         ::anom/category := ::anom/conflict
         ::anom/message := "Duplicate transaction commands `purge Patient/0` and `create Patient/0`."))))
+
+(def ^:private purge-graph
+  "The canonical of the GraphDefinition used in the purge tests."
+  "http://example.com/purge|1")
+
+(defn- purge-graph-def
+  "Returns a GraphDefinition with the canonical of `purge-graph` and a link from
+  the Patient to the nodes of each `[type params]` tuple of `links`."
+  [& {:keys [id links security] :or {id "0" security [internal-label]}}]
+  (let [node-id #(str (str/lower-case %1) "-" %2)]
+    (-> (g-tu/graph-def
+         :nodes (into [(g-tu/node "patient" "Patient")]
+                      (map-indexed (fn [i [type]] (g-tu/node (node-id type i) type)))
+                      links)
+         :link (into []
+                     (map-indexed (fn [i [type params]] (g-tu/link "patient" (node-id type i) :params params)))
+                     links))
+        (assoc :id id
+               :url #fhir/uri "http://example.com/purge"
+               :version #fhir/string "1")
+        (cond-> (seq security) (assoc :meta (type/meta {:security security}))))))
+
+(def ^:private default-purge-links
+  [["Observation" "subject={ref}"]
+   ["Coverage" "beneficiary={ref}"]
+   ["Encounter" "patient={ref}"]])
+
+(defn- literal-ref [s]
+  (type/reference {:reference (type/string s)}))
+
+(def ^:private resources-of-patient-0-and-1
+  "Resources of Patient/0 and Patient/1. Only the Observation/0 and the
+  Encounter/0 are about Patient/0. The others only reference Patient/0 in a
+  role other than the one the resource is about."
+  [[:create {:fhir/type :fhir/Patient :id "0"}]
+   [:create {:fhir/type :fhir/Patient :id "1"}]
+   [:create {:fhir/type :fhir/Observation :id "0"
+             :subject (literal-ref "Patient/0")
+             :performer [(literal-ref "Patient/1")]}]
+   [:create {:fhir/type :fhir/Encounter :id "0"
+             :subject (literal-ref "Patient/0")}]
+   [:create {:fhir/type :fhir/Observation :id "1"
+             :subject (literal-ref "Patient/1")
+             :performer [(literal-ref "Patient/0")]}]
+   [:create {:fhir/type :fhir/Coverage :id "0"
+             :subscriber (literal-ref "Patient/0")
+             :beneficiary (literal-ref "Patient/1")}]
+   [:create {:fhir/type :fhir/Group :id "0"
+             :type #fhir/code "person"
+             :actual #fhir/boolean true
+             :member
+             [{:fhir/type :fhir.Group/member :entity (literal-ref "Patient/0")}
+              {:fhir/type :fhir.Group/member :entity (literal-ref "Patient/1")}]}]])
+
+(defn- remaining-ids [db]
+  (into #{} (map (juxt (comp name :fhir/type) :id)) (d/system-list db)))
+
+(deftest transact-patient-purge-graph-test
+  (testing "without referential integrity"
+    (with-system-data [{:blaze.db/keys [node]} non-referential-integrity-config]
+      [resources-of-patient-0-and-1]
+
+      (transact-internal node [[:create (purge-graph-def :links default-purge-links)]])
+
+      (with-db [db-after node @(d/transact node [[:patient-purge "0" purge-graph]])]
+        (testing "only the patient and the resources about it are gone"
+          (is (= #{["GraphDefinition" "0"] ["Patient" "1"] ["Observation" "1"]
+                   ["Coverage" "0"] ["Group" "0"]}
+                 (remaining-ids db-after))))
+
+        (testing "the history of the purged resources is gone"
+          (is (coll/empty? (d/instance-history db-after "Patient" "0")))
+          (is (coll/empty? (d/instance-history db-after "Observation" "0")))
+          (is (coll/empty? (d/instance-history db-after "Encounter" "0")))))))
+
+  (testing "with referential integrity"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [resources-of-patient-0-and-1]
+
+      (transact-internal node [[:create (purge-graph-def :links default-purge-links)]])
+
+      (testing "the purge fails because of the remaining references"
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Coverage/0`, `Group/0`, `Observation/1`."))
+
+      (testing "after removing the remaining references"
+        @(d/transact
+          node
+          [[:put {:fhir/type :fhir/Observation :id "1"
+                  :subject (literal-ref "Patient/1")}]
+           [:put {:fhir/type :fhir/Coverage :id "0"
+                  :subscriber (literal-ref "Patient/1")
+                  :beneficiary (literal-ref "Patient/1")}]
+           [:put {:fhir/type :fhir/Group :id "0"
+                  :type #fhir/code "person"
+                  :actual #fhir/boolean true
+                  :member
+                  [{:fhir/type :fhir.Group/member :entity (literal-ref "Patient/1")}]}]])
+
+        (testing "the purge succeeds"
+          (with-db [db-after node @(d/transact node [[:patient-purge "0" purge-graph]])]
+            (is (= #{["GraphDefinition" "0"] ["Patient" "1"] ["Observation" "1"]
+                     ["Coverage" "0"] ["Group" "0"]}
+                   (remaining-ids db-after))))))))
+
+  (testing "a non-existing patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "doesn't need the GraphDefinition"
+        (with-db [db-after node @(d/transact node [[:patient-purge "1" purge-graph]])]
+          (is (= #{["Patient" "0"]} (remaining-ids db-after)))))))
+
+  (testing "a patient referenced from itself"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :link [{:fhir/type :fhir.Patient/link
+                          :other (literal-ref "Patient/0")
+                          :type #fhir/code "seealso"}]}]]]
+
+      (transact-internal node [[:create (purge-graph-def :links default-purge-links)]])
+
+      (with-db [db-after node @(d/transact node [[:patient-purge "0" purge-graph]])]
+        (is (= #{["GraphDefinition" "0"]} (remaining-ids db-after))))))
+
+  (testing "fails on"
+    (testing "missing GraphDefinition"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "The GraphDefinition `http://example.com/purge|1` for purging Patients wasn't found.")))
+
+    (testing "GraphDefinition with another version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (transact-internal node [[:create (purge-graph-def :links default-purge-links)]])
+
+        (given-failed-future (d/transact node [[:patient-purge "0" "http://example.com/purge|2"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "The GraphDefinition `http://example.com/purge|2` for purging Patients wasn't found.")))
+
+    (testing "GraphDefinition without internal security label"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]
+          [:create (purge-graph-def :links default-purge-links :security [])]]]
+
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "The GraphDefinition `http://example.com/purge|1` for purging Patients wasn't found.")))
+
+    (testing "two GraphDefinitions"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (transact-internal node [[:create (purge-graph-def :id "0" :links default-purge-links)]
+                                 [:create (purge-graph-def :id "1" :links default-purge-links)]])
+
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Found more than one GraphDefinition `http://example.com/purge|1` for purging Patients.")))
+
+    (testing "invalid GraphDefinition"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (transact-internal node [[:create (purge-graph-def :links [["Observation" "subject={ref},foo"]])]])
+
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid GraphDefinition `http://example.com/purge|1` for purging Patients: Invalid link with params `subject={ref},foo` with the value `{ref}` combined with other values.")))
+
+    (testing "GraphDefinition outside the restricted subset"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (transact-internal node [[:create (purge-graph-def :links [["Observation" "status=final&subject={ref}"]])]])
+
+        (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid GraphDefinition `http://example.com/purge|1` for purging Patients: Invalid link to node `observation-0` with params other than a single parameter with the value `{ref}`.")))
+
+    (testing "GraphDefinition with a link using"
+      (doseq [[code msg]
+              [["foo" "an unknown search parameter"]
+               ["code" "a search parameter of type `token` instead of `reference`"]
+               ["specimen" "a reference search parameter not targeting Patient"]]]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (transact-internal node [[:create (purge-graph-def :links [["Observation" (str code "={ref}")]])]])
+
+          (given-failed-future (d/transact node [[:patient-purge "0" purge-graph]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := (format "Invalid GraphDefinition `http://example.com/purge|1` for purging Patients: The link to `Observation` uses %s with code `%s`." msg code)))))))
 
 (deftest ^:slow transact-patient-purge-too-many-test
   (log/set-min-level! :info)

@@ -14,3 +14,8 @@
 (s/fdef gd/ref-clause?
   :args (s/cat :clause (s/spec :blaze.db.query/search-clause))
   :ret boolean?)
+
+(s/fdef gd/rev-links
+  :args (s/cat :compiled-graph ::gd/compiled-graph)
+  :ret (s/or :rev-links (s/coll-of ::gd/rev-link :kind vector?)
+             :anomaly ::anom/anomaly))
