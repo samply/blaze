@@ -163,6 +163,7 @@ const config = defineConfig({
                     text: "$everything",
                     link: "/api/operation/patient-everything",
                   },
+                  { text: "$graph", link: "/api/operation/graph" },
                   { text: "$purge", link: "/api/operation/patient-purge" },
                 ],
               },

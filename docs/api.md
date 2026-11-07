@@ -41,6 +41,7 @@ The following Operations are implemented:
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](api/operation/measure-evaluate-measure.md)
 * [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="Since 0.22"/>
+* [Patient $graph](api/operation/graph.md) <Badge type="warning" text="Since 1.14.0"/>
 * [Patient $purge](api/operation/patient-purge.md) <Badge type="warning" text="Since 0.30.1"/>
 * [CodeSystem $lookup](api/operation/code-system-lookup.md) <Badge type="warning" text="Since 1.7.0"/>
 * [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="Since 0.32"/>
