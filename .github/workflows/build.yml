@@ -1212,7 +1212,8 @@ jobs:
         ENABLE_INTERACTION_DELETE_HISTORY: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
         ENABLE_INTERACTION_DELETE_HISTORY_VERSION: ${{ matrix.feature == 'full' || matrix.feature == 'delete-history' }}
         ENABLE_OPERATION_PATIENT_PURGE: ${{ matrix.feature == 'full' || matrix.feature == 'patient-purge' }}
-        ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
+        # The Patient $purge integration test uses $graph to preview the purge
+        ENABLE_OPERATION_GRAPH: ${{ matrix.feature == 'full' || matrix.feature == 'graph' || matrix.feature == 'patient-purge' }}
         ENABLE_OPERATION_CQL: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
       run: docker compose -f .github/${{ matrix.variant }}-test/docker-compose.yml up --wait
 

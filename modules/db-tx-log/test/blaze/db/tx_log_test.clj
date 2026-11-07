@@ -22,7 +22,9 @@
 (deftest submit-test
   (let [tx-log (reify tx-log/TxLog
                  (-submit [_ _ permissions _]
-                   (ac/completed-future (if permissions 2 1))))]
+                   (ac/completed-future (if permissions 2 1)))
+                 (-last-t [_])
+                 (-poll [_ _ _]))]
     (testing "without permissions"
       (is (= 1 @(tx-log/submit
                  tx-log
@@ -45,8 +47,10 @@
 
 (deftest last-t-test
   (let [tx-log (reify tx-log/TxLog
+                 (-submit [_ _ _ _])
                  (-last-t [_]
-                   (ac/completed-future 161253)))]
+                   (ac/completed-future 161253))
+                 (-poll [_ _ _]))]
     (is (= 161253 @(tx-log/last-t tx-log)))))
 
 (def tx-data {:t 1
@@ -59,6 +63,8 @@
 
 (deftest poll-test
   (let [tx-log (reify tx-log/TxLog
+                 (-submit [_ _ _ _])
+                 (-last-t [_])
                  (-poll [_ offset _]
                    (assert (= 1 offset))
                    [tx-data]))]

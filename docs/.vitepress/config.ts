@@ -258,6 +258,7 @@ const config = defineConfig({
           { text: "Load Testing", link: "/performance/load-testing" },
           { text: "Disk I/O", link: "/performance/disk-perf" },
           { text: "Import", link: "/performance/import" },
+          { text: "Patient Purge", link: "/performance/patient-purge" },
           {
             text: "Terminology Service",
             link: "/performance/terminology-service",

@@ -331,14 +331,14 @@ That limit is what bounds the memory of the in-memory buffer of the [local trans
 A transaction is applied to the local index in three layers, ordered so that the visibility-gating row (`TxSuccess`) is the last thing written:
 
 1.  **Search-parameter indexing — parallel, one WriteBatch per resource.** The resource indexer (`modules/db/src/blaze/db/node/resource_indexer.clj`) indexes one resource at a time on an executor pool: its `SearchParamValueResource`, `ResourceSearchParamValue`, `CompartmentSearchParamValueResource`, and `CompartmentResourceType` entries are written as a per-resource `WriteBatch`. These batches commit in parallel and out of order with respect to each other.
-2.  **Transaction index entries — one WriteBatch.** Once the tx-indexer (`modules/db/src/blaze/db/node/tx_indexer.clj`) has verified the transaction against `db-before`, the resulting entries for `ResourceAsOf`, `TypeAsOf`, `SystemAsOf`, `PatientLastChange`, `TypeStats`, and `SystemStats` are written in a single `WriteBatch`. This batch is written *before* the search-param futures are joined, which is why there are three steps and not two.
+2.  **Transaction index entries — one WriteBatch per part.** Once the tx-indexer (`modules/db/src/blaze/db/node/tx_indexer.clj`) has verified the whole transaction against `db-before`, the resulting entries for `ResourceAsOf`, `TypeAsOf`, `SystemAsOf`, `PatientLastChange`, `TypeStats`, and `SystemStats` are written. The tx-indexer verifies the commands of a large transaction in parts in parallel and keeps the entries of each part apart, so that each part is written in a `WriteBatch` of its own. These batches commit in parallel and out of order with respect to each other, like the ones of step 1. Most transactions fit into a single part and are written in a single `WriteBatch`. The batches are written *before* the search-param futures are joined, which is why there are three steps and not two.
 3.  **Transaction success marker — one WriteBatch.** After the search-param futures complete, `TxSuccess` and `TByInstant` are written in a final `WriteBatch`. The head of `TxSuccess` is the authoritative current `t` of the local database value; rows in earlier-written CFs with a higher `t` are not yet visible to readers.
 
 If the tx-indexer rejects the transaction (e.g. referential integrity, version mismatch), that rejection happens inside step 2, in its verification against `db-before` and before any entries are produced, so step 2 writes no batch. The final `WriteBatch` of step 3 then carries a `TxError` entry instead of `TxSuccess` and `TByInstant`, so the head of `TxSuccess` doesn't move and the transaction produces no new database value. The search-param batches of step 1 that were already dispatched committed before that, so their entries stay behind, while the rest are skipped. These entries are inert, but not unreachable. A query scans the `SearchParamValueResource` index and does see them, because that scan is what produces its index handles in the first place. What discards them is the seek into `ResourceAsOf` that turns an index handle into a resource handle: it looks up the version of that resource at the `t` of the database value and compares its content hash with the `hash-prefix` of the entry. A rejected transaction wrote no `ResourceAsOf` row, so that seek finds the version before it — or no version at all — and the `hash-prefix` doesn't match, which drops the entry from the result. The entries are never part of a result and are not garbage-collected.
 
 Step 1 of a transaction doesn't only overlap the step 2 of that same transaction. The indexing loop keeps it going across transaction boundaries, so it also overlaps the steps 2 and 3 of the transactions before it. That is described in [Resource Indexing Pipeline](#resource-indexing-pipeline).
 
-A crash between the step 2 batch and the step 3 batch produces a similar situation at the transaction level: `ResourceAsOf` (and the other AsOf indices) carry rows at some `t > head(TxSuccess)`. Startup uses `head(TxSuccess)` as the current `t`, so those rows are invisible until — and unless — the same transaction is re-applied from the log and the step 3 batch lands.
+A crash after any of the step 2 batches and before the step 3 batch produces a similar situation at the transaction level: `ResourceAsOf` (and the other AsOf indices) carry rows at some `t > head(TxSuccess)`, possibly only the ones of some parts. Startup uses `head(TxSuccess)` as the current `t`, so those rows are invisible until — and unless — the same transaction is re-applied from the log and the step 3 batch lands. Re-applying it writes the same rows again, because the verification against `db-before` yields the same entries. A purge doesn't break this either, although it rewrites the rows of existing versions: it marks them as purged at its `t`, and a reader ignores marks newer than the `t` of its database value.
 
 ### Resource Indexing Pipeline
 
@@ -695,14 +695,26 @@ Unlike all other commands, a transaction can contain several `delete-history-ver
 
 ### Patient Purge
 
-The `patient-purge` command is used to remove all current and historical versions for all resources in a patient compartment.
+The `patient-purge` command is used to remove all current and historical versions of a patient and of the resources about it.
 
 #### Properties
 
-| Name       | Required | Data Type | Description                      |
-|------------|----------|-----------|----------------------------------|
-| id         | yes      | string    | patient id                       |
-| check-refs | no       | boolean   | use referential integrity checks |
+| Name       | Required | Data Type | Description                                                     |
+|------------|----------|-----------|-----------------------------------------------------------------|
+| id         | yes      | string    | patient id                                                      |
+| check-refs | no       | boolean   | use referential integrity checks                                |
+| graph      | no       | string    | canonical `url\|version` of the GraphDefinition selecting the resources |
+
+#### Expansion
+
+The command expands into one `purge` command for the patient and one for each resource selected:
+
+* if `graph` is given, the GraphDefinition with that `url` and `version` and the security label `internal` is resolved in the database before the transaction. Only a GraphDefinition Blaze installed itself carries that label. It must consist only of one hop reverse links from the Patient with params of the form `<code>={ref}`, where `code` is a reference search parameter targeting Patient. Each link selects the resources of its type referencing the patient through that search parameter. Because the GraphDefinition is resolved in the database before the transaction, a replay of the transaction log uses the revision valid at that time.
+* without `graph`, all resources of the patient compartment are selected
+
+The expansion fails with a fault if the GraphDefinition can't be found, isn't unique or is invalid, because only Blaze itself passes the canonical of a GraphDefinition it installed.
+
+With `check-refs`, the `purge` command of the patient also carries the search parameters through which the transaction purges every resource referencing the patient. These are the search parameters of the selection of the types having resources, together with their twins. Twins are two built-in search parameters of a type that index the same references to Patients, like `subject` and `patient` of Observation, where `patient` restricts the references of `subject` to Patients. The referential integrity check of the patient leaves these search parameters out, so that it doesn't read the index entries of all selected resources a second time.
 
 ## Queries
 

@@ -27,7 +27,9 @@
    [java-time.api :as time])
   (:import
    [blaze.db.kv KvCloseable]
-   [blaze.db.kv.iter_pool Pools PoolingSnapshot]))
+   [blaze.db.kv.iter_pool Pools PoolingSnapshot]
+   [java.util Set]
+   [java.util.concurrent ConcurrentHashMap CountDownLatch TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -152,6 +154,29 @@
 
 (def non-referential-integrity-config
   (assoc-in config [:blaze.db/node :enforce-referential-integrity] false))
+
+(defn concurrent-calls?
+  "Returns true if `f` calls the function of `var` from at least two threads at
+  the same time, counting only calls whose arguments satisfy `pred`.
+
+  The first counted call of each thread waits until a counted call of a second
+  thread arrives, at most 10 seconds. So calls from a single thread, or calls
+  of several threads one after another, make `f` take 10 seconds and return
+  false."
+  [var pred f]
+  (let [latch (CountDownLatch. 2)
+        ^Set threads (ConcurrentHashMap/newKeySet)
+        concurrent? (atom true)
+        g @var]
+    (with-redefs-fn
+      {var (fn [& args]
+             (when (and (apply pred args) (.add threads (Thread/currentThread)))
+               (.countDown latch)
+               (when-not (.await latch 10 TimeUnit/SECONDS)
+                 (reset! concurrent? false)))
+             (apply g args))}
+      f)
+    @concurrent?))
 
 (defn wait-for
   "Waits up to 10 seconds for the value of the atom `state` to satisfy `pred`,

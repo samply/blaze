@@ -1541,10 +1541,13 @@
        :affects-state true
        :resource-types ["Patient"]
        :instance-handler #blaze/ref :blaze.operation.patient/purge
-       :documentation "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment or from a Group of patient compartments. The return is an OperationOutcome with results and/or details about execution."}]
+       :documentation "This operation is used to request the removal of all current and historical versions of the patient and all resources selected by the GraphDefinition https://blaze-server.org/fhir/GraphDefinition/PatientPurge. The return is an OperationOutcome with results and/or details about execution."}]
 
     :blaze.operation.patient/purge
-    {:node #blaze/ref :blaze.db.main/node}}}
+    {:node #blaze/ref :blaze.db.main/node
+     :parsing-context #blaze/ref :blaze.fhir.parsing-context/default
+     :clock #blaze/ref :blaze/clock
+     :rng-fn #blaze/ref :blaze/rng-fn}}}
 
   {:key :terminology-service
    :name "Terminology Service"

@@ -105,6 +105,7 @@
   (:require
    [blaze.cache-collector.protocols :as ccp]
    [blaze.db.impl.cache :as cache]
+   [blaze.db.impl.fold :as f]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.resource-handle-cache.spec]
    [blaze.module :as m]
@@ -240,6 +241,27 @@
     (.compute (.asMap cache) key (update-fn writes t handle purged?))
     key))
 
+(defn- update-part!
+  "Updates the entries of `cache` for the updates of `part` of the transaction
+  with `t` and records their writes. Returns the keys of the updates."
+  [cache writes t part]
+  (mapv (partial update-entry! cache writes t) part))
+
+(defn- update-entries!
+  "Updates the entries of `cache` for the `update-parts` of the transaction
+  with `t` and records their writes. Returns the keys of the updates.
+
+  A single part is applied on the calling thread. Several parts are applied in
+  parallel on `pool`, because the update of a key is atomic and the ones of
+  different keys don't depend on each other. A transaction updates each
+  resource only once, except for purged versions, whose updates only remove an
+  entry and so give the same result in any order."
+  [cache pool writes t update-parts]
+  (if (< 1 (count update-parts))
+    (f/fold pool 1 (fn [[part]] (update-part! cache writes t part)) into
+            update-parts)
+    (update-part! cache writes t (first update-parts))))
+
 (defn- raise-floor!
   "Raises the floor of `recent-writes` to `t` if it's lower."
   [^RecentWrites recent-writes ^long t]
@@ -264,23 +286,27 @@
         (.addAndGet size (- (count keys)))))))
 
 (defn update!
-  "Updates the entries of `cache` present for the `updates` of the transaction
-  with `t` and records the writes of all of them.
+  "Updates the entries of `cache` present for the updates of the transaction
+  with `t` in `update-parts` and records the writes of all of them.
 
-  Each update is a tuple of the resource handle of a ResourceAsOf index entry
-  the transaction wrote and whether that entry is purged. A purged entry removes
-  the present entry if it isn't older.
+  The `update-parts` are vectors of updates, one per part of the commands the
+  transaction was verified in, none of them empty. Each update is a tuple of
+  the resource handle of a ResourceAsOf index entry the transaction wrote and
+  whether that entry is purged. A purged entry removes the present entry if it
+  isn't older.
 
   Has to be called by a single thread only, because it prunes the recorded
-  writes.
+  writes. The parts are applied in parallel on `pool`, a ForkJoinPool, but the
+  transaction is recorded and the writes are pruned on the calling thread,
+  after all parts were applied.
 
   Doesn't record a transaction without updates, because pruning counts writes
   and so would never remove it."
-  [^ResourceHandleCache cache t updates]
-  (when (seq updates)
+  [^ResourceHandleCache cache pool t update-parts]
+  (when (seq update-parts)
     (let [^RecentWrites recent-writes (.-recent-writes cache)
           writes (.-writes recent-writes)
-          keys (mapv (partial update-entry! (.-cache cache) writes t) updates)]
+          keys (update-entries! (.-cache cache) pool writes t update-parts)]
       (.add ^ArrayDeque (.-txs recent-writes) [t keys])
       (.addAndGet ^AtomicLong (.-size recent-writes) (count keys))
       (prune! recent-writes))))

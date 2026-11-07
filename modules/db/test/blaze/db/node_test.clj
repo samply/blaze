@@ -59,7 +59,7 @@
   (:import
    [com.github.benmanes.caffeine.cache.stats CacheStats]
    [java.time Instant]
-   [java.util.concurrent TimeUnit]))
+   [java.util.concurrent Callable ForkJoinPool TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -740,6 +740,26 @@
       (given-failed-future (sync-t @node 1)
         ::anom/category := ::anom/unavailable
         ::anom/message := "The database node `main` was closed before the transaction with t = 1 was indexed. But it was stored durable and will be indexed at the next start of the database node."))))
+
+(defn- worker-name
+  "Returns the name of the worker of `pool` running a task."
+  [^ForkJoinPool pool]
+  @(.submit pool ^Callable #(.getName (Thread/currentThread))))
+
+(deftest tx-indexer-pool-test
+  (let [pool (promise)]
+    (with-system [{:blaze.db/keys [node]} config]
+      (deliver pool (:tx-indexer-pool node))
+
+      (testing "has one worker per processor"
+        (is (= (.availableProcessors (Runtime/getRuntime))
+               (.getParallelism ^ForkJoinPool @pool))))
+
+      (testing "names its workers"
+        (is (re-matches #"tx-indexer-\d+" (worker-name @pool)))))
+
+    (testing "is shut down with the node"
+      (is (.isShutdown ^ForkJoinPool @pool)))))
 
 (deftest failed-node-test
   ;; the node stopped because of an indexing or publishing error, so its

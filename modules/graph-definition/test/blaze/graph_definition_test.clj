@@ -252,3 +252,85 @@
                 (get-in graph [:links "observation" 0 :path])
                 {:fhir/type :fhir/Observation :id "0"
                  :encounter #fhir/Reference{:reference #fhir/string "Encounter/0"}})))))))
+
+(defn- compile-rev-links [& links]
+  (gd/rev-links (gd/compile (apply graph-def-with-links links))))
+
+(deftest rev-links-test
+  (testing "fails on"
+    (testing "start node not of type Patient"
+      (given (gd/rev-links
+              (gd/compile
+               (g-tu/graph-def
+                :start "observation"
+                :nodes [(g-tu/node "observation" "Observation")])))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid start node `observation` of type `Observation` instead of `Patient`."))
+
+    (testing "link not starting at the start node"
+      (given (compile-rev-links
+              (g-tu/link "patient" "observation" :params "subject={ref}")
+              (g-tu/link "observation" "encounter" :params "subject={ref}"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid link from node `observation` instead of the start node `patient`."))
+
+    (testing "link with path"
+      (given (compile-rev-links (g-tu/link "patient" "observation" :path "link.other"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid link to node `observation` with path instead of params."))
+
+    (testing "link with more than one search clause"
+      (doseq [params ["status=final&subject={ref}" "subject={ref}&subject=foo"]]
+        (given (compile-rev-links (g-tu/link "patient" "observation" :params params))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid link to node `observation` with params other than a single parameter with the value `{ref}`.")))
+
+    (testing "link with modifier"
+      (given (compile-rev-links (g-tu/link "patient" "observation" :params "subject:Patient={ref}"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid link to node `observation` with the parameter `subject:Patient` having a modifier."))
+
+    (testing "link to node of type Patient"
+      (given (gd/rev-links
+              (gd/compile
+               (g-tu/graph-def
+                :nodes [(g-tu/node "patient" "Patient") (g-tu/node "linked" "Patient")]
+                :link [(g-tu/link "patient" "linked" :params "link={ref}")])))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid link to node `linked` of type `Patient`, the type of the start node."))
+
+    (testing "link to node of abstract type"
+      (doseq [type ["Resource" "DomainResource"]]
+        (given (gd/rev-links
+                {:start-node-id "patient"
+                 :nodes {"patient" {:id "patient" :type "Patient"}
+                         "resource" {:id "resource" :type type}}
+                 :links {"patient" [{:source-id "patient" :target-id "resource"
+                                     :clauses [["patient" "{ref}"]]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Invalid link to node `resource` of abstract type `%s`." type)))))
+
+  (testing "patient-only"
+    (is (= [] (gd/rev-links (gd/compile (g-tu/graph-def :nodes [(g-tu/node "patient" "Patient")]))))))
+
+  (testing "one link"
+    (is (= [["Observation" "subject"]]
+           (compile-rev-links (g-tu/link "patient" "observation" :params "subject={ref}")))))
+
+  (testing "two links"
+    (is (= [["Observation" "subject"] ["Encounter" "subject"]]
+           (compile-rev-links
+            (g-tu/link "patient" "observation" :params "subject={ref}")
+            (g-tu/link "patient" "encounter" :params "subject={ref}")))))
+
+  (testing "two links to the same type with different params"
+    (is (= [["Observation" "subject"] ["Observation" "focus"]]
+           (compile-rev-links
+            (g-tu/link "patient" "observation" :params "subject={ref}")
+            (g-tu/link "patient" "observation" :params "focus={ref}")))))
+
+  (testing "duplicate links are returned once"
+    (is (= [["Observation" "subject"]]
+           (compile-rev-links
+            (g-tu/link "patient" "observation" :params "subject={ref}")
+            (g-tu/link "patient" "observation" :params "subject={ref}"))))))

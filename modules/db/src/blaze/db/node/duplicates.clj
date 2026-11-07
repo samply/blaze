@@ -35,30 +35,6 @@
   (format "Duplicate transaction commands `%s` and `%s`."
           (format-command earlier-cmd) (format-command later-cmd)))
 
-(defn- conflict
-  "Returns the entry of the command in `index` that a command acting on the
-  resource with `type` and `id`, or only on its version `t`, conflicts with.
-  Returns nil if there is no such command."
-  [index type id t]
-  (or (get index [type id])
-      (if t
-        (get index [type id t])
-        (get index [type id ::any-version]))))
-
-(defn- add
-  "Returns `index` with `entry` of the command acting on the resource with
-  `type` and `id`, or only on its version `t`, added.
-
-  A command acting on a version is indexed under its version and, if it's the
-  first one of its resource, also under ::any-version, so that commands acting
-  on the whole resource conflict with it."
-  [index type id t entry]
-  (if t
-    (cond-> (assoc index [type id t] entry)
-      (not (contains? index [type id ::any-version]))
-      (assoc [type id ::any-version] entry))
-    (assoc index [type id] entry)))
-
 (defn- version
   "Returns the t of the version `cmd` acts on, if it acts only on a single
   version of a resource. Returns nil for commands acting on the whole resource.
@@ -69,6 +45,35 @@
   [{:keys [op t]}]
   (when (= "delete-history-version" op)
     t))
+
+(defn- conflict
+  "Returns the entry of the command in `index` that a command acting on the
+  resource with `key`, a tuple of its type and id, or only on its version `t`,
+  conflicts with. Returns nil if there is no such command.
+
+  The `first-entry` is the one in `index` under `key`, the entry of the first
+  command acting on the resource, either on the whole resource or on a version.
+  A command on the whole resource conflicts with it, so that it takes only that
+  lookup. A command on a version conflicts with it only if it acts on the whole
+  resource, and otherwise with a command on the same version."
+  [index first-entry key t]
+  (if (and t (some-> first-entry second version))
+    (get index (conj key t))
+    first-entry))
+
+(defn- add!
+  "Returns `index`, a transient map, with `entry` of the command acting on the
+  resource with `key`, a tuple of its type and id, or only on its version `t`,
+  added.
+
+  The entry of the first command acting on the resource, either on the whole
+  resource or on a version, is indexed under `key`, so that `conflict` finds it
+  with `first-entry`. A command acting on a version is also indexed under its
+  version."
+  [index first-entry key t entry]
+  (cond-> index
+    (nil? first-entry) (assoc! key entry)
+    t (assoc! (conj key t) entry)))
 
 (defn- duplicate [[existing-idx existing-cmd] idx cmd]
   {:cmd cmd :idx idx :existing-cmd existing-cmd :existing-idx existing-idx})
@@ -84,16 +89,22 @@
 
   Skips commands that don't identify a resource by type and id, like
   conditional deletes and patient purges, because they are expanded into such
-  commands only later."
+  commands only later.
+
+  The index of the commands is a transient map, because it grows by one entry
+  per command, and a transaction can have many thousands of commands, like a
+  patient purge after its expansion."
   [cmds]
   (::duplicate
    (reduce-kv
     (fn [index idx {:keys [type id] :as cmd}]
       (if (and type id)
-        (let [t (version cmd)]
-          (if-let [existing (conflict index type id t)]
+        (let [key [type id]
+              first-entry (get index key)
+              t (version cmd)]
+          (if-let [existing (conflict index first-entry key t)]
             (reduced {::duplicate (duplicate existing idx cmd)})
-            (add index type id t [idx cmd])))
+            (add! index first-entry key t [idx cmd])))
         index))
-    {}
+    (transient {})
     cmds)))

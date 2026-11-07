@@ -21,7 +21,8 @@
    [blaze.fhir.spec.type Base]
    [com.github.benmanes.caffeine.cache.stats CacheStats]
    [java.util ArrayDeque]
-   [java.util.concurrent CountDownLatch Executors TimeUnit]))
+   [java.util.concurrent CountDownLatch Executors ForkJoinPool TimeUnit]
+   [java.util.concurrent.atomic AtomicLong]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -30,6 +31,8 @@
 (test/use-fixtures :each tu/fixture)
 
 (def ^:private tid (codec/tid "Patient"))
+
+(def ^:private pool (ForkJoinPool/commonPool))
 
 (def ^:private config
   {:blaze.db/resource-handle-cache {:max-size-ratio 0.01}})
@@ -166,10 +169,15 @@
       (given (rhc/get cache tid "0" 2)
         :t := 2))))
 
+(defn- recorded-writes
+  "Returns the number of writes the recent writes of `cache` record."
+  [^ResourceHandleCache cache]
+  (.get ^AtomicLong (.-size ^RecentWrites (.-recent-writes cache))))
+
 (deftest update-test
   (testing "doesn't insert absent entries"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
-      (rhc/update! cache 1 [(entry "0" 1)])
+      (rhc/update! cache pool 1 [[(entry "0" 1)]])
 
       (is (nil? (rhc/get cache tid "0" 1)))))
 
@@ -177,7 +185,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
       (insert! cache 1 (resource-handle "0" 1))
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
 
       (given (rhc/get cache tid "0" 2)
         :fhir/type := :fhir/Patient
@@ -198,7 +206,7 @@
         (rhc/set-floor! cache 1)
         (insert! cache 1 handle)
         ;; the update carries an equal id that is another instance
-        (rhc/update! cache 2 [(entry (String. "0") 2)])
+        (rhc/update! cache pool 2 [[(entry (String. "0") 2)]])
 
         (is (identical? (:id handle) (:id (rhc/get cache tid "0" 2)))))))
 
@@ -206,7 +214,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 2)
       (insert! cache 2 (resource-handle "0" 2))
-      (rhc/update! cache 3 [(entry "0" 2 true) (entry "0" 1 true)])
+      (rhc/update! cache pool 3 [[(entry "0" 2 true) (entry "0" 1 true)]])
 
       (is (nil? (rhc/get cache tid "0" 3)))))
 
@@ -214,7 +222,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 2)
       (insert! cache 2 (resource-handle "0" 2))
-      (rhc/update! cache 3 [(entry "0" 1 true)])
+      (rhc/update! cache pool 3 [[(entry "0" 1 true)]])
 
       (given (rhc/get cache tid "0" 3)
         :t := 2)))
@@ -224,12 +232,23 @@
       (rhc/set-floor! cache 1)
       (insert! cache 1 (resource-handle "0" 1))
       (insert! cache 1 (resource-handle "1" 1))
-      (rhc/update! cache 2 [(entry "1" 2)])
+      (rhc/update! cache pool 2 [[(entry "1" 2)]])
 
       (given (rhc/get cache tid "0" 2)
         :t := 1)
       (given (rhc/get cache tid "1" 2)
-        :t := 2))))
+        :t := 2)))
+
+  (testing "updates and records all entries of a transaction with several parts"
+    (with-system [{cache :blaze.db/resource-handle-cache} config]
+      (let [ids (mapv str (range 2000))]
+        (rhc/set-floor! cache 1)
+        (run! #(insert! cache 1 (resource-handle % 1)) ids)
+        (rhc/update! cache pool 2 (into [] (comp (map #(entry % 2)) (partition-all 500))
+                                        ids))
+
+        (is (every? #(= 2 (:t (rhc/get cache tid % 2))) ids))
+        (is (= 2000 (recorded-writes cache)))))))
 
 (defn- config-with-max-recent-writes [n]
   (assoc-in config [:blaze.db/resource-handle-cache :max-recent-writes] n))
@@ -244,7 +263,7 @@
             write"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "1" 2)])
+      (rhc/update! cache pool 2 [[(entry "1" 2)]])
       (insert! cache 1 (resource-handle "0" 1))
 
       (given (rhc/get cache tid "0" 2)
@@ -254,7 +273,7 @@
             wrote"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
       (insert! cache 1 (resource-handle "0" 1))
 
       (is (nil? (rhc/get cache tid "0" 1)))))
@@ -263,7 +282,7 @@
             purged"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 1 true)])
+      (rhc/update! cache pool 2 [[(entry "0" 1 true)]])
       (insert! cache 1 (resource-handle "0" 1))
 
       (is (nil? (rhc/get cache tid "0" 1)))))
@@ -271,7 +290,7 @@
   (testing "a reader at the t of a write inserts the key"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
       (insert! cache 2 (resource-handle "0" 2))
 
       (given (rhc/get cache tid "0" 2)
@@ -280,7 +299,7 @@
   (testing "a reader behind an empty transaction inserts"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [])
+      (rhc/update! cache pool 2 [])
       (insert! cache 1 (resource-handle "0" 1))
 
       (given (rhc/get cache tid "0" 2)
@@ -290,9 +309,9 @@
             counts writes, wouldn't remove them"
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [])
-      (rhc/update! cache 3 [(entry "0" 3)])
-      (rhc/update! cache 4 [])
+      (rhc/update! cache pool 2 [])
+      (rhc/update! cache pool 3 [[(entry "0" 3)]])
+      (rhc/update! cache pool 4 [])
 
       (is (= 1 (recorded-txs cache)))))
 
@@ -300,8 +319,8 @@
     (with-system [{cache :blaze.db/resource-handle-cache}
                   (config-with-max-recent-writes 1)]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 2)])
-      (rhc/update! cache 3 [(entry "1" 3)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
+      (rhc/update! cache pool 3 [[(entry "1" 3)]])
 
       (testing "a reader below the floor doesn't insert"
         (insert! cache 1 (resource-handle "2" 1))
@@ -323,8 +342,8 @@
     (with-system [{cache :blaze.db/resource-handle-cache}
                   (config-with-max-recent-writes 1)]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 2)])
-      (rhc/update! cache 3 [(entry "0" 3)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
+      (rhc/update! cache pool 3 [[(entry "0" 3)]])
       (insert! cache 2 (resource-handle "0" 2))
 
       (is (nil? (rhc/get cache tid "0" 2)))))
@@ -334,7 +353,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache}
                   (config-with-max-recent-writes 1)]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "0" 2) (entry "1" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2) (entry "1" 2)]])
 
       (insert! cache 1 (resource-handle "2" 1))
       (is (nil? (rhc/get cache tid "2" 2)))
@@ -347,7 +366,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache}
                   (config-with-max-recent-writes 0)]
       (rhc/set-floor! cache 1)
-      (rhc/update! cache 2 [(entry "1" 2)])
+      (rhc/update! cache pool 2 [[(entry "1" 2)]])
       (insert! cache 1 (resource-handle "0" 1))
 
       (is (nil? (rhc/get cache tid "0" 2))))))
@@ -387,7 +406,7 @@
                           (range 3))]
         (.countDown start)
         (doseq [t (range 1 (inc num-txs))]
-          (rhc/update! cache t [(entry (str (mod t num-ids)) t)])
+          (rhc/update! cache pool t [[(entry (str (mod t num-ids)) t)]])
           (reset! visible-t t))
         (run! deref readers)
         (.shutdown executor)
@@ -405,7 +424,7 @@
       ;; the reader at t = 1 loaded the handle from its snapshot
       (insert! cache 1 (resource-handle "0" 1))
       ;; the indexer updates the entry of the transaction with t = 2
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
 
       (testing "the indexer replaced the entry of the reader"
         (given (rhc/get cache tid "0" 2)
@@ -417,7 +436,7 @@
 
       ;; the indexer skips the entry of the transaction with t = 2, because it
       ;; isn't present
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
       ;; the reader at t = 1 loaded the handle from its snapshot before
       (insert! cache 1 (resource-handle "0" 1))
 
@@ -454,7 +473,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
       (insert! cache 1 (resource-handle "0" 1))
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
       (rhc/get cache tid "0" 2)
       (rhc/get cache tid "1" 2)
 
@@ -480,7 +499,7 @@
     (with-system [{cache :blaze.db/resource-handle-cache} config]
       (rhc/set-floor! cache 1)
       (insert! cache 1 (resource-handle "0" 1))
-      (rhc/update! cache 2 [(entry "0" 2)])
+      (rhc/update! cache pool 2 [[(entry "0" 2)]])
       (rhc/get cache tid "0" 1)
 
       (given (stats cache)

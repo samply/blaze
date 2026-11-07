@@ -10,18 +10,21 @@ require-blazectl() {
   fi
 }
 
+# Prints the average and the standard deviation of the durations in the times
+# file as JSON, skipping the ones of the warmup runs at its start, whose number
+# is given as optional second argument, which defaults to 1.
 calc-avg() {
-  # Skip first line because it is used for warmup
-  tail -n +2 "$1" |\
+  local warmups="${2:-1}"
+  tail -n +"$((warmups + 1))" "$1" |\
     awk '{sum += $1; sumsq += $1^2} END {printf("{\"avg\": %f, \"stddev\": %f}", sum/NR, sqrt(sumsq/NR - (sum/NR)^2))}'
 }
 
 # Returns the number of runs of a test that are taken for the statistics. Each
 # test runs once more for warmup. Set the environment variable REPEATS to
-# override the default of 3, like to get more samples while profiling fast
-# tests.
+# override the default, like to get more samples while profiling fast tests.
+# The default is given as argument.
 repeats() {
-  local repeats="${REPEATS:-3}"
+  local repeats="${REPEATS:-$1}"
   if ! [[ "$repeats" =~ ^[1-9][0-9]*$ ]]; then
     echo "🆘 REPEATS has to be a positive integer but was: $repeats" >&2
     exit 1
@@ -36,6 +39,21 @@ selected-tests() {
   echo "${TEST:-${PROFILE:-}}"
 }
 
+# Recreates the Blaze container of the compose file and waits until it's
+# ready, so that Blaze starts with empty in-memory caches.
+recreate() {
+  docker compose -f "$1" up --force-recreate --wait
+}
+
+# Stops Blaze of the compose file given as first argument, runs the reset
+# script given as second argument and recreates Blaze, so that it starts with
+# the database the reset script left.
+reset-and-recreate() {
+  docker compose -f "$1" stop
+  "$2"
+  recreate "$1"
+}
+
 # Restarts Blaze. While only some tests run, only records the restart, so that
 # `profile` does it before the test it runs and not before the tests it skips.
 restart() {
@@ -44,7 +62,20 @@ restart() {
     return
   fi
 
-  docker compose -f "$1" up --force-recreate --wait
+  recreate "$1"
+}
+
+# Restarts Blaze like `restart`, but runs the reset script given as second
+# argument while Blaze is stopped, like one that resets the database to its
+# state before the first test.
+reset-and-restart() {
+  if [[ -n "$(selected-tests)" ]]; then
+    pending_restart="$1"
+    pending_reset="$2"
+    return
+  fi
+
+  reset-and-recreate "$1" "$2"
 }
 
 async-profiler-home() {
@@ -75,10 +106,13 @@ jfrconv-event-option() {
   esac
 }
 
-# Starts the profiler after the first run with index 0 of a test, which is the
-# warmup that isn't taken for the statistics.
+# Starts the profiler after the run of a test with the index given as first
+# argument, if it's the last of the warmup runs, which aren't taken for the
+# statistics. Their number is given as optional second argument, which defaults
+# to 1, so that the profiler starts after the run with index 0.
 start-profiling-after-warmup() {
-  if [[ "$1" -eq 0 ]]; then
+  local warmups="${2:-1}"
+  if [[ "$1" -eq "$((warmups - 1))" ]]; then
     start-profiling
   fi
 }
@@ -92,7 +126,7 @@ start-profiling() {
   fi
 
   # JFR is written while recording, so its file is given on start
-  run-asprof "$profiling_compose_file" start -e "${PROFILE_EVENT:-wall}" -o jfr -f "/tmp/$profiling_name.jfr"
+  run-asprof "$profiling_compose_file" start -e "${PROFILE_EVENT:-wall}" ${PROFILE_INTERVAL:+-i "$PROFILE_INTERVAL"} -o jfr -f "/tmp/$profiling_name.jfr"
   profiling_started=1
 }
 
@@ -130,6 +164,11 @@ abort-profiling() {
 #                         nothing is profiled if unset
 #  PROFILE_EVENT        - the async-profiler event, like `cpu` or `alloc`;
 #                         defaults to `wall`
+#  PROFILE_INTERVAL     - the sampling interval of the event, like `5ms` for
+#                         `wall` and `cpu` or `512k` bytes for `alloc`; a
+#                         shorter interval gives more samples at a higher
+#                         overhead; defaults to the one of async-profiler,
+#                         which is `50ms` for `wall`
 #  REPEATS              - the number of runs after the warmup, which are the
 #                         profiled ones; defaults to 3
 #  ASYNC_PROFILER_HOME  - the directory of async-profiler inside the blaze
@@ -149,8 +188,12 @@ profile() {
     return
   fi
 
-  if [[ -n "${pending_restart:-}" ]]; then
-    docker compose -f "$pending_restart" up --force-recreate --wait
+  if [[ -n "${pending_reset:-}" ]]; then
+    reset-and-recreate "$pending_restart" "$pending_reset"
+    pending_restart=""
+    pending_reset=""
+  elif [[ -n "${pending_restart:-}" ]]; then
+    recreate "$pending_restart"
     pending_restart=""
   fi
 
@@ -191,18 +234,25 @@ profile() {
   echo "Profile written to $name.jfr, $name.folded and $name.html"
 }
 
+# Prints the statistics of the durations in the times file, as a row of the
+# results tables, with the count of resources given as second argument. Skips
+# the durations of the warmup runs, whose number is given as optional third
+# argument, which defaults to 1. Prints the average duration with the number of
+# decimal digits given as optional fourth argument, which defaults to 2.
 calc-print-stats() {
   local times_file="$1"
   local count="$2"
+  local warmups="${3:-1}"
+  local time_digits="${4:-2}"
 
   local stats
-  stats="$(calc-avg "$times_file")"
+  stats="$(calc-avg "$times_file" "$warmups")"
   local avg
   avg=$(echo "$stats" | jq .avg)
   local stddev
   stddev=$(echo "$stats" | jq .stddev)
 
-  awk -v count="$count" -v avg="$avg" -v stddev="$stddev" 'BEGIN {
+  awk -v count="$count" -v avg="$avg" -v stddev="$stddev" -v time_digits="$time_digits" 'BEGIN {
     # resources per second
     res_s = count / avg
 
@@ -224,7 +274,10 @@ calc-print-stats() {
       human_res_s = sprintf("%6.0f", res_s)
     }
 
-    printf "| %s | %8.2f | %6.3f | %s |\n", human_count, avg, stddev, human_res_s
+    # the precision of the duration is part of the format, because not every
+    # awk supports giving it as an argument with *
+    format = "| %s | %8." time_digits "f | %6.3f | %s |\n"
+    printf format, human_count, avg, stddev, human_res_s
   }'
 }
 
@@ -240,7 +293,7 @@ count-resources-raw() {
 
   # the first run is the warmup which isn't taken for the statistics
   local i repeats
-  repeats="$(repeats)"
+  repeats="$(repeats 3)"
   for ((i = 0; i <= repeats; i++)); do
     curl -s "$base/$resource_type?$search_params&_summary=count" -o /dev/null -w '%{time_total}\n' >> "$times_file"
     start-profiling-after-warmup "$i"
@@ -263,7 +316,7 @@ count-resources-raw-post() {
 
   # the first run is the warmup which isn't taken for the statistics
   local i repeats
-  repeats="$(repeats)"
+  repeats="$(repeats 3)"
   for ((i = 0; i <= repeats; i++)); do
     curl -s -d @<(echo -n "$search_params") "$url" -o /dev/null -w '%{time_total}\n' >> "$times_file"
     start-profiling-after-warmup "$i"
@@ -291,7 +344,7 @@ download-resources-raw() {
 
   # the first run is the warmup which isn't taken for the statistics
   local i repeats
-  repeats="$(repeats)"
+  repeats="$(repeats 3)"
   for ((i = 0; i <= repeats; i++)); do
     local download_count
     download_count=$({ time blazectl download --server "$base" "$resource_type" -q "$search_params&_count=1000" 2>/dev/null | wc -l | xargs; } 2>> "$times_file")
@@ -325,7 +378,7 @@ download-resources-raw-post() {
 
   # the first run is the warmup which isn't taken for the statistics
   local i repeats
-  repeats="$(repeats)"
+  repeats="$(repeats 3)"
   for ((i = 0; i <= repeats; i++)); do
     local download_count
     download_count=$({ time blazectl download --server "$base" "$resource_type" -p -q @<(echo -n "$search_params&_count=1000") 2>/dev/null | wc -l | xargs; } 2>> "$times_file")

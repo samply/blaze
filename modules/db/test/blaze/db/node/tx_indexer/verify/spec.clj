@@ -1,8 +1,12 @@
 (ns blaze.db.node.tx-indexer.verify.spec
   (:require
+   [blaze.db.impl.fold :as-alias f]
+   [blaze.db.impl.fold.spec]
    [blaze.db.kv.spec]
    [blaze.db.node.stats :as-alias stats]
    [blaze.db.node.stats.spec]
+   [blaze.db.node.tx-indexer.util :as-alias tx-u]
+   [blaze.db.node.tx-indexer.util.spec]
    [blaze.db.node.tx-indexer.verify :as-alias verify]
    [blaze.db.permissions.spec]
    [blaze.db.spec]
@@ -26,16 +30,24 @@
 (s/def ::verify/stats
   ::stats/stats)
 
+(s/def ::verify/pool
+  ::f/pool)
+
 (s/def ::verify/entries
-  (s/coll-of :blaze.db.kv/put-entry))
+  (s/coll-of (s/coll-of :blaze.db.kv/put-entry) :kind vector?))
 
 (s/def ::verify/resource-handle-updates
-  (s/coll-of (s/tuple :blaze.db/resource-handle boolean?) :kind vector?))
+  (s/coll-of (s/coll-of (s/tuple :blaze.db/resource-handle boolean?)
+                        :kind vector?)
+             :kind vector?))
+
+(s/def ::verify/distinct-tx-cmds
+  boolean?)
 
 (s/def ::verify/context
   (s/keys :req-un [::verify/db-before ::verify/read-only-matcher
-                   ::verify/internal-matcher ::verify/stats]
-          :opt-un [::verify/permissions]))
+                   ::verify/internal-matcher ::verify/stats ::verify/pool]
+          :opt-un [::verify/permissions ::verify/distinct-tx-cmds]))
 
 (s/def ::verify/op
   #{"create" "hold" "put" "keep" "delete" "delete-history"
@@ -93,11 +105,15 @@
                    :blaze.resource/id
                    :blaze.db/t]))
 
+(s/def ::verify/purged-rev-include-params
+  (s/coll-of ::tx-u/rev-include-param :kind set?))
+
 (defmethod terminal-tx-cmd "purge" [_]
   (s/keys :req-un [::verify/op
                    :fhir.resource/type
                    :blaze.resource/id]
-          :opt-un [:blaze.db.tx-cmd/check-refs]))
+          :opt-un [:blaze.db.tx-cmd/check-refs
+                   ::verify/purged-rev-include-params]))
 
 (s/def ::verify/tx-cmd
   (s/multi-spec terminal-tx-cmd :op))

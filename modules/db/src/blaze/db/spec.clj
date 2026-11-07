@@ -99,7 +99,8 @@
 
 (defmethod tx-op :patient-purge [_]
   (s/cat :op #{:patient-purge}
-         :id :blaze.resource/id))
+         :id :blaze.resource/id
+         :graph (s/? :blaze.db.tx-cmd/graph)))
 
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
