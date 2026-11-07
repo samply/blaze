@@ -167,6 +167,11 @@ const config = defineConfig({
                 ],
               },
               {
+                text: "Resource",
+                collapsed: true,
+                items: [{ text: "$graph", link: "/api/operation/graph" }],
+              },
+              {
                 text: "ValueSet",
                 collapsed: true,
                 items: [
