@@ -4,7 +4,11 @@ Blaze comes with a Web UI that provides a user friendly view on the FHIR data an
 
 ## FHIR View
 
-**TODO**
+### Home <Badge type="warning" text="Since 1.14.0"/>
+
+The home page shows the total number of resources, resource types and patients, followed by all resource types ranked by their total count. If patients are available, an age pyramid of all patients by gender is shown next to it. It's calculated live by the CQL engine of Blaze, evaluating an [inline Measure](api/operation/measure-evaluate-measure.md#inline-measure) with `$evaluate-measure`. The CQL used can be shown below the pyramid.
+
+![](frontend/home.png)
 
 ## Admin UI
 

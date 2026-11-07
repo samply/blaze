@@ -6,4 +6,10 @@
 
 @theme {
   --font-sans: 'Lexend Variable';
+
+  /* categorical chart colors, validated for color vision deficiencies on the card surfaces */
+  --color-viz-1: #2a78d6;
+  --color-viz-1-dark: #3987e5;
+  --color-viz-2: #eb6834;
+  --color-viz-2-dark: #d95926;
 }
