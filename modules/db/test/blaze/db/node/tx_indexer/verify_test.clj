@@ -17,12 +17,16 @@
    [blaze.db.node]
    [blaze.db.node.tx-indexer.verify :as verify]
    [blaze.db.node.tx-indexer.verify-spec]
-   [blaze.db.test-util :refer [config with-system-data]]
+   [blaze.db.permissions :as p]
+   [blaze.db.test-util :refer [config internal-label internal-patient-0
+                               read-only-patient-0 transact-internal
+                               with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
@@ -48,22 +52,37 @@
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
                             :patient #fhir/Reference{:reference #fhir/string "Patient/0"}})
 
-(defn- verify-tx-cmds*
-  "Verifies `tx-cmds` against `node`, using the stats the node itself keeps, so
-  that the entries are the ones the indexing loop of the node would write."
-  [{:keys [read-only-matcher stats] :as node} t tx-cmds]
+(defn- context
+  "Returns the verification context of `node`, using the stats the node itself
+  keeps, so that the entries are the ones the indexing loop of the node would
+  write."
+  [{:keys [read-only-matcher internal-matcher stats]} db]
+  {:db-before db :read-only-matcher read-only-matcher
+   :internal-matcher internal-matcher :stats @stats})
+
+(defn- verify-tx-cmds**
+  [node t tx-cmds f]
   (ba/try-anomaly
    (ac/join
     (d/with-db node
       (fn [db]
         (ac/completed-future
-         (verify/verify-tx-cmds
-          {:db-before db :read-only-matcher read-only-matcher
-           :stats @stats}
-          t tx-cmds)))))))
+         (verify/verify-tx-cmds (f (context node db)) t tx-cmds)))))))
+
+(defn- verify-tx-cmds*
+  "Verifies `tx-cmds` against `node` without permissions."
+  [node t tx-cmds]
+  (verify-tx-cmds** node t tx-cmds identity))
 
 (defn- verify-tx-cmds [node t tx-cmds]
   (let [res (verify-tx-cmds* node t tx-cmds)]
+    (if (ba/anomaly? res) res (:entries res))))
+
+(defn- verify-tx-cmds-with
+  "Verifies `tx-cmds` against `node` with `permissions`."
+  [node t tx-cmds permissions]
+  (let [res (verify-tx-cmds** node t tx-cmds
+                              #(cond-> % permissions (assoc :permissions permissions)))]
     (if (ba/anomaly? res) res (:entries res))))
 
 (defn- patient-stats
@@ -1075,3 +1094,190 @@
 
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")))))
+
+(def ^:private internal-patient-0-v2
+  {:fhir/type :fhir/Patient :id "0"
+   :meta (type/meta {:security [internal-label]})
+   :gender #fhir/code "male"})
+
+(def ^:private read-only-permissions
+  {:write-access-control #{"read-only"}})
+
+(def ^:private internal-permissions
+  {:write-access-control #{"internal"}})
+
+(defn- put-cmd [resource]
+  {:op "put" :type "Patient" :id "0" :hash (hash/generate resource)})
+
+(deftest verify-read-only-current-version-test
+  (testing "put"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (testing "without permissions fails"
+        (doseq [permissions [nil {} internal-permissions]]
+          (given (verify-tx-cmds-with node 2 [(put-cmd patient-0-v2)] permissions)
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't update the read-only resource `Patient/0`.")))
+
+      (testing "with permission for read-only succeeds"
+        (given (verify-tx-cmds-with node 2 [(put-cmd patient-0-v2)] read-only-permissions)
+          count := 5))
+
+      (testing "identical update without permissions is a no-op"
+        (given (verify-tx-cmds node 2 [(put-cmd read-only-patient-0)])
+          count := 0))))
+
+  (testing "delete"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (testing "without permissions fails"
+        (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0"}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete the read-only resource `Patient/0`."))
+
+      (testing "with permission for read-only succeeds"
+        (given (verify-tx-cmds-with node 2 [{:op "delete" :type "Patient" :id "0"}]
+                                    read-only-permissions)
+          count := 5))))
+
+  (testing "delete-history and purge stay allowed without permissions"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+      (transact-internal node [[:put (assoc read-only-patient-0 :gender #fhir/code "male")]])
+
+      (doseq [op ["delete-history" "purge"]]
+        (given (verify-tx-cmds node 3 [{:op op :type "Patient" :id "0"}])
+          count :? pos-int?)))))
+
+(defn- delete-history-version-cmd [t]
+  {:op "delete-history-version" :type "Patient" :id "0" :t t})
+
+(deftest verify-internal-current-version-test
+  (doseq [[op msg] [["delete" "Can't delete the internal resource `Patient/0`."]
+                    ["delete-history" "Can't delete the history of the internal resource `Patient/0`."]
+                    ["purge" "Can't purge the internal resource `Patient/0`."]]]
+    (testing op
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create internal-patient-0]])
+        (transact-internal node [[:put internal-patient-0-v2]])
+
+        (testing "without permissions fails"
+          (doseq [permissions [nil {} read-only-permissions]]
+            (given (verify-tx-cmds-with node 3 [{:op op :type "Patient" :id "0"}]
+                                        permissions)
+              ::anom/category := ::anom/conflict
+              ::anom/message := msg)))
+
+        (testing "with permission for internal succeeds"
+          (given (verify-tx-cmds-with node 3 [{:op op :type "Patient" :id "0"}]
+                                      internal-permissions)
+            count :? pos-int?)))))
+
+  (testing "put"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create internal-patient-0]])
+
+      (testing "without permissions fails"
+        (doseq [permissions [nil {} read-only-permissions]]
+          (given (verify-tx-cmds-with node 2 [(put-cmd patient-0-v2)] permissions)
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't update the internal resource `Patient/0`.")))
+
+      (testing "with permission for internal succeeds"
+        (given (verify-tx-cmds-with node 2 [(put-cmd patient-0-v2)] internal-permissions)
+          count := 5))
+
+      (testing "identical update without permissions is a no-op"
+        (given (verify-tx-cmds node 2 [(put-cmd internal-patient-0)])
+          count := 0))
+
+      (testing "a stale if-match fails with the precondition anomaly regardless
+                of the permissions"
+        (given (verify-tx-cmds-with node 2 [(assoc (put-cmd patient-0-v2) :if-match [2])]
+                                    p/internal)
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Precondition `W/\"2\"` failed on `Patient/0`."
+          :http/status := 412))))
+
+  (testing "delete-history-version"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create internal-patient-0]])
+      (transact-internal node [[:put internal-patient-0-v2]])
+      (transact-internal node [[:put (assoc internal-patient-0-v2 :gender #fhir/code "female")]])
+
+      (testing "without permissions fails"
+        (doseq [permissions [nil {} read-only-permissions]]
+          (given (verify-tx-cmds-with node 4 [(delete-history-version-cmd 1)]
+                                      permissions)
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Can't delete a history version of the internal resource `Patient/0`.")))
+
+      (testing "deleting all historical versions in one transaction without
+                permissions fails"
+        (given (verify-tx-cmds node 4 [(delete-history-version-cmd 1)
+                                       (delete-history-version-cmd 2)])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete a history version of the internal resource `Patient/0`."))
+
+      (testing "with permission for internal succeeds"
+        (given (verify-tx-cmds-with node 4 [(delete-history-version-cmd 1)
+                                            (delete-history-version-cmd 2)]
+                                    internal-permissions)
+          count :? pos-int?))
+
+      (testing "deleting a non-existing version without permissions is a no-op"
+        (given (verify-tx-cmds node 4 [(delete-history-version-cmd 4)])
+          count := 0)))))
+
+(defn- write-cmd [op access-control]
+  (cond-> {:op op :type "Patient" :id "0" :hash (hash/generate patient-0)}
+    access-control (assoc :access-control access-control)))
+
+(deftest verify-new-version-test
+  (doseq [[op verb] [["create" "create"] ["put" "update"]]]
+    (testing op
+      (doseq [[code permission] [["internal" internal-permissions]
+                                 ["read-only" read-only-permissions]]]
+        (testing (str "labelled with " code)
+          (with-system [{:blaze.db/keys [node]} config]
+            (testing "without permissions fails"
+              (doseq [permissions [nil {}]]
+                (given (verify-tx-cmds-with node 1 [(write-cmd op [code])] permissions)
+                  ::anom/category := ::anom/conflict
+                  ::anom/message := (format "Can't %s the resource `Patient/0` labelled with the AccessControl code `%s`." verb code))))
+
+            (testing "with permission for the code succeeds"
+              (given (verify-tx-cmds-with node 1 [(write-cmd op [code])] permission)
+                count := 5)))))
+
+      (testing "labelled with both codes"
+        (with-system [{:blaze.db/keys [node]} config]
+          (testing "with permission for only one code fails"
+            (given (verify-tx-cmds-with node 1 [(write-cmd op ["read-only" "internal"])]
+                                        read-only-permissions)
+              ::anom/category := ::anom/conflict
+              ::anom/message := (format "Can't %s the resource `Patient/0` labelled with the AccessControl code `internal`." verb))
+
+            (given (verify-tx-cmds-with node 1 [(write-cmd op ["read-only" "internal"])]
+                                        internal-permissions)
+              ::anom/category := ::anom/conflict
+              ::anom/message := (format "Can't %s the resource `Patient/0` labelled with the AccessControl code `read-only`." verb)))
+
+          (testing "with permission for both codes succeeds"
+            (given (verify-tx-cmds-with node 1 [(write-cmd op ["read-only" "internal"])]
+                                        p/internal)
+              count := 5))))
+
+      (testing "labelled with an unknown code fails even for internal code"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (verify-tx-cmds-with node 1 [(write-cmd op ["foo"])] p/internal)
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't %s the resource `Patient/0` labelled with the AccessControl code `foo`." verb))))
+
+      (testing "a command without extracted codes, like an old log entry,
+                succeeds without permissions"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (verify-tx-cmds node 1 [(write-cmd op nil)])
+            count := 5))))))

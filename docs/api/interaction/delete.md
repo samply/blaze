@@ -26,3 +26,9 @@ By default, Blaze enforces referential integrity while deleting resources. So re
 ## Read-Only Resources
 
 Some resources like base FHIR StructureDefinition resources are read-only and can't be deleted. That resources contain two tags with code `read-only` — one with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` and one with the legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`. Blaze emits both so that downgrading to an older Blaze version, which enforces read-only via the legacy tag, keeps these resources protected; the legacy tag will be removed in the next major version (v2).
+
+Resources a client tagged `read-only` before version 1.14.0 stay read-only as well.
+
+## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
+
+Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. Such resources can't be deleted. Blaze returns a `409 Conflict` with an `OperationOutcome` instead.

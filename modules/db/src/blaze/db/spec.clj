@@ -7,12 +7,9 @@
    [blaze.db.resource-store.spec]
    [blaze.db.tx-log.spec]
    [blaze.spec]
-   [clojure.spec.alpha :as s]
-   [clojure.spec.gen.alpha :as sg]
-   [java-time.api :as time])
+   [clojure.spec.alpha :as s])
   (:import
-   [com.github.benmanes.caffeine.cache LoadingCache]
-   [java.time Instant]))
+   [com.github.benmanes.caffeine.cache LoadingCache]))
 
 (s/def :blaze.db/node
   #(satisfies? np/Node %))
@@ -31,11 +28,6 @@
 
 (s/def :blaze/db
   :blaze.db/db)
-
-(s/def :blaze.db.tx/instant
-  (s/with-gen
-    #(instance? Instant %)
-    #(sg/fmap time/instant (sg/choose -5364662008000 7258118400000))))
 
 (s/def :blaze.db/tx
   (s/keys :req [:blaze.db/t :blaze.db.tx/instant]))

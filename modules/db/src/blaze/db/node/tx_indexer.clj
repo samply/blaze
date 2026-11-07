@@ -16,18 +16,22 @@
   Expands any conditional transaction commands (e.g. conditional
   creates/deletes) against the database value `:db-before` in `context`
   asynchronously, then verifies the expanded commands against the full context
-  at transaction point `t`.
+  at transaction point `t`. The commands are verified against the
+  `permissions` of the transaction, absent permissions allowing to write no
+  AccessControl code.
 
   Returns a CompletableFuture that completes with a collection of
   `blaze.db.kv/put-entry` values to be written to the KV store, or with an
   anomaly if verification fails (e.g. precondition not met, referential
   integrity violation, or duplicate commands)."
   {:arglists '([context tx-data])}
-  [{:keys [db-before] :as context} {:keys [t tx-cmds]}]
+  [{:keys [db-before] :as context} {:keys [t tx-cmds permissions]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/t db-before))
   (-> (expand/expand-tx-cmds db-before tx-cmds)
       (ac/then-apply
        (fn [tx-cmds]
          (with-open [_ (prom/timer tx-u/duration-seconds "verify-tx-cmds")]
-           (verify/verify-tx-cmds context t tx-cmds))))))
+           (verify/verify-tx-cmds
+            (cond-> context permissions (assoc :permissions permissions))
+            t tx-cmds))))))

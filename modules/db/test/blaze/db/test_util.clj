@@ -6,6 +6,7 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.protocols :as kv-p]
    [blaze.db.node :as node]
+   [blaze.db.permissions :as p]
    [blaze.db.resource-handle-cache]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
@@ -15,6 +16,7 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [with-system]]
@@ -219,3 +221,40 @@
                           (.close ^KvCloseable snapshot)))))]
       (f))
     @result))
+
+(def read-only-tag
+  "The read-only tag in the current AccessControl system."
+  #fhir/Coding
+   {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"
+    :code #fhir/code "read-only"})
+
+(def read-only-tag-legacy
+  "The read-only tag in the legacy AccessControl system."
+  #fhir/Coding
+   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
+    :code #fhir/code "read-only"})
+
+(def internal-label
+  "The internal security label of the AccessControl system."
+  #fhir/Coding
+   {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"
+    :code #fhir/code "internal"})
+
+(def read-only-patient-0
+  "A Patient tagged read-only in both AccessControl systems, like the
+  resources Blaze owns itself."
+  {:fhir/type :fhir/Patient :id "0"
+   :meta (type/meta {:tag [read-only-tag read-only-tag-legacy]})})
+
+(def internal-patient-0
+  "A Patient carrying the internal security label."
+  {:fhir/type :fhir/Patient :id "0"
+   :meta (type/meta {:security [internal-label]})})
+
+(defn transact-internal
+  "Transacts `tx-ops` on `node` with the permissions of internal code, so that
+  resources labelled with AccessControl codes can be written.
+
+  Returns the `t` of the transaction."
+  [node tx-ops]
+  @(d/transact node tx-ops p/internal))

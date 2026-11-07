@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.async.comp-spec]
+   [blaze.db.permissions.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.spec]
    [clojure.spec.alpha :as s]
@@ -10,6 +11,7 @@
 ;; returns a CompletableFuture of :blaze.db/t
 (s/fdef tx-log/submit
   :args (s/cat :tx-log :blaze.db/tx-log :tx-cmds :blaze.db/tx-cmds
+               :permissions (s/nilable :blaze.db/permissions)
                :local-payload any?)
   :ret ac/completable-future?)
 

@@ -6,6 +6,7 @@
    [blaze.module-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service.local.code-system.ucum :as ucum]
+   [blaze.terminology-service.local.code-system.util-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]))

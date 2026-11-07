@@ -30,3 +30,9 @@ The successful response will have the status code `204 No Content` with no paylo
   ]
 }
 ```
+
+## Read-Only and Internal Resources
+
+Like the [delete](delete.md) interaction, the conditional delete can't delete [read-only](delete.md#read-only-resources) resources. If one of the matching resources is read-only, Blaze returns a `409 Conflict` with an `OperationOutcome` and deletes no resource at all.
+
+Since version 1.14.0, the same applies to resources carrying the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`.

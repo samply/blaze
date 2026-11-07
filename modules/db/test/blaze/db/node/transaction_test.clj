@@ -4,11 +4,13 @@
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.transaction-spec]
+   [blaze.db.test-util :refer [internal-label read-only-tag read-only-tag-legacy]]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
@@ -20,6 +22,75 @@
 
 (def context
   {})
+
+(def ^:private other-coding
+  #fhir/Coding
+   {:system #fhir/uri "http://example.com/system-172648"
+    :code #fhir/code "read-only"})
+
+(defn- access-control
+  "Returns the AccessControl codes `prepare-ops` extracts from a `resource`
+  written by `op`."
+  [op resource]
+  (let [[[tx-cmd]] (tx/prepare-ops context [[op resource]])]
+    (:access-control tx-cmd ::absent)))
+
+(deftest prepare-ops-access-control-test
+  (doseq [op [:create :put]]
+    (testing (name op)
+      (testing "without meta"
+        (is (= ::absent (access-control op {:fhir/type :fhir/Patient :id "0"}))))
+
+      (testing "without AccessControl codes"
+        (is (= ::absent (access-control
+                         op {:fhir/type :fhir/Patient :id "0"
+                             :meta (type/meta {:tag [other-coding]
+                                               :security [other-coding]})}))))
+
+      (testing "read-only tag"
+        (doseq [tag [read-only-tag read-only-tag-legacy]]
+          (is (= ["read-only"] (access-control
+                                op {:fhir/type :fhir/Patient :id "0"
+                                    :meta (type/meta {:tag [other-coding tag]})})))))
+
+      (testing "read-only tag in both systems is extracted once"
+        (is (= ["read-only"] (access-control
+                              op {:fhir/type :fhir/Patient :id "0"
+                                  :meta (type/meta {:tag [read-only-tag read-only-tag-legacy]})}))))
+
+      (testing "internal security label"
+        (is (= ["internal"] (access-control
+                             op {:fhir/type :fhir/Patient :id "0"
+                                 :meta (type/meta {:security [internal-label]})}))))
+
+      (testing "codes are extracted regardless of the element"
+        (is (= ["internal" "read-only"]
+               (access-control
+                op {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [internal-label]
+                                      :security [read-only-tag]})}))))
+
+      (testing "both codes"
+        (is (= ["read-only" "internal"]
+               (access-control
+                op {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [read-only-tag read-only-tag-legacy]
+                                      :security [internal-label]})}))))
+
+      (testing "unknown codes are extracted"
+        (is (= ["foo"]
+               (access-control
+                op {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [#fhir/Coding
+                                             {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"
+                                              :code #fhir/code "foo"}]})}))))
+
+      (testing "codings without code are ignored"
+        (is (= ::absent
+               (access-control
+                op {:fhir/type :fhir/Patient :id "0"
+                    :meta (type/meta {:tag [#fhir/Coding
+                                             {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"}]})})))))))
 
 (deftest prepare-ops-test
   (testing "create"

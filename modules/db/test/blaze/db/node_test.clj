@@ -902,7 +902,7 @@
   (let [polls (atom 0)]
     (with-meta
       (reify tx-log/TxLog
-        (-submit [_ _ _]
+        (-submit [_ _ _ _]
           (ac/completed-future (ba/unavailable "The transaction log is read-only.")))
         (-last-t [_]
           (ac/completed-future (:t (peek batch))))

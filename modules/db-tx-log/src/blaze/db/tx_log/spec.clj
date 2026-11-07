@@ -1,10 +1,15 @@
 (ns blaze.db.tx-log.spec
   (:require
+   [blaze.db.permissions.spec]
    [blaze.db.resource-store.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.fhir.spec]
    [blaze.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as sg]
+   [java-time.api :as time])
+  (:import
+   [java.time Instant]))
 
 (s/def :blaze.db/tx-log
   #(satisfies? tx-log/TxLog %))
@@ -28,6 +33,9 @@
 (s/def :blaze.db.tx-cmd/if-none-match
   (s/or :any #{"*"} :t :blaze.db/t))
 
+(s/def :blaze.db.tx-cmd/access-control
+  (s/coll-of string? :kind vector? :min-count 1 :distinct true))
+
 (s/def :blaze.db.tx-cmd/check-refs
   boolean?)
 
@@ -42,6 +50,7 @@
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
+                   :blaze.db.tx-cmd/access-control
                    :blaze.db.tx-cmd/if-none-exist]))
 
 (defmethod tx-cmd "put" [_]
@@ -50,6 +59,7 @@
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
+                   :blaze.db.tx-cmd/access-control
                    :blaze.db.tx-cmd/if-match
                    :blaze.db.tx-cmd/if-none-match]))
 
@@ -98,5 +108,11 @@
 (s/def :blaze.db/tx-cmds
   (s/coll-of :blaze.db/tx-cmd :kind vector?))
 
+(s/def :blaze.db.tx/instant
+  (s/with-gen
+    #(instance? Instant %)
+    #(sg/fmap time/instant (sg/choose -5364662008000 7258118400000))))
+
 (s/def :blaze.db/tx-data
-  (s/keys :req-un [:blaze.db/t :blaze.db.tx/instant :blaze.db/tx-cmds]))
+  (s/keys :req-un [:blaze.db/t :blaze.db.tx/instant :blaze.db/tx-cmds]
+          :opt-un [:blaze.db/permissions]))

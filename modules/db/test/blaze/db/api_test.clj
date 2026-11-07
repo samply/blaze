@@ -20,7 +20,10 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :as dtu :refer [config non-referential-integrity-config
+   [blaze.db.test-util :as dtu :refer [config internal-label internal-patient-0
+                                       non-referential-integrity-config
+                                       read-only-patient-0 read-only-tag
+                                       read-only-tag-legacy transact-internal
                                        wait-for with-db with-system-data]]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log-spec]
@@ -503,15 +506,105 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Conditional create of a Patient with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
 
-(def ^:private read-only-tag
-  #fhir/Coding
-   {:system #fhir/uri "https://blaze-server.org/fhir/CodeSystem/AccessControl"
-    :code #fhir/code "read-only"})
+(deftest transact-access-control-test
+  (testing "a client can't create resources labelled with AccessControl codes"
+    (doseq [[meta code] [[(type/meta {:tag [read-only-tag]}) "read-only"]
+                         [(type/meta {:tag [read-only-tag-legacy]}) "read-only"]
+                         [(type/meta {:security [internal-label]}) "internal"]]
+            op [:create :put]]
+      (with-system [{:blaze.db/keys [node]} config]
+        (given-failed-future (d/transact node [[op {:fhir/type :fhir/Patient :id "0"
+                                                    :meta meta}]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := (format "Can't %s the resource `Patient/0` labelled with the AccessControl code `%s`."
+                                    (if (= :create op) "create" "update") code))
 
-(def ^:private read-only-tag-legacy
-  #fhir/Coding
-   {:system #fhir/uri "https://samply.github.io/blaze/fhir/CodeSystem/AccessControl"
-    :code #fhir/code "read-only"})
+        (testing "internal code can"
+          (is (= 2 (transact-internal node [[op {:fhir/type :fhir/Patient :id "0"
+                                                 :meta meta}]])))))))
+
+  (testing "a client can't copy a read-only resource under a new id"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (given-failed-future (d/transact node [[:create (assoc read-only-patient-0 :id "1")]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't create the resource `Patient/1` labelled with the AccessControl code `read-only`.")))
+
+  (testing "a client can write a read-only resource back unchanged"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (is (= 2 @(d/transact node [[:put read-only-patient-0]])))
+
+      (with-db [db node]
+        (given (d/resource-handle db "Patient" "0")
+          :num-changes := 1))))
+
+  (testing "a conditional create of a labelled resource matching an existing
+            resource writes nothing and succeeds without permissions"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (is (= 2 @(d/transact node [[:create (assoc read-only-patient-0 :id "1")
+                                   [["_id" "0"]]]])))
+
+      (with-db [db node]
+        (is (nil? (d/resource-handle db "Patient" "1"))))))
+
+  (testing "internal code can update and delete a read-only resource"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (is (= 2 (transact-internal node [[:put (assoc read-only-patient-0 :gender #fhir/code "female")]])))
+      (is (= 3 (transact-internal node [[:delete "Patient" "0"]])))))
+
+  (testing "a client can't change an internal resource"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create internal-patient-0]])
+
+      (given-failed-future (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't update the internal resource `Patient/0`.")
+
+      (given-failed-future (d/transact node [[:delete "Patient" "0"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the internal resource `Patient/0`.")
+
+      (testing "also not by a conditional delete"
+        (given-failed-future (d/transact node [[:conditional-delete "Patient" [["_id" "0"]]]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete the internal resource `Patient/0`."))
+
+      (testing "also not by a patient purge"
+        (given-failed-future (d/transact node [[:patient-purge "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't purge the internal resource `Patient/0`."))
+
+      (testing "internal code can"
+        (is (= 6 (transact-internal node [[:delete "Patient" "0"]]))))))
+
+  (testing "a client can't delete the history of an internal resource"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create internal-patient-0]])
+      (transact-internal node [[:put (assoc internal-patient-0 :gender #fhir/code "male")]])
+      (transact-internal node [[:put (assoc internal-patient-0 :gender #fhir/code "female")]])
+
+      (given-failed-future (d/transact node [[:delete-history "Patient" "0"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Can't delete the history of the internal resource `Patient/0`.")
+
+      (testing "also not version by version in one transaction"
+        (given-failed-future (d/transact node [[:delete-history-version "Patient" "0" 1]
+                                               [:delete-history-version "Patient" "0" 2]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Can't delete a history version of the internal resource `Patient/0`."))
+
+      (testing "internal code can"
+        (is (= 6 (transact-internal node [[:delete-history-version "Patient" "0" 1]
+                                          [:delete-history-version "Patient" "0" 2]])))
+        (with-db [db node]
+          (is (= 1 (count (vec (d/instance-history db "Patient" "0"))))))))))
 
 (deftest transact-put-test
   (testing "on empty database"
@@ -725,9 +818,9 @@
   (testing "read-only resources can't be updated"
     (doseq [tag [read-only-tag read-only-tag-legacy]
             meta [(type/meta {:tag [tag]}) nil]]
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Patient :id "0"
-                    :meta (type/meta {:tag [tag]})}]]]
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create {:fhir/type :fhir/Patient :id "0"
+                                           :meta (type/meta {:tag [tag]})}]])
 
         (let [patient (cond-> {:fhir/type :fhir/Patient :id "0"
                                :gender #fhir/code "female"}
@@ -845,9 +938,9 @@
 
   (testing "read-only resources are not deletable"
     (doseq [tag [read-only-tag read-only-tag-legacy]]
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Patient :id "0"
-                    :meta (type/meta {:tag [tag]})}]]]
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create {:fhir/type :fhir/Patient :id "0"
+                                           :meta (type/meta {:tag [tag]})}]])
 
         (given-failed-future (d/transact node [[:delete "Patient" "0"]])
           ::anom/category := ::anom/conflict
@@ -10486,10 +10579,10 @@
             count := 0))))))
 
 (deftest compile-system-matcher-test
-  (with-system-data [{:blaze.db/keys [node]} config]
-    [[[:put {:fhir/type :fhir/Patient :id "0"
-             :meta (type/meta {:tag [read-only-tag-legacy]})}]
-      [:put {:fhir/type :fhir/Patient :id "1"}]]]
+  (with-system [{:blaze.db/keys [node]} config]
+    (transact-internal node [[:put {:fhir/type :fhir/Patient :id "0"
+                                    :meta (type/meta {:tag [read-only-tag-legacy]})}]
+                             [:put {:fhir/type :fhir/Patient :id "1"}]])
 
     (with-db [db node]
       (doseq [target [node db]]

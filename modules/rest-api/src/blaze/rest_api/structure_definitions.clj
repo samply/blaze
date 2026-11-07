@@ -4,6 +4,7 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
+   [blaze.db.permissions :as p]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.structure-definition-repo :as sdr]
@@ -54,6 +55,14 @@
     (into (mapv f (sdr/resources structure-definition-repo))
           (map f) (sdr/complex-types structure-definition-repo))))
 
+(defn- create-structure-definitions
+  "Transacts `tx-ops` creating StructureDefinitions on `node`.
+
+  Uses the permissions of internal code, because the StructureDefinitions are
+  tagged read-only. That is safe, because Blaze generated them itself."
+  [node tx-ops]
+  (d/transact node tx-ops p/internal))
+
 (defn ensure-structure-definitions
   "Ensures that all StructureDefinition resources are present in the database node."
   {:arglists '([context])}
@@ -64,5 +73,5 @@
          (let [tx-ops (tx-ops context existing-urls (resources-and-types parsing-context structure-definition-repo))]
            (if (seq tx-ops)
              (do (log/debug "Create" (count tx-ops) "new StructureDefinition resources...")
-                 (d/transact node tx-ops))
+                 (create-structure-definitions node tx-ops))
              (ac/completed-future nil)))))))

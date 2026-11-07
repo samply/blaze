@@ -6,14 +6,20 @@
 
   There might be implementations of TxLog only suitable for single node setups."
 
-  (-submit [tx-log tx-cmds local-payload])
+  (-submit [tx-log tx-cmds permissions local-payload])
 
   (-last-t [tx-log])
 
   (-poll [tx-log offset timeout]))
 
 (defn submit
-  "Submits `tx-cmds` (transaction commands) to `tx-log`.
+  "Submits `tx-cmds` (transaction commands) with the `permissions` of the
+  caller to `tx-log`.
+
+  The `permissions` are stored together with `tx-cmds` and returned under
+  :permissions in the transaction data returned from `poll!`, so that every
+  replay of the transaction sees them. They are absent in the transaction data
+  if `permissions` is nil.
 
   Returns a CompletableFuture that will complete with point in time `t` of the
   potentially valid transaction or will complete exceptionally with an anomaly
@@ -26,8 +32,8 @@
   Note: This function only ensures that the transaction is committed into the
   log and will be handled in the future. So a positive return value doesn't mean
   that the transaction itself was successful."
-  [tx-log tx-cmds local-payload]
-  (-submit tx-log tx-cmds local-payload))
+  [tx-log tx-cmds permissions local-payload]
+  (-submit tx-log tx-cmds permissions local-payload))
 
 (defn last-t
   "Returns a CompletableFuture that will complete with the last point in time
@@ -44,7 +50,8 @@
   transaction data below `offset`, so the transaction log is free to release
   resources associated with it. Has to be called by a single poller at a time.
 
-  Transaction data optionally contains :local-payload if the transaction was
+  Transaction data optionally contains :permissions if the transaction was
+  submitted with permissions and :local-payload if the transaction was
   submitted on the same node and the transaction log supports this feature."
   [tx-log offset timeout]
   (-poll tx-log offset timeout))

@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
+   [blaze.db.permissions :as p]
    [blaze.fhir.canonical :as canonical]
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
@@ -36,3 +37,11 @@
    {:tx-ops []
     :luid-generator (m/luid-generator context)}
    code-systems))
+
+(defn create-code-systems
+  "Transacts `tx-ops` creating Blaze-managed CodeSystems on `node`.
+
+  Uses the permissions of internal code, because the CodeSystems are tagged
+  read-only. That is safe, because Blaze generated them itself."
+  [node tx-ops]
+  (d/transact node tx-ops p/internal))

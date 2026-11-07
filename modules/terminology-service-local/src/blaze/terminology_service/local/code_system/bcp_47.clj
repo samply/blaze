@@ -87,7 +87,7 @@
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create BCP-47 code system...")
-  (d/transact node [(cs-u/tx-op code-system (m/luid context))]))
+  (cs-u/create-code-systems node [(cs-u/tx-op code-system (m/luid context))]))
 
 (defn ensure-code-system
   "Ensures that the BCP-47 code system is present in the database node."

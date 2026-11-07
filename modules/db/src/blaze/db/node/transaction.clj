@@ -3,9 +3,35 @@
    [blaze.anomaly :as ba]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.fhir.canonical :as canonical]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
    [taoensso.timbre :as log]))
+
+(def ^:private access-control-systems
+  (set (canonical/urls "CodeSystem/AccessControl")))
+
+(defn- access-control-code [{:keys [system code]}]
+  (when (contains? access-control-systems (:value system))
+    (:value code)))
+
+(defn- access-control-codes
+  "Returns the distinct codes of the AccessControl CodeSystem, in the current
+  and legacy system, `resource` carries in `meta.tag` and `meta.security`.
+
+  The codes are extracted from both elements, because the permissions to write
+  a code don't depend on whether it is carried as tag or as security label."
+  {:arglists '([resource])}
+  [{{:keys [tag security]} :meta}]
+  (into [] (comp (keep access-control-code) (distinct)) (concat tag security)))
+
+(defn- assoc-access-control
+  "Associates the AccessControl codes of `resource` under :access-control to
+  `tx-cmd` if there are any, so that they can be authorized while indexing,
+  where the resource itself isn't available."
+  [tx-cmd resource]
+  (let [codes (access-control-codes resource)]
+    (cond-> tx-cmd (seq codes) (assoc :access-control codes))))
 
 (defmulti prepare-op (fn [_ [op]] op))
 
@@ -16,15 +42,16 @@
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd
-     (cond->
-      {:op (name op)
-       :type (name (:fhir/type resource))
-       :id (:id resource)
-       :hash hash}
-       (seq refs)
-       (assoc :refs refs)
-       (seq clauses)
-       (assoc :if-none-exist clauses))}))
+     (-> (cond->
+          {:op (name op)
+           :type (name (:fhir/type resource))
+           :id (:id resource)
+           :hash hash}
+           (seq refs)
+           (assoc :refs refs)
+           (seq clauses)
+           (assoc :if-none-exist clauses))
+         (assoc-access-control resource))}))
 
 (defn- prepare-if-none-match [if-none-match]
   (if (= :any if-none-match)
@@ -38,17 +65,18 @@
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd
-     (cond->
-      {:op (name op)
-       :type (name (:fhir/type resource))
-       :id (:id resource)
-       :hash hash}
-       (seq refs)
-       (assoc :refs refs)
-       (identical? :if-match precond-op)
-       (assoc :if-match (vec precond-vals))
-       (identical? :if-none-match precond-op)
-       (assoc :if-none-match (prepare-if-none-match (first precond-vals))))}))
+     (-> (cond->
+          {:op (name op)
+           :type (name (:fhir/type resource))
+           :id (:id resource)
+           :hash hash}
+           (seq refs)
+           (assoc :refs refs)
+           (identical? :if-match precond-op)
+           (assoc :if-match (vec precond-vals))
+           (identical? :if-none-match precond-op)
+           (assoc :if-none-match (prepare-if-none-match (first precond-vals))))
+         (assoc-access-control resource))}))
 
 (defmethod prepare-op :keep
   [_ [_ type id hash if-match]]

@@ -9,6 +9,7 @@
    [blaze.db.tx-log.local :as local]
    [blaze.db.tx-log.local-spec]
    [blaze.db.tx-log.local.codec :as codec]
+   [blaze.db.tx-log.local.codec-spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -250,11 +251,11 @@
                   (buffer-collector-config blocking-kv-store-config)]
       (let [{:keys [put-called release-put]} (meta kv-store)
             ;; the first submit blocks the storer thread in the kv-store
-            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         ;; one more submit is buffered while the storer thread is blocked
-        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil)]
+        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)]
           (is (= {"unstored" 2.0 "retained" 0.0} (buffer-entries collector)))
 
           (deliver release-put nil)
@@ -266,7 +267,7 @@
     (with-system [{tx-log ::tx-log/local
                    collector ::local/buffer-collector}
                   (buffer-collector-config config)]
-      (is (= 1 (deref (tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      (is (= 1 (deref (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
                       1000 ::timeout)))
 
       (is (= {"unstored" 0.0 "retained" 1.0} (buffer-entries collector)))
@@ -281,6 +282,9 @@
         (is (empty? (tx-log/poll! tx-log 2 (time/millis 10))))
 
         (is (= {"unstored" 0.0 "retained" 0.0} (buffer-entries collector)))))))
+
+(def ^:private delete-patient-cmd
+  {:op "delete" :type "Patient" :id "0"})
 
 (defn- write-cbor [x]
   (j/write-value-as-bytes x cbor-object-mapper))
@@ -331,7 +335,8 @@
                      (codec/encode-tx-data
                       (Instant/ofEpochSecond 0)
                       [(create-patient-cmd "0")
-                       {:op "delete" :type "Patient" :id "1"}])]])]
+                       {:op "delete" :type "Patient" :id "1"}]
+                      nil)]])]
 
       (testing "the last `t` is one"
         (is (= 1 @(tx-log/last-t tx-log))))
@@ -347,7 +352,7 @@
 
   (testing "with one submitted command in one transaction"
     (with-system [{tx-log ::tx-log/local} config]
-      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
 
       (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
         :t := 1
@@ -359,12 +364,12 @@
 
   (testing "with two submitted commands in two transactions"
     (with-system [{tx-log ::tx-log/local} config]
-      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
       @(tx-log/submit tx-log
                       [{:op "create" :type "Observation" :id "0"
                         :hash observation-hash-0
                         :refs [["Patient" "0"]]}]
-                      nil)
+                      nil nil)
 
       (given (second (tx-log/poll! tx-log 1 (time/millis 10)))
         :t := 2
@@ -375,22 +380,67 @@
         [:tx-cmds 0 :hash] := observation-hash-0
         [:tx-cmds 0 :refs] := [["Patient" "0"]])))
 
+  (testing "an already filled transaction log with permissions"
+    (with-system [{tx-log ::tx-log/local}
+                  (assoc-kv-store-init-data
+                   config
+                   [[:default
+                     (codec/encode-key 1)
+                     (codec/encode-tx-data
+                      (Instant/ofEpochSecond 0)
+                      [(create-patient-cmd "0")]
+                      {:write-access-control #{"read-only"}})]])]
+
+      (testing "has transaction data with permissions"
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          [:tx-cmds 0 :id] := "0"
+          :permissions := {:write-access-control #{"read-only"}}))))
+
+  (testing "without permissions"
+    (with-system [{tx-log ::tx-log/local} config]
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
+
+      (testing "the transaction data contain no permissions"
+        (is (not (contains? (first (tx-log/poll! tx-log 1 (time/millis 10)))
+                            :permissions))))))
+
+  (testing "with permissions"
+    (with-system [{tx-log ::tx-log/local} config]
+      (dotimes [_ 2]
+        @(tx-log/submit tx-log [(create-patient-cmd "0")]
+                        {:write-access-control #{"internal" "read-only"}}
+                        ::payload))
+
+      (testing "from the buffer"
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          :permissions := {:write-access-control #{"internal" "read-only"}}
+          :local-payload := ::payload))
+
+      (testing "from storage after the buffer was released"
+        (tx-log/poll! tx-log 2 (time/millis 10))
+        (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
+          :t := 1
+          :permissions := {:write-access-control #{"internal" "read-only"}}
+          :local-payload := nil))))
+
   (testing "with local payload"
     (with-system [{tx-log ::tx-log/local} config]
-      @(tx-log/submit tx-log [(create-patient-cmd "0")] ::payload)
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil ::payload)
 
       (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
         :local-payload := ::payload)))
 
   (testing "with invalid transaction data"
-    (testing "with invalid key"
+    (testing "a key shorter than a point in time"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
+        (kv/put! kv-store [[:default (byte-array [1]) (byte-array 0)]])
 
-        (testing "the invalid transaction data is ignored"
-          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
+        (testing "the invalid transaction data is skipped"
+          (is (empty? (tx-log/poll! tx-log 0 (time/millis 10)))))))
 
     (testing "with invalid key followed by valid entry"
       (with-system [{tx-log ::tx-log/local
@@ -398,7 +448,8 @@
                     config]
         (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
         (kv/put! kv-store [(codec/encode-entry 1 (Instant/ofEpochSecond 0)
-                                               [(create-patient-cmd "0")])])
+                                               [(create-patient-cmd "0")]
+                                               nil)])
 
         (testing "the invalid transaction data is ignored"
           (given (first (tx-log/poll! tx-log 0 (time/millis 10)))
@@ -416,7 +467,8 @@
         (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
         (kv/put! kv-store [[:default (byte-array 1) (byte-array 0)]])
         (kv/put! kv-store [(codec/encode-entry 1 (Instant/ofEpochSecond 0)
-                                               [(create-patient-cmd "0")])])
+                                               [(create-patient-cmd "0")]
+                                               nil)])
 
         (testing "the invalid transaction data is ignored"
           (given (first (tx-log/poll! tx-log 0 (time/millis 10)))
@@ -427,46 +479,42 @@
             [:tx-cmds 0 :id] := "0"
             [:tx-cmds 0 :hash] := patient-hash-0))))
 
-    (testing "with empty value"
-      (with-system [{tx-log ::tx-log/local
-                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    config]
-        (kv/put! kv-store [[:default (byte-array Long/BYTES) (byte-array 0)]])
+    (doseq [[name value]
+            [["empty value" (byte-array 0)]
+             ["invalid cbor value" (invalid-cbor-content)]
+             ["value that isn't a map" (write-cbor 1)]
+             ["missing instant" (write-cbor {:tx-cmds [delete-patient-cmd]})]
+             ["invalid instant" (write-cbor {:instant "" :tx-cmds [delete-patient-cmd]})]
+             ["missing tx-cmds" (write-cbor {:instant 0})]
+             ["null tx-cmds" (write-cbor {:instant 0 :tx-cmds nil})]
+             ["tx-cmds that aren't a vector" (write-cbor {:instant 0 :tx-cmds 1})]
+             ["invalid tx-cmd" (write-cbor {:instant 0 :tx-cmds [{}]})]
+             ["invalid hash" (write-cbor {:instant 0 :tx-cmds [{:op "create" :type "Patient"
+                                                                :id "0" :hash "foo"}]})]
+             ["invalid permissions" (write-cbor {:instant 0 :tx-cmds [delete-patient-cmd]
+                                                 :permissions {:write-access-control "read-only"}})]]]
+      (testing (str "with " name " followed by valid entry")
+        (with-system [{tx-log ::tx-log/local}
+                      (assoc-kv-store-init-data
+                       config
+                       [[:default (codec/encode-key 1) value]
+                        [:default
+                         (codec/encode-key 2)
+                         (codec/encode-tx-data
+                          (Instant/ofEpochSecond 0)
+                          [(create-patient-cmd "0")]
+                          nil)]])]
 
-        (testing "the invalid transaction data is ignored"
-          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
-
-    (testing "with invalid cbor value"
-      (with-system [{tx-log ::tx-log/local
-                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    config]
-        (kv/put! kv-store [[:default (byte-array Long/BYTES) (invalid-cbor-content)]])
-
-        (testing "the invalid transaction data is ignored"
-          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
-
-    (testing "with invalid instant value"
-      (with-system [{tx-log ::tx-log/local
-                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    config]
-        (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:instant ""})]])
-
-        (testing "the invalid transaction data is ignored"
-          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
-
-    (testing "with invalid tx-cmd value"
-      (with-system [{tx-log ::tx-log/local
-                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    config]
-        (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]})]])
-
-        (testing "the invalid transaction data is ignored"
-          (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))
+          (testing "the invalid transaction data is skipped"
+            (given (tx-log/poll! tx-log 1 (time/millis 10))
+              count := 1
+              [0 :t] := 2
+              [0 :tx-cmds 0 :id] := "0")))))
 
     (testing "with failing kv-store"
       (let [tx-cmds [(create-patient-cmd "0")]]
         (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
-          (given-failed-future (tx-log/submit tx-log tx-cmds nil)
+          (given-failed-future (tx-log/submit tx-log tx-cmds nil nil)
             ::anom/message := "put-error")
 
           (is (empty? (tx-log/poll! tx-log 1 (time/millis 10)))))))))
@@ -474,7 +522,7 @@
 (deftest poll-test
   (testing "polling the same offset again returns the same transaction data"
     (with-system [{tx-log ::tx-log/local} config]
-      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
 
       (is (= (tx-log/poll! tx-log 1 (time/millis 10))
              (tx-log/poll! tx-log 1 (time/millis 10))))
@@ -495,7 +543,7 @@
                           (first tx-data)
                           (recur (tx-log/poll! tx-log 1 (time/millis 100))))))]
 
-        @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+        @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
 
         (given @tx-data
           :t := 1
@@ -511,7 +559,7 @@
                    kv-store ::blocking-kv-store}
                   blocking-kv-store-config]
       (let [{:keys [put-called release-put]} (meta kv-store)
-            t (tx-log/submit tx-log [(create-patient-cmd "0")] ::payload)]
+            t (tx-log/submit tx-log [(create-patient-cmd "0")] nil ::payload)]
         (is (true? (deref put-called 1000 nil)))
 
         (testing "the transaction data is stored but not yet published, so
@@ -533,7 +581,7 @@
     (with-system [{tx-log ::tx-log/local
                    kv-store ::snapshot-counting-kv-store}
                   snapshot-counting-kv-store-config]
-      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
 
       (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
         :t := 1)
@@ -545,7 +593,7 @@
   (testing "polling releases acknowledged transaction data from the buffer"
     (with-system [{tx-log ::tx-log/local} config]
       (dotimes [_ 2]
-        @(tx-log/submit tx-log [(create-patient-cmd "0")] ::payload))
+        @(tx-log/submit tx-log [(create-patient-cmd "0")] nil ::payload))
 
       (testing "before acknowledgment, old transaction data comes from the
                 buffer with the local payload"
@@ -567,7 +615,7 @@
 (deftest max-poll-size-test
   (testing "at most 500 transactions are returned in one poll"
     (with-system [{tx-log ::tx-log/local} config]
-      (run! #(deref (tx-log/submit tx-log [(create-patient-cmd (str %))] nil))
+      (run! #(deref (tx-log/submit tx-log [(create-patient-cmd (str %))] nil nil))
             (range 501))
 
       (testing "from the buffer"
@@ -587,12 +635,12 @@
                   blocking-kv-store-config]
       (let [{:keys [put-called release-put]} (meta kv-store)
             ;; the first submit blocks the storer thread in the kv-store
-            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         ;; two more submits are buffered while the storer thread is blocked
-        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil)
-              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil)]
+        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)
+              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil nil)]
 
           ;; the poller acknowledges an offset beyond the stored transaction
           ;; data, which must not release the still unstored entries 2 and 3
@@ -617,12 +665,12 @@
                   blocking-kv-store-config]
       (let [{:keys [put-called release-put put-sizes]} (meta kv-store)
             ;; the first submit blocks the storer thread in the kv-store
-            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         ;; two more submits are buffered while the storer thread is blocked
-        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil)
-              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil)]
+        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)
+              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil nil)]
           (deliver release-put nil)
           (is (= 1 @future-1))
           (is (= 2 @future-2))
@@ -640,12 +688,12 @@
             batches (stored-batches)
             entries (store-batch-entries-sum)
             ;; the first submit blocks the storer thread in the kv-store
-            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         ;; two more submits are buffered while the storer thread is blocked
-        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil)
-              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil)]
+        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)
+              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil nil)]
           (deliver release-put nil)
           (is (= 1 @future-1))
           (is (= 2 @future-2))
@@ -659,7 +707,7 @@
   (testing "entries of a failed batch aren't observed"
     (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
       (let [batches (stored-batches)]
-        (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+        (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
           ::anom/category := ::anom/fault
           ::anom/message := "put-error")
 
@@ -669,7 +717,7 @@
   (testing "the duration of one round of the store loop is observed"
     (let [durations (store-round-durations)]
       (with-system [{tx-log ::tx-log/local} config]
-        (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil))))
+        (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil))))
 
       ;; the halted system waited for the storer thread to exit, so its round
       ;; is observed by now
@@ -686,7 +734,7 @@
             transaction data is stored"
     (with-system [{tx-log ::tx-log/local} config]
       (let [durations (submit-durations)]
-        (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)))
+        (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)))
 
         (is (= (inc durations) (submit-durations)))))))
 
@@ -697,13 +745,13 @@
                 forever"
         (with-redefs [local/store-entries!
                       (fn [_ _ _] (throw (Error. "store-error")))]
-          (given-failed-future (-> (tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+          (given-failed-future (-> (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
                                    (ac/or-timeout! 10 TimeUnit/SECONDS))
             ::anom/category := ::anom/fault
             ::anom/message := "store-error")))
 
       (testing "the store loop still stores subsequent transaction data"
-        (is (= 2 @(-> (tx-log/submit tx-log [(create-patient-cmd "1")] nil)
+        (is (= 2 @(-> (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)
                       (ac/or-timeout! 10 TimeUnit/SECONDS))))
 
         (given (first (tx-log/poll! tx-log 1 (time/millis 10)))
@@ -717,7 +765,7 @@
       (.close ^AutoCloseable tx-log)
 
       (let [durations (submit-durations)
-            rejected-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            rejected-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (if (ac/done? rejected-future)
           (given-failed-future rejected-future
             ::anom/category := ::anom/unavailable
@@ -735,7 +783,7 @@
   as long as the storer thread is blocked."
   [tx-log]
   (loop [futures []]
-    (let [future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+    (let [future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
       (if (ac/done? future)
         futures
         (recur (conj futures future))))))
@@ -747,12 +795,12 @@
                   blocking-kv-store-config]
       (let [{:keys [put-called release-put]} (meta kv-store)
             ;; the first submit blocks the storer thread in the kv-store
-            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future-1 (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         ;; two more submits are buffered while the storer thread is blocked
-        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil)
-              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil)
+        (let [future-2 (tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)
+              future-3 (tx-log/submit tx-log [(create-patient-cmd "2")] nil nil)
               ;; the close blocks until the storer thread has terminated
               closing (ac/supply-async #(.close ^AutoCloseable tx-log))
               ;; submitting until a submit is rejected ensures that the close
@@ -763,7 +811,7 @@
 
           (testing "the transaction log is closed while transaction data is
                     still buffered"
-            (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "3")] nil)
+            (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "3")] nil nil)
               ::anom/category := ::anom/unavailable)
             (is (not-any? ac/done? futures)))
 
@@ -787,7 +835,7 @@
     (with-system [{tx-log ::tx-log/local} config]
       ;; once the transaction data of the submit is stored, the store loop has
       ;; nothing left to do and waits on the store signal
-      (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil)))
+      (is (= 1 @(tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)))
 
       (testing "the close returns instead of waiting on the storer thread that
                 waits on the store signal forever"
@@ -804,7 +852,7 @@
       (let [{:keys [put-called release-put]} (meta kv-store)
             ;; the storer thread is blocked in the kv-store, so the continuation
             ;; is registered before the future of the submit is completed
-            future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+            future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
         (is (true? (deref put-called 1000 nil)))
 
         (let [thread-name (mtu/thread-name future)]
@@ -825,7 +873,7 @@
           ;; the storer thread is blocked in `store-entries!`, so the
           ;; continuation is registered before the future of the submit is
           ;; completed
-          (let [future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)]
+          (let [future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)]
             (is (true? (deref store-called 1000 nil)))
 
             (let [thread-name (mtu/thread-name future)]
@@ -836,10 +884,10 @@
 (deftest submit-failure-gap-test
   (testing "a failed submit leaves a gap in `t`"
     (with-system [{tx-log ::tx-log/local} failing-once-kv-store-config]
-      (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
         ::anom/message := "put-error")
 
-      (is (= 2 @(tx-log/submit tx-log [(create-patient-cmd "1")] nil)))
+      (is (= 2 @(tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)))
 
       (testing "the last `t` is the last assigned `t`"
         (is (= 2 @(tx-log/last-t tx-log))))
@@ -855,7 +903,7 @@
             transaction data right away, because otherwise the poller would
             spin as long as no further transaction data is stored"
     (with-system [{tx-log ::tx-log/local} failing-once-kv-store-config]
-      (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil)
+      (given-failed-future (tx-log/submit tx-log [(create-patient-cmd "0")] nil nil)
         ::anom/message := "put-error")
 
       (testing "polling actually waits the timeout before returning no data"
@@ -866,7 +914,7 @@
       (testing "the waiting poller is woken up by the next successfully stored
                 transaction data"
         (let [tx-data (ac/supply-async #(tx-log/poll! tx-log 1 (time/seconds 10)))]
-          (is (= 2 @(tx-log/submit tx-log [(create-patient-cmd "1")] nil)))
+          (is (= 2 @(tx-log/submit tx-log [(create-patient-cmd "1")] nil nil)))
 
           (given (deref tx-data 10000 ::timeout)
             count := 1

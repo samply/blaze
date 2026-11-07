@@ -7,6 +7,7 @@
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.api :as d]
+   [blaze.db.permissions.spec]
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec]
@@ -25,7 +26,8 @@
   :ret ac/completable-future?)
 
 (s/fdef d/transact
-  :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops)
+  :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops
+               :permissions (s/? :blaze.db/permissions))
   :ret ac/completable-future?)
 
 (s/fdef d/subscribe-changes!

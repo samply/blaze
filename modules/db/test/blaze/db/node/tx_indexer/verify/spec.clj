@@ -4,6 +4,7 @@
    [blaze.db.node.stats :as-alias stats]
    [blaze.db.node.stats.spec]
    [blaze.db.node.tx-indexer.verify :as-alias verify]
+   [blaze.db.permissions.spec]
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash.spec]
@@ -16,6 +17,12 @@
 (s/def ::verify/read-only-matcher
   :blaze.db/matcher)
 
+(s/def ::verify/internal-matcher
+  :blaze.db/matcher)
+
+(s/def ::verify/permissions
+  :blaze.db/permissions)
+
 (s/def ::verify/stats
   ::stats/stats)
 
@@ -27,7 +34,8 @@
 
 (s/def ::verify/context
   (s/keys :req-un [::verify/db-before ::verify/read-only-matcher
-                   ::verify/stats]))
+                   ::verify/internal-matcher ::verify/stats]
+          :opt-un [::verify/permissions]))
 
 (s/def ::verify/op
   #{"create" "hold" "put" "keep" "delete" "delete-history"
@@ -41,6 +49,7 @@
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
+                   :blaze.db.tx-cmd/access-control
                    :blaze.db.tx-cmd/if-none-exist]))
 
 (defmethod terminal-tx-cmd "hold" [_]
@@ -56,6 +65,7 @@
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
+                   :blaze.db.tx-cmd/access-control
                    :blaze.db.tx-cmd/if-match
                    :blaze.db.tx-cmd/if-none-match]))
 
