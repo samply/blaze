@@ -5,4 +5,10 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
-test "total number of resources" "$(curl -sH 'Accept: application/fhir+json' "$base" | jq -r .total)" "$1"
+
+total() {
+  curl -sH 'Accept: application/fhir+json' "$1" | jq -r .total
+}
+
+# Without the GraphDefinition the Patient $purge operation installs at startup
+test "total number of resources" "$(($(total "$base") - $(total "$base/GraphDefinition?_summary=count")))" "$1"

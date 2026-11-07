@@ -724,7 +724,17 @@
 
       (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0` and others."))))
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`, `Observation/1`.")))
+
+  (testing "deleting a patient which is referenced by eleven still existing observations"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [(into [[:put patient-0]]
+             (map (fn [id] [:put (assoc observation-0 :id (str id))]))
+             (range 11))]
+
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`, `Observation/1`, `Observation/10`, `Observation/2`, `Observation/3`, `Observation/4`, `Observation/5`, `Observation/6`, `Observation/7`, `Observation/8` and others."))))
 
 (deftest verify-delete-history-test
   (testing "empty database"

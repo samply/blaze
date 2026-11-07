@@ -7,12 +7,15 @@
    [blaze.db.node.tx-indexer.expand :as expand]
    [blaze.db.node.tx-indexer.expand-spec]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :refer [config with-system-data]]
+   [blaze.db.test-util :refer [config internal-label transact-internal
+                               with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util.graph-definition :as g-tu]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
@@ -178,3 +181,38 @@
         [1 :op] := "purge"
         [1 :type] := "Observation"
         [1 :id] := "0"))))
+
+(def ^:private purge-graph-def
+  (-> (g-tu/graph-def
+       :nodes [(g-tu/node "patient" "Patient")
+               (g-tu/node "observation" "Observation")]
+       :link [(g-tu/link "patient" "observation" :params "subject={ref}")])
+      (assoc :url #fhir/uri "http://example.com/purge"
+             :version #fhir/string "1"
+             :meta (type/meta {:security [internal-label]}))))
+
+(deftest expand-tx-cmds-patient-purge-graph-test
+  (testing "only the observation with the patient as subject is purged"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1"}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:create {:fhir/type :fhir/Observation :id "1"
+                  :subject #fhir/Reference{:reference #fhir/string "Patient/1"}
+                  :performer [#fhir/Reference{:reference #fhir/string "Patient/0"}]}]]]
+
+      (transact-internal node [[:create purge-graph-def]])
+
+      (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"
+                                     :graph "http://example.com/purge|1"
+                                     :check-refs true}])
+        count := 2
+        [0] := {:op "purge" :type "Patient" :id "0" :check-refs true}
+        [1] := {:op "purge" :type "Observation" :id "0" :check-refs true})
+
+      (testing "the compartment selects both observations"
+        (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
+          count := 3
+          [1 :id] := "0"
+          [2 :id] := "1")))))

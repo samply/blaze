@@ -77,7 +77,13 @@
       {:op "delete-history-version"
        :type "Patient"
        :id "0"
-       :t 1}))
+       :t 1}
+      {:op "patient-purge"
+       :id "0"}
+      {:op "patient-purge"
+       :id "0"
+       :check-refs true
+       :graph "http://example.com/purge|1"}))
 
   (testing "invalid"
     (are [tx-cmd] (not (s/valid? :blaze.db/tx-cmd tx-cmd))
@@ -119,7 +125,20 @@
       {:op "delete-history-version"
        :type "Patient"
        :id "0"
-       :t "1"})))
+       :t "1"}
+      {:op "patient-purge"}
+      {:op "patient-purge"
+       :id "0"
+       :graph 1}
+      {:op "patient-purge"
+       :id "0"
+       :graph "http://example.com/purge"}
+      {:op "patient-purge"
+       :id "0"
+       :graph "http://example.com/purge|"}
+      {:op "patient-purge"
+       :id "0"
+       :graph "http://example.com/purge|1|2"})))
 
 (def tx-data
   {:t 1

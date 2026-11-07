@@ -2,7 +2,7 @@
   "Expands non-terminal transaction commands into terminal transaction commands
   that are verified later."
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -10,6 +10,9 @@
    [blaze.db.kv.spec]
    [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.search-param-registry :as sr]
+   [blaze.fhir.canonical :as canonical]
+   [blaze.graph-definition :as gd]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [prometheus.alpha :as prom]))
 
@@ -116,32 +119,112 @@
                  h1 [(assoc command :op "delete" :id (:id h1))]
                  :else []))))))))
 
+(defn- compartment-rev-links
+  "Returns the `[type code]` tuples of all search params of the Patient
+  compartment, except the ones of Patients, which would select other patients."
+  [search-param-registry]
+  (coll/eduction
+   (comp
+    (remove (comp #{"Patient"} first))
+    (mapcat (fn [[type codes]] (map (partial vector type) codes))))
+   (sr/compartment-resources search-param-registry "Patient")))
+
+(def ^:private internal-security-clause
+  ["_security" (str (canonical/url "CodeSystem/AccessControl") "|internal")])
+
+(defn- graph-def-clauses
+  "Returns the search clauses selecting the GraphDefinition with the canonical
+  `graph` of the form `url|version`, labelled internal, so that only a
+  GraphDefinition Blaze installed itself is found."
+  [graph]
+  (let [[url version] (str/split graph #"\|" 2)]
+    [["url" url] ["version" version] internal-security-clause]))
+
+(defn- graph-def-handle [db graph]
+  (do-sync [[h1 h2] (-> (d/type-query db "GraphDefinition" (graph-def-clauses graph))
+                        (ac/then-apply #(into [] (take 2) %)))]
+    (cond
+      h2 (ba/conflict (format "Found more than one GraphDefinition `%s` for purging Patients." graph))
+      h1 h1
+      :else (ba/conflict (format "The GraphDefinition `%s` for purging Patients wasn't found." graph)))))
+
+(defn- rev-link-error-msg
+  "Returns the error message for the search param with `code` of a link to
+  `type`, if it isn't a reference search param targeting Patient, because
+  `p/-rev-include` would silently select no resources otherwise."
+  [search-param-registry [type code]]
+  (if-let [{sp-type :type :keys [target]} (sr/get search-param-registry code type)]
+    (cond
+      (not= "reference" sp-type)
+      (format "The link to `%s` uses a search parameter of type `%s` instead of `reference` with code `%s`." type sp-type code)
+
+      (not (some #{"Patient"} target))
+      (format "The link to `%s` uses a reference search parameter not targeting Patient with code `%s`." type code))
+    (format "The link to `%s` uses an unknown search parameter with code `%s`." type code)))
+
+(defn- check-rev-links [search-param-registry rev-links]
+  (if-let [msg (some (partial rev-link-error-msg search-param-registry) rev-links)]
+    (ba/incorrect msg)
+    rev-links))
+
+(defn- graph-def-rev-links [search-param-registry graph-def]
+  (when-ok [compiled-graph (gd/compile graph-def)
+            rev-links (gd/rev-links compiled-graph)]
+    (check-rev-links search-param-registry rev-links)))
+
+(defn- invalid-graph-def-msg [graph {::anom/keys [message]}]
+  (format "Invalid GraphDefinition `%s` for purging Patients: %s" graph message))
+
+(defn- graph-rev-links
+  "Returns a CompletableFuture that completes with the `[type code]` tuples of
+  the links of the GraphDefinition with the canonical `graph`, found in `db`, or
+  completes exceptionally with an anomaly if the GraphDefinition can't be found
+  or isn't valid for purging."
+  [{{:keys [search-param-registry]} :node :as db} graph]
+  (do-sync [graph-def (-> (graph-def-handle db graph)
+                          (ac/then-compose (partial d/pull db)))]
+    (ba/exceptionally
+     (graph-def-rev-links search-param-registry graph-def)
+     #(assoc % ::anom/message (invalid-graph-def-msg graph %)))))
+
+(defn- rev-links
+  "Returns a CompletableFuture that completes with the `[type code]` tuples of
+  the resources to purge together with a patient.
+
+  Uses the GraphDefinition with the canonical `graph` if given and the Patient
+  compartment otherwise."
+  [{{:keys [search-param-registry]} :node :as db} graph]
+  (if graph
+    (graph-rev-links db graph)
+    (ac/completed-future (compartment-rev-links search-param-registry))))
+
+(defn- purge-tx-cmd [type check-refs {:keys [id]}]
+  {:op "purge" :type type :id id :check-refs check-refs})
+
 (defn- purge-tx-cmds
-  [{{:keys [search-param-registry]} :node :as db} patient-handle check-refs]
-  (let [rev-include (partial p/-rev-include db patient-handle)]
-    (coll/eduction
-     (comp
-      (mapcat
-       (fn [[type codes]]
-         (when-not (= "Patient" type)
-           (coll/eduction
-            (comp
-             (mapcat (partial rev-include type))
-             (map
-              (fn [{:keys [id]}]
-                {:op "purge" :type type :id id :check-refs check-refs})))
-            codes))))
-      (distinct))
-     (sr/compartment-resources search-param-registry "Patient"))))
+  "Returns the purge commands of all resources of `type` that reference the
+  patient of `patient-handle` through the search param with `code` of each
+  `[type code]` tuple of `rev-links`."
+  [db patient-handle check-refs rev-links]
+  (coll/eduction
+   (comp
+    (mapcat
+     (fn [[type code]]
+       (coll/eduction
+        (map (partial purge-tx-cmd type check-refs))
+        (p/-rev-include db patient-handle type code))))
+    (distinct))
+   rev-links))
 
 (defmethod expand "patient-purge"
-  [db-before {:keys [id check-refs] :or {check-refs false}}]
+  [db-before {:keys [id check-refs graph] :or {check-refs false}}]
   (with-open [_ (prom/timer tx-u/duration-seconds "expand-patient-purge")]
-    (ac/completed-future
-     (when-let [handle (d/resource-handle db-before "Patient" id)]
-       (into
-        [{:op "purge" :type "Patient" :id id :check-refs check-refs}]
-        (purge-tx-cmds db-before handle check-refs))))))
+    (if-let [handle (d/resource-handle db-before "Patient" id)]
+      (do-sync [rev-links (rev-links db-before graph)]
+        (into
+         [{:op "purge" :type "Patient" :id id :check-refs check-refs}]
+         (purge-tx-cmds db-before handle check-refs rev-links)))
+      (ac/completed-future []))))
 
 (defmethod expand :default
   [_ command]

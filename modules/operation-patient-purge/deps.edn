@@ -1,6 +1,14 @@
-{:deps
+{:paths ["src" "target/generated-resources"]
+
+ :deps
  {blaze/async
   {:local/root "../async"}
+
+  blaze/coll
+  {:local/root "../coll"}
+
+  blaze/luid
+  {:local/root "../luid"}
 
   blaze/module-base
   {:local/root "../module-base"}
@@ -11,8 +19,19 @@
   blaze/spec
   {:local/root "../spec"}}
 
+ :deps/prep-lib
+ {:alias :build
+  :fn copy-profiles
+  :ensure "target/generated-resources"}
+
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.14" :git/sha "1176afd"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps

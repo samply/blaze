@@ -1,12 +1,12 @@
 fmt:
-	cljfmt check src test deps.edn tests.edn
+	cljfmt check src test build.clj deps.edn tests.edn
 
 lint:
-	clj-kondo --lint src test deps.edn
+	clj-kondo --lint src test build.clj deps.edn
 
 prep:
 	$(MAKE) -C ../module-base prep
-	clojure -Sthreads 1 -X:deps prep :aliases '[:test]'
+	clojure -Sthreads 1 -X:deps prep :aliases '[:test]' :current true
 
 test: prep
 	clojure -Sthreads 1 -M:test:kaocha --profile :ci
