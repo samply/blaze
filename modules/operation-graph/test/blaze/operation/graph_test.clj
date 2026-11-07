@@ -124,14 +124,18 @@
    (into
     [["/Patient/{id}/__graph-page/{page-id}" {:name :Patient.operation/graph-page}]]
     (map (fn [type] [(str "/" type) {:name (keyword type "type")}]))
-    ["Patient" "Condition" "Observation" "Encounter" "Practitioner" "Organization"])
+    ["Patient" "Condition" "Observation" "Encounter" "Practitioner" "Organization"
+     "Bundle"])
    {:syntax :bracket
     :path context-path}))
 
-(def match
+(defn- type-match [type]
   (reitit/map->Match
-   {:data {:fhir.resource/type "Patient"}
-    :path (str context-path "/Patient/0/$graph")}))
+   {:data {:fhir.resource/type type}
+    :path (str context-path "/" type "/0/$graph")}))
+
+(def match
+  (type-match "Patient"))
 
 (def page-match
   (reitit/map->Match
@@ -143,7 +147,7 @@
      (assoc request
             :blaze/base-url base-url
             ::reitit/router router
-            ::reitit/match match))))
+            ::reitit/match (::reitit/match request match)))))
 
 (defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
@@ -957,3 +961,141 @@
           :total := #fhir/unsignedInt 2
           entry-urls := [(url "Patient" "0")
                          (url "Observation" "0")])))))
+
+(deftest handler-start-node-type-test
+  (testing "fails if the type of the resource doesn't match the type of the start node"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put (g-tu/graph-def
+               :start "observation"
+               :nodes
+               [(g-tu/node "observation" "Observation")
+                (g-tu/node "patient" "Patient")]
+               :link
+               [(g-tu/link "observation" "patient" :path "subject")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "The type `Patient` of the resource `Patient/0` doesn't match the type `Observation` of the start node `observation`."))))
+
+  (testing "works on an Observation with a start node of type Observation"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
+        [:put (g-tu/graph-def
+               :start "observation"
+               :nodes
+               [(g-tu/node "observation" "Observation")
+                (g-tu/node "patient" "Patient")]
+               :link
+               [(g-tu/link "observation" "patient" :path "subject")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {::reitit/match (type-match "Observation")
+                       :path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          entry-urls := [(url "Observation" "0")
+                         (url "Patient" "0")]))))
+
+  (testing "fails on an Observation with a start node of type Patient"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Observation :id "0"}]
+        [:put (g-tu/graph-def
+               :nodes
+               [(g-tu/node "patient" "Patient")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {::reitit/match (type-match "Observation")
+                       :path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "The type `Observation` of the resource `Observation/0` doesn't match the type `Patient` of the start node `patient`."))))
+
+  (testing "a start node of type Resource matches all resource types"
+    (doseq [[type resource] [["Patient" {:fhir/type :fhir/Patient :id "0"}]
+                             ["Observation" {:fhir/type :fhir/Observation :id "0"}]
+                             ["Bundle" {:fhir/type :fhir/Bundle :id "0"
+                                        :type #fhir/code "collection"}]]]
+      (with-handler [handler]
+        [[[:put resource]
+          [:put (g-tu/graph-def
+                 :start "resource"
+                 :nodes
+                 [(g-tu/node "resource" "Resource")])]]]
+
+        (let [{:keys [status body]}
+              @(handler {::reitit/match (type-match type)
+                         :path-params {:id "0"}
+                         :query-params {"graph" "144200"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :total := #fhir/unsignedInt 1
+            entry-urls := [(url type "0")])))))
+
+  (testing "a start node of type DomainResource matches domain resource types"
+    (doseq [[type resource] [["Patient" {:fhir/type :fhir/Patient :id "0"}]
+                             ["Observation" {:fhir/type :fhir/Observation :id "0"}]]]
+      (with-handler [handler]
+        [[[:put resource]
+          [:put (g-tu/graph-def
+                 :start "domain-resource"
+                 :nodes
+                 [(g-tu/node "domain-resource" "DomainResource")])]]]
+
+        (let [{:keys [status body]}
+              @(handler {::reitit/match (type-match type)
+                         :path-params {:id "0"}
+                         :query-params {"graph" "144200"}})]
+
+          (is (= 200 status))
+
+          (given body
+            :total := #fhir/unsignedInt 1
+            entry-urls := [(url type "0")])))))
+
+  (testing "a start node of type DomainResource doesn't match a Bundle"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Bundle :id "0" :type #fhir/code "collection"}]
+        [:put (g-tu/graph-def
+               :start "domain-resource"
+               :nodes
+               [(g-tu/node "domain-resource" "DomainResource")])]]]
+
+      (let [{:keys [status body]}
+            @(handler {::reitit/match (type-match "Bundle")
+                       :path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "invalid"
+          [:issue 0 :diagnostics] := #fhir/string "The type `Bundle` of the resource `Bundle/0` doesn't match the type `DomainResource` of the start node `domain-resource`.")))))

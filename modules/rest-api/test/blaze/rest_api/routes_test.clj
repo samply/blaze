@@ -3,6 +3,7 @@
    [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.search-param]
    [blaze.fhir.parsing-context]
+   [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.job-scheduler]
@@ -148,33 +149,45 @@
    :operations
    [#:blaze.rest-api.operation
      {:code "compact-db"
+      :def-uri "def-uri-compact-db"
       :affects-state true
       :system-handler (handler ::compact-db)}
     #:blaze.rest-api.operation
      {:code "graphql"
+      :def-uri "def-uri-graphql"
       :affects-state false
       :response-type :json
       :system-handler (handler ::graphql)}
     #:blaze.rest-api.operation
      {:code "totals"
+      :def-uri "def-uri-totals"
       :affects-state false
       :system-handler (handler ::totals)}
     #:blaze.rest-api.operation
      {:code "evaluate-measure"
+      :def-uri "def-uri-evaluate-measure"
       :resource-types ["Measure"]
       :type-handler (handler ::evaluate-measure-type)
       :instance-handler (handler ::evaluate-measure-instance)}
     #:blaze.rest-api.operation
      {:code "everything"
+      :def-uri "def-uri-everything"
       :affects-state false
       :resource-types ["Patient"]
       :instance-handler (handler ::everything)
       :instance-page-handler (handler ::everything-page)}
     #:blaze.rest-api.operation
      {:code "purge"
+      :def-uri "def-uri-purge"
       :affects-state true
       :resource-types ["Patient"]
-      :instance-handler (handler ::purge)}]
+      :instance-handler (handler ::purge)}
+    #:blaze.rest-api.operation
+     {:code "graph"
+      :def-uri "def-uri-graph"
+      :affects-state false
+      :resource-types ["Resource"]
+      :instance-handler (handler ::graph)}]
    :capabilities-handler (handler ::capabilities)
    :admin-handler (handler ::admin)
    :node ::node
@@ -231,6 +244,10 @@
           "/Patient/0/$everything" :post "operation-instance-everything"
           "/Patient/0/__everything-page/0" :get "operation-instance-everything"
           "/Patient/0/$purge" :post "operation-instance-purge"
+          "/Patient/0/$graph" :get "operation-instance-graph"
+          "/Patient/0/$graph" :post "operation-instance-graph"
+          "/Observation/0/$graph" :get "operation-instance-graph"
+          "/Bundle/0/$graph" :get "operation-instance-graph"
           "/Patient/0/Condition" :get "search-compartment"
           "/Patient/0/Observation" :get "search-compartment"
           "/$compact-db" :post "operation-system-compact-db"
@@ -280,6 +297,12 @@
         "/Patient/0/$everything" :post ::everything
         "/Patient/0/__everything-page/0" :get ::everything-page
         "/Patient/0/$purge" :post ::purge
+        "/Patient/0/$graph" :get ::graph
+        "/Patient/0/$graph" :post ::graph
+        "/Observation/0/$graph" :get ::graph
+        "/Observation/0/$graph" :post ::graph
+        "/Bundle/0/$graph" :get ::graph
+        "/Binary/0/$graph" :get ::graph
         "/Patient/0/Condition" :get ::search-patient-compartment
         "/Patient/0/Observation" :get ::search-patient-compartment
         "/Patient/0/Condition/__page/0" :get ::search-patient-compartment
@@ -296,6 +319,22 @@
         "/Measure/0" :get ::read
         "/__admin" :get ::admin
         "/__admin/more" :get ::admin))))
+
+(deftest resource-operation-routes-test
+  (with-system [system system-config]
+    (let [router (router config system)]
+      (testing "an operation on Resource has no route on the abstract type itself"
+        (is (nil? (reitit/match-by-path router "/Resource/0/$graph"))))
+
+      (testing "an operation on Resource has a route on every resource type"
+        (doseq [{:keys [name]} (sdr/resources structure-definition-repo)]
+          (is (= (keyword (str name ".operation") "graph")
+                 (get-in (reitit/match-by-path router (str "/" name "/0/$graph"))
+                         [:data :name]))
+              name)))
+
+      (testing "an operation on Patient has no route on other resource types"
+        (is (nil? (reitit/match-by-path router "/Observation/0/$everything")))))))
 
 (defn- without-interaction
   "Returns `config` without the `interaction` in its resource pattern."

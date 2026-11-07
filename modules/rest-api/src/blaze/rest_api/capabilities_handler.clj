@@ -42,9 +42,7 @@
    [{:blaze.rest-api.resource-pattern/keys [interactions]}
     (u/resolve-pattern resource-patterns structure-definition)]
     (let [operations
-          (filter
-           #(some #{name} (:blaze.rest-api.operation/resource-types %))
-           operations)]
+          (filter #(u/supports-resource-type? % name) operations)]
       (cond->
        {:fhir/type :fhir.CapabilityStatement.rest/resource
         :type (type/code name)

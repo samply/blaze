@@ -1756,7 +1756,11 @@ jobs:
 
     - name: Patient Graph
       if: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
-      run: .github/scripts/graph.sh
+      run: .github/scripts/graph-patient.sh
+
+    - name: Encounter Graph
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'graph' }}
+      run: .github/scripts/graph-encounter.sh
 
     - name: Patient Identical Update
       run: .github/scripts/patient-identical-update.sh

@@ -1,0 +1,14 @@
+"CarePlan",1
+"CareTeam",1
+"Claim",2
+"Condition",1
+"DiagnosticReport",1
+"DocumentReference",1
+"Encounter",1
+"ExplanationOfBenefit",1
+"ImagingStudy",1
+"MedicationRequest",1
+"Observation",1
+"Patient",1
+"Procedure",3
+"Provenance",1

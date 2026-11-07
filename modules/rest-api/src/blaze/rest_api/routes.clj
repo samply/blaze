@@ -303,9 +303,14 @@
         response-type
         (assoc :response-type response-type))]]))
 
+(defn- operation-resource-types
+  "Returns the types out of `resource-types` which `operation` supports."
+  [resource-types operation]
+  (filterv (partial u/supports-resource-type? operation) resource-types))
+
 (defn- operation-type-handler-route
-  [{:keys [node parsing-context]}
-   {::operation/keys [code affects-state resource-types type-handler]}]
+  [{:keys [node parsing-context]} resource-types
+   {::operation/keys [code affects-state type-handler] :as operation}]
   (when type-handler
     (map
      (fn [resource-type]
@@ -319,12 +324,12 @@
                  :handler type-handler}}
           (not (true? affects-state))
           (assoc :get type-handler))])
-     resource-types)))
+     (operation-resource-types resource-types operation))))
 
 (defn- operation-instance-handler-route
-  [{:keys [node page-id-cipher parsing-context]}
-   {::operation/keys [code affects-state resource-types instance-handler
-                      instance-page-handler]}]
+  [{:keys [node page-id-cipher parsing-context]} resource-types
+   {::operation/keys [code affects-state instance-handler instance-page-handler]
+    :as operation}]
   (when instance-handler
     (map
      (fn [resource-type]
@@ -352,7 +357,7 @@
             :middleware [[wrap-decrypt-page-id page-id-cipher]
                          [wrap-snapshot-db node]]
             :get instance-page-handler}])))
-     resource-types)))
+     (operation-resource-types resource-types operation))))
 
 (defn routes
   {:arglists '([config])}
@@ -379,94 +384,96 @@
      writing-context]
     :or {context-path ""}
     :as config}]
-  (cond->
-   [""
-    {:middleware
-     (cond-> [wrap-observe-request-duration wrap-params
-              [wrap-output writing-context] wrap-error
-              [wrap-forwarded base-url] wrap-sync]
-       (seq auth-backends)
-       (conj wrap-auth-guard))
-     :blaze/context-path context-path}
-    [""
-     (cond-> {}
-       (some? search-system-handler)
-       (assoc :get {:interaction "search-system"
-                    :middleware [[wrap-db node]
-                                 wrap-link-headers]
-                    :handler search-system-handler})
-       (some? transaction-handler)
-       (assoc :post {:interaction "transaction"
-                     :middleware [[wrap-resource parsing-context "Bundle"]]
-                     :handler transaction-handler}))]
-    ["/metadata"
-     {:interaction "capabilities"
-      :get {:middleware [[wrap-db node]]
-            :handler capabilities-handler}}]
-    ["/_history"
-     (cond-> {:name :history}
-       (some? history-system-handler)
-       (assoc :get {:interaction "history-system"
-                    :middleware [[wrap-db node]
-                                 wrap-link-headers]
-                    :handler history-system-handler}))]]
-    (not batch?)
-    (conj
-     ["/__page/{page-id}"
-      (cond-> {:name :page}
-        (some? search-system-handler)
-        (assoc
-         :get {:interaction "search-system"
-               :middleware [[wrap-decrypt-page-id page-id-cipher]
-                            [wrap-snapshot-db node]
-                            wrap-link-headers]
-               :handler search-system-handler}
-         :post {:interaction "search-system"
-                :middleware [[wrap-decrypt-page-id page-id-cipher]
-                             [wrap-snapshot-db node]
-                             wrap-link-headers]
-                :handler search-system-handler}))]
-     ["/__history-page/{page-id}"
-      (cond-> {:name :history-page}
-        (some? history-system-handler)
-        (assoc :get {:interaction "history-system"
-                     :middleware [[wrap-decrypt-page-id page-id-cipher]
-                                  [wrap-snapshot-db node]
-                                  wrap-link-headers]
-                     :handler history-system-handler}))])
-    true
-    (into
-     (mapcat (partial operation-system-handler-route config))
-     operations)
-    true
-    (into
-     (mapcat (partial operation-type-handler-route config))
-     operations)
-    true
-    (into
-     (mapcat (partial operation-instance-handler-route config))
-     operations)
-    true
-    (into
-     (keep (partial resource-route config resource-patterns))
-     (sdr/resources structure-definition-repo))
-    true
-    (into
-     (map (partial compartment-route config))
-     compartments)
-    (and async-status-handler async-status-cancel-handler admin-node)
-    (conj
-     ["/__async-status/{id}"
-      {:name :async-status
-       :middleware [wrap-invalid-id]
-       :get
-       {:middleware [[wrap-db admin-node]]
-        :handler async-status-handler}
-       :delete
-       {:handler async-status-cancel-handler}}])
-    admin-handler
-    (conj
-     ["/__admin{*more}"
-      {:get {:handler admin-handler}
-       :post {:handler admin-handler}
-       :response-type :none}])))
+  (let [structure-definitions (sdr/resources structure-definition-repo)
+        resource-types (mapv :name structure-definitions)]
+    (cond->
+     [""
+      {:middleware
+       (cond-> [wrap-observe-request-duration wrap-params
+                [wrap-output writing-context] wrap-error
+                [wrap-forwarded base-url] wrap-sync]
+         (seq auth-backends)
+         (conj wrap-auth-guard))
+       :blaze/context-path context-path}
+      [""
+       (cond-> {}
+         (some? search-system-handler)
+         (assoc :get {:interaction "search-system"
+                      :middleware [[wrap-db node]
+                                   wrap-link-headers]
+                      :handler search-system-handler})
+         (some? transaction-handler)
+         (assoc :post {:interaction "transaction"
+                       :middleware [[wrap-resource parsing-context "Bundle"]]
+                       :handler transaction-handler}))]
+      ["/metadata"
+       {:interaction "capabilities"
+        :get {:middleware [[wrap-db node]]
+              :handler capabilities-handler}}]
+      ["/_history"
+       (cond-> {:name :history}
+         (some? history-system-handler)
+         (assoc :get {:interaction "history-system"
+                      :middleware [[wrap-db node]
+                                   wrap-link-headers]
+                      :handler history-system-handler}))]]
+      (not batch?)
+      (conj
+       ["/__page/{page-id}"
+        (cond-> {:name :page}
+          (some? search-system-handler)
+          (assoc
+           :get {:interaction "search-system"
+                 :middleware [[wrap-decrypt-page-id page-id-cipher]
+                              [wrap-snapshot-db node]
+                              wrap-link-headers]
+                 :handler search-system-handler}
+           :post {:interaction "search-system"
+                  :middleware [[wrap-decrypt-page-id page-id-cipher]
+                               [wrap-snapshot-db node]
+                               wrap-link-headers]
+                  :handler search-system-handler}))]
+       ["/__history-page/{page-id}"
+        (cond-> {:name :history-page}
+          (some? history-system-handler)
+          (assoc :get {:interaction "history-system"
+                       :middleware [[wrap-decrypt-page-id page-id-cipher]
+                                    [wrap-snapshot-db node]
+                                    wrap-link-headers]
+                       :handler history-system-handler}))])
+      true
+      (into
+       (mapcat (partial operation-system-handler-route config))
+       operations)
+      true
+      (into
+       (mapcat (partial operation-type-handler-route config resource-types))
+       operations)
+      true
+      (into
+       (mapcat (partial operation-instance-handler-route config resource-types))
+       operations)
+      true
+      (into
+       (keep (partial resource-route config resource-patterns))
+       structure-definitions)
+      true
+      (into
+       (map (partial compartment-route config))
+       compartments)
+      (and async-status-handler async-status-cancel-handler admin-node)
+      (conj
+       ["/__async-status/{id}"
+        {:name :async-status
+         :middleware [wrap-invalid-id]
+         :get
+         {:middleware [[wrap-db admin-node]]
+          :handler async-status-handler}
+         :delete
+         {:handler async-status-cancel-handler}}])
+      admin-handler
+      (conj
+       ["/__admin{*more}"
+        {:get {:handler admin-handler}
+         :post {:handler admin-handler}
+         :response-type :none}]))))

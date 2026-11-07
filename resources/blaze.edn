@@ -1721,7 +1721,7 @@
       {:code "graph"
        :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graph"
        :affects-state false
-       :resource-types ["Patient"]
+       :resource-types ["Resource"]
        :instance-handler #blaze/ref :blaze.operation/graph
        :documentation "Return an entire graph of resources based on a GraphDefinition. The operation is invoked on a specific instance of a resource, and the graph definition tells the server what other resources to return in the same package."}]
 

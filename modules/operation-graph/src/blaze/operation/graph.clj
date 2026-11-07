@@ -12,6 +12,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.module :as m]
    [blaze.operation.graph.cache :as cache]
+   [blaze.operation.graph.compiler :as c]
    [blaze.operation.graph.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -109,6 +110,17 @@
                                               resource-handle)]
     (vals resources)))
 
+(defn- check-start-node-type
+  "Returns `graph` if a resource of `type` can be the resource of its start
+  node or an anomaly naming both types otherwise."
+  [{:keys [start-node-id] :as graph} type id]
+  (let [{node-type :type} (find-node graph start-node-id)]
+    (if (c/node-type-matches? node-type type)
+      graph
+      (ba/incorrect
+       (format "The type `%s` of the resource `%s/%s` doesn't match the type `%s` of the start node `%s`."
+               type type id node-type start-node-id)))))
+
 (defn- handler [{:keys [compiled-graph-cache] :as context}]
   (fn [{:blaze/keys [db]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
@@ -119,7 +131,8 @@
         (-> (find-graph-def db graph)
             (ac/then-compose
              (fn [graph-def]
-               (if-ok [{:keys [start-node-id] :as graph} (cache/compile compiled-graph-cache graph-def)]
+               (if-ok [graph (cache/compile compiled-graph-cache graph-def)
+                       {:keys [start-node-id] :as graph} (check-start-node-type graph type id)]
                  (do-sync [resources (process-start-node db graph start-node-id resource-handle)]
                    (ring/response
                     {:fhir/type :fhir/Bundle
