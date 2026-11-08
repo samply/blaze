@@ -27,6 +27,7 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change :as plc]
@@ -35,6 +36,7 @@
    [blaze.db.node.duplicates :as dup]
    [blaze.db.node.stats :as node-stats]
    [blaze.db.node.tx-indexer.util :as tx-u]
+   [blaze.db.node.tx-indexer.verify.impl :as impl]
    [blaze.db.permissions :as p]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
@@ -461,36 +463,77 @@
 (defn- local-ref-tuple [rh]
   [(name (:fhir/type rh)) (:id rh)])
 
-(defn- rev-tuples [db-before resource-handle del-resources]
+(defn- rev-include
+  "Returns a reducible collection of the resource handles pointing to
+  `resource-handle` by one of the search params of `rev-include-params`."
+  [db resource-handle rev-include-params]
+  (coll/eduction
+   (mapcat
+    (fn [[source-type code]]
+      (d/rev-include db resource-handle source-type code)))
+   rev-include-params))
+
+(defn- rev-tuples
+  "Returns the local reference tuples of at most two distinct resources that
+  point to `resource-handle` and aren't in `del-resources`.
+
+  The resources in `del-resources` are removed before deduplicating, so that
+  `distinct` only holds the at most two tuples returned and not every resource
+  pointing to `resource-handle` that is deleted along with it."
+  [db-before resource-handle rev-include-params del-resources]
   (into
    []
-   (comp (map local-ref-tuple) (remove del-resources) (take 2))
-   (d/rev-include db-before resource-handle)))
+   (comp (map local-ref-tuple) (remove del-resources) (distinct) (take 2))
+   (rev-include db-before resource-handle rev-include-params)))
 
 (defn- check-referential-integrity-delete!
-  [db-before del-resources type id]
+  [db-before rev-include-params del-resources type id]
   (when-let [resource-handle (d/resource-handle db-before type id)]
     (let [[[type-ref id-ref] second] (rev-tuples db-before resource-handle
+                                                 rev-include-params
                                                  del-resources)]
       (when type-ref
         (throw-anom (ref-integrity-del-anom type-ref id-ref type id second))))))
 
+(defn- checked-delete? [{:keys [op check-refs]}]
+  (and check-refs (#{"delete" "purge"} op)))
+
+(defn- rev-include-params-by-type
+  "Returns a map from the type of each delete in `cmds` that checks references
+  to the rev-include params of that type, so that they are determined only once
+  per transaction and not for each deleted resource.
+
+  The `stats` have to be the ones of `db`."
+  {:arglists '([db stats cmds])}
+  [{{:keys [search-param-registry]} :node} stats cmds]
+  (into
+   {}
+   (comp
+    (filter checked-delete?)
+    (map :type)
+    (distinct)
+    (map (juxt identity (partial impl/rev-include-params search-param-registry
+                                 stats))))
+   cmds))
+
 (defn- check-referential-integrity!
-  [db {:keys [new-resources del-resources]} cmds]
+  "Checks the referential integrity of `cmds` against `db` with `stats`."
+  [db stats {:keys [new-resources del-resources]} cmds]
   (with-open [_ (prom/timer tx-u/duration-seconds "check-referential-integrity")]
-    (reduce
-     (fn [existing {:keys [op type id refs check-refs]}]
-       (if (#{"delete" "purge"} op)
-         (do (when check-refs
-               (check-referential-integrity-delete!
-                db del-resources type id))
-             existing)
-         (if refs
-           (check-referential-integrity-write!
-            db new-resources del-resources existing type id refs)
-           existing)))
-     #{}
-     cmds)))
+    (let [rev-include-params-by-type (rev-include-params-by-type db stats cmds)]
+      (reduce
+       (fn [existing {:keys [op type id refs check-refs]}]
+         (if (#{"delete" "purge"} op)
+           (do (when check-refs
+                 (check-referential-integrity-delete!
+                  db (rev-include-params-by-type type) del-resources type id))
+               existing)
+           (if refs
+             (check-referential-integrity-write!
+              db new-resources del-resources existing type id refs)
+             existing)))
+       #{}
+       cmds))))
 
 (defn verify-tx-cmds
   "Verifies terminal `tx-cmds`.
@@ -513,5 +556,5 @@
   (ba/try-anomaly
    (detect-duplicate-commands! tx-cmds)
    (let [res (verify-tx-cmds* context t tx-cmds)]
-     (check-referential-integrity! db-before res tx-cmds)
+     (check-referential-integrity! db-before stats res tx-cmds)
      (post-process-res stats t res))))

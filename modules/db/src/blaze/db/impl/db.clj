@@ -189,21 +189,6 @@
     (spc/targets db resource-handle (codec/c-hash code)
                  (codec/tid target-type)))
 
-  (-rev-include [db resource-handle]
-    (let [search-param-registry (:search-param-registry node)
-          type (name (:fhir/type resource-handle))
-          reference (rh/tid-id resource-handle)]
-      (coll/eduction
-       (comp
-        (mapcat
-         (fn [{:keys [base code]}]
-           (let [code (codec/c-hash code)]
-             (coll/eduction
-              (mapcat #(rev-include db snapshot reference (codec/tid %) code))
-              base))))
-        (distinct))
-       (sr/list-by-target-type search-param-registry type))))
-
   (-rev-include [db resource-handle source-type code]
     (rev-include db snapshot (rh/tid-id resource-handle)
                  (codec/tid source-type) (codec/c-hash code)))

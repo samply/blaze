@@ -12976,54 +12976,6 @@
 
 (deftest rev-include-test
   (testing "Patient"
-    (testing "all resources"
-      (testing "with patient only"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-          (with-db [db node]
-            (let [patient (d/resource-handle db "Patient" "0")]
-              (is (coll/empty? (d/rev-include db patient)))))))
-
-      (testing "with three resources"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Condition :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
-            [:put {:fhir/type :fhir/Specimen :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
-
-          (with-db [db node]
-            (let [patient (d/resource-handle db "Patient" "0")]
-              (given (vec (d/rev-include db patient))
-                count := 3
-                [0 :fhir/type] := :fhir/Condition
-                [0 :id] := "0"
-                [1 :fhir/type] := :fhir/Observation
-                [1 :id] := "0"
-                [2 :fhir/type] := :fhir/Specimen
-                [2 :id] := "0")))))
-
-      (testing "With MedicationAdministration because it is reachable twice via
-                the search param `patient` and `subject`.
-              
-                This test should assure that MedicationAdministration resources
-                are returned only once."
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Medication :id "0"}]
-            [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
-
-          (with-db [db node]
-            (let [patient (d/resource-handle db "Patient" "0")]
-              (given (vec (d/rev-include db patient))
-                count := 1
-                [0 :fhir/type] := :fhir/MedicationAdministration
-                [0 :id] := "0"))))))
-
     (doseq [code ["subject" "patient"]]
       (testing (str "Observation with search parameter " code)
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -13068,14 +13020,14 @@
 
       (with-db [db node]
         (testing "doesn't find resources were the ID of the patient is a prefix of the reference"
-          (is (empty? (d/rev-include db (d/resource-handle db "Patient" "x")))))
+          (is (empty? (d/rev-include db (d/resource-handle db "Patient" "x") "Observation" "subject"))))
 
-        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xa")))
+        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xa") "Observation" "subject"))
           count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0")
 
-        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xb")))
+        (given (vec (d/rev-include db (d/resource-handle db "Patient" "xb") "Observation" "subject"))
           count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "1")))))
