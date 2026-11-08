@@ -217,7 +217,7 @@
 (defunop last
   {:operand-key :source}
   [source]
-  (peek source))
+  (peek (vec source)))
 
 ;; 20.24. Repeat
 ;;
@@ -247,7 +247,8 @@
       (core/optimize-helper slice-op db source start-index end-index))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
-        (let [start-index (or (core/-eval start-index context resource scopes) 0)
+        (let [source (vec source)
+              start-index (or (core/-eval start-index context resource scopes) 0)
               end-index (or (core/-eval end-index context resource scopes) (count source))]
           (if (or (neg? start-index) (< end-index start-index))
             []

@@ -6,6 +6,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
+   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.elm.compiler :as c]
@@ -755,6 +756,12 @@
       #elm/parameter-ref "[1]" 1
       #elm/parameter-ref "[1 2]" 2))
 
+  (testing "works on Retrieve results, which are eductions, not vectors"
+    (let [eval-ctx (assoc-in ctu/dynamic-eval-ctx [:parameters "[1 2]"]
+                             (coll/eduction (map identity) [1 2]))]
+      (is (= 2 (core/-eval (ctu/dynamic-compile (elm/last #elm/parameter-ref "[1 2]"))
+                           eval-ctx nil nil)))))
+
   (ctu/testing-unary-null elm/last)
 
   (ctu/testing-unary-op elm/last)
@@ -848,6 +855,16 @@
 
     {:type "Null"} #elm/integer "0" #elm/integer "0" nil
     {:type "Null"} {:type "Null"} {:type "Null"} nil)
+
+  (testing "works on Retrieve results, which are eductions, not vectors"
+    (let [eval-ctx (assoc-in ctu/dynamic-eval-ctx [:parameters "[1 2]"]
+                             (coll/eduction (map identity) [1 2]))
+          slice #(core/-eval (ctu/dynamic-compile (elm/slice [#elm/parameter-ref "[1 2]" %1 %2]))
+                             eval-ctx nil nil)]
+      (are [start end res] (= res (slice start end))
+        {:type "Null"} {:type "Null"} [1 2]
+        #elm/integer "1" {:type "Null"} [2]
+        #elm/integer "0" #elm/integer "1" [1])))
 
   (ctu/testing-ternary-op elm/slice))
 
