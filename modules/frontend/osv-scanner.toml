@@ -1,0 +1,7 @@
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+reason = "deepmerge is only used by @sveltejs/vite-plugin-svelte at build time and isn't part of the shipped bundle."
+
+[[IgnoredVulns]]
+id = "GHSA-g3hv-75wg-m249"
+reason = "minimatch is only used by ESLint and typescript-eslint for linting and isn't part of the shipped bundle."
