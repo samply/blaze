@@ -16,7 +16,7 @@
    {:basis (b/create-basis {:project "deps.edn"})
     :src-dirs ["java"]
     :class-dir "target/classes"
-    :javac-opts ["-Xlint:all" "-proc:none" "--release" "21"]}))
+    :javac-opts ["-Xlint:all" "-proc:none" "-implicit:none" "--release" "21"]}))
 
 (defn download-file [url output-path]
   (println "Download:" url)
