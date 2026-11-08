@@ -3,7 +3,7 @@
 
   See: https://build.fhir.org/resource-operation-graph.html"
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -12,6 +12,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.module :as m]
    [blaze.operation.graph.cache :as cache]
+   [blaze.operation.graph.compiler :as c]
    [blaze.operation.graph.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -100,35 +101,67 @@
   {:resources {} :visits #{}})
 
 (defn- process-start-node
-  "Processes `resource-handle` on the node with `start-node-id` of `graph` in
-  `db` and returns a CompletableFuture that will complete with the resulting
-  resources."
-  [db graph start-node-id resource-handle]
-  (do-sync [{:keys [resources]} (process-node db graph (find-node graph start-node-id)
+  "Processes `resource-handle` on `start-node` of `graph` in `db` and returns a
+  CompletableFuture that will complete with the resulting resources."
+  [db graph start-node resource-handle]
+  (do-sync [{:keys [resources]} (process-node db graph start-node
                                               (ac/completed-future initial-state)
                                               resource-handle)]
     (vals resources)))
 
+(defn- start-node
+  "Returns the start node of `graph` if a resource of `type` can be its
+  resource or an anomaly naming both types otherwise."
+  [{:keys [start-node-id] :as graph} type id]
+  (let [{node-type :type :as node} (find-node graph start-node-id)]
+    (if (c/node-type-matches? node-type type)
+      node
+      (ba/incorrect
+       (format "The type `%s` of the resource `%s/%s` doesn't match the type `%s` of the start node `%s`."
+               type type id node-type start-node-id)))))
+
+(def ^:private param-specs
+  "Specs of the params, coerced from a Parameters resource."
+  {"graph" {:action :copy :coerce fu/coerce-uri}})
+
+(defn- params-from-body
+  "Returns the params taken from the Parameters resource `body` or nil if `body`
+  isn't a Parameters resource."
+  [body]
+  (when (identical? :fhir/Parameters (:fhir/type body))
+    (fu/coerce-params param-specs body)))
+
+(defn- graph-uri
+  "Returns the canonical URI of the GraphDefinition given in the param `graph`
+  of `request` or an anomaly if it's missing or invalid.
+
+  The param is taken from the query params or, if not given there, from a
+  Parameters resource in the body of a POST request."
+  {:arglists '([request])}
+  [{:keys [body] {:strs [graph]} :query-params}]
+  (or graph
+      (when-ok [{:keys [graph]} (params-from-body body)]
+        (or graph (ba/incorrect "Missing param `graph`")))))
+
 (defn- handler [{:keys [compiled-graph-cache] :as context}]
   (fn [{:blaze/keys [db]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
-        {:keys [id]} :path-params
-        {:strs [graph]} :query-params :as request}]
-    (if-ok [resource-handle (fhir-util/resource-handle db type id)]
-      (if graph
-        (-> (find-graph-def db graph)
-            (ac/then-compose
-             (fn [graph-def]
-               (if-ok [{:keys [start-node-id] :as graph} (cache/compile compiled-graph-cache graph-def)]
-                 (do-sync [resources (process-start-node db graph start-node-id resource-handle)]
-                   (ring/response
-                    {:fhir/type :fhir/Bundle
-                     :id (m/luid context)
-                     :type #fhir/code "searchset"
-                     :total (type/unsignedInt (count resources))
-                     :entry (mapv (partial search-util/match-entry request) resources)}))
-                 ac/completed-future))))
-        (ac/completed-future (ba/incorrect "Missing param `graph`")))
+        {:keys [id]} :path-params :as request}]
+    (if-ok [resource-handle (fhir-util/resource-handle db type id)
+            graph-uri (graph-uri request)]
+      (-> (find-graph-def db graph-uri)
+          (ac/then-compose
+           (fn [graph-def]
+             (if-ok [graph (cache/compile compiled-graph-cache graph-def)
+                     start-node (start-node graph type id)]
+               (do-sync [resources (process-start-node db graph start-node resource-handle)]
+                 (ring/response
+                  {:fhir/type :fhir/Bundle
+                   :id (m/luid context)
+                   :type #fhir/code "searchset"
+                   :total (type/unsignedInt (count resources))
+                   :entry (mapv (partial search-util/match-entry request) resources)}))
+               ac/completed-future))))
       ac/completed-future)))
 
 (defmethod m/pre-init-spec :blaze.operation/graph [_]

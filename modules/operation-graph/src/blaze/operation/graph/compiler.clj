@@ -19,7 +19,7 @@
   "The resource types which don't inherit from `DomainResource`."
   #{"Binary" "Bundle" "Parameters"})
 
-(defn- node-type-matches?
+(defn node-type-matches?
   "Returns true if a resource of `type` can be the resource of a node with
   `node-type`, which can be one of the abstract types `Resource` and
   `DomainResource`."

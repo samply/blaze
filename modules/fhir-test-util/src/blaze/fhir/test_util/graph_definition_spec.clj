@@ -30,7 +30,7 @@
   :ret :fhir/Extension)
 
 (s/fdef g-tu/graph-def
-  :args (s/cat :opts (s/keys* :opt-un [::g-tu/start ::g-tu/nodes ::g-tu/link]))
+  :args (s/cat :opts (s/keys* :opt-un [::g-tu/start ::g-tu/start-type ::g-tu/nodes ::g-tu/link]))
   :ret :fhir/GraphDefinition)
 
 (s/fdef g-tu/node

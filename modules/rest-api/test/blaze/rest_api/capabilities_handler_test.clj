@@ -484,6 +484,83 @@
       #fhir/canonical "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown "documentation-161800")))
 
+(def ^:private resource-operation-config
+  (update minimal-config ::rest-api/capabilities-handler assoc
+          :resource-patterns
+          [#:blaze.rest-api.resource-pattern
+            {:type "Bundle"
+             :interactions
+             {:read
+              #:blaze.rest-api.interaction
+               {:handler (fn [_])}}}
+           #:blaze.rest-api.resource-pattern
+            {:type "Patient"
+             :interactions
+             {:read
+              #:blaze.rest-api.interaction
+               {:handler (fn [_])}}}]
+          :operations
+          [#:blaze.rest-api.operation
+            {:code "graph"
+             :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graph"
+             :affects-state false
+             :resource-types ["Resource"]
+             :instance-handler (fn [_])
+             :documentation "documentation-110725"}
+           #:blaze.rest-api.operation
+            {:code "totals"
+             :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
+             :affects-state false
+             :resource-types ["Resource"]
+             :system-handler (fn [_])}]))
+
+(deftest resource-operation-test
+  (with-handler [handler resource-operation-config]
+    (given (:body @(handler {}))
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :resource count] := 2
+      [:rest 0 :resource 0 :type] := #fhir/code "Bundle"
+      [:rest 0 :resource 0 :operation count] := 1
+      [:rest 0 :resource 0 :operation 0 :name] := #fhir/string "graph"
+      [:rest 0 :resource 0 :operation 0 :definition] :=
+      #fhir/canonical "http://hl7.org/fhir/OperationDefinition/Resource-graph"
+      [:rest 0 :resource 0 :operation 0 :documentation] := nil
+      [:rest 0 :resource 1 :type] := #fhir/code "Patient"
+      [:rest 0 :resource 1 :operation count] := 1
+      [:rest 0 :resource 1 :operation 0 :name] := #fhir/string "graph"
+      [:rest 0 :resource 1 :operation 0 :definition] :=
+      #fhir/canonical "http://hl7.org/fhir/OperationDefinition/Resource-graph"
+      [:rest 0 :resource 1 :operation 0 :documentation] := nil
+      [:rest 0 :operation count] := 1
+      [:rest 0 :operation 0 :name] := #fhir/string "totals")))
+
+(def ^:private system-resource-operation-config
+  (update minimal-config ::rest-api/capabilities-handler assoc
+          :resource-patterns
+          [#:blaze.rest-api.resource-pattern
+            {:type "Patient"
+             :interactions
+             {:read
+              #:blaze.rest-api.interaction
+               {:handler (fn [_])}}}]
+          :operations
+          [#:blaze.rest-api.operation
+            {:code "totals"
+             :def-uri "https://blaze-server.org/fhir/OperationDefinition/totals"
+             :affects-state false
+             :resource-types ["Resource"]
+             :system-handler (fn [_])}]))
+
+(deftest system-resource-operation-test
+  (testing "a system operation on Resource doesn't add operations to resources"
+    (with-handler [handler system-resource-operation-config]
+      (given (:body @(handler {}))
+        :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 #(contains? % :operation)] := false
+        [:rest 0 :operation count] := 1
+        [:rest 0 :operation 0 :name] := #fhir/string "totals"))))
+
 (def ^:private one-system-operation-config
   (update minimal-config ::rest-api/capabilities-handler assoc
           :operations

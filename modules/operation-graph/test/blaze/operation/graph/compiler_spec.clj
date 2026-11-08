@@ -10,3 +10,7 @@
 (s/fdef c/compile
   :args (s/cat :graph-def :fhir/GraphDefinition)
   :ret (s/or :compiled-graph ::graph/compiled-graph :anomaly ::anom/anomaly))
+
+(s/fdef c/node-type-matches?
+  :args (s/cat :node-type string? :type string?)
+  :ret boolean?)

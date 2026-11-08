@@ -61,3 +61,18 @@
       [:links "observation" 0 :source-id] := "observation"
       [:links "observation" 0 :target-id] := "encounter"
       [:links "observation" 0 :resource-handles] :? fn?)))
+
+(deftest node-type-matches-test
+  (testing "a node of a concrete type matches only that type"
+    (is (true? (c/node-type-matches? "Patient" "Patient")))
+    (is (false? (c/node-type-matches? "Patient" "Observation"))))
+
+  (testing "a node of type Resource matches all types"
+    (doseq [type ["Patient" "Observation" "Binary" "Bundle" "Parameters"]]
+      (is (true? (c/node-type-matches? "Resource" type)) type)))
+
+  (testing "a node of type DomainResource matches all types except Binary, Bundle and Parameters"
+    (doseq [type ["Patient" "Observation"]]
+      (is (true? (c/node-type-matches? "DomainResource" type)) type))
+    (doseq [type ["Binary" "Bundle" "Parameters"]]
+      (is (false? (c/node-type-matches? "DomainResource" type)) type))))
