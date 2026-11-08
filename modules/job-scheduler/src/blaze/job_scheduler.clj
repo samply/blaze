@@ -204,6 +204,10 @@
   (do-sync [handles (d/type-query db "Task" [["status" "ready" "in-progress"]])]
     (vec handles)))
 
+(defn- pending-jobs [node]
+  (-> (d/with-db node pending-job-handles)
+      (ac/then-compose (partial d/pull-many node))))
+
 (defn- dispatch-pending-jobs
   "Dispatches the jobs of `node` that are pending, because they became ready
   or were resumed while no job scheduler was listening, like the
@@ -219,9 +223,8 @@
   Returns a CompletableFuture that will complete after all pending jobs were
   dispatched."
   [node job-scheduler]
-  (-> (d/with-db node pending-job-handles)
-      (ac/then-compose (partial d/pull-many node))
-      (ac/then-apply #(run! (partial dispatch-job job-scheduler) %))
+  (-> (do-sync [jobs (pending-jobs node)]
+        (run! (partial dispatch-job job-scheduler) jobs))
       (ac/exceptionally dispatch-pending-jobs-error-handler)))
 
 (defn- current-job-number-observation-handle [db]

@@ -354,8 +354,8 @@
   (log/info "Init FHIR transaction interaction handler")
   (fn [{{:keys [type] :as bundle} :body :as request}]
     (if-ok [entries (check-and-prepare-bundle context bundle)]
-      (-> (if (empty? entries)
-            (ac/completed-future [])
-            (process context type request entries))
-          (ac/then-apply #(ring/response (response-bundle context type %))))
+      (do-sync [response-entries (if (empty? entries)
+                                   (ac/completed-future [])
+                                   (process context type request entries))]
+        (ring/response (response-bundle context type response-entries)))
       ac/completed-future)))
