@@ -62,7 +62,7 @@
       page.url.searchParams.get('_summary')
     );
 
-    goto(`${resolve('/[type=type]', { type })}?${params}`);
+    goto(resolve(`/[type=type]?${params}`, { type }));
   }
 
   let openSearchSettings = $state(false);
