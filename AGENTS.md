@@ -35,7 +35,7 @@ Rigorous adherence to these patterns is required:
   * **Mandatory:** Add `(set! *warn-on-reflection* true)` to any namespace performing Java interop.
 * **Null Checks in Java:** Guard every argument of a public constructor or method of a Java class that must not be `null` with `requireNonNull`, statically imported from `java.util.Objects` (e.g. `this.snapshot = requireNonNull(snapshot);`). So a `null` fails at the call passing it, not later where it is used, possibly on another thread. Arguments of non-public constructors and methods don't need a guard, because their callers are in the same package.
 * **Async Composition:**
-  * Prefer the `blaze.async.comp/do-sync` macro over threading chains of `blaze.async.comp/then-apply` where feasible.
+  * Prefer the `blaze.async.comp/do-sync` macro over `blaze.async.comp/then-apply` where feasible, also for a single step. Binding the result to a name reads better than an anonymous function like `#(into [] (take 2) %)`. If the `then-apply` is followed by other steps like `blaze.async.comp/exceptionally`, put the `do-sync` form first in the threading macro.
   * Always use `blaze.async.comp/then-apply`, `blaze.async.comp/then-compose` and similar in conjunction with the threading macro (`->`), never as a standalone call.
 * **Macros:**
   * Macros must always be `:refer`ed directly so they can be used without a namespace alias prefix (e.g., `[blaze.async.comp :refer [do-sync]]`).

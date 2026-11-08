@@ -28,8 +28,8 @@
           type (tx-u/clauses->query-params clauses) message))
 
 (defn- conditional-create-matches [db type clauses]
-  (-> (d/type-query db type clauses)
-      (ac/then-apply #(into [] (take 2) %))
+  (-> (do-sync [handles (d/type-query db type clauses)]
+        (into [] (take 2) handles))
       (ac/exceptionally #(ba/incorrect (failing-conditional-create-query-msg type clauses %)))))
 
 (defn- format-handle [type {:keys [id t]}]

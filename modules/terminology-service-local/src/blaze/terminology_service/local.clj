@@ -1,7 +1,7 @@
 (ns blaze.terminology-service.local
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.util :as fu]
@@ -343,8 +343,8 @@
               params (cs-lookup-more context params)]
         (with-db-t vnode
           (fn [db]
-            (-> (find-code-system (context-with-db context db params) params)
-                (ac/then-apply #(cs/lookup % params)))))
+            (do-sync [code-system (find-code-system (context-with-db context db params) params)]
+              (cs/lookup code-system params))))
         ac/completed-future))
 
     (-code-system-validate-code [_ params]
@@ -352,9 +352,9 @@
               [first-params :as all-params] (cs-validate-code-more context params)]
         (with-db-t vnode
           (fn [db]
-            (-> (find-code-system (context-with-db context db first-params)
-                                  first-params)
-                (ac/then-apply #(cs/validate-code % all-params)))))
+            (do-sync [code-system (find-code-system (context-with-db context db first-params)
+                                                    first-params)]
+              (cs/validate-code code-system all-params))))
         ac/completed-future))
 
     (-expand-value-set [_ params]
