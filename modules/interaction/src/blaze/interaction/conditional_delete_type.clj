@@ -26,7 +26,7 @@
        (str/join "&")))
 
 (defn- diagnostics [db type clauses]
-  (let [num-resources (count (coll/eduction (filter (comp #{:delete} :op)) (d/changes db)))]
+  (let [num-resources (coll/count-reducible (coll/eduction (filter (comp #{:delete} :op)) (d/changes db)))]
     (if (zero? num-resources)
       (if (seq clauses)
         (format "Success. No %ss were matched by query `%s`. Nothing to delete."

@@ -99,7 +99,7 @@
                           compiled-values))))
 
 (defn- num-ref-resource-handles-small? [ref-resource-handles]
-  (<= (count (coll/eduction (take (inc max-number-of-refs)) ref-resource-handles))
+  (<= (coll/count-reducible (coll/eduction (take (inc max-number-of-refs)) ref-resource-handles))
       max-number-of-refs))
 
 (defrecord ChainedSearchParam [search-param ref-search-param ref-c-hash ref-tid

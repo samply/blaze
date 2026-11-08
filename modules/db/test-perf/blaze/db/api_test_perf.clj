@@ -1,6 +1,7 @@
 (ns blaze.db.api-test-perf
   (:require
    [blaze.async.comp :as ac]
+   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -141,4 +142,4 @@
          (fn [db]
            (ac/completed-future
             (criterium/bench
-             (count (d/execute-query db query "0")))))))))
+             (coll/count-reducible (d/execute-query db query "0")))))))))

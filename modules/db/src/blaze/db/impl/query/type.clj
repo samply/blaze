@@ -60,7 +60,7 @@
                              other-clauses compartment-query]
   p/Query
   (-count [query db]
-    (ac/completed-future (count (p/-execute query db))))
+    (ac/completed-future (coll/count-reducible (p/-execute query db))))
   (-execute [_ db]
     (coll/eduction (mapcat #(compartment-query db %)) patient-ids))
   (-execute [_ db start-id]

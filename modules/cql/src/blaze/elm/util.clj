@@ -1,8 +1,22 @@
 (ns blaze.elm.util
+  (:refer-clojure :exclude [count])
+  (:require
+   [blaze.coll.core :as coll])
   (:import
+   [clojure.lang IReduceInit]
    [com.google.common.base CaseFormat]))
 
 (set! *warn-on-reflection* true)
+
+(defn count
+  "Returns the number of items in `x`, which can be a list or a string.
+
+  Unlike `clojure.core/count`, also counts reducible collections that aren't
+  counted, like the results of a Retrieve, by reducing them in O(n)."
+  [x]
+  (if (and (instance? IReduceInit x) (not (counted? x)))
+    (coll/count-reducible x)
+    (clojure.core/count x)))
 
 (defn pascal->kebab [s]
   (.to CaseFormat/UPPER_CAMEL CaseFormat/LOWER_HYPHEN s))

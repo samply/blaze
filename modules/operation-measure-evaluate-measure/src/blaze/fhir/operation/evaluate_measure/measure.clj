@@ -382,7 +382,7 @@
    "StructureDefinition/bloom-filter-ratio"
    (type/ratio
     {:numerator
-     (type/quantity {:value (type/decimal (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters))))})
+     (type/quantity {:value (type/decimal (bigdec (coll/count-reducible (coll/eduction (remove ba/anomaly?) bloom-filters))))})
      :denominator
      (type/quantity {:value (type/decimal (bigdec (count bloom-filters)))})})))
 

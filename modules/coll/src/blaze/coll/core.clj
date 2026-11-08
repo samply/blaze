@@ -71,8 +71,11 @@
         (when (instance? AutoCloseable iter) (.close ^AutoCloseable iter))))))
 
 (defn eduction
-  "Like `clojure.core/eduction` but implements Counted on top of IReduceInit and
-  uses a TransformerIterator that closes closeable iterators.
+  "Like `clojure.core/eduction` but uses a TransformerIterator that closes
+  closeable iterators.
+
+  Isn't counted, because counting it isn't constant-time. Use
+  `count-reducible` instead.
 
   Closing the TransformerIterator completes `xform` if it wasn't already."
   [xform coll]
@@ -81,9 +84,6 @@
     IReduceInit
     (reduce [_ f init]
       (transduce xform (completing f) init coll))
-    Counted
-    (count [coll]
-      (count-reducible coll))
     Iterable
     (iterator [_]
       (let [buffer (ArrayDeque.)
@@ -160,10 +160,7 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (reduce rf# init# ~coll)))
-     Counted
-     (count [coll#]
-       (count-reducible coll#))))
+         (reduce rf# init# ~coll)))))
 
 (defn intersection
   "Returns a reducible and iterable collection of the intersection of `colls`.
@@ -183,9 +180,6 @@
      (reduce [coll rf init]
        (with-open [iter ^AutoCloseable (.iterator coll)]
          (clojure.core.protocols/iterator-reduce! iter rf init)))
-     Counted
-     (count [coll]
-       (count-reducible coll))
      Iterable
      (iterator [_]
        (IntersectionIterator. comparator merge (.iterator ^Iterable c1)
@@ -220,9 +214,6 @@
      (reduce [coll rf init]
        (with-open [iter ^AutoCloseable (.iterator coll)]
          (clojure.core.protocols/iterator-reduce! iter rf init)))
-     Counted
-     (count [coll]
-       (count-reducible coll))
      Iterable
      (iterator [_]
        (UnionIterator. comparator merge (.iterator ^Iterable c1)

@@ -364,7 +364,7 @@
   [chunk-xf]
   (comp
    (coll/partition-all 10000)
-   (map #(ac/supply-async (fn [] (count (coll/eduction chunk-xf %)))))))
+   (map #(ac/supply-async (fn [] (coll/count-reducible (coll/eduction chunk-xf %)))))))
 
 (defn type-query-total
   "Returns a CompletableFuture that will complete with the count of the
@@ -379,7 +379,7 @@
           (resource-handle-mapper db tid scan-clauses other-clauses))
          (ordered-index-handles db tid scan-clauses))
         (ac/completed-future
-         (count (unordered-resource-handles db tid other-clauses)))))
+         (coll/count-reducible (unordered-resource-handles db tid other-clauses)))))
     (ac/completed-future (p/-type-total db tid))))
 
 (defn compartment-clauses
