@@ -36,9 +36,12 @@
   "Creates a GraphDefinition with the start node `patient` unless `:start` is
   given. A `:start` of nil omits the start node.
 
+  The R4 element `start` holds the type of the start node. It is data absent
+  unless `:start-type` is given.
+
   The `:nodes`, created by `node`, and the `:link`s, created by `link`, are
   optional."
-  [& {:keys [nodes link] :as opts}]
+  [& {:keys [start-type nodes link] :as opts}]
   (let [start (get opts :start "patient")]
     (cond->
      {:fhir/type :fhir/GraphDefinition :id "0"
@@ -49,7 +52,9 @@
       :url #fhir/uri "144200"
       :name #fhir/string "test"
       :status #fhir/code "active"
-      :start (type/code {:extension [data-absent-reason-unsupported]})}
+      :start (if start-type
+               (type/code start-type)
+               (type/code {:extension [data-absent-reason-unsupported]}))}
       link (assoc :link link))))
 
 (defn node

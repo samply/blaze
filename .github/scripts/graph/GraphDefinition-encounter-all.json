@@ -1,0 +1,431 @@
+{
+  "resourceType": "GraphDefinition",
+  "extension": [
+    {
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.start",
+      "valueId": "encounter"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "type",
+          "valueCode": "Encounter"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "patient"
+        },
+        {
+          "url": "type",
+          "valueCode": "Patient"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "care-plan"
+        },
+        {
+          "url": "type",
+          "valueCode": "CarePlan"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "care-team"
+        },
+        {
+          "url": "type",
+          "valueCode": "CareTeam"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "claim"
+        },
+        {
+          "url": "type",
+          "valueCode": "Claim"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "condition"
+        },
+        {
+          "url": "type",
+          "valueCode": "Condition"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "diagnostic-report"
+        },
+        {
+          "url": "type",
+          "valueCode": "DiagnosticReport"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "document-reference"
+        },
+        {
+          "url": "type",
+          "valueCode": "DocumentReference"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "explanation-of-benefit"
+        },
+        {
+          "url": "type",
+          "valueCode": "ExplanationOfBenefit"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "imaging-study"
+        },
+        {
+          "url": "type",
+          "valueCode": "ImagingStudy"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "medication-administration"
+        },
+        {
+          "url": "type",
+          "valueCode": "MedicationAdministration"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "medication-request"
+        },
+        {
+          "url": "type",
+          "valueCode": "MedicationRequest"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "observation"
+        },
+        {
+          "url": "type",
+          "valueCode": "Observation"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "procedure"
+        },
+        {
+          "url": "type",
+          "valueCode": "Procedure"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    },
+    {
+      "extension": [
+        {
+          "url": "nodeId",
+          "valueId": "provenance"
+        },
+        {
+          "url": "type",
+          "valueCode": "Provenance"
+        }
+      ],
+      "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.node"
+    }
+  ],
+  "url": "encounter-all",
+  "name": "encounter-all",
+  "status": "active",
+  "start": "Encounter",
+  "link": [
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "patient"
+        }
+      ],
+      "path": "subject"
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "care-plan"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "care-team"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "claim"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "condition"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "diagnostic-report"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "document-reference"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "explanation-of-benefit"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "imaging-study"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "medication-administration"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "context={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "medication-request"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "observation"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "procedure"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "encounter={ref}"
+        }
+      ]
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.sourceId",
+          "valueId": "encounter"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.targetId",
+          "valueId": "provenance"
+        },
+        {
+          "url": "http://hl7.org/fhir/5.0/StructureDefinition/extension-GraphDefinition.link.params",
+          "valueString": "target={ref}"
+        }
+      ]
+    }
+  ]
+}

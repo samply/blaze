@@ -51,6 +51,18 @@
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid start node id `foo` not referring to a node."))
 
+    (testing "start type not matching the type of the start node"
+      (given (gd/compile (g-tu/graph-def :start-type "Observation"
+                                         :nodes [(g-tu/node "patient" "Patient")]))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid start type `Observation` not matching the type `Patient` of the start node `patient`."))
+
+    (testing "start type Resource not matching the concrete type of the start node"
+      (given (gd/compile (g-tu/graph-def :start-type "Resource"
+                                         :nodes [(g-tu/node "patient" "Patient")]))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid start type `Resource` not matching the type `Patient` of the start node `patient`."))
+
     (testing "node without nodeId"
       (given (gd/compile (g-tu/graph-def :nodes [(g-tu/node nil "Patient")]))
         ::anom/category := ::anom/incorrect
@@ -175,6 +187,13 @@
       :start-node-id := "patient"
       :nodes := {"patient" {:id "patient" :type "Patient"}}
       :links := {}))
+
+  (testing "start type matching the type of the start node"
+    (doseq [type ["Patient" "Resource" "DomainResource"]]
+      (given (gd/compile (g-tu/graph-def :start-type type
+                                         :nodes [(g-tu/node "patient" type)]))
+        :start-node-id := "patient"
+        :nodes := {"patient" {:id "patient" :type type}})))
 
   (testing "node with abstract type"
     (doseq [type ["Resource" "DomainResource"]]

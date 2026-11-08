@@ -100,14 +100,7 @@
   "url": "patient-observation-encounter",
   "name": "patient-observation-encounter",
   "status": "active",
-  "_start": {
-    "extension": [
-      {
-        "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
-        "valueCode": "unsupported"
-      }
-    ]
-  },
+  "start": "Patient",
   "link": [
     {
       "extension": [

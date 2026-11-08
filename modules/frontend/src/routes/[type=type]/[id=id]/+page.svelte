@@ -29,7 +29,7 @@
         <BreadcrumbEntryResource {...params} {resource} last />
       </ol>
     </nav>
-    <OperationDropdown {...params} />
+    <OperationDropdown {...params} operations={data.operations} />
     <HistoryButton {...params} />
   </div>
 </header>

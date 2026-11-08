@@ -3,6 +3,7 @@ import type { Bundle, FhirResource, GraphDefinition } from 'fhir/r4';
 
 import { backendUrl } from '#lib/backend.js';
 import { error } from '@sveltejs/kit';
+import { appError, graphDefinitionsQuery, graphUrl } from './util.js';
 
 export const load: PageServerLoad = async ({ fetch, params, url }) => {
   const resourceRes = await fetch(backendUrl(`/${params.type}/${params.id}`), {
@@ -12,27 +13,20 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
   });
 
   if (!resourceRes.ok) {
-    error(
-      resourceRes.status,
-      resourceRes.status == 404
-        ? `The ${params.type} with ID ${params.id} was not found.`
-        : resourceRes.status == 410
-          ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-          : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`,
-      {
-        short:
-          resourceRes.status == 404 ? 'Not Found' : resourceRes.status == 410 ? 'Gone' : undefined
-      }
-    );
+    const { message, ...properties } = await appError(params, resourceRes);
+    error(resourceRes.status, message, properties);
   }
 
   const resource = await resourceRes.json();
 
-  const graphDefinitionsRes = await fetch(backendUrl('/GraphDefinition', '_summary=true'), {
-    headers: {
-      Accept: 'application/fhir+json'
+  const graphDefinitionsRes = await fetch(
+    backendUrl('/GraphDefinition', graphDefinitionsQuery(params.type)),
+    {
+      headers: {
+        Accept: 'application/fhir+json'
+      }
     }
-  });
+  );
 
   if (!graphDefinitionsRes.ok) {
     error(
@@ -43,36 +37,25 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
 
   const bundle: Bundle = await graphDefinitionsRes.json();
 
+  const graph = url.searchParams.get('graph');
   let graphRes = undefined;
-  if (url.searchParams.get('graph') !== null) {
-    graphRes = await fetch(
-      backendUrl(`/${params.type}/${params.id}/$graph`, `graph=${url.searchParams.get('graph')}`),
-      {
-        headers: {
-          Accept: 'application/fhir+json'
-        }
+  if (graph !== null) {
+    graphRes = await fetch(graphUrl(params, graph), {
+      headers: {
+        Accept: 'application/fhir+json'
       }
-    );
+    });
 
     if (!graphRes.ok) {
-      error(
-        graphRes.status,
-        graphRes.status == 404
-          ? `The ${params.type} with ID ${params.id} was not found.`
-          : graphRes.status == 410
-            ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-            : `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`,
-        {
-          short: graphRes.status == 404 ? 'Not Found' : graphRes.status == 410 ? 'Gone' : undefined
-        }
-      );
+      const { message, ...properties } = await appError(params, graphRes);
+      error(graphRes.status, message, properties);
     }
   }
 
   return {
     resource: resource as FhirResource,
     graphDefinitions: bundle.entry?.map((e) => e.resource as GraphDefinition),
-    selectedGraphDefinitionUrl: url.searchParams.get('graph'),
+    selectedGraphDefinitionUrl: graph,
     graph: graphRes !== undefined ? ((await graphRes.json()) as Bundle<FhirResource>) : undefined
   };
 };

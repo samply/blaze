@@ -1,30 +1,38 @@
 <script lang="ts">
-  import type { RouteParams } from './$types';
-
   import { resolve } from '$app/paths';
 
   import Dropdown from '#lib/tailwind/dropdown.svelte';
   import DropdownItem from '#lib/tailwind/dropdown/item.svelte';
 
-  let params: RouteParams = $props();
+  interface Props {
+    type: string;
+    id: string;
+    operations: string[];
+  }
+
+  let { type, id, operations }: Props = $props();
 </script>
 
-{#if ['CodeSystem', 'ValueSet', 'Patient'].includes(params.type)}
+{#if operations.length > 0}
   <Dropdown name="Operations">
-    {#if params.type === 'CodeSystem'}
-      <DropdownItem name="$lookup" url={resolve('/CodeSystem/[id=id]/$lookup', params)} />
-      <DropdownItem
-        name="$validate-code"
-        url={resolve('/CodeSystem/[id=id]/$validate-code', params)}
-      />
-    {:else if params.type === 'ValueSet'}
-      <DropdownItem name="$expand" url={resolve('/ValueSet/[id=id]/$expand', params)} />
-      <DropdownItem
-        name="$validate-code"
-        url={resolve('/ValueSet/[id=id]/$validate-code', params)}
-      />
-    {:else if params.type === 'Patient'}
-      <DropdownItem name="$graph" url={resolve('/[type=type]/[id=id]/$graph', params)} />
-    {/if}
+    {#each operations as operation (operation)}
+      {#if operation === 'lookup'}
+        <DropdownItem name="$lookup" url={resolve('/CodeSystem/[id=id]/$lookup', { id })} />
+      {:else if operation === 'expand'}
+        <DropdownItem name="$expand" url={resolve('/ValueSet/[id=id]/$expand', { id })} />
+      {:else if operation === 'validate-code' && type === 'CodeSystem'}
+        <DropdownItem
+          name="$validate-code"
+          url={resolve('/CodeSystem/[id=id]/$validate-code', { id })}
+        />
+      {:else if operation === 'validate-code' && type === 'ValueSet'}
+        <DropdownItem
+          name="$validate-code"
+          url={resolve('/ValueSet/[id=id]/$validate-code', { id })}
+        />
+      {:else if operation === 'graph'}
+        <DropdownItem name="$graph" url={resolve('/[type=type]/[id=id]/$graph', { type, id })} />
+      {/if}
+    {/each}
   </Dropdown>
 {/if}

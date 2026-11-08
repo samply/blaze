@@ -35,6 +35,21 @@
       (ba/incorrect (format "Invalid start node id `%s` not referring to a node." id)))
     (ba/incorrect "Invalid GraphDefinition without start node.")))
 
+(defn- check-start-type
+  "Returns `start-node-id` if the R4 element `start` of `graph-def` has no value
+  or equals the type of the start node, or an anomaly otherwise.
+
+  The element `start` holds the type of the start node in R4. It is searchable
+  by the search param `start`, so it has to agree with the start node."
+  {:arglists '([graph-def nodes start-node-id])}
+  [{{start-type :value} :start} nodes start-node-id]
+  (let [{node-type :type} (nodes start-node-id)]
+    (if (or (nil? start-type) (= start-type node-type))
+      start-node-id
+      (ba/incorrect
+       (format "Invalid start type `%s` not matching the type `%s` of the start node `%s`."
+               start-type node-type start-node-id)))))
+
 (def ^:private abstract-resource-types
   "The abstract resource types which `fhir-spec/resource-type?` doesn't cover,
   but which are allowed as node type, e.g. for polymorphic references."
@@ -161,6 +176,7 @@
 
   Returns an anomaly if `graph-def` is invalid. That is the case if:
    * the start node is missing or doesn't refer to a node
+   * the R4 element `start` has a value other than the type of the start node
    * a node has no `nodeId`, no `type` or a type that isn't a resource type or
      one of the abstract types `Resource` and `DomainResource`
    * a `nodeId` is used more than once
@@ -177,6 +193,7 @@
   [graph-def]
   (when-ok [nodes (nodes graph-def)
             start-node-id (start-node-id graph-def nodes)
+            start-node-id (check-start-type graph-def nodes start-node-id)
             links (links nodes graph-def)]
     {:start-node-id start-node-id
      :nodes nodes

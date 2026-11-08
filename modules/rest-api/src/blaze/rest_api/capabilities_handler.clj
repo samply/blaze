@@ -32,6 +32,25 @@
 (def ^:private quantity-documentation
   #fhir/markdown "Decimal values are truncated at two digits after the decimal point.")
 
+(defn- resource-operation
+  "Returns the entry of `operation` in the operations of a resource or nil if it
+  has neither a type nor an instance handler.
+
+  Operations on all resource types appear in the entry of every resource, so
+  their documentation is left out, keeping the CapabilityStatement compact.
+  The definition of the operation describes it anyway."
+  {:arglists '([operation])}
+  [{:blaze.rest-api.operation/keys
+    [code def-uri type-handler instance-handler documentation]
+    :as operation}]
+  (when (or type-handler instance-handler)
+    (cond->
+     {:fhir/type :fhir.CapabilityStatement.rest.resource/operation
+      :name (type/string code)
+      :definition (type/canonical def-uri)}
+      (and documentation (not (u/all-resource-types? operation)))
+      (assoc :documentation (type/markdown documentation)))))
+
 (defn- capability-resource
   {:arglists '([context structure-definition])}
   [{:keys [resource-patterns operations search-param-registry
@@ -42,8 +61,10 @@
    [{:blaze.rest-api.resource-pattern/keys [interactions]}
     (u/resolve-pattern resource-patterns structure-definition)]
     (let [operations
-          (filter
-           #(some #{name} (:blaze.rest-api.operation/resource-types %))
+          (into
+           []
+           (comp (filter #(u/supports-resource-type? % name))
+                 (keep resource-operation))
            operations)]
       (cond->
        {:fhir/type :fhir.CapabilityStatement.rest/resource
@@ -123,21 +144,7 @@
          (sr/list-by-type search-param-registry name))}
 
         (seq operations)
-        (assoc
-         :operation
-         (into
-          []
-          (keep
-           (fn [{:blaze.rest-api.operation/keys
-                 [code def-uri type-handler instance-handler documentation]}]
-             (when (or type-handler instance-handler)
-               (cond->
-                {:fhir/type :fhir.CapabilityStatement.rest.resource/operation
-                 :name (type/string code)
-                 :definition (type/canonical def-uri)}
-                 documentation
-                 (assoc :documentation (type/markdown documentation))))))
-          operations))))))
+        (assoc :operation operations)))))
 
 (defn- build-capability-statement-base
   "Builds the base for the capability statement that is independent of the

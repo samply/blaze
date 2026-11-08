@@ -13,6 +13,9 @@
 (s/def ::g-tu/start
   (s/nilable string?))
 
+(s/def ::g-tu/start-type
+  string?)
+
 (s/def ::g-tu/nodes
   (s/coll-of :fhir/Extension :kind vector?))
 
