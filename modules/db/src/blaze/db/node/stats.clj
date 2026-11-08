@@ -53,6 +53,14 @@
                   codec/all-types)
      :system (or (system-stats/seek-value snapshot t) empty-value)}))
 
+(defn type-total
+  "Returns the number of resources of `type` in `stats`.
+
+  Unlike `blaze.db.api/type-total`, it doesn't seek the TypeStats index, so it
+  can be called for many types in the indexing loop."
+  [stats type]
+  (:total ((:types stats) (codec/tid type)) 0))
+
 (defn apply-tx
   "Applies the `increments` of the transaction with `t` to `stats`.
 

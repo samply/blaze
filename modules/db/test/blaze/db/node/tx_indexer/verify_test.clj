@@ -678,6 +678,19 @@
           [9 1 ss-tu/decode-key] := {:t 2}
           [9 2 ss-tu/decode-val] := {:total 0 :num-changes 4})))
 
+    (testing "deleting a patient and one of two observations referencing it in the same transaction"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]
+          [:put observation-0]
+          [:put observation-1]]]
+
+        (given (verify-tx-cmds
+                node 2
+                [{:op "delete" :type "Patient" :id "0" :check-refs true}
+                 {:op "delete" :type "Observation" :id "0" :check-refs true}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/1`.")))
+
     (testing "deleting a patient which is referenced by a still existing observation"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]

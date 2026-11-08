@@ -90,6 +90,22 @@
       (is (= @(:stats node)
              (stats/init (:kv-store node) (:t @(:state node))))))))
 
+(deftest type-total-test
+  (testing "a type without stats has no resources"
+    (is (zero? (stats/type-total stats/empty-stats "Patient"))))
+
+  (let [stats {:types {patient-tid {:total 2 :num-changes 3}
+                       observation-tid {:total 0 :num-changes 1}}
+               :system {:total 2 :num-changes 4}}]
+    (testing "the total of a type with resources"
+      (is (= 2 (stats/type-total stats "Patient"))))
+
+    (testing "the total of a type whose resources were all deleted"
+      (is (zero? (stats/type-total stats "Observation"))))
+
+    (testing "a type not in the stats has no resources"
+      (is (zero? (stats/type-total stats "Condition"))))))
+
 (deftest apply-tx-test
   (testing "a transaction without increments produces no entries"
     (doseq [increments [nil {}]]
