@@ -15,7 +15,7 @@
 (extend-protocol p/Equal
   PersistentVector
   (equal [x y]
-    (when y
+    (when-some [y (some-> y vec)]
       (if (= (.count x) (count y))
         (if (zero? (.count x))
           true
@@ -33,7 +33,7 @@
 (extend-protocol p/Equivalent
   PersistentVector
   (equivalent [x y]
-    (if y
+    (if-some [y (some-> y vec)]
       (if (= (.count x) (count y))
         (if (zero? (.count x))
           true
@@ -94,7 +94,7 @@
   IReduceInit
   (includes [x y _]
     (when y
-      (every? #(p/contains x % nil) y))))
+      (reduce #(if (p/contains x %2 nil) true (reduced false)) true y))))
 
 ;; 19.15. Intersect
 ;;
@@ -102,7 +102,7 @@
 (extend-protocol p/Intersect
   PersistentVector
   (intersect [x y]
-    (when y
+    (when-some [y (some-> y vec)]
       (if (<= (.count x) (count y))
         (.reduce
          x
@@ -131,7 +131,8 @@
 (extend-protocol p/ProperIncludes
   PersistentVector
   (proper-includes [x y precision]
-    (and (p/includes x y precision) (> (.count x) (count y))))
+    (when-some [y (some-> y vec)]
+      (and (p/includes x y precision) (> (.count x) (count y)))))
 
   IReduceInit
   (proper-includes [x y precision]
