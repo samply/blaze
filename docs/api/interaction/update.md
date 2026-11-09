@@ -47,7 +47,7 @@ Resources a client tagged `read-only` before version 1.14.0 stay read-only as we
 
 ## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
 
-Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. Such resources can't be updated. Blaze returns a `409 Conflict` with an `OperationOutcome` instead.
+StructureDefinition, GraphDefinition and CodeSystem resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. Such resources can't be updated. Blaze returns a `409 Conflict` with an `OperationOutcome` instead.
 
 ## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
 

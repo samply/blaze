@@ -9,7 +9,8 @@
 
   * the current version tagged `read-only` can't be updated or deleted
   * the current version labelled `internal` can't be updated or deleted and its
-    history can't be deleted or purged, neither at once nor version by version
+    history can't be deleted or purged, neither at once nor version by version,
+    if it is of one of the types Blaze owns resources of (see `internal-types`)
   * a new version labelled with any AccessControl code can't be created
 
   Only the current version is checked, because the labels are found through
@@ -184,13 +185,24 @@
   (and (not (p/may-write? permissions "read-only"))
        (d/matches? db-before read-only-matcher resource-handle)))
 
+(def ^:private internal-types
+  "The types of the resources Blaze owns itself, which are the only ones
+  labelled internal.
+
+  The internal label is checked only on resources of these types, which saves
+  the index lookup of the label on all others. Adding a type changes the
+  outcome of a replay only for resources of that type labelled before Blaze
+  started to own it, because clients can't label resources internal."
+  #{:fhir/StructureDefinition :fhir/GraphDefinition :fhir/CodeSystem})
+
 (defn- internal?
-  "Returns true if the `resource-handle` of the current version is labelled
-  internal and the permissions of `context` don't allow to write such
-  resources."
+  "Returns true if the `resource-handle` of the current version is of one of
+  the `internal-types`, is labelled internal and the permissions of `context`
+  don't allow to write such resources."
   {:arglists '([context resource-handle])}
   [{:keys [db-before internal-matcher permissions]} resource-handle]
-  (and (not (p/may-write? permissions "internal"))
+  (and (contains? internal-types (:fhir/type resource-handle))
+       (not (p/may-write? permissions "internal"))
        (d/matches? db-before internal-matcher resource-handle)))
 
 (defmethod verify "put"

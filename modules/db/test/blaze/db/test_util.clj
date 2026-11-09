@@ -246,9 +246,16 @@
   {:fhir/type :fhir/Patient :id "0"
    :meta (type/meta {:tag [read-only-tag read-only-tag-legacy]})})
 
-(def internal-patient-0
-  "A Patient carrying the internal security label."
-  {:fhir/type :fhir/Patient :id "0"
+(def internal-types
+  "The types of the resources Blaze owns itself, which carry the internal
+  security label."
+  ["StructureDefinition" "GraphDefinition" "CodeSystem"])
+
+(defn internal-resource-0
+  "Returns a resource of `type` with id `0` carrying the internal security
+  label."
+  [type]
+  {:fhir/type (keyword "fhir" type) :id "0"
    :meta (type/meta {:security [internal-label]})})
 
 (defn transact-internal

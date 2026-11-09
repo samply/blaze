@@ -16,8 +16,4 @@ All resources in the patient compartment are marked as purged immediately. All r
 
 The official documentation can be found [here][1].
 
-## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
-
-Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. Such resources can't be purged. If the patient compartment contains one, the operation fails with an OperationOutcome with code `conflict` and purges no resource at all.
-
 [1]: <https://build.fhir.org/patient-operation-purge.html>

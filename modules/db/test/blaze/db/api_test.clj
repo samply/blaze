@@ -20,7 +20,8 @@
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
-   [blaze.db.test-util :as dtu :refer [config internal-label internal-patient-0
+   [blaze.db.test-util :as dtu :refer [config internal-label
+                                       internal-resource-0 internal-types
                                        non-referential-integrity-config
                                        read-only-patient-0 read-only-tag
                                        read-only-tag-legacy transact-internal
@@ -559,52 +560,58 @@
       (is (= 2 (transact-internal node [[:put (assoc read-only-patient-0 :gender #fhir/code "female")]])))
       (is (= 3 (transact-internal node [[:delete "Patient" "0"]])))))
 
-  (testing "a client can't change an internal resource"
-    (with-system [{:blaze.db/keys [node]} config]
-      (transact-internal node [[:create internal-patient-0]])
+  (doseq [type internal-types]
+    (testing (str "a client can't change an internal " type)
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create (internal-resource-0 type)]])
 
-      (given-failed-future (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Can't update the internal resource `Patient/0`.")
-
-      (given-failed-future (d/transact node [[:delete "Patient" "0"]])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Can't delete the internal resource `Patient/0`.")
-
-      (testing "also not by a conditional delete"
-        (given-failed-future (d/transact node [[:conditional-delete "Patient" [["_id" "0"]]]])
+        (given-failed-future (d/transact node [[:put {:fhir/type (keyword "fhir" type) :id "0"}]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Can't delete the internal resource `Patient/0`."))
+          ::anom/message := (format "Can't update the internal resource `%s/0`." type))
 
-      (testing "also not by a patient purge"
-        (given-failed-future (d/transact node [[:patient-purge "0"]])
+        (given-failed-future (d/transact node [[:delete type "0"]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Can't purge the internal resource `Patient/0`."))
+          ::anom/message := (format "Can't delete the internal resource `%s/0`." type))
 
-      (testing "internal code can"
-        (is (= 6 (transact-internal node [[:delete "Patient" "0"]]))))))
+        (testing "also not by a conditional delete"
+          (given-failed-future (d/transact node [[:conditional-delete type [["_id" "0"]]]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't delete the internal resource `%s/0`." type)))
 
-  (testing "a client can't delete the history of an internal resource"
-    (with-system [{:blaze.db/keys [node]} config]
-      (transact-internal node [[:create internal-patient-0]])
-      (transact-internal node [[:put (assoc internal-patient-0 :gender #fhir/code "male")]])
-      (transact-internal node [[:put (assoc internal-patient-0 :gender #fhir/code "female")]])
+        (testing "internal code can"
+          (is (= 5 (transact-internal node [[:delete type "0"]]))))))
 
-      (given-failed-future (d/transact node [[:delete-history "Patient" "0"]])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Can't delete the history of the internal resource `Patient/0`.")
+    (testing (str "a client can't delete the history of an internal " type)
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create (internal-resource-0 type)]])
+        (transact-internal node [[:put (assoc (internal-resource-0 type) :language #fhir/code "de")]])
+        (transact-internal node [[:put (assoc (internal-resource-0 type) :language #fhir/code "en")]])
 
-      (testing "also not version by version in one transaction"
-        (given-failed-future (d/transact node [[:delete-history-version "Patient" "0" 1]
-                                               [:delete-history-version "Patient" "0" 2]])
+        (given-failed-future (d/transact node [[:delete-history type "0"]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Can't delete a history version of the internal resource `Patient/0`."))
+          ::anom/message := (format "Can't delete the history of the internal resource `%s/0`." type))
 
-      (testing "internal code can"
-        (is (= 6 (transact-internal node [[:delete-history-version "Patient" "0" 1]
-                                          [:delete-history-version "Patient" "0" 2]])))
-        (with-db [db node]
-          (is (= 1 (count (vec (d/instance-history db "Patient" "0"))))))))))
+        (testing "also not version by version in one transaction"
+          (given-failed-future (d/transact node [[:delete-history-version type "0" 1]
+                                                 [:delete-history-version type "0" 2]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't delete a history version of the internal resource `%s/0`." type)))
+
+        (testing "internal code can"
+          (is (= 6 (transact-internal node [[:delete-history-version type "0" 1]
+                                            [:delete-history-version type "0" 2]])))
+          (with-db [db node]
+            (is (= 1 (count (vec (d/instance-history db type "0"))))))))))
+
+  (testing "a client can change a resource of another type carrying the internal
+            label"
+    (doseq [tx-op [[:put {:fhir/type :fhir/Patient :id "0"}]
+                   [:delete "Patient" "0"]
+                   [:patient-purge "0"]]]
+      (with-system [{:blaze.db/keys [node]} config]
+        (transact-internal node [[:create (internal-resource-0 "Patient")]])
+
+        (is (= 2 @(d/transact node [tx-op])))))))
 
 (deftest transact-put-test
   (testing "on empty database"
