@@ -31,6 +31,7 @@
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change :as plc]
+   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.kv.spec]
    [blaze.db.node.duplicates :as dup]
@@ -465,26 +466,28 @@
 
 (defn- rev-include
   "Returns a reducible collection of the resource handles pointing to
-  `resource-handle` by one of the search params of `rev-include-params`."
-  [db resource-handle rev-include-params]
-  (coll/eduction
-   (mapcat
-    (fn [[source-type code]]
-      (d/rev-include db resource-handle source-type code)))
-   rev-include-params))
+  `resource-handle` by one of the search params of `rev-include-params`,
+  skipping the ones in `del-resources`.
+
+  The reference to `resource-handle` is computed once for all params."
+  [db resource-handle rev-include-params del-resources]
+  (let [reference (rh/tid-id resource-handle)]
+    (coll/eduction
+     (mapcat #(impl/rev-include db reference % del-resources))
+     rev-include-params)))
 
 (defn- rev-tuples
   "Returns the local reference tuples of at most two distinct resources that
   point to `resource-handle` and aren't in `del-resources`.
 
-  The resources in `del-resources` are removed before deduplicating, so that
+  The resources in `del-resources` are skipped before deduplicating, so that
   `distinct` only holds the at most two tuples returned and not every resource
   pointing to `resource-handle` that is deleted along with it."
   [db-before resource-handle rev-include-params del-resources]
   (into
    []
-   (comp (map local-ref-tuple) (remove del-resources) (distinct) (take 2))
-   (rev-include db-before resource-handle rev-include-params)))
+   (comp (map local-ref-tuple) (distinct) (take 2))
+   (rev-include db-before resource-handle rev-include-params del-resources)))
 
 (defn- check-referential-integrity-delete!
   [db-before rev-include-params del-resources type id]
