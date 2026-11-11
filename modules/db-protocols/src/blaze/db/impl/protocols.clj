@@ -112,8 +112,7 @@
 (defprotocol SearchParam
   (-validate-modifier [search-param modifier] "Can return an anomaly.")
   (-compile-value [search-param modifier value]
-    "Returns a CompletableFuture that completes with the compiled value or
-    completes exceptionally with an anomaly.")
+    "Returns the compiled value or an anomaly.")
   (-estimated-scan-size
     [search-param db tid modifier compiled-value]
     "Returns a relative estimation of the amount of work to do while scanning

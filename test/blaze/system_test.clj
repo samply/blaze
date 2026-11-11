@@ -211,12 +211,12 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
+   {:structure-definition-repo structure-definition-repo}
    ::ts/not-available {}
    ::auth-backend {}
    :blaze.interaction/transaction
-   {:node (ig/ref :blaze.db/node)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)
     :batch-handler (ig/ref ::rest-api/batch-handler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -229,21 +229,25 @@
    :blaze.interaction/delete-history-version
    {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/conditional-delete-type
-   {:node (ig/ref :blaze.db/node)}
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)}
    :blaze.interaction/search-system
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction/search-type
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction/search-compartment
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)

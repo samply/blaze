@@ -13,8 +13,6 @@
    [blaze.path :refer [dir? path]]
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
-   [blaze.terminology-service :as ts]
-   [blaze.terminology-service.local :as local]
    [blaze.util :as u :refer [condp-identical conj-vec str]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -221,12 +219,6 @@
    base-config
    features))
 
-(defn- post-init!
-  [{local-terminology-service ::ts/local :as system}]
-  (when local-terminology-service
-    (let [main-node (system [:blaze.db/node :blaze.db.main/node])]
-      (local/post-init! local-terminology-service main-node))))
-
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
@@ -250,12 +242,9 @@
           config (-> (merge-with merge root-config config)
                      (resolve-config env settings))]
       (load-namespaces config)
-      (let [system (-> (ig/bind config (ce/limit-cache-size-ratios bind-map))
-                       (ig/expand)
-                       (ig/init))]
-        (if-ok [_ (post-init! system)]
-          system
-          ba/throw-anom)))
+      (-> (ig/bind config (ce/limit-cache-size-ratios bind-map))
+          (ig/expand)
+          (ig/init)))
     ba/throw-anom))
 
 (defn shutdown! [system]

@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.quantity-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
@@ -19,7 +18,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -73,10 +72,9 @@
         ::anom/message := "Unsupported modifier `missing` on search parameter `value-quantity`."))))
 
 (defn compile-quantity-value [search-param-registry value]
-  (-> (value-quantity-param search-param-registry)
-      (search-param/compile-values nil [value])
-      (ac/join)
-      (first)))
+  (when-ok [values (-> (value-quantity-param search-param-registry)
+                       (search-param/compile-values nil [value]))]
+    (first values)))
 
 (deftest compile-value-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
@@ -146,14 +144,14 @@
           :exact-value := (codec/quantity nil 1M))))
 
     (testing "invalid decimal value"
-      (given-failed-future (search-param/compile-values
-                            (value-quantity-param search-param-registry) nil ["a"])
+      (given (search-param/compile-values
+              (value-quantity-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `value-quantity`: Invalid decimal value `a`."))
 
     (testing "unsupported prefix"
-      (given-failed-future (search-param/compile-values
-                            (value-quantity-param search-param-registry) nil ["ne23"])
+      (given (search-param/compile-values
+              (value-quantity-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Error in search parameter `value-quantity`: Unsupported prefix `ne`."))))
 

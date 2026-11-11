@@ -27,6 +27,10 @@
   :args (s/cat :futures (s/coll-of ac/completable-future?))
   :ret ac/completable-future?)
 
+(s/fdef ac/all-values
+  :args (s/cat :futures (s/coll-of ac/completable-future?))
+  :ret ac/completable-future?)
+
 (s/fdef ac/complete!
   :args (s/cat :future ac/completable-future? :x any?)
   :ret boolean?)

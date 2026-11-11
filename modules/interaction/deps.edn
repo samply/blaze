@@ -21,7 +21,10 @@
   {:local/root "../spec"}
 
   blaze/validator
-  {:local/root "../validator"}}
+  {:local/root "../validator"}
+
+  blaze/value-set-expander
+  {:local/root "../value-set-expander"}}
 
  :aliases
  {:test

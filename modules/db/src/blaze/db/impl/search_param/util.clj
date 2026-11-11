@@ -149,7 +149,7 @@
   [index-handles]
   (apply coll/union ih/id-comp ih/union index-handles))
 
-(defn- unsupported-modifier-anom [code modifier]
+(defn unsupported-modifier-anom [code modifier]
   (ba/unsupported
    (format "Unsupported modifier `%s` on search parameter `%s`." modifier code)))
 

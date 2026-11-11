@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.chained
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -188,11 +187,9 @@
 
 (defn- compile-ref-search-param-value
   "Compiles the value of the reference of `resource-handle` via
-  `ref-search-param`.
-
-  Because compiling references isn't really async, we can join here."
+  `ref-search-param`."
   [ref-search-param resource-handle]
-  (ac/join (p/-compile-value ref-search-param nil (reference resource-handle))))
+  (p/-compile-value ref-search-param nil (reference resource-handle)))
 
 (defn chained-search-param
   "Creates a new chaining search param from the following arguments:

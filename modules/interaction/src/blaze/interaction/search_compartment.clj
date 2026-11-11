@@ -1,7 +1,7 @@
 (ns blaze.interaction.search-compartment
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -16,6 +16,7 @@
    [blaze.page-store.spec]
    [blaze.spec]
    [blaze.util :refer [str]]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -28,24 +29,24 @@
     {:keys [clauses]} :params}]
   (cond
     (empty? clauses)
-    (do-sync [query (d/compile-compartment-query db code type)]
-      (when-ok [handles (d/execute-query db query id)]
-        {:query query
-         :handles (vec handles)}))
+    (when-ok [query (d/compile-compartment-query db code type)
+              handles (d/execute-query db query id)]
+      {:query query
+       :handles (vec handles)})
 
     (identical? :blaze.preference.handling/strict handling)
-    (do-sync [query (d/compile-compartment-query db code type clauses)]
-      (when-ok [handles (d/execute-query db query id)]
-        {:query query
-         :handles (vec handles)
-         :clauses clauses}))
+    (when-ok [query (d/compile-compartment-query db code type clauses)
+              handles (d/execute-query db query id)]
+      {:query query
+       :handles (vec handles)
+       :clauses clauses})
 
     :else
-    (do-sync [query (d/compile-compartment-query-lenient db code type clauses)]
-      (when-ok [handles (d/execute-query db query id)]
-        {:query query
-         :handles (vec handles)
-         :clauses (d/query-clauses query)}))))
+    (when-ok [query (d/compile-compartment-query-lenient db code type clauses)
+              handles (d/execute-query db query id)]
+      {:query query
+       :handles (vec handles)
+       :clauses (d/query-clauses query)})))
 
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context} query]
   (comp
@@ -59,7 +60,8 @@
 (defn- self-link
   [{::search-util/keys [link] :keys [match params] :blaze/keys [base-url]}
    clauses]
-  (link "self" (nav/url base-url match params clauses)))
+  (link "self" (nav/url base-url match params
+                        (nav/client-clauses params clauses))))
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
   {"__page-offset" (str (+ page-offset (dec (count entries))))})
@@ -90,32 +92,33 @@
       (update :link conj next-link))))
 
 (defn- search-normal [{:blaze/keys [db] :as context}]
-  (-> (handles-and-clauses context)
-      (ac/then-compose
-       (fn [{:keys [query handles clauses]}]
-         (-> (d/pull-many db handles)
-             (ac/exceptionally
-              #(assoc %
-                      ::anom/category ::anom/fault
-                      :fhir/issue "incomplete"))
-             (ac/then-apply (partial entries context query))
-             (ac/then-compose (partial bundle context handles clauses)))))))
+  (if-ok [{:keys [query handles clauses]} (handles-and-clauses context)]
+    (-> (d/pull-many db handles)
+        (ac/exceptionally
+         #(assoc %
+                 ::anom/category ::anom/fault
+                 :fhir/issue "incomplete"))
+        (ac/then-apply (partial entries context query))
+        (ac/then-compose (partial bundle context handles clauses)))
+    ac/completed-future))
 
 (defn- search-summary [context]
-  (-> (handles-and-clauses context)
-      (ac/then-apply (fn [{:keys [handles clauses]}] (bundle* context handles clauses)))))
+  (ac/completed-future
+   (when-ok [{:keys [handles clauses]} (handles-and-clauses context)]
+     (bundle* context handles clauses))))
 
-(defn- search [{:keys [params] :as context}]
-  (if (:summary? params)
-    (search-summary context)
-    (search-normal context)))
+(defn- search [{{:keys [summary? unsatisfiable? clauses]} :params :as context}]
+  (cond
+    unsatisfiable? (ac/completed-future (bundle* context [] clauses))
+    summary? (search-summary context)
+    :else (search-normal context)))
 
 (defn page-match [router code id type]
   #(reitit/match-by-name router (keyword code "compartment-page")
                          {:id id :type type :page-id %}))
 
 (defn- search-context
-  [{:keys [page-store] :as context}
+  [{:keys [page-store value-set-expander] :as context}
    {{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
     {:keys [id type]} :path-params
     :keys [headers params]
@@ -130,7 +133,8 @@
 
     :else
     (let [handling (handler-util/preference headers "handling")]
-      (do-sync [params (params/decode page-store handling params paging-params)]
+      (do-sync [params (-> (params/decode page-store handling params paging-params)
+                           (ac/then-compose (partial params/expand-value-sets value-set-expander type)))]
         (cond->
          (assoc context
                 :blaze/base-url base-url
@@ -148,7 +152,7 @@
 (defmethod m/pre-init-spec :blaze.interaction/search-compartment [_]
   (s/keys :req [::search-util/link]
           :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
-                   :blaze/page-id-cipher]))
+                   :blaze/page-id-cipher :blaze/value-set-expander]))
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]
   (log/info "Init FHIR search-compartment interaction handler")

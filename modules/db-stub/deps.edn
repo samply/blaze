@@ -8,4 +8,7 @@
   {:local/root "../fhir-test-util"}
 
   blaze/terminology-service-local
-  {:local/root "../terminology-service-local"}}}
+  {:local/root "../terminology-service-local"}
+
+  blaze/value-set-expander
+  {:local/root "../value-set-expander"}}}

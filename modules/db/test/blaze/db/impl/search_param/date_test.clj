@@ -19,7 +19,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -64,14 +64,14 @@
 (deftest compile-value-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "invalid date value"
-      (given-failed-future (search-param/compile-values
-                            (birth-date-param search-param-registry) nil ["a"])
+      (given (search-param/compile-values
+              (birth-date-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `a`."))
 
     (testing "less than"
-      (given @(search-param/compile-values
-               (birth-date-param search-param-registry) nil ["lt2020"])
+      (given (search-param/compile-values
+              (birth-date-param search-param-registry) nil ["lt2020"])
         [0 :op] := :lt
         [0 :lower-bound] := (codec-date/encode-lower-bound #system/date"2020")))))
 

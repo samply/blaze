@@ -37,6 +37,7 @@
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [blaze.util-spec]
+   [blaze.value-set-expander]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -192,7 +193,10 @@
      [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor] {}
 
      :blaze.db/search-param-registry
-     {:structure-definition-repo structure-definition-repo
+     {:structure-definition-repo structure-definition-repo}
+
+     :blaze/value-set-expander
+     {:search-param-registry (ig/ref :blaze.db/search-param-registry)
       :terminology-service (ig/ref ::ts/not-available)}
 
      ::ts/not-available {}
@@ -249,6 +253,7 @@
       :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
       :page-store (ig/ref :blaze.page-store/local)
       :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
+      :value-set-expander (ig/ref :blaze/value-set-expander)
       :context-path "/fhir"}
 
      ::search-util/link {:fhir/version "4.0.1"}

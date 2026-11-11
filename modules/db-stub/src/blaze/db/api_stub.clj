@@ -21,6 +21,7 @@
    [blaze.terminology-service :as-alias ts]
    [blaze.terminology-service-spec]
    [blaze.terminology-service.local :as local]
+   [blaze.value-set-expander]
    [integrant.core :as ig]
    [java-time.api :as time]))
 
@@ -116,11 +117,15 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
+   {:structure-definition-repo structure-definition-repo}
+
+   :blaze/value-set-expander
+   {:search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)}
 
    ::ts/local
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :graph-cache (ig/ref ::local/graph-cache)}
 
@@ -134,9 +139,8 @@
    ::writing-context {}})
 
 (defmacro with-system [[binding-form config] & body]
-  `(mtu/with-system [system# ~config]
-     (local/post-init! (::ts/local system#) (:blaze.db/node system#))
-     (let [~binding-form system#] ~@body)))
+  `(mtu/with-system [~binding-form ~config]
+     ~@body))
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

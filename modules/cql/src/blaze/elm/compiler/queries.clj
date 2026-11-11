@@ -5,8 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [comparator sort-by str])
   (:require
-   [blaze.anomaly :refer [if-ok try-anomaly]]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :refer [if-ok]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.compiler.core :as core]
@@ -148,7 +147,7 @@
     (filter-medication-refs arg)))
 
 (defn- compile-medication-matcher [db source-type medication-refs]
-  (try-anomaly (ac/join (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)]))))
+  (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)]))
 
 (defn- eduction-expr [xform-factory source]
   (reify-expr core/Expression

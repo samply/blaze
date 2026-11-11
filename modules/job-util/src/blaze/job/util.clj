@@ -250,17 +250,17 @@
       new-job
       (transition-conflict job from to))))
 
-(defn- pull-job* [node db id]
-  (d/pull node (d/resource-handle db "Task" id)))
+(defn- pull-job* [db id]
+  (d/pull db (d/resource-handle db "Task" id)))
 
 (defn pull-job
   "Returns a CompletableFuture that will complete with the job with `id` in
   the database of `node` at `t`, or in the current database of `node` if not
   given, or will complete exceptionally with an anomaly in case of errors."
   ([node id]
-   (d/with-db node #(pull-job* node % id)))
+   (d/with-db node #(pull-job* % id)))
   ([node t id]
-   (d/with-sync-db node t #(pull-job* node % id))))
+   (d/with-sync-db node t #(pull-job* % id))))
 
 (defn- then-pull-job [stage node id]
   (ac/then-compose stage #(pull-job node % id)))

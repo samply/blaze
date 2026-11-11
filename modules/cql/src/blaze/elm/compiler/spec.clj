@@ -5,6 +5,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.spec]
    [blaze.fhir.spec.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]))
 
 (s/def ::c/expression
@@ -18,5 +19,5 @@
 
 (s/def :elm/compile-context
   (s/keys :req-un [:elm/library ::c/eval-context :blaze.db/node
-                   :blaze/terminology-service]
+                   :blaze/terminology-service :blaze/value-set-expander]
           :opt-un [::c/function-defs]))

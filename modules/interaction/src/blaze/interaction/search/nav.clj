@@ -5,6 +5,7 @@
    [blaze.middleware.fhir.page-id :as page-id]
    [blaze.page-store :as page-store]
    [blaze.util :as u :refer [str]]
+   [blaze.value-set-expander :as vse]
    [clojure.string :as str]
    [reitit.core :as reitit]))
 
@@ -23,13 +24,33 @@
 (defn- clauses->query-params [clauses]
   (reduce clause->query-param {} clauses))
 
-(defn- clauses->token-query-params! [page-store token clauses]
+(defn client-clauses
+  "Returns the clauses of the search with `params` as the client wrote them,
+  which are `clauses` with expanded value sets mapped back.
+
+  The page store holds clauses with expanded value sets, which lose the
+  clauses they were expanded from. So the clauses the client wrote are carried
+  in the page id under :client-clauses of `params` as well."
+  {:arglists '([params clauses])}
+  [{expanded-clauses :clauses :keys [client-clauses]} clauses]
+  (or client-clauses (vse/original-clauses expanded-clauses clauses)))
+
+(defn- token-query-params*
+  "Returns the query params of a page id with `token`, which also carry the
+  client clauses (see `client-clauses`), if they differ from `clauses`."
+  [params token clauses]
+  (let [client-clauses (client-clauses params clauses)]
+    (cond-> {"__token" token}
+      (not= client-clauses clauses)
+      (merge (clauses->query-params client-clauses)))))
+
+(defn- clauses->token-query-params! [page-store {:keys [token] :as params} clauses]
   (cond
-    token (ac/completed-future {"__token" token})
+    token (ac/completed-future (token-query-params* params token clauses))
     (empty? clauses) (ac/completed-future nil)
     :else
     (do-sync [token (page-store/put! page-store clauses)]
-      {"__token" token})))
+      (token-query-params* params token clauses))))
 
 (defn- forward-include-defs->query-param-values [include-defs]
   (into
@@ -98,8 +119,8 @@
     (str base-url (reitit/match->path match query-params))))
 
 (defn- token-query-params!
-  [page-store {:keys [token] :as params} clauses]
-  (do-sync [clauses-params (clauses->token-query-params! page-store token clauses)]
+  [page-store params clauses]
+  (do-sync [clauses-params (clauses->token-query-params! page-store params clauses)]
     (merge-params clauses-params params)))
 
 (defn token-url!
@@ -116,11 +137,13 @@
          (reitit/match->path)
          (str base-url))))
 
-(defn- clauses->token-query-params [token clauses]
-  (if token {"__token" token} (clauses->query-params clauses)))
+(defn- clauses->token-query-params [params token clauses]
+  (if token
+    (token-query-params* params token clauses)
+    (clauses->query-params clauses)))
 
 (defn- token-query-params [params token clauses]
-  (merge-params (clauses->token-query-params token clauses) params))
+  (merge-params (clauses->token-query-params params token clauses) params))
 
 (defn token-url
   [base-url page-id-cipher match params token clauses t offset]

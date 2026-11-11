@@ -23,77 +23,70 @@
     (testing "second position"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
         (doseq [lenient? [true false]]
-          (given (ba/try-anomaly
-                  @(index/resolve-search-params
-                    search-param-registry "Patient"
-                    [["gender" "male"] [:sort "_lastUpdated" :desc]] lenient?))
+          (given (ba/try-anomaly (index/resolve-search-params
+                                  search-param-registry "Patient"
+                                  [["gender" "male"] [:sort "_lastUpdated" :desc]] lenient?))
             ::anom/category := ::anom/incorrect
             ::anom/message := "Sort clauses are only allowed at first position."))))
 
     (testing "inside disjunction"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
         (doseq [lenient? [true false]]
-          (given (ba/try-anomaly
-                  @(index/resolve-search-params
-                    search-param-registry "Patient"
-                    [[[:sort "_lastUpdated" :desc] ["gender" "male"]]] lenient?))
+          (given (ba/try-anomaly (index/resolve-search-params
+                                  search-param-registry "Patient"
+                                  [[[:sort "_lastUpdated" :desc] ["gender" "male"]]] lenient?))
             ::anom/category := ::anom/incorrect
             ::anom/message := "Sort clauses are only allowed at first position.")))))
 
   (testing "invalid clauses are detected"
     (testing "search clause"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (given (ba/try-anomaly
-                @(st/with-instrument-disabled
-                   (index/resolve-search-params search-param-registry "Observation"
-                                                [["code"]] false)))
+        (given (ba/try-anomaly (st/with-instrument-disabled
+                                 (index/resolve-search-params search-param-registry "Observation"
+                                                              [["code"]] false)))
           ::anom/category := ::anom/incorrect
           ::anom/message := "Clause `[\"code\"]` isn't valid.")))
 
     (testing "sort clause"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (given (ba/try-anomaly
-                @(st/with-instrument-disabled
-                   (index/resolve-search-params search-param-registry "Observation"
-                                                [[:sort "code" :invalid]] false)))
+        (given (ba/try-anomaly (st/with-instrument-disabled
+                                 (index/resolve-search-params search-param-registry "Observation"
+                                                              [[:sort "code" :invalid]] false)))
           ::anom/category := ::anom/incorrect
           ::anom/message := "Clause `[:sort \"code\" :invalid]` isn't valid."))))
 
   (testing "with lenient handling"
     (testing "unknown search clauses are ignored"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (is (empty? @(index/resolve-search-params search-param-registry "Observation"
-                                                  [["foo" "bar"]] true)))))
+        (is (empty? (index/resolve-search-params search-param-registry "Observation"
+                                                 [["foo" "bar"]] true)))))
 
     (testing "unkown sort clauses cause an error"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (given (ba/try-anomaly
-                @(index/resolve-search-params search-param-registry "Observation"
-                                              [[:sort "foo" :asc]] true))
+        (given (ba/try-anomaly (index/resolve-search-params search-param-registry "Observation"
+                                                            [[:sort "foo" :asc]] true))
           ::anom/category := ::anom/incorrect
           ::anom/message := "Unknown search-param `foo` in sort clause."))))
 
   (testing "without lenient handling"
     (testing "unknown search clauses cause an error"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (given (ba/try-anomaly
-                @(index/resolve-search-params search-param-registry "Observation"
-                                              [["foo" "bar"]] false))
+        (given (ba/try-anomaly (index/resolve-search-params search-param-registry "Observation"
+                                                            [["foo" "bar"]] false))
           ::anom/category := ::anom/not-found
           ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
 
     (testing "unkown sort clauses cause an error"
       (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-        (given (ba/try-anomaly
-                @(index/resolve-search-params search-param-registry "Observation"
-                                              [[:sort "foo" :asc]] true))
+        (given (ba/try-anomaly (index/resolve-search-params search-param-registry "Observation"
+                                                            [[:sort "foo" :asc]] true))
           ::anom/category := ::anom/incorrect
           ::anom/message := "Unknown search-param `foo` in sort clause."))))
 
   (testing "valid clause"
     (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-      (given @(index/resolve-search-params search-param-registry "GraphDefinition"
-                                           [["url" "foo"]] false)
+      (given (index/resolve-search-params search-param-registry "GraphDefinition"
+                                          [["url" "foo"]] false)
         :sort-clause := nil
         [:search-clauses count] := 1
         [:search-clauses 0 count] := 1
@@ -107,9 +100,8 @@
     (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
       (let [resolve-sp
             (fn [param lenient]
-              (ba/try-anomaly
-               @(index/resolve-search-params
-                 search-param-registry "Observation" [[param "Patient/1"]] lenient)))]
+              (ba/try-anomaly (index/resolve-search-params
+                               search-param-registry "Observation" [[param "Patient/1"]] lenient)))]
         (testing "without modifier"
           (is (not (ba/anomaly? (resolve-sp "patient" false))))
           (is (not (ba/anomaly? (resolve-sp "patient" true)))))
@@ -134,9 +126,9 @@
 
   (testing "disjunction"
     (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
-      (given @(index/resolve-search-params search-param-registry "Observation"
-                                           [[["status" "final"] ["code" "94564-2"]]]
-                                           false)
+      (given (index/resolve-search-params search-param-registry "Observation"
+                                          [[["status" "final"] ["code" "94564-2"]]]
+                                          false)
         :sort-clause := nil
         [:search-clauses count] := 1
         [:search-clauses 0 count] := 2

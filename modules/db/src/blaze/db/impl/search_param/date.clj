@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.date
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -387,18 +386,17 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (ac/completed-future
-       (if-ok [date-time (system/parse-date-time value)]
-         (case op
-           (:eq :ne :ge :le :ap)
-           (dual-bound-value op date-time)
-           (:gt :sa)
-           {:op op
-            :upper-bound (codec-date/encode-upper-bound date-time)}
-           (:lt :eb)
-           {:op op
-            :lower-bound (codec-date/encode-lower-bound date-time)})
-         #(assoc % ::anom/message (invalid-date-time-value-msg value))))))
+      (if-ok [date-time (system/parse-date-time value)]
+        (case op
+          (:eq :ne :ge :le :ap)
+          (dual-bound-value op date-time)
+          (:gt :sa)
+          {:op op
+           :upper-bound (codec-date/encode-upper-bound date-time)}
+          (:lt :eb)
+          {:op op
+           :lower-bound (codec-date/encode-lower-bound date-time)})
+        #(assoc % ::anom/message (invalid-date-time-value-msg value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))
@@ -622,20 +620,19 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (ac/completed-future
-       (if-ok [date-time (system/parse-date-time value)]
-         (case op
-           (:eq :ne :ge :le :ap)
-           (last-updated-dual-bound-value op date-time)
-           (:gt :sa)
-           {:op op
-            :upper-bound (codec-date/encode-upper-bound date-time)
-            :upper-bound-dt (system/date-time-upper-bound date-time)}
-           (:lt :eb)
-           {:op op
-            :lower-bound (codec-date/encode-lower-bound date-time)
-            :lower-bound-dt (system/date-time-lower-bound date-time)})
-         #(assoc % ::anom/message (invalid-date-time-value-msg value))))))
+      (if-ok [date-time (system/parse-date-time value)]
+        (case op
+          (:eq :ne :ge :le :ap)
+          (last-updated-dual-bound-value op date-time)
+          (:gt :sa)
+          {:op op
+           :upper-bound (codec-date/encode-upper-bound date-time)
+           :upper-bound-dt (system/date-time-upper-bound date-time)}
+          (:lt :eb)
+          {:op op
+           :lower-bound (codec-date/encode-lower-bound date-time)
+           :lower-bound-dt (system/date-time-lower-bound date-time)})
+        #(assoc % ::anom/message (invalid-date-time-value-msg value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

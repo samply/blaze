@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.number-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string-spec]
    [blaze.db.impl.codec :as codec]
@@ -19,7 +18,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -35,9 +34,9 @@
   (sr/get search-param-registry "probability" "RiskAssessment"))
 
 (defn compile-number-value [search-param-registry value]
-  (-> (probability-param search-param-registry)
-      (search-param/compile-values nil [value])
-      (ac/then-apply first)))
+  (when-ok [values (-> (probability-param search-param-registry)
+                       (search-param/compile-values nil [value]))]
+    (first values)))
 
 (deftest validate-modifier-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
@@ -56,45 +55,45 @@
 (deftest compile-value-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "eq"
-      (given @(compile-number-value search-param-registry "23.4")
+      (given (compile-number-value search-param-registry "23.4")
         :op := :eq
         :lower-bound := (codec/number 23.35M)
         :upper-bound := (codec/number 23.45M))
 
-      (given @(compile-number-value search-param-registry "0.1")
+      (given (compile-number-value search-param-registry "0.1")
         :op := :eq
         :lower-bound := (codec/number 0.05M)
         :upper-bound := (codec/number 0.15M))
 
-      (given @(compile-number-value search-param-registry "0")
+      (given (compile-number-value search-param-registry "0")
         :op := :eq
         :lower-bound := (codec/number -0.5M)
         :upper-bound := (codec/number 0.5M))
 
-      (given @(compile-number-value search-param-registry "0.0")
+      (given (compile-number-value search-param-registry "0.0")
         :op := :eq
         :lower-bound := (codec/number -0.05M)
         :upper-bound := (codec/number 0.05M)))
 
     (testing "gt lt ge le"
       (doseq [op [:gt :lt :ge :le]]
-        (given @(compile-number-value search-param-registry (str (name op) "23"))
+        (given (compile-number-value search-param-registry (str (name op) "23"))
           :op := op
           :exact-value := (codec/number 23M))
 
-        (given @(compile-number-value search-param-registry (str (name op) "0.1"))
+        (given (compile-number-value search-param-registry (str (name op) "0.1"))
           :op := op
           :exact-value := (codec/number 0.1M))))
 
     (testing "invalid decimal value"
-      (given-failed-future (search-param/compile-values
-                            (probability-param search-param-registry) nil ["a"])
+      (given (search-param/compile-values
+              (probability-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `probability`: Invalid decimal value `a`."))
 
     (testing "unsupported prefix"
-      (given-failed-future (search-param/compile-values
-                            (probability-param search-param-registry) nil ["ne23"])
+      (given (search-param/compile-values
+              (probability-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Error in search parameter `probability`: Unsupported prefix `ne`."))))
 

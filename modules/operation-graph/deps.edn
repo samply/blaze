@@ -18,7 +18,10 @@
   {:local/root "../rest-util"}
 
   blaze/spec
-  {:local/root "../spec"}}
+  {:local/root "../spec"}
+
+  blaze/value-set-expander
+  {:local/root "../value-set-expander"}}
 
  :aliases
  {:test

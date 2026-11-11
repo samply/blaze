@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [str])
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -36,18 +35,17 @@
 (defn compile-values
   "Compiles `values` according to `search-param`.
 
-  Returns a CompletableFuture that completes with a vector of compiled values
-  or completes exceptionally with an anomaly. The message of the anomaly names
-  the search param as sent by the client, including its modifier."
+  Returns a vector of compiled values or an anomaly. The message of the
+  anomaly names the search param as sent by the client, including its
+  modifier."
   [search-param modifier values]
-  (let [futures (mapv #(p/-compile-value search-param modifier %) values)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv ac/join futures)))
-        (ac/exceptionally
-         (fn [anomaly]
-           (cond-> anomaly
-             (::anom/message anomaly)
-             (update ::anom/message compile-error-msg search-param modifier)))))))
+  (let [compiled-values (transduce
+                         (comp (map #(p/-compile-value search-param modifier %))
+                               (halt-when ba/anomaly?))
+                         conj values)]
+    (cond-> compiled-values
+      (::anom/message compiled-values)
+      (update ::anom/message compile-error-msg search-param modifier))))
 
 (defn estimated-scan-size
   "Returns a relative estimation of the amount of work to do while scanning the

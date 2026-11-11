@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.near-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-string-spec]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param :as search-param]
@@ -15,7 +14,7 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future satisfies-prop]]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.alpha.spec :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -49,13 +48,13 @@
         ::anom/message := "Unknown modifier `unknown` on search parameter `near`."))))
 
 (defn- compile-near-value [search-param-registry value]
-  (-> (search-param/compile-values (near-param search-param-registry) nil [value])
-      (ac/then-apply first)))
+  (when-ok [values (search-param/compile-values (near-param search-param-registry) nil [value])]
+    (first values)))
 
 (deftest compile-value-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "With unit km"
-      (given @(compile-near-value search-param-registry "-83.694810|42.256500|11.20|km")
+      (given (compile-near-value search-param-registry "-83.694810|42.256500|11.20|km")
         :latitude := -83.69481M
         :longitude := 42.2565M
         :distance := 11200M))
@@ -63,80 +62,80 @@
     (testing "random input"
       (satisfies-prop 1000
         (prop/for-all [s gen/string]
-          (let [val (ba/try-anomaly @(compile-near-value search-param-registry s))]
+          (let [val (ba/try-anomaly (compile-near-value search-param-registry s))]
             (or (ba/anomaly? val)
                 (s/valid? ::near/compiled-value val))))))
 
     (testing "With unit m"
-      (given @(compile-near-value search-param-registry "-83.694810|42.256500|11200|m")
+      (given (compile-near-value search-param-registry "-83.694810|42.256500|11200|m")
         :latitude := -83.69481M
         :longitude := 42.2565M
         :distance := 11200M))
 
     (testing "Without unit"
-      (given @(compile-near-value search-param-registry "-83.694810|42.256500|5")
+      (given (compile-near-value search-param-registry "-83.694810|42.256500|5")
         :latitude := -83.69481M
         :longitude := 42.2565M
         :distance := 5000M))
 
     (testing "Without unit and distance"
-      (given @(compile-near-value search-param-registry "-83.694810|42.256500")
+      (given (compile-near-value search-param-registry "-83.694810|42.256500")
         :latitude := -83.69481M
         :longitude := 42.2565M
         :distance := 1000M)
-      (given @(compile-near-value search-param-registry "0|0|||")
+      (given (compile-near-value search-param-registry "0|0|||")
         :latitude := 0M
         :longitude := 0M
         :distance := 1000M)
-      (given @(compile-near-value search-param-registry "0|0||mi_us") ; works as missing dist ignores unit
+      (given (compile-near-value search-param-registry "0|0||mi_us") ; works as missing dist ignores unit
         :latitude := 0M
         :longitude := 0M
         :distance := 1000M))
 
     (testing "With invalid latitude"
-      (given-failed-future (compile-near-value search-param-registry "")
+      (given (compile-near-value search-param-registry "")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Missing argument `latitude`.")
-      (given-failed-future (compile-near-value search-param-registry "invalid")
+      (given (compile-near-value search-param-registry "invalid")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Error parsing argument `latitude`. Invalid decimal value `invalid`.")
-      (given-failed-future (compile-near-value search-param-registry "90.1|0")
+      (given (compile-near-value search-param-registry "90.1|0")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Invalid argument `90.1` for latitude, must be between -90.0 and 90.0."))
 
     (testing "With invalid longitude"
-      (given-failed-future (compile-near-value search-param-registry "0")
+      (given (compile-near-value search-param-registry "0")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Missing argument `longitude`.")
-      (given-failed-future (compile-near-value search-param-registry "0|")
+      (given (compile-near-value search-param-registry "0|")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Missing argument `longitude`.")
-      (given-failed-future (compile-near-value search-param-registry "0|invalid")
+      (given (compile-near-value search-param-registry "0|invalid")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Error parsing argument `longitude`. Invalid decimal value `invalid`.")
-      (given-failed-future (compile-near-value search-param-registry "0|180.1")
+      (given (compile-near-value search-param-registry "0|180.1")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Invalid argument `180.1` for longitude, must be between -180.0 and 180.0."))
 
     (testing "With invalid distance"
-      (given-failed-future (compile-near-value search-param-registry "0|0|a")
+      (given (compile-near-value search-param-registry "0|0|a")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Error parsing argument `distance`. Invalid decimal value `a`."))
 
     (testing "With invalid unit"
-      (given-failed-future (compile-near-value search-param-registry "0|0|1||")
+      (given (compile-near-value search-param-registry "0|0|1||")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Unsupported unit `|`. Supported are 'km', 'm'.")
-      (given-failed-future (compile-near-value search-param-registry "0|0|1|mi_us")
+      (given (compile-near-value search-param-registry "0|0|1|mi_us")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `near`: Unsupported unit `mi_us`. Supported are 'km', 'm'."))))
 
 (deftest match-extension-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (let [search-param (near-param search-param-registry)
-          compiled-values @(search-param/compile-values
-                            search-param nil
-                            ["51.50722|-0.12750|900" "51.3397|12.3731|900"])]
+          compiled-values (search-param/compile-values
+                           search-param nil
+                           ["51.50722|-0.12750|900" "51.3397|12.3731|900"])]
 
       (testing "a location with position gets its minimal distance"
         (given ((p/-match-extension-fn search-param nil compiled-values)

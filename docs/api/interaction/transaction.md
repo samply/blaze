@@ -61,4 +61,8 @@ The rules of the [create](create.md), [update](update.md) and [delete](delete.md
 
 It's possible to use conditional create in transaction requests. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
 
+## Value Sets <Badge type="warning" text="Since 1.14.0"/>
+
+Search parameters with the `in` modifier in conditional creates and conditional deletes are expanded, as described for the [create](create.md#value-sets) and the [conditional delete](delete-type.md#value-sets) interaction. A conditional create or conditional delete with a value set that expands to no codes fails the whole transaction with a `422 Unprocessable Entity`. One whose value sets expand to more than 10,000 codes fails it with a `409 Conflict` and the issue code `too-costly`.
+
 [1]: <https://hl7.org/fhir/bundle.html#references>

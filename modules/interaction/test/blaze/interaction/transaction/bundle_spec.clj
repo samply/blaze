@@ -1,10 +1,12 @@
 (ns blaze.interaction.transaction.bundle-spec
   (:require
+   [blaze.async.comp :as ac]
    [blaze.db.spec]
    [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.spec]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.util-spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
@@ -15,3 +17,8 @@
 (s/fdef bundle/tx-ops
   :args (s/cat :entries (s/coll-of map? :min-count 1))
   :ret (s/coll-of :blaze.db/tx-op :kind vector?))
+
+(s/fdef bundle/expand-value-sets
+  :args (s/cat :value-set-expander :blaze/value-set-expander
+               :entries (s/coll-of :fhir.Bundle/entry :min-count 1))
+  :ret ac/completable-future?)

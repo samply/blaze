@@ -57,8 +57,20 @@
   (with-meta (apply list (list 'fn (vec op-names) body-form) op-forms)
     {::function-name name}))
 
+(defn with-display-form
+  "Returns `form` with `display-form` attached as metadata, so that
+  `display-form` shows `display-form` instead of `form`.
+
+  Used if the form holds details that are important for equality and as Bloom
+  filter key, but would be too verbose for display."
+  [form display-form]
+  (vary-meta form assoc ::display-form display-form))
+
 (defn- display-form* [form]
   (cond
+    (contains? (meta form) ::display-form)
+    (::display-form (meta form))
+
     (seq? form)
     (if-let [name (::function-name (meta form))]
       (apply list 'call name (map display-form* (rest form)))

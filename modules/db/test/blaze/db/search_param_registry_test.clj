@@ -7,8 +7,6 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -25,9 +23,7 @@
 
 (def ^:private config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-   ::ts/not-available {}})
+   {:structure-definition-repo structure-definition-repo}})
 
 (def config-extra
   (assoc-in
@@ -47,13 +43,7 @@
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
-
-  (testing "missing terminology-service"
-    (given-failed-system (update config :blaze.db/search-param-registry dissoc :terminology-service)
-      :key := :blaze.db/search-param-registry
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))))
+      [:cause-data ::s/problems 1] := nil))
 
   (testing "invalid structure-definition-repo"
     (given-failed-system (assoc-in config [:blaze.db/search-param-registry :structure-definition-repo] ::invalid)
@@ -275,3 +265,26 @@
 
       (testing "Device isn't in patient compartment"
         (is (empty? (sr/compartment-resources search-param-registry "Patient" "Device")))))))
+
+(deftest value-set-param-code-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "token search params with the in modifier"
+      (are [type param code] (= code (sr/value-set-param-code search-param-registry type param))
+        "Observation" "code:in" "code"
+        "Patient" "gender:in" "gender"
+        "Resource" "_tag:in" "_tag"
+        "Observation" "_security:in" "_security"
+        "Observation" "subject:Patient.gender:in" "subject:Patient.gender"
+        "Encounter" "patient.gender:in" "patient.gender"))
+
+    (testing "other search params"
+      (are [type param] (nil? (sr/value-set-param-code search-param-registry type param))
+        "Observation" "code"
+        "Observation" "code:not"
+        "Patient" "name:in"
+        "Patient" "identifier:in"
+        "Observation" "subject:in"
+        "ValueSet" "url:in"
+        "Observation" "subject:Patient.name:in"
+        "Observation" "foo:in"
+        "Patient" "_has:Observation:patient:code:in"))))

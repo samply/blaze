@@ -20,6 +20,7 @@
    [blaze.util :refer [str]]
    [blaze.validator :as validator]
    [blaze.validator.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -156,6 +157,15 @@
   (-> (d/pull db handle)
       (ac/exceptionally resource-content-not-found-anom)))
 
+(defn- matching-handle
+  "Returns the handle of the resource matching the conditional clauses of the
+  create operation of `entry`, which hold expanded value sets unlike the
+  If-None-Exist of `entry`."
+  {:arglists '([db type entry])}
+  [db type {[_ _ clauses] :tx-op}]
+  (when-ok [handles (d/type-query db type clauses)]
+    (coll/first handles)))
+
 (defmethod build-response-entry "POST"
   [{:blaze/keys [db] return-preference :blaze.preference/return :as context}
    _
@@ -168,16 +178,12 @@
         (do-sync [resource (pull db handle)]
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
-      (let [if-none-exist (-> entry :request :ifNoneExist :value)
-            clauses (iu/conditional-clauses if-none-exist)]
-        (-> (d/type-query db type clauses)
-            (ac/then-compose
-             (fn [handles]
-               (let [handle (coll/first handles)]
-                 (if (identical? :blaze.preference.return/representation return-preference)
-                   (do-sync [resource (pull db handle)]
-                     (assoc (noop-entry db handle) :resource resource))
-                   (ac/completed-future (noop-entry db handle)))))))))))
+      (if-ok [handle (matching-handle db type entry)]
+        (if (identical? :blaze.preference.return/representation return-preference)
+          (do-sync [resource (pull db handle)]
+            (assoc (noop-entry db handle) :resource resource))
+          (ac/completed-future (noop-entry db handle)))
+        ac/completed-future))))
 
 (defn- update-entry
   [{:blaze/keys [db] :as context} type tx-op old-handle {:keys [id] :as handle}]
@@ -240,9 +246,7 @@
   (into [] (map-indexed (partial build-response-entry context)) entries))
 
 (defn- build-response-entries [context entries]
-  (let [futures (build-response-entries* context entries)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv ac/join futures))))))
+  (ac/all-values (build-response-entries* context entries)))
 
 (defmulti process-entries
   "Processes `entries` according to the batch or transaction rules.
@@ -291,8 +295,11 @@
           (ac/exceptionally (partial with-entry-expressions entries))
           (ac/then-compose #(d/with-sync-db node % build-response-entries))))))
 
-(defn- transact [{:keys [node] :as context} entries]
-  (-> (d/with-db node #(ac/completed-future (bundle/assoc-tx-ops % entries)))
+(defn- transact [{:keys [node value-set-expander] :as context} entries]
+  (-> (bundle/expand-value-sets value-set-expander entries)
+      (ac/then-compose
+       (fn [entries]
+         (d/with-db node #(ac/completed-future (bundle/assoc-tx-ops % entries)))))
       (ac/then-compose (partial transact* context))))
 
 (defn- validate-entry-resource
@@ -307,9 +314,7 @@
   returns a CompletableFuture that completes with the possibly tagged entries or
   completes exceptionally with an anomaly."
   [validator entries]
-  (let [futures (mapv (partial validate-entry-resource validator) entries)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv ac/join futures))))))
+  (ac/all-values (mapv (partial validate-entry-resource validator) entries)))
 
 (defn- process-transaction-entries [context entries]
   (ac/retry2 #(transact context entries)
@@ -347,7 +352,8 @@
    :entry entries})
 
 (defmethod m/pre-init-spec :blaze.interaction/transaction [_]
-  (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn]
+  (s/keys :req-un [:blaze.db/node ::rest-api/batch-handler :blaze/clock :blaze/rng-fn
+                   :blaze/value-set-expander]
           :opt-un [:blaze/validator]))
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]

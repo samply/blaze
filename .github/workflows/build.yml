@@ -278,6 +278,7 @@ jobs:
         - thread-pool-executor-collector
         - util
         - validator
+        - value-set-expander
 
         java-version: ${{ github.event_name == 'schedule' && fromJSON('["21", "25"]') || fromJSON('["25"]') }}
 
@@ -2784,6 +2785,9 @@ jobs:
 
     - name: Check that the UCUM Code System is read-only
       run: .github/scripts/check-resource-read-only.sh CodeSystem "http://unitsofmeasure.org"
+
+    - name: Check that Conditions with too many Value Set Codes are too costly
+      run: .github/scripts/conditional-value-set-too-costly.sh
 
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh

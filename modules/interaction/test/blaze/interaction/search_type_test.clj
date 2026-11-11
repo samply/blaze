@@ -29,6 +29,7 @@
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.page-id-cipher.spec]
    [blaze.page-store-spec]
+   [blaze.page-store.hash :as page-store-hash]
    [blaze.page-store.local]
    [blaze.page-store.spec]
    [blaze.spec]
@@ -40,6 +41,7 @@
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
+   [ring.util.codec :as codec]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
@@ -108,7 +110,8 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-type
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
@@ -143,7 +146,8 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing clock"
     (given-failed-system (update config :blaze.interaction/search-type dissoc :clock)
@@ -168,6 +172,12 @@
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.interaction/search-type dissoc :value-set-expander)
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.interaction/search-type ::search-util/link] ::invalid)
@@ -202,6 +212,13 @@
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-type :value-set-expander] ::invalid)
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid context-path"
@@ -2615,8 +2632,22 @@
           [:issue 0 :code] := #fhir/code "invalid"
           [:issue 0 :diagnostics] := #fhir/string "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
 
+(def ^:private icd-10-gm-vcl
+  "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72")
+
+(def ^:private empty-vcl
+  "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<C73")
+
+(def ^:private icd-10-gm-expanded-clauses
+  [["code"
+    "http://fhir.de/CodeSystem/bfarm/icd-10-gm|C69"
+    "http://fhir.de/CodeSystem/bfarm/icd-10-gm|C69-C72"
+    "http://fhir.de/CodeSystem/bfarm/icd-10-gm|C69.4"
+    "http://fhir.de/CodeSystem/bfarm/icd-10-gm|C71"
+    "http://fhir.de/CodeSystem/bfarm/icd-10-gm|C71.4"]])
+
 (deftest handler-token-in-test
-  (with-handler [handler]
+  (with-handler [handler _ page-id-cipher]
     [[[:put {:fhir/type :fhir/CodeSystem :id "0"
              :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
              :content #fhir/code "fragment"
@@ -2706,7 +2737,78 @@
 
         (testing "the second entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/2")
-                 (-> second-entry :fullUrl :value))))))))
+                 (-> second-entry :fullUrl :value))))
+
+        (testing "the self link keeps the value set"
+          (is (= (str base-url context-path "/Condition?code%3Ain=" (codec/url-encode icd-10-gm-vcl) "&_count=50")
+                 (link-url body "self"))))))
+
+    (testing "paging"
+      (let [{:keys [status] :as response}
+            @(handler
+              {::reitit/match (match-of "Condition")
+               :params {"code:in" icd-10-gm-vcl "_count" "1"}})
+            next-link (link-url (:body response) "next")]
+
+        (is (= 200 status))
+
+        (testing "the first page contains the first condition"
+          (given (:body response)
+            [:entry count] := 1
+            [:entry 0 :resource :id] := "0"))
+
+        (testing "the next link carries a token of the expanded clauses and the value set"
+          (is (= (page-url page-id-cipher "Condition"
+                           {"__token" (page-store-hash/encode (:hash (page-store-hash/hash-clauses icd-10-gm-expanded-clauses)))
+                            "code:in" [icd-10-gm-vcl]
+                            "_count" "1" "__t" "2" "__page-id" "2" "__page-id-stack" [""]})
+                 next-link)))
+
+        (testing "the next page contains the second condition"
+          (let [{:keys [status body]}
+                @(handler
+                  {::reitit/match (page-match-of "Condition")
+                   :path-params {:page-id (last (str/split next-link #"/"))}})]
+
+            (is (= 200 status))
+
+            (given body
+              [:entry count] := 1
+              [:entry 0 :resource :id] := "2")
+
+            (testing "the previous link keeps the token and the value set"
+              (is (= (page-url page-id-cipher "Condition"
+                               {"__token" (page-store-hash/encode (:hash (page-store-hash/hash-clauses icd-10-gm-expanded-clauses)))
+                                "code:in" [icd-10-gm-vcl]
+                                "_count" "1" "__t" "2"})
+                     (link-url body "previous"))))))))
+
+    (testing "summary count"
+      (let [{:keys [status body]}
+            @(handler
+              {::reitit/match (match-of "Condition")
+               :params {"code:in" icd-10-gm-vcl "_summary" "count"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          [:link 0 :url] := (type/uri (str base-url context-path "/Condition?code%3Ain=" (codec/url-encode icd-10-gm-vcl) "&_summary=count&_count=50")))))
+
+    (testing "empty value set"
+      (doseq [params [{"code:in" empty-vcl}
+                      {"code:in" empty-vcl "_summary" "count"}]]
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match (match-of "Condition")
+                 :params params})]
+
+          (is (= 200 status))
+
+          (given body
+            :total := #fhir/unsignedInt 0
+            :entry := nil
+            [:link 0 :relation] := #fhir/string "self"))))))
 
 (deftest handler-include-resources-test
   (testing "direct include"

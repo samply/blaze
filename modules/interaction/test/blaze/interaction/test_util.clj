@@ -1,9 +1,12 @@
 (ns blaze.interaction.test-util
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.node :as node]
    [blaze.db.tx-log :as tx-log]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util])
   (:import
    [java.util.concurrent CountDownLatch]))
@@ -13,10 +16,60 @@
 (def v3-ObservationValue
   "http://terminology.hl7.org/CodeSystem/v3-ObservationValue")
 
+(def icd-10-gm
+  "http://fhir.de/CodeSystem/bfarm/icd-10-gm")
+
+(def icd-10-gm-code-system
+  "A small ICD-10-GM code system, in which C71 is a child of C69-C72."
+  {:fhir/type :fhir/CodeSystem :id "icd-10-gm"
+   :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+   :content #fhir/code "fragment"
+   :concept
+   [{:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C69-C72"}
+    {:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C71"
+     :property
+     [{:fhir/type :fhir.CodeSystem.concept/property
+       :code #fhir/code "parent"
+       :value #fhir/code "C69-C72"}]}
+    {:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C73"}]})
+
+(def icd-10-gm-c69-c72-vcl
+  "A value set of the ICD-10-GM codes C69-C72 and C71."
+  "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72")
+
+(def icd-10-gm-empty-vcl
+  "An empty value set, because C73 has no descendants."
+  "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<C73")
+
+(def icd-10-gm-empty-vcl-msg
+  "The message of the error of a condition with `icd-10-gm-empty-vcl`."
+  (format "Error in search parameter `code:in`: The ValueSet `%s` expands to no codes. A condition with such a value set can't match any resource."
+          icd-10-gm-empty-vcl))
+
+(defn icd-10-gm-concept [code]
+  (type/codeable-concept
+   {:coding [(type/coding {:system (type/uri icd-10-gm) :code (type/code code)})]}))
+
 (defn wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
+
+(defn type-query-failing-at
+  "Returns a replacement of `d/type-query` that returns a fault with `msg` on
+  databases with the point in time `t` and calls `type-query` otherwise.
+
+  With `t` of the transaction of a request, only the queries on the database
+  after the transaction fail, but not the queries of indexing the transaction,
+  which use the database before."
+  [type-query t msg]
+  (fn [db type clauses]
+    (if (= t (d/t db))
+      (ba/fault msg)
+      (type-query db type clauses))))
 
 (defn coding
   ([system]

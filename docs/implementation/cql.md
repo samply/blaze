@@ -72,6 +72,7 @@ The ELM expression are compiled into instances of the `blaze.elm.compiler.core/E
 
 * we'll use one Bloom filter per expression
 * that Bloom filters will be stored in a Caffeine cache by expression hash
+  * the expression hash covers the codes of expanded value sets, so that a Bloom filter created with an outdated expansion isn't used
 * each Bloom filter will be assigned the t of its creation
 * the Bloom filters of all expressions of a query will be collected at the start of the query evaluation
 * if a Bloom filter isn't found, its calculation will be queued and carried out asynchronously

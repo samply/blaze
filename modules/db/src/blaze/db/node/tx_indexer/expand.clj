@@ -2,7 +2,7 @@
   "Expands non-terminal transaction commands into terminal transaction commands
   that are verified later."
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -32,19 +32,32 @@
   expansion of a transaction of a single command doesn't have to be checked
   for duplicates.
 
-  Returns a CompletableFuture that completes with the expanded commands or
-  completes exceptionally with an anomaly on errors."
+  Returns the expanded commands or an anomaly on errors."
   {:arglists '([context command])}
   (fn [_ {:keys [op]}] op))
 
-(defn- failing-conditional-create-query-msg [type clauses {::anom/keys [message]}]
-  (format "Conditional create of a %s with query `%s` failed. Cause: %s"
-          type (tx-u/clauses->query-params clauses) message))
+(defn- query-matches
+  "Returns the resource handles of resources of `type` in `db` matching the
+  `clauses` of the operation described by `(op-msg type clauses)` or an
+  anomaly if the query fails.
+
+  Returns a fault carrying the URL of the value set under
+  :blaze.db/unexpanded-value-set if one of `clauses` holds a value set, because
+  such an operation can't be indexed deterministically. The database rejects
+  value sets also by itself, but with an anomaly like that of other failing
+  queries."
+  {:arglists '([db op-msg type clauses])}
+  [{{:keys [search-param-registry]} :node :as db} op-msg type clauses]
+  (if-let [url (tx-u/value-set-url search-param-registry type clauses)]
+    (tx-u/unexpanded-value-set-anom (op-msg type clauses) url)
+    (if-ok [handles (d/type-query db type clauses)]
+      handles
+      #(ba/incorrect (format "%s failed. Cause: %s" (op-msg type clauses)
+                             (::anom/message %))))))
 
 (defn- conditional-create-matches [db type clauses]
-  (-> (do-sync [handles (d/type-query db type clauses)]
-        (into [] (take 2) handles))
-      (ac/exceptionally #(ba/incorrect (failing-conditional-create-query-msg type clauses %)))))
+  (when-ok [handles (query-matches db tx-u/conditional-create-msg type clauses)]
+    (into [] (take 2) handles)))
 
 (defn- format-handle [type {:keys [id t]}]
   (format "%s/%s/_history/%s" type id t))
@@ -63,12 +76,12 @@
   [{:keys [node-name db-before]} {:keys [type if-none-exist] :as command}]
   (with-open [_ (prom/timer tx-u/duration-seconds node-name "expand-create")]
     (if if-none-exist
-      (do-sync [[h1 h2] (conditional-create-matches db-before type if-none-exist)]
+      (when-ok [[h1 h2] (conditional-create-matches db-before type if-none-exist)]
         (cond
           h2 (multiple-existing-resources-anom type if-none-exist [h1 h2])
           h1 [(assoc command :op "hold" :id (:id h1))]
           :else [command]))
-      (ac/completed-future [command]))))
+      [command])))
 
 (def ^:private ^:const ^long max-multiple-deletes 10000)
 
@@ -86,14 +99,6 @@
      (too-many-multiple-matches-msg type clauses)
      (too-many-multiple-matches-msg type))
    :fhir/issue "too-costly"))
-
-(defn- failing-conditional-delete-query-msg [type clauses {::anom/keys [message]}]
-  (format "Conditional delete of %ss with query `%s` failed. Cause: %s"
-          type (tx-u/clauses->query-params clauses) message))
-
-(defn- conditional-delete-matches [db type clauses]
-  (-> (d/type-query db type clauses)
-      (ac/exceptionally #(ba/incorrect (failing-conditional-delete-query-msg type clauses %)))))
 
 (defn- multiple-matches-msg
   ([type [h1 h2]]
@@ -115,21 +120,19 @@
   [{:keys [node-name db-before]} {:keys [type clauses allow-multiple] :as command}]
   (with-open [_ (prom/timer tx-u/duration-seconds node-name
                             "expand-conditional-delete")]
-    (-> (if clauses
-          (conditional-delete-matches db-before type clauses)
-          (ac/completed-future (d/type-list db-before type)))
-        (ac/then-apply
-         (fn [matches]
-           (if allow-multiple
-             (let [handles (into [] (take (inc max-multiple-deletes)) matches)]
-               (if (< max-multiple-deletes (count handles))
-                 (too-many-multiple-matches-anom type clauses)
-                 (mapv (fn [{:keys [id]}] (assoc command :op "delete" :id id)) handles)))
-             (let [[h1 h2] (into [] (take 2) matches)]
-               (cond
-                 h2 (multiple-matches-anom type clauses [h1 h2])
-                 h1 [(assoc command :op "delete" :id (:id h1))]
-                 :else []))))))))
+    (when-ok [matches (if clauses
+                        (query-matches db-before tx-u/conditional-delete-msg type clauses)
+                        (d/type-list db-before type))]
+      (if allow-multiple
+        (let [handles (into [] (take (inc max-multiple-deletes)) matches)]
+          (if (< max-multiple-deletes (count handles))
+            (too-many-multiple-matches-anom type clauses)
+            (mapv (fn [{:keys [id]}] (assoc command :op "delete" :id id)) handles)))
+        (let [[h1 h2] (into [] (take 2) matches)]
+          (cond
+            h2 (multiple-matches-anom type clauses [h1 h2])
+            h1 [(assoc command :op "delete" :id (:id h1))]
+            :else []))))))
 
 (defn- compartment-rev-links
   "Returns the `[type code]` tuples of all search params of the Patient
@@ -153,15 +156,14 @@
     [["url" url] ["version" version] internal-security-clause]))
 
 (defn- graph-def-matches
-  "Returns a CompletableFuture that completes with at most two handles of the
-  GraphDefinitions with the canonical `graph`, which are enough to decide
-  whether it's unique."
+  "Returns at most two handles of the GraphDefinitions with the canonical
+  `graph`, which are enough to decide whether it's unique, or an anomaly."
   [db graph]
-  (do-sync [handles (d/type-query db "GraphDefinition" (graph-def-clauses graph))]
+  (when-ok [handles (d/type-query db "GraphDefinition" (graph-def-clauses graph))]
     (into [] (take 2) handles)))
 
 (defn- graph-def-handle [db graph]
-  (do-sync [[h1 h2] (graph-def-matches db graph)]
+  (when-ok [[h1 h2] (graph-def-matches db graph)]
     (cond
       h2 (ba/fault (format "Found more than one GraphDefinition `%s` for purging Patients." graph))
       h1 h1
@@ -204,11 +206,12 @@
   GraphDefinition it installed, so a missing or invalid one is a problem of the
   server and not of the client requesting the purge."
   [{{:keys [search-param-registry]} :node :as db} graph]
-  (do-sync [graph-def (-> (graph-def-handle db graph)
-                          (ac/then-compose (partial d/pull db)))]
-    (ba/exceptionally
-     (graph-def-rev-links search-param-registry graph-def)
-     #(ba/fault (invalid-graph-def-msg graph %)))))
+  (if-ok [handle (graph-def-handle db graph)]
+    (do-sync [graph-def (d/pull db handle)]
+      (ba/exceptionally
+       (graph-def-rev-links search-param-registry graph-def)
+       #(ba/fault (invalid-graph-def-msg graph %))))
+    ac/completed-future))
 
 (defn- rev-links
   "Returns a CompletableFuture that completes with the `[type code]` tuples of
@@ -467,11 +470,11 @@
 (defmethod expand "patient-purge"
   [{:keys [node-name] :as context} command]
   (with-open [_ (prom/timer tx-u/duration-seconds node-name "expand-patient-purge")]
-    (ac/completed-future (patient-purge-tx-cmds context command))))
+    (patient-purge-tx-cmds context command)))
 
 (defmethod expand :default
   [_ command]
-  (ac/completed-future [command]))
+  [command])
 
 (defn expand-tx-cmds
   "Expands all non-terminal `tx-cmds` into terminal transaction commands in
@@ -479,11 +482,12 @@
   transaction, the `:db-before`, the database before the transaction, its
   `:stats` and the `:pool`, the ForkJoinPool to expand in parallel on.
 
-  Returns a CompletableFuture that completes with the expanded commands or
-  completes exceptionally with an anomaly on errors."
+  Returns the expanded commands or an anomaly on errors."
   [{:keys [node-name] :as context} tx-cmds]
-  (let [timer (prom/timer tx-u/duration-seconds node-name "expand-tx-cmds")
-        futures (mapv (partial expand context) tx-cmds)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (into [] (mapcat ac/join) futures)))
-        (ac/when-complete (fn [_ _] (.close timer))))))
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "expand-tx-cmds")]
+    (transduce
+     (comp (map (partial expand context))
+           (halt-when ba/anomaly?)
+           cat)
+     conj
+     tx-cmds)))

@@ -9,15 +9,29 @@
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
    [blaze.util :as u :refer [str]]
+   [blaze.value-set-expander :as vse]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
+
+(defn- token-params
+  "Returns the params of a page id with `token` holding the `clauses` from the
+  page store.
+
+  If the clauses hold expanded value sets, the `query-params` of the page id
+  hold the clauses as the client wrote them, which are returned under
+  :client-clauses."
+  [query-params token clauses]
+  (when-ok [client-clauses (fsc/clauses query-params)]
+    (cond-> {:clauses clauses
+             :token token}
+      (seq client-clauses)
+      (assoc :client-clauses client-clauses))))
 
 (defn- clauses [page-store query-params {token "__token"}]
   (cond
     (s/valid? ::page-store/token token)
     (do-sync [clauses (page-store/get page-store token)]
-      {:clauses clauses
-       :token token})
+      (token-params query-params token clauses))
 
     token
     (ac/completed-future
@@ -83,9 +97,12 @@
 
   Decoded params consist of:
    :clauses - query clauses
-   :token - possibly a token encoding the query clauses"
+   :token - possibly a token encoding the query clauses
+   :client-clauses - the clauses as the client wrote them, if they differ
+                     from the query clauses held by the token, because value
+                     sets were expanded"
   [page-store handling query-params paging-params]
-  (do-sync [{:keys [clauses token]} (clauses page-store query-params paging-params)]
+  (do-sync [{:keys [clauses token client-clauses]} (clauses page-store query-params paging-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
               summary (summary-mode handling query-params)]
       (let [total (total query-params)]
@@ -102,4 +119,22 @@
           :page-id-stack (fhir-util/page-id-stack paging-params)
           :page-offset (fhir-util/page-offset paging-params)}
           token (assoc :token token)
+          client-clauses (assoc :client-clauses client-clauses)
           total (assoc :total total))))))
+
+(defn expand-value-sets
+  "Returns a CompletableFuture that will complete with `params` whose :clauses
+  have their value sets expanded (see `vse/expand-clauses`), or will complete
+  exceptionally if a value set can't be expanded.
+
+  If the clauses can't match any resource, because a value set is empty, keeps
+  them and marks `params` with :unsatisfiable? true, so that the search doesn't
+  need to query the database."
+  {:arglists '([value-set-expander type params])}
+  [value-set-expander type {:keys [clauses] :as params}]
+  (if (seq clauses)
+    (do-sync [expanded-clauses (vse/expand-clauses value-set-expander type clauses)]
+      (if expanded-clauses
+        (assoc params :clauses expanded-clauses)
+        (assoc params :unsatisfiable? true)))
+    (ac/completed-future params)))

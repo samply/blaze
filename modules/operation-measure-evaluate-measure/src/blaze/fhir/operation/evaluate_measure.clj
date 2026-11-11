@@ -2,7 +2,7 @@
   "Main entry point into the $evaluate-measure operation."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -21,6 +21,7 @@
    [blaze.spec]
    [blaze.terminology-service.spec]
    [blaze.util :as u :refer [str]]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -103,28 +104,26 @@
   [db {{:keys [id]} :path-params {:keys [measure]} ::params :keys [request-method]}]
   (cond
     id
-    (ac/completed-future
-     (or (d/resource-handle db "Measure" id)
-         (ba/not-found (measure-with-id-not-found-msg id))))
+    (or (d/resource-handle db "Measure" id)
+        (ba/not-found (measure-with-id-not-found-msg id)))
 
     measure
-    (do-sync [handles (d/type-query db "Measure" [["url" measure]])]
+    (when-ok [handles (d/type-query db "Measure" [["url" measure]])]
       (or (coll/first handles)
           (ba/not-found (measure-with-reference-not-found-msg measure)
                         :http/status (if (= :post request-method) 422 400))))
 
     :else
-    (ac/completed-future
-     (ba/incorrect "The measure parameter is missing."
-                   (cond-> {:fhir/issue "required"}
-                     (= :post request-method)
-                     (assoc :http/status 422))))))
+    (ba/incorrect "The measure parameter is missing."
+                  (cond-> {:fhir/issue "required"}
+                    (= :post request-method)
+                    (assoc :http/status 422)))))
 
 (defn- measure-deleted-msg [{:keys [id]}]
   (format "The Measure resource with the id `%s` was deleted." id))
 
 (defn- find-measure-handle [db request]
-  (do-sync [handle (find-measure-handle* db request)]
+  (when-ok [handle (find-measure-handle* db request)]
     (if (d/deleted? handle)
       (ba/not-found (measure-deleted-msg handle)
                     :http/status 410
@@ -133,19 +132,18 @@
 
 (defn- handler [context]
   (fn [{:blaze/keys [db] :as request}]
-    (-> (find-measure-handle db request)
-        (ac/then-compose
-         (fn [measure-handle]
-           (-> (d/pull db measure-handle)
-               (ac/exceptionally
-                #(assoc %
-                        ::anom/category ::anom/fault
-                        :fhir/issue "incomplete")))))
-        (ac/then-compose-async (partial handle (assoc context :db db) request)))))
+    (if-ok [measure-handle (find-measure-handle db request)]
+      (-> (d/pull db measure-handle)
+          (ac/exceptionally
+           #(assoc %
+                   ::anom/category ::anom/fault
+                   :fhir/issue "incomplete"))
+          (ac/then-compose-async (partial handle (assoc context :db db) request)))
+      ac/completed-future)))
 
 (defmethod m/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node :blaze/terminology-service ::executor
-                   :blaze/clock :blaze/rng-fn]
+                   :blaze/clock :blaze/rng-fn :blaze/value-set-expander]
           :opt [::expr/cache]
           :opt-un [::timeout :blaze/context-path ::report-persistence]))
 

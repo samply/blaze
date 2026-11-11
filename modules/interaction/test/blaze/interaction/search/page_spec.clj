@@ -38,7 +38,7 @@
   :ret ac/completable-future?)
 
 (s/fdef page/gen-token-fn
-  :args (s/cat :context map? :request map?)
+  :args (s/cat :context map? :request map? :params map?)
   :ret fn?)
 
 (s/fdef page/gen-token!
@@ -84,4 +84,8 @@
 (s/fdef page/summary-response
   :args (s/cat :context map? :total nat-int?
                :clauses (s/nilable :blaze.db.query/clauses))
+  :ret map?)
+
+(s/fdef page/unsatisfiable-response
+  :args (s/cat :context map? :params map?)
   :ret map?)

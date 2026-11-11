@@ -20,9 +20,6 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [integrant.core :as ig]
    [java-time.api :as time])
   (:import
@@ -37,9 +34,7 @@
   "Root part of the system initialized for performance reasons."
   (ig/init
    {:blaze.db/search-param-registry
-    {:structure-definition-repo structure-definition-repo
-     :terminology-service (ig/ref ::ts/not-available)}
-    ::ts/not-available {}
+    {:structure-definition-repo structure-definition-repo}
     :blaze.test/fixed-clock {}
     :blaze.test/fixed-rng-fn {}
     :blaze.fhir/parsing-context

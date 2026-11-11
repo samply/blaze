@@ -1,5 +1,6 @@
 (ns blaze.db.node.tx-indexer.expand-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
@@ -45,9 +46,10 @@
   "Expands `tx-cmds` against `node` with its name and the stats and the pool the
   node itself keeps."
   [{:keys [node-name stats tx-indexer-pool] :as node} tx-cmds]
-  (d/with-db node #(expand/expand-tx-cmds {:node-name node-name :db-before %
-                                           :stats @stats :pool tx-indexer-pool}
-                                          tx-cmds)))
+  (d/with-db node #(ac/completed-future
+                    (expand/expand-tx-cmds {:node-name node-name :db-before %
+                                            :stats @stats :pool tx-indexer-pool}
+                                           tx-cmds))))
 
 (deftest expand-tx-cmds-conditional-create-test
   (testing "conflict"
@@ -288,7 +290,17 @@
         (given @(expand-tx-cmds node [{:op "patient-purge" :id "0"}])
           count := 3
           [0 :type] := "Patient"
-          ids-after-patient := #{"0" "1"})))))
+          ids-after-patient := #{"0" "1"}))))
+
+  (testing "failing GraphDefinition query"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-152334"))]
+        (given-failed-future (expand-tx-cmds node [{:op "patient-purge" :id "0"
+                                                    :graph "http://example.com/purge|1"}])
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-152334")))))
 
 (def ^:private subject-and-performer-graph-def
   (-> (g-tu/graph-def

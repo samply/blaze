@@ -60,6 +60,12 @@ Search for `Resource.meta.profile` is supported using the `_profile` search para
 
 The `in` modifier works only in case either the external or the internal terminology service is enabled. More information is available in the [Terminology Service](../../terminology-service.md) section.
 
+### Value Set Expansion <Badge type="warning" text="Since 1.14.0"/>
+
+Paging is stable under value set expansion. All pages of a search use the same expansion, also if the value set changes while paging.
+
+A search with a value set that expands to no codes returns no resources.
+
 ## Date Search
 
 When searching for date/time with a search parameter value without timezone like `2024` or `2024-02-16`, Blaze calculates the range of the search parameter values based on [UTC][2]. That means that a resource with a date/time value staring at `2024-01-01T00:00:00+01:00` will be not found by a search with `2024`. Please comment on [issue #1498](https://github.com/samply/blaze/issues/1498) if you like to have this situation improved.

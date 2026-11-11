@@ -6,3 +6,6 @@
 
 (s/def ::core/resolve-function-def-context
   (s/keys :opt-un [::c/function-defs]))
+
+(s/def ::core/form
+  #(instance? clojure.lang.IObj %))

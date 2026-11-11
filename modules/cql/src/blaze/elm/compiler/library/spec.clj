@@ -6,6 +6,7 @@
    [blaze.elm.compiler.spec]
    [blaze.fhir.spec.spec]
    [blaze.terminology-service.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]))
 
 (s/def ::expression-def/name
@@ -42,7 +43,8 @@
   (s/keys :req-un [::c/expression-defs ::c/function-defs ::c/parameter-default-values]))
 
 (s/def ::c/context
-  (s/keys :req-un [:blaze.db/node :blaze/terminology-service]))
+  (s/keys :req-un [:blaze.db/node :blaze/terminology-service
+                   :blaze/value-set-expander]))
 
 (s/def ::c/options
   map?)
