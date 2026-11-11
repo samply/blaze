@@ -8,6 +8,7 @@
    [blaze.elm.compiler.macros :refer [defbinop defnaryop defternop defunop reify-expr]]
    [blaze.elm.protocols :as p]
    [blaze.elm.string :as string]
+   [blaze.elm.util :as elm-util]
    [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
@@ -94,7 +95,7 @@
 
 ;; 17.8. Length
 (defunop length [x]
-  (long (count x)))
+  (long (elm-util/count x)))
 
 ;; 17.9. Lower
 (defunop lower [s]

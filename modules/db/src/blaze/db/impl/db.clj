@@ -153,7 +153,7 @@
     (rao/historic-resource-handle db tid id version-t))
 
   (-total-num-of-instance-changes [_ tid id]
-    (count (rao/instance-history snapshot t since-t tid id t)))
+    (coll/count-reducible (rao/instance-history snapshot t since-t tid id t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 

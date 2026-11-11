@@ -188,7 +188,7 @@
       (is (= (repeat 10 100)
              @(d/with-db node
                 (fn [db]
-                  (let [futures (mapv (fn [_] (ac/supply-async #(count (d/type-list db "Patient"))))
+                  (let [futures (mapv (fn [_] (ac/supply-async #(coll/count-reducible (d/type-list db "Patient"))))
                                       (range 10))]
                     (-> (ac/all-of futures)
                         (ac/then-apply (fn [_] (mapv ac/join futures)))))))))))
@@ -202,7 +202,7 @@
                 (fn [db]
                   @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
                   (ac/completed-future
-                   [(count (d/type-list db "Patient"))
+                   [(coll/count-reducible (d/type-list db "Patient"))
                     (d/resource-handle db "Patient" "1")]))))))))
 
 (deftest with-sync-db-test
@@ -228,7 +228,7 @@
         (is (= [1 1] @(d/with-sync-db node 1
                         (fn [db]
                           (ac/completed-future
-                           [(d/t db) (count (d/type-list db "Patient"))])))))))
+                           [(d/t db) (coll/count-reducible (d/type-list db "Patient"))])))))))
 
     (testing "errored transactions are ignored"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -734,15 +734,15 @@
 
           (testing "instance history contains only one entry"
             (is (= 1 (d/total-num-of-instance-changes db "Patient" "0")))
-            (is (= 1 (count (d/instance-history db "Patient" "0")))))
+            (is (= 1 (coll/count-reducible (d/instance-history db "Patient" "0")))))
 
           (testing "type history contains only one entry"
             (is (= 1 (d/total-num-of-type-changes db "Patient")))
-            (is (= 1 (count (d/type-history db "Patient")))))
+            (is (= 1 (coll/count-reducible (d/type-history db "Patient")))))
 
           (testing "system history contains only one entry"
             (is (= 1 (d/total-num-of-system-changes db)))
-            (is (= 1 (count (d/system-history db)))))))))
+            (is (= 1 (coll/count-reducible (d/system-history db)))))))))
 
   (testing "recreating a deleted Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1431,7 +1431,7 @@
                 (is (= [patient] (pull-instance-history db-after "Patient" "0"))))))
 
           (testing "the instance history of db-before still contains 100,000 entries"
-            (is (= 100000 (count (d/instance-history db-before "Patient" "0")))))))))
+            (is (= 100000 (coll/count-reducible (d/instance-history db-before "Patient" "0")))))))))
 
   (testing "fails on more then 100,000 history entries"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1650,9 +1650,9 @@
             (is (= 1 (d/total-num-of-type-changes db-after "Patient")))
             (is (= 1 (d/total-num-of-system-changes db-after)))
             (is (coll/empty? (d/instance-history db-after "Patient" "0")))
-            (is (= 1 (count (d/instance-history db-after "Patient" "1"))))
-            (is (= 1 (count (d/type-history db-after "Patient"))))
-            (is (= 1 (count (d/system-history db-after))))
+            (is (= 1 (coll/count-reducible (d/instance-history db-after "Patient" "1"))))
+            (is (= 1 (coll/count-reducible (d/type-history db-after "Patient"))))
+            (is (= 1 (coll/count-reducible (d/system-history db-after))))
             (is (coll/empty? (d/changes db-after))))))))
 
   (testing "three patients created in different transactions"
@@ -1751,11 +1751,11 @@
           (is (= 1 (d/total-num-of-system-changes db-after)))
           (is (coll/empty? (d/instance-history db-after "Patient" "0")))
           (is (coll/empty? (d/instance-history db-after "MedicationAdministration" "0")))
-          (is (= 1 (count (d/instance-history db-after "Medication" "0"))))
+          (is (= 1 (coll/count-reducible (d/instance-history db-after "Medication" "0"))))
           (is (coll/empty? (d/type-history db-after "Patient")))
           (is (coll/empty? (d/type-history db-after "MedicationAdministration")))
-          (is (= 1 (count (d/type-history db-after "Medication"))))
-          (is (= 1 (count (d/system-history db-after))))
+          (is (= 1 (coll/count-reducible (d/type-history db-after "Medication"))))
+          (is (= 1 (coll/count-reducible (d/system-history db-after))))
           (is (coll/empty? (d/changes db-after)))))))
 
   (testing "purge one patient and delete another in the same transaction"
@@ -1855,7 +1855,7 @@
             (is (coll/empty? (d/changes db-after))))
 
           (testing "the instance history of db-before still contains 100,000 entries"
-            (is (= 100000 (count (d/instance-history db-before "Patient" "0")))))))))
+            (is (= 100000 (coll/count-reducible (d/instance-history db-before "Patient" "0")))))))))
 
   (testing "fails on more then 100,000 history entries"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3295,7 +3295,7 @@
 
       (testing "has one list entry"
         (with-db [db node]
-          (is (= 1 (count (d/type-list db "Patient"))))
+          (is (= 1 (coll/count-reducible (d/type-list db "Patient"))))
           (is (= 1 (d/type-total db "Patient")))))))
 
   (testing "a node with two patients in two transactions"
@@ -3325,7 +3325,7 @@
             [0 :meta :versionId] := #fhir/id "2"))
 
         (testing "overshooting the start-id returns an empty collection"
-          (is (zero? (count (d/type-list db "Patient" "2"))))))))
+          (is (zero? (coll/count-reducible (d/type-list db "Patient" "2"))))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3380,12 +3380,12 @@
 
       (testing "has one patient list entry"
         (with-db [db node]
-          (is (= 1 (count (d/type-list db "Patient"))))
+          (is (= 1 (coll/count-reducible (d/type-list db "Patient"))))
           (is (= 1 (d/type-total db "Patient")))))
 
       (testing "has one observation list entry"
         (with-db [db node]
-          (is (= 1 (count (d/type-list db "Observation"))))
+          (is (= 1 (coll/count-reducible (d/type-list db "Observation"))))
           (is (= 1 (d/type-total db "Observation")))))))
 
   (testing "the database is immutable"
@@ -8524,7 +8524,7 @@
                                   :end #fhir/dateTime #system/date-time "2001-07"}}]]]
 
     (with-db [db node]
-      (let [num-encounter #(count @(d/type-query db "Encounter" %))]
+      (let [num-encounter #(coll/count-reducible @(d/type-query db "Encounter" %))]
         (are [year n] (= n (num-encounter [["date" (format "gt%d-01-01" year)]
                                            ["date" (format "lt%d-01-01" (inc year))]]))
           1999 2
@@ -8573,7 +8573,7 @@
 
         (call-with-db node
                       (fn [db]
-                        (let [num-encounter #(count @(d/type-query db "Encounter" %))]
+                        (let [num-encounter #(coll/count-reducible @(d/type-query db "Encounter" %))]
                           (= (num-encounter [["date" (str year)]])
                              (num-encounter [["date" (format "sa%d-12-31" (dec year))]
                                              ["date" (format "eb%d-01-01" (inc year))]])))))))))
@@ -8589,7 +8589,7 @@
 
         (call-with-db node
                       (fn [db]
-                        (let [num-encounter #(count @(d/type-query db "Encounter" %))]
+                        (let [num-encounter #(coll/count-reducible @(d/type-query db "Encounter" %))]
                           (= (num-encounter [["date" (str "ap" year)]])
                              (num-encounter [["date" (format "ge%d-01-01" year)]
                                              ["date" (format "lt%d-01-01" (inc year))]])))))))))
@@ -9043,7 +9043,7 @@
 
       (with-db [db node]
         (testing "there are three history entries"
-          (is (= 3 (count (d/instance-history db "Patient" "0")))))
+          (is (= 3 (coll/count-reducible (d/instance-history db "Patient" "0")))))
 
         (testing "search for past _lastUpdated returns nothing"
           (given-type-query db "Patient" [["_lastUpdated" "ge1970-01-01T00:00:01Z"]
@@ -10626,7 +10626,7 @@
   (testing "a new node has no resources"
     (with-system [{:blaze.db/keys [node]} config]
       (with-db [db node]
-        (is (zero? (count (d/system-list db))))
+        (is (zero? (coll/count-reducible (d/system-list db))))
         (is (zero? (d/system-total db))))))
 
   (testing "a node with one patient"
@@ -10690,7 +10690,7 @@
             [0 :meta :versionId] := #fhir/id "1"))
 
         (testing "overshooting the start-id returns an empty collection"
-          (is (zero? (count (d/system-list db "Patient" "1")))))))))
+          (is (zero? (coll/count-reducible (d/system-list db "Patient" "1")))))))))
 
 (deftest system-query-test
   (testing "a new node has no resources"
@@ -13293,7 +13293,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-db [db node]
-        (is (= 1 (count (d/type-list db "Patient"))))
+        (is (= 1 (coll/count-reducible (d/type-list db "Patient"))))
         (is (= 1 (d/type-total db "Patient"))))))
 
   (testing "compile-type-query"
@@ -13337,7 +13337,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-db [db node]
-        (is (= 1 (count (d/system-list db))))
+        (is (= 1 (coll/count-reducible (d/system-list db))))
         (is (= 1 (d/system-total db))))))
 
   (testing "compile-compartment-query"

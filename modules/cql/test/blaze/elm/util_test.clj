@@ -1,5 +1,6 @@
 (ns blaze.elm.util-test
   (:require
+   [blaze.coll.core :as coll]
    [blaze.elm.util :as elm-util]
    [blaze.elm.util-spec]
    [blaze.test-util :as tu]
@@ -35,3 +36,16 @@
 
   (testing "list type"
     (is (= ["Encounter"] (elm-util/parse-type {:type "ListTypeSpecifier" :elementType {:type "NamedTypeSpecifier" :name "{http://hl7.org/fhir}Encounter"}})))))
+
+(deftest count-test
+  (testing "nil"
+    (is (zero? (elm-util/count nil))))
+
+  (testing "counted collections"
+    (is (= 2 (elm-util/count [1 2]))))
+
+  (testing "reducible collections that aren't counted"
+    (is (= 2 (elm-util/count (coll/eduction (map identity) [1 2])))))
+
+  (testing "strings"
+    (is (= 3 (elm-util/count "foo")))))

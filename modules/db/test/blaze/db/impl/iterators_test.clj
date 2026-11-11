@@ -105,6 +105,11 @@
                  (vec keys)
                  (vec-from-iter keys)))))))
 
+  (testing "isn't counted, because counting isn't constant-time"
+    (with-system [{kv-store ::kv/mem} config]
+      (with-open [snapshot (kv/new-snapshot kv-store)]
+        (is (not (counted? (i/keys snapshot :default bs/from-byte-buffer! #blaze/byte-string"00")))))))
+
   (testing "too small ByteBuffer will be replaced with a larger one"
     (with-system [{kv-store ::kv/mem} config]
       (kv/put!
@@ -126,6 +131,12 @@
                  (vec-from-iter keys))))))))
 
 (deftest entries-test
+  (testing "isn't counted, because counting isn't constant-time"
+    (with-system [{kv-store ::kv/mem} config]
+      (with-open [snapshot (kv/new-snapshot kv-store)]
+        (is (not (counted? (i/entries snapshot :default identity))))
+        (is (not (counted? (i/entries snapshot :default identity #blaze/byte-string"00")))))))
+
   (testing "small keys and values following ones which need enlarged byte buffers"
     (with-system [{kv-store ::kv/mem} config]
       (let [entries (mapv vector mixed-size-keys (reverse mixed-size-keys))]

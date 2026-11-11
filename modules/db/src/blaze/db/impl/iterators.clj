@@ -13,7 +13,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang Counted IReduceInit]
+   [clojure.lang IReduceInit]
    [java.lang AutoCloseable]
    [java.util Iterator]))
 
@@ -228,10 +228,7 @@
      (reduce [_ rf init]
        (with-open [iter (kv/new-iterator snapshot column-family)]
          (kv/seek-to-first! iter)
-         (reduce-iter! iter kv/next! (xform (completing rf)) init)))
-     Counted
-     (count [coll]
-       (coll/count-reducible coll))))
+         (reduce-iter! iter kv/next! (xform (completing rf)) init)))))
   ([snapshot column-family xform start-key]
    (reify
      IReduceInit
@@ -239,9 +236,6 @@
        (with-open [iter (kv/new-iterator snapshot column-family)]
          (kv/seek! iter (bs/to-byte-array start-key))
          (reduce-iter! iter kv/next! (xform (completing rf)) init)))
-     Counted
-     (count [coll]
-       (coll/count-reducible coll))
      Iterable
      (iterator [_]
        (.iterator ^Iterable (coll/eduction xform (kv-iterable snapshot column-family start-key)))))))

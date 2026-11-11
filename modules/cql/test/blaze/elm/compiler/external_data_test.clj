@@ -179,7 +179,7 @@
               (let [patient (ctu/resource db "Patient" "0")]
 
                 (testing "eval"
-                  (given (expr/eval (eval-context db) expr patient)
+                  (given (vec (expr/eval (eval-context db) expr patient))
                     count := 1
                     [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "1"))
@@ -263,7 +263,7 @@
               (let [patient (ctu/resource db "Patient" "0")]
 
                 (testing "eval"
-                  (given (expr/eval (eval-context db) expr patient)
+                  (given (vec (expr/eval (eval-context db) expr patient))
                     count := 2
                     [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "1"
@@ -335,7 +335,7 @@
               (let [patient (ctu/resource db "Patient" "0")]
 
                 (testing "eval"
-                  (given (expr/eval (eval-context db) expr patient)
+                  (given (vec (expr/eval (eval-context db) expr patient))
                     count := 2
                     [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "1"
@@ -412,7 +412,7 @@
               (let [patient (ctu/resource db "Patient" "0")]
 
                 (testing "eval"
-                  (given (expr/eval (eval-context db) expr patient)
+                  (given (vec (expr/eval (eval-context db) expr patient))
                     count := 2
                     [0 :fhir/type] := :fhir/Observation
                     [0 :id] := "1"
@@ -488,7 +488,7 @@
 
               (testing "eval"
                 (testing "specimen with patient subject"
-                  (given (expr/eval eval-ctx expr (ctu/resource db "Specimen" "0"))
+                  (given (vec (expr/eval eval-ctx expr (ctu/resource db "Specimen" "0")))
                     count := 1
                     [0 :fhir/type] := :fhir/Patient
                     [0 :id] := "0"))
@@ -550,7 +550,7 @@
           (with-db [db node]
 
             (testing "eval"
-              (given (expr/eval (eval-context db) expr nil)
+              (given (vec (expr/eval (eval-context db) expr nil))
                 count := 1
                 [0 :fhir/type] := :fhir/Medication
                 [0 :id] := "0"))
@@ -620,7 +620,7 @@
             (let [patient (ctu/resource db "Patient" "0")]
 
               (testing "eval"
-                (given (expr/eval (eval-context db) expr patient)
+                (given (vec (expr/eval (eval-context db) expr patient))
                   count := 2
                   [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "1"
@@ -702,7 +702,7 @@
                   expr (:expression (get expression-defs "InInitialPopulation"))]
 
               (testing "eval"
-                (given (expr/eval eval-context expr patient)
+                (given (vec (expr/eval eval-context expr patient))
                   count := 1
                   [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
@@ -759,7 +759,7 @@
                   expr (:expression (get expression-defs "InInitialPopulation"))]
 
               (testing "eval"
-                (given (expr/eval eval-context expr patient)
+                (given (vec (expr/eval eval-context expr patient))
                   count := 1
                   [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))
@@ -825,7 +825,7 @@
                   expr (:expression (get expression-defs "InInitialPopulation"))]
 
               (testing "eval"
-                (given (expr/eval eval-context expr patient)
+                (given (vec (expr/eval eval-context expr patient))
                   count := 1
                   [0 :fhir/type] := :fhir/Observation
                   [0 :id] := "0"))

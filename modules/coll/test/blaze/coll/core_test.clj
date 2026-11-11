@@ -92,8 +92,11 @@
   (testing "eductions can be reduced"
     (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
 
-  (testing "eductions are counted"
-    (is (= 2 (count (coll/eduction identity [1 2])))))
+  (testing "eductions aren't counted, because counting them isn't constant-time"
+    (is (not (counted? (coll/eduction identity [1 2])))))
+
+  (testing "eductions can be counted by reducing them"
+    (is (= 2 (coll/count-reducible (coll/eduction identity [1 2])))))
 
   (testing "eductions can be converted into a sequence"
     (is (= nil (seq (coll/eduction (map inc) []))))
@@ -334,7 +337,8 @@
   (let [state (volatile! false)
         coll (with-open-coll [_ (reify AutoCloseable (close [_] (vreset! state true)))]
                (coll/eduction (map inc) (range 10)))]
-    (is (= 10 (count coll)))
+    (is (not (counted? coll)))
+    (is (= 10 (coll/count-reducible coll)))
     (is (= (range 1 11) (vec coll)))
     (is (true? @state))))
 
@@ -359,8 +363,11 @@
       [1 2] [1] [1]
       [1 2 3] [2 4 5] [2])
 
-    (testing "counting"
-      (is (= 1 (count (coll/intersection compare merge-first [1 2] [2 3])))))
+    (testing "isn't counted, because counting isn't constant-time"
+      (is (not (counted? (coll/intersection compare merge-first [1 2] [2 3])))))
+
+    (testing "counting by reducing"
+      (is (= 1 (coll/count-reducible (coll/intersection compare merge-first [1 2] [2 3])))))
 
     (testing "stopping early completes the transducers of eductions"
       (let [completions (volatile! 0)
@@ -421,8 +428,11 @@
       [1 2] [1] [1 2]
       [1 2 3] [2 4 5] [1 2 3 4 5])
 
-    (testing "counting"
-      (is (= 3 (count (coll/union compare merge-first [1 2] [2 3])))))
+    (testing "isn't counted, because counting isn't constant-time"
+      (is (not (counted? (coll/union compare merge-first [1 2] [2 3])))))
+
+    (testing "counting by reducing"
+      (is (= 3 (coll/count-reducible (coll/union compare merge-first [1 2] [2 3])))))
 
     (testing "stopping early completes the transducers of eductions"
       (let [completions (volatile! 0)
