@@ -262,6 +262,7 @@ const config = defineConfig({
             text: "Terminology Service",
             link: "/performance/terminology-service",
           },
+          { text: "Profiling", link: "/performance/profiling" },
         ],
       },
       {
