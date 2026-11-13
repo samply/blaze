@@ -40,6 +40,10 @@ POST [base]/$compact
 
 The response will be always async according to the [Asynchronous Interaction Request Pattern][2] from FHIR R5.
 
+## Rewritten Files <Badge type="warning" text="Since 1.14.0"/>
+
+The compaction rewrites all SST files of the column family, the files RocksDB stores a database in, including the ones of the bottommost level, which hold nearly all data. So the files get the current table options, like [partitioned indexes](../../production-configuration.md#index-partitions), and the data deleted since they were written is dropped. A compaction therefore reads and writes the whole column family, which can take hours for a large database. Before 1.14.0, it left the files of the bottommost level as they were.
+
 ## Using blazectl
 
 The \$compact operation can be executed using [blazectl][1].

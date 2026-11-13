@@ -18,8 +18,8 @@
    [org.rocksdb
     AbstractEventListener BlockBasedTableConfig ColumnFamilyDescriptor
     ColumnFamilyHandle ColumnFamilyOptions CompactionJobInfo CompressionType
-    DBOptions LRUCache RocksDB RocksDBException Statistics WriteBatchInterface
-    WriteOptions]))
+    DBOptions IndexType LRUCache RocksDB RocksDBException Statistics
+    WriteBatchInterface WriteOptions]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -59,7 +59,11 @@
      :pin-l0-filter-and-index-blocks-in-cache (.pinL0FilterAndIndexBlocksInCache config)
      :block-size (.blockSize config)
      :block-cache? (not (.noBlockCache config))
-     :bloom-filter? (some? (.filterPolicy config))})
+     :bloom-filter? (some? (.filterPolicy config))
+     :index-type (.indexType config)
+     :metadata-block-size (.metadataBlockSize config)
+     :pin-top-level-index-and-filter (.pinTopLevelIndexAndFilter config)
+     :partition-filters (.partitionFilters config)})
 
   DBOptions
   (datafy [options]
@@ -101,6 +105,10 @@
         [:options :table-format-config :block-size] := 4096
         [:options :table-format-config :block-cache?] := true
         [:options :table-format-config :bloom-filter?] := false
+        [:options :table-format-config :index-type] := IndexType/kTwoLevelIndexSearch
+        [:options :table-format-config :metadata-block-size] := 4096
+        [:options :table-format-config :pin-top-level-index-and-filter] := true
+        [:options :table-format-config :partition-filters] := false
         [:options :memtable-whole-key-filtering?] := false
         [:options :optimize-filters-for-hits?] := false
         [:options :enable-blob-files?] := false
@@ -110,7 +118,19 @@
     (given (column-family-descriptor nil :default nil)
       [:options :table-format-config :block-cache?] := false
       [:options :table-format-config :cache-index-and-filter-blocks] := false
-      [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := false))
+      [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := false
+      [:options :table-format-config :index-type] := IndexType/kBinarySearch))
+
+  (testing "with block cache and bloom filter, the filters are partitioned like
+            the index"
+    (with-open [block-cache (LRUCache. 0)]
+      (given (column-family-descriptor block-cache :default {:bloom-filter? true})
+        [:options :table-format-config :index-type] := IndexType/kTwoLevelIndexSearch
+        [:options :table-format-config :partition-filters] := true)))
+
+  (testing "without block cache, the filters aren't partitioned"
+    (given (column-family-descriptor nil :default {:bloom-filter? true})
+      [:options :table-format-config :partition-filters] := false))
 
   (with-open [block-cache (LRUCache. 0)]
     (doseq [[key value] [[:write-buffer-size-in-mb 128]

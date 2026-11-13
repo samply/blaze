@@ -23,7 +23,9 @@
    [java.nio ByteBuffer]
    [java.util ArrayList List]
    [org.rocksdb
-    ColumnFamilyHandle Env FlushOptions LRUCache Priority Range ReadOptions RocksDB
+    ColumnFamilyHandle CompactRangeOptions
+    CompactRangeOptions$BottommostLevelCompaction Env FlushOptions LRUCache
+    Priority Range ReadOptions RocksDB
     RocksDBException RocksIterator SizeApproximationFlag Slice Snapshot Statistics StatsLevel WriteBatch
     WriteOptions]))
 
@@ -198,6 +200,27 @@
   (-> (.getApproximateSizes db cfh [(range key-range)] approximation-flags)
       (aget 0)))
 
+(defn- compact-range-options
+  "Returns the options of a manual compaction that rewrites the files of the
+  bottommost level as well, so that they get the current table options, like a
+  partitioned index, and drop the data deleted since they were written.
+
+  RocksDB rewrites them only if there is a compaction filter by default, and
+  the bottommost level holds nearly all data of a database whose level sizes
+  are dynamic. The files the compaction itself has just written to the
+  bottommost level aren't rewritten once again."
+  ^CompactRangeOptions []
+  (.setBottommostLevelCompaction
+   (CompactRangeOptions.)
+   CompactRangeOptions$BottommostLevelCompaction/kForceOptimized))
+
+(defn- compact-range
+  "Compacts all data of the column family with `cfh` in `db` (see
+  `compact-range-options`)."
+  [^RocksDB db ^ColumnFamilyHandle cfh]
+  (with-open [opts (compact-range-options)]
+    (.compactRange db cfh nil nil opts)))
+
 (defn- flush-cfhs! [^RocksDB db cfhs]
   (with-open [opts (doto (FlushOptions.) (.setWaitForFlush true))]
     (.flush db opts ^List (vec cfhs))))
@@ -237,7 +260,7 @@
   ;; down to the last level containing any data.
   (-compact [_ column-family]
     (if-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
-      (ac/supply-async #(.compactRange db cfh))
+      (ac/supply-async #(compact-range db cfh))
       ac/completed-future))
 
   p/Rocks

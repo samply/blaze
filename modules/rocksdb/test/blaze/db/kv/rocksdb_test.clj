@@ -705,7 +705,24 @@
 
     @(kv/compact! db :a)
 
-    (is (some? (kv/get db :a (ba 0x27 0x10))))))
+    (is (some? (kv/get db :a (ba 0x27 0x10)))))
+
+  (testing "a compaction rewrites the files of the bottommost level too, so
+            that they get the current table options"
+    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+      (run!
+       #(kv/put! db [[:a (int-ba %) (apply ba (range 100))]])
+       (range 10000 11000))
+      (rocksdb/flush! db :a)
+
+      ;; the first compaction moves the data into the bottommost level
+      @(kv/compact! db :a)
+
+      (let [file-names (into #{} (map :name) (rocksdb/tables db :a))]
+        @(kv/compact! db :a)
+
+        (is (seq file-names))
+        (is (not-any? file-names (map :name (rocksdb/tables db :a))))))))
 
 (deftest path-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -818,10 +835,11 @@
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
         [0 :data-size] := 1634745
-        [0 :index-size] := 64938
+        [0 :index-partitions] :? pos-int?
+        [0 :index-size] := 65210
         [0 :num-data-blocks] := 5000
         [0 :num-entries] := 5000
-        [0 :top-level-index-size] := 0
+        [0 :top-level-index-size] := 212
         [0 :total-raw-key-size] := 50000
         [0 :total-raw-value-size] := 50000000)))
 
@@ -845,10 +863,11 @@
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
         [0 :data-size] := 1634745
-        [0 :index-size] := 64938
+        [0 :index-partitions] :? pos-int?
+        [0 :index-size] := 65210
         [0 :num-data-blocks] := 5000
         [0 :num-entries] := 5000
-        [0 :top-level-index-size] := 0
+        [0 :top-level-index-size] := 212
         [0 :total-raw-key-size] := 50000
         [0 :total-raw-value-size] := 50000000)))
 

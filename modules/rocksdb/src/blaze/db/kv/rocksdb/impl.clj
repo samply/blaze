@@ -15,12 +15,36 @@
     AbstractEventListener AbstractEventListener$EnabledEventCallback
     BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
     ColumnFamilyHandle ColumnFamilyMetaData ColumnFamilyOptions CompactionJobInfo
-    CompactionReason CompressionType DBOptions LevelMetaData RocksDB
+    CompactionReason CompressionType DBOptions IndexType LevelMetaData RocksDB
     RocksDBException Statistics Status Status$Code TableFileCreationInfo
     TableFileCreationReason TableFileDeletionInfo TableProperties
     WriteBatchInterface WriteOptions]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private ^:const ^long index-partition-size
+  "The size of a partition of the index of an SST file in bytes (see
+  `partition-index`)."
+  4096)
+
+(defn- partition-index
+  "Returns `config` with the index of each SST file, and its filter if
+  `filter?`, split into partitions of about `index-partition-size`, found
+  through a top-level index that is pinned in the block cache.
+
+  The index of an SST file otherwise is a single block of megabytes, which a
+  seek into a file whose index isn't cached has to read and decompress
+  completely, to find a single data block. Several threads missing the same
+  index block at once each read their own copy of it. A partition is read
+  instead, and only the partitions in use take space in the block cache.
+
+  Needs a block cache, because the partitions are only cached there."
+  ^BlockBasedTableConfig [^BlockBasedTableConfig config filter?]
+  (cond-> (doto config
+            (.setIndexType IndexType/kTwoLevelIndexSearch)
+            (.setMetadataBlockSize index-partition-size)
+            (.setPinTopLevelIndexAndFilter true))
+    filter? (.setPartitionFilters true)))
 
 (defn column-family-descriptor
   {:arglists '([block-cache [key opts]])}
@@ -76,7 +100,8 @@
          (some? block-cache)
          (-> (.setBlockCache block-cache)
              (.setCacheIndexAndFilterBlocks true)
-             (.setPinL0FilterAndIndexBlocksInCache true))
+             (.setPinL0FilterAndIndexBlocksInCache true)
+             (partition-index bloom-filter?))
          bloom-filter?
          (.setFilterPolicy (BloomFilter. 10 false))
          bloom-filter?

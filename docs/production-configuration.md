@@ -99,6 +99,12 @@ Blaze uses three main memory regions, namely the JVM heap memory, the RocksDB bl
 
 The split between JVM heap and RocksDB block cache depends on your workload. Start by monitoring JVM heap usage and garbage collection through Blaze's Prometheus metrics endpoint (available on port 8081 by default). As a starting point, divide the allocated RAM equally: 50% for the JVM heap and 50% for the RocksDB block cache.
 
+#### Index Partitions <Badge type="warning" text="Since 1.14.0"/>
+
+RocksDB stores a database in SST files, each with an index of its blocks. In the databases that use the block cache, the index of each SST file is split into partitions of about 4 KiB, found through a small top-level index that stays in the block cache. So only the index partitions in use take space in the block cache, and reading from a file whose index isn't cached reads a single partition instead of the index of the whole file, which can be several MiB in size.
+
+SST files written before Blaze 1.14.0 keep their unpartitioned index until RocksDB rewrites them in a compaction, which happens gradually, and not at all for most files of a large database, because they are in the bottommost level, which is rarely compacted. To rewrite the files of a column family at once, use the [$compact](api/operation/compact.md#rewritten-files) operation of Blaze 1.14.0 or later, for example on the `search-param-value-index` and the `resource-as-of-index` of the `index` database.
+
 #### OS Page Cache
 
 We recommend reserving half of your system memory for the OS page cache. For instance, on a 16 GB system, allocate only 8 GB total between the JVM heap and RocksDB block cache, leaving the other 8 GB for the OS.
