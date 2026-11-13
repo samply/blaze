@@ -9834,6 +9834,58 @@
             count := 1
             [0 :id] := "2"))))))
 
+(deftest type-query-id-prefix-second-clause-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [(into
+      [[:put {:fhir/type :fhir/Patient :id "x"}]
+       [:put {:fhir/type :fhir/Patient :id "xa"}]
+       [:put {:fhir/type :fhir/Observation :id "0"
+              :status #fhir/code "final"
+              :code
+              #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                  {:system #fhir/uri "http://loinc.org"
+                   :code #fhir/code "94564-2"}]}
+              :subject #fhir/Reference{:reference #fhir/string "Patient/xa"}}]]
+      ;; the other observations make the estimated scan size of the reference
+      ;; clause so large, that it is used as matcher instead of being scanned
+      (map (fn [id]
+             [:put {:fhir/type :fhir/Observation :id (str id)
+                    :status #fhir/code "preliminary"
+                    :subject #fhir/Reference{:reference #fhir/string "Patient/xa"}}]))
+      (range 1 21))]
+
+    (with-db [db node]
+      (testing "doesn't find patients with a prefix of the queried reference"
+        (testing "with the reference clause as second clause"
+          (doseq [ref-clause [["subject" "Patient/x"] ["patient" "x"]]
+                  clause [["status" "final"] ["code" "94564-2"]]]
+            (given-type-query db "Observation" [clause ref-clause]
+              count := 0)))
+
+        (testing "with the reference clause as first clause"
+          (doseq [ref-clause [["subject" "Patient/x"] ["patient" "x"]]
+                  clause [["status" "final"] ["code" "94564-2"]]]
+            (given-type-query db "Observation" [ref-clause clause]
+              count := 0)))
+
+        (testing "in a compartment query"
+          (is (empty? (pull-compartment-query db "Patient" "x" "Observation"
+                                              [["code" "94564-2"]])))))
+
+      (testing "finds the patient with the queried reference"
+        (doseq [ref-clause [["subject" "Patient/xa"] ["patient" "xa"]]
+                clause [["status" "final"] ["code" "94564-2"]]]
+          (given-type-query db "Observation" [clause ref-clause]
+            count := 1
+            [0 :id] := "0"))
+
+        (given (pull-compartment-query db "Patient" "xa" "Observation"
+                                       [["code" "94564-2"]])
+          count := 1
+          [0 :id] := "0")))))
+
 (deftest type-query-location-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Location :id "0"
