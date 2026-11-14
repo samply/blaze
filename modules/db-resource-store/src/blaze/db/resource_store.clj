@@ -36,6 +36,7 @@
 
 (defn put!
   "Puts `entries`, a map of resource hashes to resource contents, into `store`.
+  Doesn't write to `store` if `entries` is empty.
 
   Returns a CompletableFuture that will complete exceptionally in case any entry
   could not be stored. The ex-data will contain a set of

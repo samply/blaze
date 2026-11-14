@@ -97,10 +97,17 @@
                    :blaze.resource/id
                    :blaze.db/t]))
 
+(s/def :blaze.db.tx-cmd/graph
+  (s/with-gen
+    (s/and string? #(re-matches #"[^\s|]+\|[^\s|]+" %))
+    #(sg/fmap (fn [[url version]] (str url "|" version))
+              (sg/tuple (sg/string-alphanumeric) (sg/string-alphanumeric)))))
+
 (defmethod tx-cmd "patient-purge" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.resource/id]
-          :opt-un [:blaze.db.tx-cmd/check-refs]))
+          :opt-un [:blaze.db.tx-cmd/check-refs
+                   :blaze.db.tx-cmd/graph]))
 
 (s/def :blaze.db/tx-cmd
   (s/multi-spec tx-cmd :op))

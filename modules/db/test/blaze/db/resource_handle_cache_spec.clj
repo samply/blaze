@@ -2,6 +2,8 @@
   (:require
    [blaze.db.impl.cache-spec]
    [blaze.db.impl.codec.spec]
+   [blaze.db.impl.fold :as-alias f]
+   [blaze.db.impl.fold.spec]
    [blaze.db.node.spec]
    [blaze.db.resource-handle-cache :as rhc]
    [blaze.db.spec]
@@ -28,8 +30,11 @@
   :ret nil?)
 
 (s/fdef rhc/update!
-  :args (s/cat :cache :blaze.db/resource-handle-cache :t :blaze.db/t
-               :updates (s/coll-of (s/tuple :blaze.db/resource-handle boolean?)))
+  :args (s/cat :cache :blaze.db/resource-handle-cache :pool ::f/pool
+               :t :blaze.db/t
+               :update-parts
+               (s/coll-of (s/coll-of (s/tuple :blaze.db/resource-handle boolean?)
+                                     :min-count 1)))
   :ret nil?)
 
 (s/fdef rhc/weight

@@ -75,6 +75,7 @@
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
+   [blaze.db.impl.fold :as f]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-handle :as rh]
@@ -125,7 +126,7 @@
   (:import
    [clojure.lang PersistentQueue]
    [java.lang AutoCloseable]
-   [java.util.concurrent TimeUnit]))
+   [java.util.concurrent ForkJoinPool ForkJoinPool$ForkJoinWorkerThreadFactory TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
@@ -405,10 +406,26 @@
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
 
-(defn- store-tx-entries! [node-name kv-store entries]
-  (log/trace "store" (count entries) "transaction index entries")
+(defn- store-tx-entries!
+  "Stores `entry-parts`, the index entries of a transaction in parts, one put
+  per part.
+
+  A transaction that changes nothing has no part and needs no put. A single
+  part is put on the calling thread. Several parts are put in parallel on
+  `pool`, because putting an entry takes a call into the store, and the store
+  inserts the entries of concurrent puts in parallel.
+
+  The parts don't have to be stored atomically, because the entries of a
+  transaction are invisible until its success is committed (see
+  `commit-success!`)."
+  [node-name kv-store pool entry-parts]
+  (log/trace "store" (transduce (map count) + entry-parts)
+             "transaction index entries in" (count entry-parts) "part(s)")
   (with-open [_ (prom/timer duration-seconds node-name "store-tx-entries")]
-    (kv/put! kv-store entries)))
+    (case (count entry-parts)
+      0 nil
+      1 (kv/put! kv-store (first entry-parts))
+      (f/run-parallel! pool (partial kv/put! kv-store) entry-parts))))
 
 (defn- tx-success-entries [t instant]
   [(tx-success/index-entry t instant)
@@ -764,13 +781,13 @@
   Updates the resource handle cache with the `resource-handle-updates` of that
   transaction before advancing to `t`, so that no reader sees `t` before the
   cache reflects it."
-  [{:keys [node-name kv-store resource-handle-cache state]} t instant
-   resource-handle-updates]
+  [{:keys [node-name kv-store resource-handle-cache tx-indexer-pool state]} t
+   instant resource-handle-updates]
   (log/trace "commit transaction success with t =" t)
   (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
     (kv/put! kv-store (tx-success-entries t instant)))
   (when resource-handle-cache
-    (rhc/update! resource-handle-cache t resource-handle-updates))
+    (rhc/update! resource-handle-cache tx-indexer-pool t resource-handle-updates))
   (advance-t! state t))
 
 (defn- observe-index-resources!
@@ -806,14 +823,15 @@
   they would write. The ones already dispatched are still awaited, so that no
   task outlives the loop."
   [{:keys [node-name kv-store resource-handle-cache read-only-matcher
-           internal-matcher stats]
+           internal-matcher stats tx-indexer-pool]
     :as node}
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (let [result (index-tx node {:read-only-matcher read-only-matcher
                                :internal-matcher internal-matcher
-                               :stats @stats} tx-data)]
+                               :stats @stats
+                               :pool tx-indexer-pool} tx-data)]
     (if (ba/anomaly? result)
       (do
         ;; dropping the chunks left makes the ones dispatched the last ones, so
@@ -822,7 +840,7 @@
           (observe-index-resources! timer pending))
         (assoc tx-chunk-state :verified? true :anomaly result :chunks []))
       (do
-        (store-tx-entries! node-name kv-store (:entries result))
+        (store-tx-entries! node-name kv-store tx-indexer-pool (:entries result))
         ;; taking the stats over only after the entries were stored keeps them
         ;; in sync with the indexes, so that a transaction that wasn't stored
         ;; leaves them untouched
@@ -1266,7 +1284,7 @@
 (defrecord Node [node-name context tx-log tx-cache kv-store resource-cache
                  resource-handle-cache resource-store sync-fn search-param-registry resource-indexer
                  index-bounds read-only-matcher internal-matcher
-                 acquire-in-flight! state stats
+                 ^ForkJoinPool tx-indexer-pool acquire-in-flight! state stats
                  poll-timeout queue-capacity sync-timeout index-finished
                  publish-finished]
   np/Node
@@ -1397,6 +1415,9 @@
     ;; the stores under still running indexing or subscriber code, which is what
     ;; these waits exist to prevent. See docs/implementation/database.md
     @index-finished
+    ;; the indexing loop waited for all tasks it ran on the pool, so that no
+    ;; task is left
+    (.shutdown tx-indexer-pool)
     @publish-finished
     ;; the publishing loop closed all subscriptions before it finished, so their
     ;; threads are about to exit
@@ -1512,11 +1533,12 @@
          (d/type-list db "Patient"))))))
 
 (defn build-patient-last-change-index
-  [key {:keys [node-name kv-store] :as node}]
+  [key {:keys [node-name kv-store tx-indexer-pool] :as node}]
   (let [{:keys [type]} (plc/state kv-store)]
     (when (identical? :building type)
       (log/info "Building PatientLastChange index of" (node-util/component-name key "node"))
-      (store-tx-entries! node-name kv-store (initial-plc-index-entries node))
+      (store-tx-entries! node-name kv-store tx-indexer-pool
+                         [(initial-plc-index-entries node)])
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
 (defn- compile-read-only-matcher
@@ -1560,6 +1582,30 @@
     ::queue-capacity
     ::sync-timeout]))
 
+(defn- worker-thread-factory
+  "Returns a factory of the workers of a ForkJoinPool, named by
+  `name-template`, like `tx-indexer-%d`, with a counter starting at 1."
+  [name-template]
+  (let [counter (atom 0)]
+    (reify ForkJoinPool$ForkJoinWorkerThreadFactory
+      (newThread [_ pool]
+        (doto (.newThread ForkJoinPool/defaultForkJoinWorkerThreadFactory pool)
+          (.setName (format name-template (swap! counter inc))))))))
+
+(defn- tx-indexer-pool
+  "Returns the ForkJoinPool with one worker per processor, on which the
+  transaction indexer of the node with Integrant `key` runs the parts of large
+  transactions in parallel.
+
+  The pool is of its own and not the common ForkJoinPool, because tasks of the
+  common pool may wait for transactions to be indexed. Indexing would depend
+  on free workers of it otherwise."
+  [key]
+  (ForkJoinPool. (.availableProcessors (Runtime/getRuntime))
+                 (worker-thread-factory
+                  (node-util/thread-name key "tx-indexer-%d"))
+                 nil false))
+
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache kv-store resource-indexer resource-cache
                resource-handle-cache resource-store search-param-registry
@@ -1585,6 +1631,7 @@
                       (resource-indexer/pool-size resource-indexer))
                      (compile-read-only-matcher search-param-registry)
                      (compile-internal-matcher search-param-registry)
+                     (tx-indexer-pool key)
                      (acquire-in-flight-fn node-name state
                                            max-in-flight-transactions)
                      state

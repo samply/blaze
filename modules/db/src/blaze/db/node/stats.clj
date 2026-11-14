@@ -61,6 +61,11 @@
   [stats type]
   (:total ((:types stats) (codec/tid type)) 0))
 
+(defn non-empty-type?
+  "Returns true if `stats` has resources of `type` (see `type-total`)."
+  [stats type]
+  (pos? (long (type-total stats type))))
+
 (defn apply-tx
   "Applies the `increments` of the transaction with `t` to `stats`.
 

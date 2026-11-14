@@ -15,6 +15,10 @@
   :args (s/cat :stats ::stats/stats :type :fhir.resource/type)
   :ret nat-int?)
 
+(s/fdef stats/non-empty-type?
+  :args (s/cat :stats ::stats/stats :type :fhir.resource/type)
+  :ret boolean?)
+
 (s/fdef stats/apply-tx
   :args (s/cat :stats ::stats/stats :t :blaze.db/t
                :increments (s/nilable ::stats/increments))

@@ -94,10 +94,12 @@
         (zipmap-found keys (map ac/join futures)))))
 
   (-put [_ entries]
-    (ac/supply-async
-     #(with-open [_ (prom/timer duration-seconds "put-resources")]
-        (kv/put! kv-store (coll/eduction entry-freezer entries)))
-     executor)))
+    (if (empty? entries)
+      (ac/completed-future nil)
+      (ac/supply-async
+       #(with-open [_ (prom/timer duration-seconds "put-resources")]
+          (kv/put! kv-store (coll/eduction entry-freezer entries)))
+       executor))))
 
 (defmethod m/pre-init-spec ::rs/kv [_]
   (s/keys :req-un [:blaze.db/kv-store :blaze.fhir/parsing-context

@@ -2,7 +2,7 @@ fmt:
 	cljfmt check src test deps.edn tests.edn
 
 lint:
-	clj-kondo --fail-level error --lint src test deps.edn
+	clj-kondo --lint src test deps.edn
 
 prep:
 	$(MAKE) -C ../module-base prep

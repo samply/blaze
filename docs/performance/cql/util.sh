@@ -72,7 +72,7 @@ search() {
   sleep 10
   # the first run is the warmup which isn't taken for the statistics
   local i repeats
-  repeats="$(repeats)"
+  repeats="$(repeats 3)"
   for ((i = 0; i <= repeats; i++)); do
     sleep 1
     blazectl --server "$base" evaluate-measure --force-sync "$script_dir/$file.yml" 2> /dev/null |\

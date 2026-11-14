@@ -154,7 +154,9 @@
     (-get [_ _ hash]
       (when (or (nil? (:hash config))
                 (= (hash/from-byte-buffer! (bb/wrap hash)) (:hash config)))
-        (throw (Exception. ^String msg))))))
+        (throw (Exception. ^String msg))))
+    (-put [_ _]
+      (throw (Exception. ^String msg)))))
 
 (defn- failing-kv-store-config
   ([msg]
@@ -283,7 +285,16 @@
     (with-system [{store ::rs/kv} config]
       @(rs/put! store {(hash) content})
 
-      (is (= content @(rs/get store [:fhir/Patient (hash) :complete]))))))
+      (is (= content @(rs/get store [:fhir/Patient (hash) :complete]))))
+
+    (testing "error"
+      (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
+        (given-failed-future (rs/put! store {(hash) content})
+          ::anom/message := error-msg)
+
+        (testing "no entries aren't written, because even an empty write can
+                  be synced to disk"
+          (is (nil? @(rs/put! store {}))))))))
 
 (deftest executor-shutdown-timeout-test
   (let [{::rs-kv/keys [executor] :as system} (ig/init {::rs-kv/executor {}})

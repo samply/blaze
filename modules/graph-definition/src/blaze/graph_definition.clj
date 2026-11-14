@@ -10,6 +10,7 @@
    [blaze.fhir.search-clauses :as fsc]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.util :refer [str]]
+   [clojure.string :as str]
    [ring.util.codec :as ring-codec]))
 
 (set! *warn-on-reflection* true)
@@ -198,3 +199,60 @@
     {:start-node-id start-node-id
      :nodes nodes
      :links links}))
+
+(defn- rev-link
+  "Returns the `[type code]` tuple of `link` or an anomaly if `link` isn't a
+  single reverse lookup from the start node.
+
+  The `start-node` has to be of type Patient. A link to another node of type
+  Patient is rejected, because such a node stands for other patients."
+  {:arglists '([nodes start-node link])}
+  [nodes {start-node-id :id start-type :type} {:keys [source-id target-id path]
+                                               [[code :as clause] & more] :clauses}]
+  (let [{target-type :type} (nodes target-id)]
+    (cond
+      (not= start-node-id source-id)
+      (ba/incorrect (format "Invalid link from node `%s` instead of the start node `%s`." source-id start-node-id))
+
+      path
+      (ba/incorrect (format "Invalid link to node `%s` with path instead of params." target-id))
+
+      (or more (not (ref-clause? clause)))
+      (ba/incorrect (format "Invalid link to node `%s` with params other than a single parameter with the value `{ref}`." target-id))
+
+      (str/includes? code ":")
+      (ba/incorrect (format "Invalid link to node `%s` with the parameter `%s` having a modifier." target-id code))
+
+      (= start-type target-type)
+      (ba/incorrect (format "Invalid link to node `%s` of type `%s`, the type of the start node." target-id target-type))
+
+      (contains? abstract-resource-types target-type)
+      (ba/incorrect (format "Invalid link to node `%s` of abstract type `%s`." target-id target-type))
+
+      :else
+      [target-type code])))
+
+(defn- rev-link-xf [nodes start-node]
+  (comp (mapcat val) (map (partial rev-link nodes start-node))
+        (halt-when ba/anomaly?) (distinct)))
+
+(defn rev-links
+  "Returns the `[type code]` tuples of the links of `compiled-graph`, a graph
+  compiled by `compile`, in order to select the resources of `type` that
+  reference the start resource through the reference search param with `code`.
+
+  Returns an anomaly if the graph is outside the restricted subset of one hop
+  reverse lookups from a Patient. That is the case if:
+   * the start node isn't of type Patient
+   * a link doesn't start at the start node
+   * a link has a path instead of params
+   * the params of a link aren't the single parameter `<code>={ref}`
+   * the parameter of a link has a modifier
+   * a link ends at another node of type Patient
+   * a link ends at a node of an abstract type"
+  {:arglists '([compiled-graph])}
+  [{:keys [start-node-id nodes links]}]
+  (let [{:keys [type] :as start-node} (nodes start-node-id)]
+    (if (= "Patient" type)
+      (transduce (rev-link-xf nodes start-node) conj [] links)
+      (ba/incorrect (format "Invalid start node `%s` of type `%s` instead of `Patient`." start-node-id type)))))

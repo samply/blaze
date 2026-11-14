@@ -3,11 +3,13 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
+   [blaze.cache-collector.protocols :as ccp]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change-test-util :as plc-tu]
    [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
    [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
    [blaze.db.impl.index.system-stats-test-util :as ss-tu]
    [blaze.db.impl.index.type-as-of-test-util :as tao-tu]
@@ -15,11 +17,14 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.db.node]
+   [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.node.tx-indexer.verify :as verify]
    [blaze.db.node.tx-indexer.verify-spec]
+   [blaze.db.node.tx-indexer.verify.impl :as impl]
    [blaze.db.permissions :as p]
-   [blaze.db.test-util :refer [config internal-label internal-patient-0
-                               read-only-patient-0 transact-internal
+   [blaze.db.test-util :refer [concurrent-calls? config internal-label
+                               internal-patient-0 read-only-patient-0
+                               resource-handle-cache-config transact-internal
                                with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
@@ -34,8 +39,11 @@
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [com.github.benmanes.caffeine.cache.stats CacheStats]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 (tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
@@ -56,18 +64,29 @@
   "Returns the verification context of `node`, using the stats the node itself
   keeps, so that the entries are the ones the indexing loop of the node would
   write."
-  [{:keys [read-only-matcher internal-matcher stats]} db]
+  [{:keys [read-only-matcher internal-matcher stats tx-indexer-pool]} db]
   {:db-before db :read-only-matcher read-only-matcher
-   :internal-matcher internal-matcher :stats @stats})
+   :internal-matcher internal-matcher :stats @stats :pool tx-indexer-pool})
+
+(defn- flatten-parts
+  "Flattens the `:entries` and the `:resource-handle-updates` of `res`, which
+  are in parts, so that tests can address them by position in the
+  transaction."
+  [res]
+  (cond-> res
+    (not (ba/anomaly? res))
+    (-> (update :entries #(into [] cat %))
+        (update :resource-handle-updates #(into [] cat %)))))
 
 (defn- verify-tx-cmds**
   [node t tx-cmds f]
-  (ba/try-anomaly
-   (ac/join
-    (d/with-db node
-      (fn [db]
-        (ac/completed-future
-         (verify/verify-tx-cmds (f (context node db)) t tx-cmds)))))))
+  (flatten-parts
+   (ba/try-anomaly
+    (ac/join
+     (d/with-db node
+       (fn [db]
+         (ac/completed-future
+          (verify/verify-tx-cmds (f (context node db)) t tx-cmds))))))))
 
 (defn- verify-tx-cmds*
   "Verifies `tx-cmds` against `node` without permissions."
@@ -737,7 +756,17 @@
 
       (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0` and others."))))
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`, `Observation/1`.")))
+
+  (testing "deleting a patient which is referenced by eleven still existing observations"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [(into [[:put patient-0]]
+             (map (fn [id] [:put (assoc observation-0 :id (str id))]))
+             (range 11))]
+
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`, `Observation/1`, `Observation/10`, `Observation/2`, `Observation/3`, `Observation/4`, `Observation/5`, `Observation/6`, `Observation/7`, `Observation/8` and others."))))
 
 (deftest verify-delete-history-test
   (testing "empty database"
@@ -993,6 +1022,20 @@
             [:entries 0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
             [:entries 3 2 ts-tu/decode-val] := {:total 0 :num-changes 1}))))))
 
+(deftest verify-distinct-tx-cmds-test
+  (let [put {:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)}]
+    (with-system [{:blaze.db/keys [node]} config]
+      (testing "commands are checked for duplicates"
+        (given (verify-tx-cmds node 1 [put put])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `put Patient/0`."))
+
+      (testing "commands known to act on distinct resources aren't checked for
+                duplicates, so that the check doesn't cost time"
+        (is (not (ba/anomaly?
+                  (verify-tx-cmds** node 1 [put put]
+                                    #(assoc % :distinct-tx-cmds true)))))))))
+
 (deftest verify-purge-test
   (testing "empty database"
     (with-system [{:blaze.db/keys [node]} config]
@@ -1095,6 +1138,31 @@
         ::anom/category := ::anom/conflict
         ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")))
 
+  (testing "purging a patient doesn't check the references through its purged
+            rev-include params, through which the transaction purges every
+            resource referencing it, as the expansion guarantees"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put patient-0]
+        [:put observation-0]]]
+
+      (testing "so that the observation not purged here isn't found"
+        (is (not (ba/anomaly?
+                  (verify-tx-cmds
+                   node 2
+                   [{:op "purge" :type "Patient" :id "0" :check-refs true
+                     :purged-rev-include-params
+                     #{(tx-u/rev-include-param "Observation" "subject")
+                       (tx-u/rev-include-param "Observation" "patient")}}])))))
+
+      (testing "but checks the references through the other search params"
+        (given (verify-tx-cmds
+                node 2
+                [{:op "purge" :type "Patient" :id "0" :check-refs true
+                  :purged-rev-include-params
+                  #{(tx-u/rev-include-param "Observation" "subject")}}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))))
+
   (testing "purging a patient and creating a resource referencing it in the same transaction"
     (let [hash (hash/generate observation-0)]
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -1112,6 +1180,349 @@
   {:fhir/type :fhir/Patient :id "0"
    :meta (type/meta {:security [internal-label]})
    :gender #fhir/code "male"})
+
+(def ^:private num-large-tx-cmds
+  "A number of commands that is split into several parts that are verified in
+  parallel."
+  2000)
+
+(defn- create-cmds
+  "Returns create commands of `num-large-tx-cmds` resources of `type` with the
+  ids from 0 on, applying `f` to each command and its index."
+  ([type]
+   (create-cmds type (fn [cmd _] cmd)))
+  ([type f]
+   (let [hash (hash/generate {:fhir/type (keyword "fhir" type) :id "0"})]
+     (mapv
+      #(f {:op "create" :type type :id (str %) :hash hash} %)
+      (range num-large-tx-cmds)))))
+
+(defn- type-lookup?
+  "Returns a predicate of the arguments of `d/resource-handle` that is true for
+  lookups of resources of `lookup-type`."
+  [lookup-type]
+  (fn [_ type _] (= lookup-type type)))
+
+(deftest verify-large-transaction-test
+  (testing "the result is the one of verifying the commands one after another"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given (verify-tx-cmds* node 1 (create-cmds "Patient"))
+        patient-stats := {:total 2000 :num-changes 2000}
+        [:resource-handle-updates count] := 2000
+        [:resource-handle-updates 0 0 :id] := "0"
+        [:resource-handle-updates 1999 0 :id] := "1999")))
+
+  (testing "the anomaly is the one of the first failing command"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "100"}]
+        [:create {:fhir/type :fhir/Patient :id "1500"}]]]
+
+      (given (verify-tx-cmds* node 2 (create-cmds "Patient"))
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Resource `Patient/100` already exists in the database with t = 1 and can't be created again.")))
+
+  (testing "the anomaly of a command at the end is found"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "1999"}]]]
+
+      (given (verify-tx-cmds* node 2 (create-cmds "Patient"))
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Resource `Patient/1999` already exists in the database with t = 1 and can't be created again.")))
+
+  (testing "the commands are verified in parallel"
+    (with-system [{:blaze.db/keys [node]} config]
+      (is (concurrent-calls?
+           #'d/resource-handle (type-lookup? "Patient")
+           #(verify-tx-cmds* node 1 (create-cmds "Patient")))))))
+
+(defn- observation-cmd-referencing
+  "Returns `cmd` referencing the Patient with `patient-id`."
+  [patient-id cmd]
+  (assoc cmd :refs [["Patient" patient-id]]))
+
+(deftest check-referential-integrity-large-transaction-test
+  (testing "the anomaly is the one of the first failing command"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create patient-0]]]
+
+      (given (verify-tx-cmds*
+              node 2
+              (create-cmds
+               "Observation"
+               (fn [cmd idx]
+                 (observation-cmd-referencing
+                  (get {100 "100" 1500 "1500"} idx "0") cmd))))
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/100` doesn't exist.")))
+
+  (testing "the references are checked in parallel"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create patient-0]]]
+
+      (is (concurrent-calls?
+           #'d/resource-handle (type-lookup? "Patient")
+           #(verify-tx-cmds*
+             node 2
+             (create-cmds
+              "Observation"
+              (fn [cmd _] (observation-cmd-referencing "0" cmd)))))))))
+
+(defn- num-lookups
+  "Returns the number of lookups, hits and misses, of `resource-handle-cache`."
+  [resource-handle-cache]
+  (CacheStats/.requestCount (ccp/-stats resource-handle-cache)))
+
+(defn- num-verify-lookups
+  "Returns the number of lookups of `resource-handle-cache` verifying `tx-cmds`
+  against `node` takes, failing if the verification fails."
+  [node resource-handle-cache t tx-cmds]
+  (let [lookups-before (num-lookups resource-handle-cache)]
+    (is (not (ba/anomaly? (verify-tx-cmds* node t tx-cmds))))
+    (- (num-lookups resource-handle-cache) lookups-before)))
+
+(deftest verify-resource-handle-lookups-test
+  (testing "a purge checking references looks up no resource handle"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:put patient-0]]]
+
+      (is (zero? (num-verify-lookups
+                  node resource-handle-cache 2
+                  [{:op "purge" :type "Patient" :id "0" :check-refs true}])))))
+
+  (testing "a delete checking references looks up the resource handle only once"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:put patient-0]]]
+
+      (is (= 1 (num-verify-lookups
+                node resource-handle-cache 2
+                [{:op "delete" :type "Patient" :id "0" :check-refs true}]))))))
+
+(def ^:private should-be-deleted-msg
+  "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")
+
+(def ^:private doesnt-exist-msg
+  "Referential integrity violated. Resource `Patient/0` doesn't exist.")
+
+(def ^:private patient-0-states
+  "The transactions bringing Patient/0 into each state."
+  {"existing" [[[:put patient-0]]]
+   "already deleted" [[[:put patient-0]] [[:delete "Patient" "0"]]]
+   "missing" [[[:put patient-1]]]})
+
+(defn- write-referencing-deleted-msg
+  "Returns the message of a write referencing Patient/0 in `state` that is
+  deleted or purged by `op` in the same transaction.
+
+  Only a resource deleted by the transaction should be deleted. A delete of a
+  missing resource deletes it too, but its purge doesn't."
+  [state op]
+  (cond
+    (= "existing" state) should-be-deleted-msg
+    (= "already deleted" state) doesnt-exist-msg
+    (= "delete" op) should-be-deleted-msg
+    :else doesnt-exist-msg))
+
+(deftest verify-write-referencing-deleted-resource-test
+  (let [write {:op "put" :type "Observation" :id "0"
+               :hash (hash/generate observation-0) :refs [["Patient" "0"]]}]
+    (doseq [[state txs] patient-0-states
+            op ["delete" "purge"]
+            check-refs [true false]]
+      (testing (format "a write referencing a%s %s patient %s %s references"
+                       (if (= "existing" state) "n" "") state op
+                       (if check-refs "checking" "not checking"))
+        (with-system-data [{:blaze.db/keys [node]} config]
+          txs
+
+          (given (verify-tx-cmds
+                  node (inc (count txs))
+                  [(cond-> {:op op :type "Patient" :id "0"}
+                     check-refs (assoc :check-refs true))
+                   write])
+            ::anom/category := ::anom/conflict
+            ::anom/message := (write-referencing-deleted-msg state op)))))))
+
+(defn- num-prefix-seeks
+  "Returns the number of calls of `sp-vr/index-handles`, the seeks of the
+  reference prefilter of deletes, verifying `tx-cmds` against `node` takes,
+  failing if the verification fails."
+  [node t tx-cmds]
+  (let [calls (atom 0)
+        index-handles sp-vr/index-handles]
+    (with-redefs [sp-vr/index-handles (fn [& args]
+                                        (swap! calls inc)
+                                        (apply index-handles args))]
+      (is (not (ba/anomaly? (verify-tx-cmds* node t tx-cmds)))))
+    @calls))
+
+(defn- checked-delete-cmd [type id]
+  {:op "delete" :type type :id id :check-refs true})
+
+(defn- unchecked-delete-cmd
+  "Returns a delete command not checking references. Of a resource that doesn't
+  exist, it fills a part of the verification without a delete handle."
+  [type id]
+  {:op "delete" :type type :id id})
+
+(deftest verify-delete-reference-prefilter-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put patient-0]
+      [:put patient-1]
+      [:put {:fhir/type :fhir/Observation :id "0"}]]]
+
+    (testing "a single delete checking references doesn't prefilter the search
+              params, because the prefilter would take a seek per search param
+              in addition to the ones of the delete"
+      (is (zero? (num-prefix-seeks
+                  node 2 [(checked-delete-cmd "Patient" "0")]))))
+
+    (testing "a delete of a resource that doesn't exist isn't counted, because
+              its references aren't checked"
+      (is (zero? (num-prefix-seeks
+                  node 2 [(checked-delete-cmd "Patient" "0")
+                          (checked-delete-cmd "Patient" "2")]))))
+
+    (testing "two deletes of resources of the same type checking references
+              prefilter the search params"
+      (is (pos? (num-prefix-seeks
+                 node 2 [(checked-delete-cmd "Patient" "0")
+                         (checked-delete-cmd "Patient" "1")])))
+
+      (testing "also if they are verified in different parts"
+        (is (pos? (num-prefix-seeks
+                   node 2 (-> [(checked-delete-cmd "Patient" "0")]
+                              (into (map #(unchecked-delete-cmd "Observation" (str "x" %)))
+                                    (range 600))
+                              (conj (checked-delete-cmd "Patient" "1"))))))))))
+
+(deftest check-referential-integrity-deletes-of-several-parts-test
+  (testing "a deleted resource referenced only by a resource deleted in another
+            part of the transaction doesn't violate the referential integrity,
+            because the deletes of all parts are merged"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put patient-0]
+        [:put observation-0]]]
+
+      (is (not (ba/anomaly?
+                (verify-tx-cmds
+                 node 2
+                 (-> [(checked-delete-cmd "Patient" "0")]
+                     (into (map #(unchecked-delete-cmd "Observation" (str "x" %)))
+                           (range 600))
+                     (conj (checked-delete-cmd "Observation" "0"))))))))))
+
+(defn- num-matches-calls
+  "Returns the number of calls of `d/matches?` verifying `tx-cmds` against
+  `node` takes, failing if the verification fails."
+  [node t tx-cmds]
+  (let [calls (atom 0)
+        matches? d/matches?]
+    (with-redefs [d/matches? (fn [db matcher resource-handle]
+                               (swap! calls inc)
+                               (matches? db matcher resource-handle))]
+      (is (not (ba/anomaly? (verify-tx-cmds* node t tx-cmds)))))
+    @calls))
+
+(deftest verify-internal-matches-calls-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (transact-internal node [[:create internal-patient-0]
+                             [:create patient-1]
+                             [:create observation-0]])
+
+    (testing "a purge of a resource of a type without resources labelled
+              internal doesn't match the resource"
+      (is (zero? (num-matches-calls
+                  node 2 [{:op "purge" :type "Observation" :id "0"}]))))
+
+    (testing "a purge of a resource of a type with resources labelled internal
+              matches the resource"
+      (is (= 1 (num-matches-calls
+                node 2 [{:op "purge" :type "Patient" :id "1"}]))))))
+
+(def ^:private patient-1-v2
+  (assoc patient-1 :gender #fhir/code "male"))
+
+(def ^:private observation-0-v2
+  (assoc observation-0 :status #fhir/code "final"))
+
+(deftest verify-read-only-matches-calls-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (transact-internal node [[:create read-only-patient-0]
+                             [:create patient-1]
+                             [:create observation-0]])
+
+    (testing "an update of a resource of a type without resources tagged
+              read-only doesn't match the resource"
+      (is (zero? (num-matches-calls
+                  node 2 [{:op "put" :type "Observation" :id "0"
+                           :hash (hash/generate observation-0-v2)}]))))
+
+    (testing "an update of a resource of a type with resources tagged read-only
+              matches the resource"
+      (is (= 1 (num-matches-calls
+                node 2 [{:op "put" :type "Patient" :id "1"
+                         :hash (hash/generate patient-1-v2)}]))))
+
+    (testing "a delete of a resource of a type without resources tagged
+              read-only doesn't match the resource"
+      (is (zero? (num-matches-calls
+                  node 2 [{:op "delete" :type "Observation" :id "0"}]))))
+
+    (testing "a delete of a resource of a type with resources tagged read-only
+              matches the resource"
+      (is (= 1 (num-matches-calls
+                node 2 [{:op "delete" :type "Patient" :id "1"}]))))))
+
+(defn- type-lookups
+  "Returns the set of tuples of the AccessControl code of the matcher and the
+  type `impl/type-may-match?` is called with verifying `tx-cmds` against
+  `node`, failing if the verification fails."
+  [{:keys [read-only-matcher internal-matcher] :as node} t tx-cmds]
+  (let [lookups (atom #{})
+        type-may-match? impl/type-may-match?]
+    (with-redefs [impl/type-may-match?
+                  (fn [db matcher type]
+                    (swap! lookups conj [(condp identical? matcher
+                                           read-only-matcher "read-only"
+                                           internal-matcher "internal")
+                                         type])
+                    (type-may-match? db matcher type))]
+      (is (not (ba/anomaly? (verify-tx-cmds* node t tx-cmds)))))
+    @lookups))
+
+(deftest verify-type-lookups-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (transact-internal node [[:create internal-patient-0]
+                             [:create patient-1]
+                             [:create observation-0]])
+
+    (testing "a transaction that changes no existing resource looks up no type"
+      (is (empty? (type-lookups
+                   node 2 [{:op "create" :type "Observation" :id "1"
+                            :hash (hash/generate observation-1)}
+                           {:op "purge" :type "Encounter" :id "0"}]))))
+
+    (testing "the types of all commands are looked up for each label, whatever
+              their op, so that no check depends on a list of ops"
+      (is (= #{["read-only" "Observation"]
+               ["read-only" "Condition"]
+               ["read-only" "Encounter"]
+               ["read-only" "Patient"]
+               ["internal" "Observation"]
+               ["internal" "Condition"]
+               ["internal" "Encounter"]
+               ["internal" "Patient"]}
+             (type-lookups
+              node 2 [{:op "create" :type "Observation" :id "1"
+                       :hash (hash/generate observation-1)}
+                      (assoc (verify-cmd "hold") :type "Condition")
+                      {:op "keep" :type "Observation" :id "0"
+                       :hash (hash/generate observation-0)}
+                      {:op "purge" :type "Encounter" :id "0"}
+                      {:op "put" :type "Patient" :id "1"
+                       :hash (hash/generate patient-1-v2)}]))))))
 
 (def ^:private read-only-permissions
   {:write-access-control #{"read-only"}})

@@ -5,7 +5,7 @@ script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
 base="http://localhost:8080/fhir"
-actual_totals="$(curl -sH 'Accept: application/fhir+json' "$base/\$totals" | jq -r '.parameter[] | [.name, .valueUnsignedInt] | @csv')"
+actual_totals="$(curl -sSH 'Accept: application/fhir+json' "$base/\$totals" | jq -r '.parameter[] | select(.name | IN("GraphDefinition", "StructureDefinition") | not) | [.name, .valueUnsignedInt] | @csv')"
 expected_totals="$(cat <<END
 "AllergyIntolerance",2
 "CarePlan",33
@@ -28,8 +28,6 @@ expected_totals="$(cat <<END
 "Practitioner",195
 "PractitionerRole",195
 "Procedure",307
-"Provenance",8
-"StructureDefinition",185
 "SupplyDelivery",571
 END
 )"
