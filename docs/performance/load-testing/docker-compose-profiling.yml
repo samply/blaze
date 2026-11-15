@@ -1,0 +1,15 @@
+# Additions to the docker-compose-<system>.yml of a system for profiling Blaze
+# with async-profiler. Used by profile-transaction.sh only, so that the runs of
+# the sweep stay without the agent.
+#
+# The agent is loaded via JDK_JAVA_OPTIONS, which the java launcher reads in
+# addition to JAVA_TOOL_OPTIONS, so that the JVM options of the system stay as
+# they are. async-profiler has to be installed on the host under
+# /opt/async-profiler, in the Linux release matching the CPU architecture of
+# the container.
+services:
+  blaze:
+    environment:
+      JDK_JAVA_OPTIONS: "-agentpath:/opt/async-profiler/lib/libasyncProfiler.so"
+    volumes:
+    - "/opt/async-profiler:/opt/async-profiler:ro"
