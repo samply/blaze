@@ -461,10 +461,13 @@
   (-> (sync-t node t)
       (ac/then-compose (fn [_] (node/tx-result node t)))))
 
-(defn- named-node-config [name]
-  (-> (assoc config [:blaze.db/node (keyword (str "blaze.db." name) "node")]
-             (:blaze.db/node config))
-      (dissoc :blaze.db/node)))
+(defn- named-node-config
+  ([name]
+   (named-node-config config name))
+  ([config name]
+   (-> (assoc config [:blaze.db/node (keyword (str "blaze.db." name) "node")]
+              (:blaze.db/node config))
+       (dissoc :blaze.db/node))))
 
 (defn- duration-seconds-ops
   "Returns the set of ops observed for the node with `node-name`."
@@ -477,7 +480,40 @@
          (map (comp second :label-values)))
    (metrics/collect node/duration-seconds)))
 
+(defn- duration-seconds-bucket-bounds
+  "Returns the sorted finite upper bounds of the duration buckets.
+
+  Leaves out the +Inf bucket, for which `parse-double` returns nil."
+  []
+  (into
+   (sorted-set)
+   (comp (mapcat :samples)
+         (filter (comp #{"blaze_db_node_duration_seconds_bucket"} :name))
+         (keep (comp parse-double last :label-values)))
+   (metrics/collect node/duration-seconds)))
+
+(deftest duration-seconds-buckets-test
+  (with-system [{:blaze.db/keys [node]} config]
+    @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+         (ac/then-compose (partial tx-result-after-indexing node)))
+
+    (testing "the lowest bucket resolves ops of one microsecond"
+      (is (= 1e-6 (first (duration-seconds-bucket-bounds)))))
+
+    (testing "the highest bucket still covers ops of several seconds"
+      (is (<= 3.2768 (last (duration-seconds-bucket-bounds)))))))
+
+(defn- clear-duration-seconds!
+  "Clears the durations observed by earlier tests.
+
+  The histogram is global, so other tests running a node named main, like
+  `resource-handle-cache-test`, would otherwise add their ops."
+  []
+  (prom/clear! node/duration-seconds))
+
 (deftest duration-seconds-node-label-test
+  (clear-duration-seconds!)
+
   (testing "durations are labeled with the name of the node"
     (with-system [{:blaze.db/keys [node]} config]
       @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
@@ -485,7 +521,7 @@
 
       (is (= #{"poll-tx-log" "index-transactions" "index-resources"
                "await-resources" "store-tx-entries"
-               "store-tx-success-entries"}
+               "store-tx-success-entries" "advance-t"}
              (duration-seconds-ops "main"))))
 
     (doseq [name ["main" "admin" "name-153446"]]
@@ -496,7 +532,20 @@
 
         (is (= #{"poll-tx-log" "index-transactions" "index-resources"
                  "await-resources" "store-tx-entries"
-                 "store-tx-success-entries"}
+                 "store-tx-success-entries" "advance-t"}
+               (duration-seconds-ops name))))))
+
+  (testing "with resource handle cache, its update is timed"
+    (let [name "rhc-170112"]
+      (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
+                    (named-node-config resource-handle-cache-config name)]
+        @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+             (ac/then-compose (partial tx-result-after-indexing node)))
+
+        (is (= #{"poll-tx-log" "index-transactions" "index-resources"
+                 "await-resources" "store-tx-entries"
+                 "store-tx-success-entries" "update-resource-handle-cache"
+                 "advance-t"}
                (duration-seconds-ops name)))))))
 
 (deftest transact-test

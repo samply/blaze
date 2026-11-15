@@ -100,6 +100,42 @@
       (is (= ["Estimated Size" "Hit Ratio" "Lookups" "Evictions"]
              (mapv :title panels))))))
 
+(defn- row-of [title]
+  (first (filter (comp #{title} :title) (:rows source))))
+
+(deftest node-row-test
+  (testing "the node variable offers the main and the admin node, with only the main node selected by default"
+    (given (first (filter (comp #{"node"} :name) (:variables source)))
+      :type := :custom
+      :multi := true
+      :values := ["main" "admin"]
+      :selected := ["main"]))
+
+  (let [{:keys [panels] repeat-var :repeat} (row-of "Node $node")]
+    (testing "is repeated once per node"
+      (is (= "node" repeat-var)))
+
+    (testing "all queries select the node of the row"
+      (is (every? #(str/includes? (:expr %) "node=\"$node\"")
+                  (mapcat :queries panels))))
+
+    (testing "the durations panels hide the poll-tx-log series by default"
+      (doseq [title ["Durations 0.5 Quantile" "Durations 0.99 Quantile"]]
+        (is (= [{"matcher" {"id" "byName" "options" "poll-tx-log"}
+                 "properties" [{"id" "custom.hideFrom"
+                                "value" {"legend" false "tooltip" false
+                                         "viz" true}}]}]
+               (:overrides (first (filter (comp #{title} :title) panels)))))))
+
+    (testing "has no transaction size panels, because their metric has no
+              node label"
+      (is (not-any? #(str/starts-with? (:title %) "Transaction Size") panels))))
+
+  (testing "the transaction size panels have a row of their own"
+    (is (= ["Transaction Size 0.5 Quantile" "Transaction Size 0.9 Quantile"
+            "Transaction Size 0.99 Quantile" "Transaction Size 0.01 Quantile"]
+           (mapv :title (:panels (row-of "Transaction Size")))))))
+
 (deftest dashboard-test
   (testing "of the real source"
     (let [dashboard (dashboard/dashboard source)]
@@ -110,7 +146,7 @@
         (is (not (contains? dashboard "uid"))))
 
       (testing "has one row panel per row"
-        (is (= 17 (count (get dashboard "panels"))))
+        (is (= 18 (count (get dashboard "panels"))))
         (is (every? #(= "row" (get % "type")) (get dashboard "panels"))))
 
       (testing "has all panels nested in the row panels"
@@ -120,7 +156,7 @@
         (is (every? #(= "timeseries" (get % "type")) (panels dashboard))))
 
       (testing "all ids are distinct"
-        (is (= 136 (count (distinct (map #(get % "id")
+        (is (= 137 (count (distinct (map #(get % "id")
                                          (concat (get dashboard "panels")
                                                  (panels dashboard))))))))
 

@@ -162,10 +162,13 @@
   The `await-resources` of one chunk is the time the indexing loop spends
   blocked until that chunk is indexed, which is the only op during which the
   loop does no work of its own. So the rate of its sum is the fraction of the
-  time the loop waits for the resource indexing to catch up."
+  time the loop waits for the resource indexing to catch up.
+
+  The buckets start at one microsecond, so that the quantiles of short ops like
+  `update-resource-handle-cache` aren't interpolated within a single bucket."
   {:namespace "blaze"
    :subsystem "db_node"}
-  (take 16 (iterate #(* 2 %) 0.0001))
+  (take 23 (iterate #(* 2 %) 1e-6))
   "node" "op")
 
 (defhistogram index-batch-transactions
@@ -374,15 +377,17 @@
   (swap-state! state identity))
 
 (defn- advance-t!
-  "Advances `state` to `t`, stops counting the transactions up to `t` as
-  in-flight and completes the waiters `t` released."
-  [state t]
+  "Advances the state of `node` to `t`, stops counting the transactions up to
+  `t` as in-flight and completes the waiters `t` released."
+  {:arglists '([node t])}
+  [{:keys [node-name state]} t]
   (log/trace "advance state to t =" t)
-  (let [{old-waiters :waiters}
-        (swap-state! state #(-> (assoc % :t t)
-                                (release-in-flight t)
-                                (update :waiters waiters/remove-ready t)))]
-    (waiters/complete-ready! old-waiters t t)))
+  (with-open [_ (prom/timer duration-seconds node-name "advance-t")]
+    (let [{old-waiters :waiters}
+          (swap-state! state #(-> (assoc % :t t)
+                                  (release-in-flight t)
+                                  (update :waiters waiters/remove-ready t)))]
+      (waiters/complete-ready! old-waiters t t))))
 
 (defn- advance-error-t!
   "Advances `state` to the error-t `t`, stops counting the transactions up to
@@ -775,20 +780,33 @@
           (ac/complete! publish-finished true)
           (log/trace "exit changed resources publisher"))))))
 
+(defn- store-tx-success-entries!
+  "Stores the index entries marking the transaction with `t` as successful."
+  [{:keys [node-name kv-store]} t instant]
+  (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
+    (kv/put! kv-store (tx-success-entries t instant))))
+
+(defn- update-resource-handle-cache!
+  "Updates the resource handle cache with the `resource-handle-updates` of the
+  transaction with `t`."
+  [{:keys [node-name resource-handle-cache tx-indexer-pool]} t
+   resource-handle-updates]
+  (with-open [_ (prom/timer duration-seconds node-name "update-resource-handle-cache")]
+    (rhc/update! resource-handle-cache tx-indexer-pool t resource-handle-updates)))
+
 (defn- commit-success!
   "Commits the success of the transaction with `t`.
 
   Updates the resource handle cache with the `resource-handle-updates` of that
   transaction before advancing to `t`, so that no reader sees `t` before the
   cache reflects it."
-  [{:keys [node-name kv-store resource-handle-cache tx-indexer-pool state]} t
-   instant resource-handle-updates]
+  [{:keys [resource-handle-cache] :as node} t instant
+   resource-handle-updates]
   (log/trace "commit transaction success with t =" t)
-  (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
-    (kv/put! kv-store (tx-success-entries t instant)))
+  (store-tx-success-entries! node t instant)
   (when resource-handle-cache
-    (rhc/update! resource-handle-cache tx-indexer-pool t resource-handle-updates))
-  (advance-t! state t))
+    (update-resource-handle-cache! node t resource-handle-updates))
+  (advance-t! node t))
 
 (defn- observe-index-resources!
   "Observes `timer` after all chunks of a transaction completed, so that it
