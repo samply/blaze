@@ -23,6 +23,13 @@
    :values ["index" "transaction" "resource"]
    :selected ["index" "resource"]}
   {:type :custom
+   :name "node"
+   :label "Node"
+   :description "Database node."
+   :multi true
+   :values ["main" "admin"]
+   :selected ["main"]}
+  {:type :custom
    :name "quantile"
    :multi true
    :hide true
@@ -534,66 +541,76 @@
      [{:expr "rate(blaze_cache_evictions_total{job=~\"$job\",instance=~\"$instance\",name=\"terminology-service-graph-cache\"}[$__rate_interval])"
        :legend ""}]}]}
 
-  {:title "Node"
+  {:title "Node $node"
+   :repeat "node"
    :panels
    [{:title "Indexer Utilization"
      :description "The indexer thread of a node is either waiting for transactions to arrive, waiting for the resources it dispatched to be indexed or doing work of its own. Busy is the time it doesn't wait for transactions, so at 100 % the node indexes as fast as it can. Working leaves the waiting for the resource indexing out as well and so is the utilization of the indexer thread itself. The gap between the two is the time the resource indexing is the bottleneck, which more DB_RESOURCE_INDEXER_THREADS can shrink, while a working curve close to 100 % means the indexer thread itself is the limit."
      :unit "percentunit"
      :max 1
      :queries
-     [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"poll-tx-log\"}[$__rate_interval])"
-       :legend "{{node}} busy"}
-      {:expr "1 - sum without (op) (rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=~\"poll-tx-log|await-resources\"}[$__rate_interval]))"
-       :legend "{{node}} working"}]}
+     [{:expr "1 - rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=\"poll-tx-log\"}[$__rate_interval])"
+       :legend "busy"}
+      {:expr "1 - sum without (op) (rate(blaze_db_node_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=~\"poll-tx-log|await-resources\"}[$__rate_interval]))"
+       :legend "working"}]}
     {:title "Submit Rejections"
      :description "Transaction submits per second rejected because the maximum number of in-flight transactions was already reached. Sustained rejections mean the indexing doesn't keep up with the rate of incoming transactions."
      :unit "ops"
      :queries
-     [{:expr "sum(rate(blaze_db_node_submit_rejections_total{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node)"
+     [{:expr "sum(rate(blaze_db_node_submit_rejections_total{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node)"
        :legend "{{node}}"}]}
     {:title "Publishing Lag"
      :description "Distance in t between the last transaction indexed by a node and the point in time up to which transactions were examined for a changed resources subscriber. A lag that keeps growing means either the publishing doesn't keep up with the transaction rate or that subscriber doesn't consume fast enough."
      :unit "none"
      :queries
-     [{:expr "blaze_db_node_publishing_lag_t{job=~\"$job\",instance=~\"$instance\"}"
-       :legend "{{node}} {{type}} {{subscriber}}"}]}
+     [{:expr "blaze_db_node_publishing_lag_t{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}"
+       :legend "{{type}} {{subscriber}}"}]}
     {:title "Queued Transactions"
      :description "Number of transactions whose changed resources were queued for but not yet delivered to a changed resources subscriber. Bounded by the queue capacity, so a value sitting at that capacity means the subscriber itself doesn't consume fast enough, while a publishing lag growing with an empty queue points at the publishing instead."
      :unit "none"
      :queries
-     [{:expr "blaze_db_node_publishing_lag_transactions{job=~\"$job\",instance=~\"$instance\"}"
-       :legend "{{node}} {{type}} {{subscriber}}"}]}
+     [{:expr "blaze_db_node_publishing_lag_transactions{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}"
+       :legend "{{type}} {{subscriber}}"}]}
     {:title "Durations 0.5 Quantile"
      :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones."
      :unit "s"
+     :overrides
+     [{"matcher" {"id" "byName" "options" "poll-tx-log"}
+       "properties" [{"id" "custom.hideFrom" "value" {"legend" false "tooltip" false "viz" true}}]}]
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
-       :legend "{{node}} {{op}}"}]}
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{op}}"}]}
     {:title "Durations 0.99 Quantile"
      :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones."
      :unit "s"
+     :overrides
+     [{"matcher" {"id" "byName" "options" "poll-tx-log"}
+       "properties" [{"id" "custom.hideFrom" "value" {"legend" false "tooltip" false "viz" true}}]}]
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
-       :legend "{{node}} {{op}}"}]}
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{op}}"}]}
     {:title "Mean Index Batch Size"
      :description "Mean number of transactions the indexer indexes in one batch. Shows how many transactions the indexing loop overlaps the resource indexing across. Empty batches aren't observed."
      :unit "none"
      :queries
-     [{:expr "rate(blaze_db_node_index_batch_transactions_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) / rate(blaze_db_node_index_batch_transactions_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])"
+     [{:expr "rate(blaze_db_node_index_batch_transactions_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval]) / rate(blaze_db_node_index_batch_transactions_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])"
        :legend "{{node}}"}]}
     {:title "Index Batch Size 0.5 Quantile"
      :description "Median number of transactions the indexer indexes in one batch."
      :unit "none"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_index_batch_transactions_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_index_batch_transactions_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
        :legend "{{node}}"}]}
     {:title "Index Batch Size 0.99 Quantile"
      :description "99% quantile of the number of transactions the indexer indexes in one batch. A value sitting at the maximum poll size means the indexer doesn't keep up with the transaction rate."
      :unit "none"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_index_batch_transactions_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
-       :legend "{{node}}"}]}
-    {:title "Transaction Size 0.5 Quantile"
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_index_batch_transactions_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}]}
+
+  {:title "Transaction Size"
+   :panels
+   [{:title "Transaction Size 0.5 Quantile"
      :description "Mean number of commands per transaction."
      :unit "none"
      :legend false
