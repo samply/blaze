@@ -52,6 +52,8 @@ The transaction test sweeps over the concurrency levels 1 to 128, one after the 
 BASE=http://localhost:8080/fhir VUS=64 DURATION=300 k6 run transaction.js
 ```
 
+To record a profile of Blaze at a single level, use the `profile-transaction.sh` script described in [Profiling](profiling.md#transaction-load-test).
+
 ## Single Patient Reads
 
 ### Results

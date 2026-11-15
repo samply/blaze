@@ -117,7 +117,17 @@ start-profiling-after-warmup() {
   fi
 }
 
-# Starts the profiler armed by `profile` unless it's already started. Called by
+# Arms the profiler for the test with the name given as second argument, run
+# against Blaze of the compose file given as first argument, so that
+# `start-profiling` starts it and `stop-profiling` names the files it writes
+# after the test.
+arm-profiling() {
+  profiling_compose_file="$1"
+  profiling_name="$2"
+  profiling_started=""
+}
+
+# Starts the profiler armed by `arm-profiling` unless it's already started. Called by
 # the tests after their warmup, so that only the measured runs are profiled.
 # Does nothing if no profiler is armed.
 start-profiling() {
@@ -203,9 +213,7 @@ profile() {
     return
   fi
 
-  profiling_compose_file="$compose_file"
-  profiling_name="$name"
-  profiling_started=""
+  arm-profiling "$compose_file" "$name"
 
   trap abort-profiling EXIT
   "$@"
@@ -215,6 +223,16 @@ profile() {
     echo "🆘 the test $name didn't start the profiler"
     exit 1
   fi
+
+  stop-profiling
+}
+
+# Stops the profiler started by `start-profiling` and writes its recording into
+# the current directory, as `<name>.jfr`, `<name>.folded` and `<name>.html`,
+# named after the test the profiler was armed for.
+stop-profiling() {
+  local compose_file="$profiling_compose_file"
+  local name="$profiling_name"
 
   run-asprof "$compose_file" stop
   profiling_name=""

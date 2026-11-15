@@ -1,6 +1,6 @@
 # Profiling
 
-The performance test scripts of the [CQL](cql.md) and [FHIR Search](fhir-search.md) sections can record a profile of Blaze with [async-profiler][1] while they run. This page describes how to set up Blaze for profiling and how to run the scripts.
+The performance test scripts of the [CQL](cql.md) and [FHIR Search](fhir-search.md) sections and the transaction test of the [Load Testing](load-testing.md#transaction) section can record a profile of Blaze with [async-profiler][1] while they run. This page describes how to set up Blaze for profiling and how to run the scripts.
 
 ## Test Scripts
 
@@ -80,4 +80,25 @@ PROFILE=count-72514-3 PROFILE_EVENT=alloc REPEATS=32 docs/performance/fhir-searc
 
 `TEST` without `PROFILE` runs the selected tests without profiling, which is useful to repeat a single measurement.
 
+## Transaction Load Test
+
+The transaction test is run by [k6][2] instead of a test script, so it's profiled by the `profile-transaction.sh` script in `docs/performance/load-testing`. It takes the system whose `docker-compose-<system>.yml` Blaze runs with as argument and profiles the single concurrency level given in the `VUS` environment variable, which is required, because every level has its own ratio of per-batch to per-entry work:
+
+```sh
+VUS=128 docs/performance/load-testing/profile-transaction.sh LEA79
+```
+
+Like `reset.sh` in front of a run of the sweep, the script restarts Blaze with an empty database. It adds `docker-compose-profiling.yml` to the Compose file of the system, which mounts async-profiler from `/opt/async-profiler` on the host and loads its agent via `JDK_JAVA_OPTIONS`. The Java launcher reads that variable in addition to `JAVA_TOOL_OPTIONS`, so the JVM options of the system stay as they are, and the Compose files of the systems stay without the agent, so that the runs of the sweep aren't affected.
+
+The script then runs `transaction.js` and starts the profiler once the warmup in the setup of the test has finished, so that the profile covers the measured scenario only. The profiler stops when k6 exits. In addition to the three files described above, named `transaction-<system>-c<VUS>`, the script writes the output of k6 into `<name>.log`, which contains the throughput and the latencies of the profiled run.
+
+`PROFILE_EVENT`, `PROFILE_INTERVAL` and `ASYNC_PROFILER_HOME` apply as described above. `BASE`, `DURATION` and `WARMUP` are passed on to `transaction.js`.
+
+The folded stacks start with the thread, so the profile of a single thread, like the indexer thread of the main node, can be selected by its name:
+
+```sh
+grep '^\[main-indexer' transaction-LEA79-c128.folded > main-indexer.folded
+```
+
 [1]: <https://github.com/async-profiler/async-profiler>
+[2]: <https://k6.io>

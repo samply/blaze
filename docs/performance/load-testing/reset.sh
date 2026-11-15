@@ -7,11 +7,19 @@ set -euo pipefail
 # Compose file of the system mounts as data volume, starts the container again
 # and waits for Blaze to become healthy.
 #
-# Usage: ./reset.sh <system>
+# The optional second argument is a Compose file with additions to the one of
+# the system, like docker-compose-profiling.yml, that Blaze is started with.
+#
+# Usage: ./reset.sh <system> [<additional compose file>]
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 SYSTEM="$1"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose-$SYSTEM.yml"
+COMPOSE_ARGS=(-f "$COMPOSE_FILE")
+
+if [ -n "${2:-}" ]; then
+  COMPOSE_ARGS+=(-f "$2")
+fi
 
 if [ ! -f "$COMPOSE_FILE" ]; then
   echo "missing Compose file $COMPOSE_FILE" >&2
@@ -32,9 +40,9 @@ if [ ! -d "$DATA_DIR" ]; then
   exit 1
 fi
 
-docker compose -f "$COMPOSE_FILE" down
+docker compose "${COMPOSE_ARGS[@]}" down
 
 echo "deleting the contents of $DATA_DIR"
 find "$DATA_DIR" -mindepth 1 -delete
 
-docker compose -f "$COMPOSE_FILE" up -d --wait
+docker compose "${COMPOSE_ARGS[@]}" up -d --wait
