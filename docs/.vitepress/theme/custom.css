@@ -132,7 +132,10 @@
   stroke-width: 2;
 }
 
-/* Dashes tell a reference curve apart from a measured one at a glance. */
+/*
+ * Dashes tell a reference curve apart from a measured one, or the older of two
+ * compared versions apart from the newer one, at a glance.
+ */
 .blaze-chart-line-dashed {
   stroke-dasharray: 6 5;
 }
@@ -204,4 +207,37 @@
   .blaze-chart {
     break-inside: avoid;
   }
+}
+
+/* Version selection of the transaction load test charts. */
+.version-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+
+.version-buttons button {
+  padding: 2px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--vp-c-text-2);
+  transition:
+    color 0.25s,
+    border-color 0.25s,
+    background-color 0.25s;
+}
+
+.version-buttons button:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.version-buttons button[aria-pressed="true"] {
+  border-color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
 }

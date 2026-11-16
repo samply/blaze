@@ -15,6 +15,7 @@ const RAW = import.meta.glob<string>(
     "../../../performance/disk-perf/*.json",
     "../../../performance/fhir-search/chart-data/*.txt",
     "../../../performance/load-testing/data/*.csv",
+    "../../../performance/load-testing/data/transaction/*/*.csv",
     "../../../performance/terminology-service/data/*.csv",
   ],
   { query: "?raw", import: "default", eager: true },
@@ -80,6 +81,22 @@ export function content(src: string): string {
     );
   }
   return content;
+}
+
+/**
+ * Returns the names of the data files directly in the directory `dir`, given
+ * relative to `docs/performance`.
+ */
+export function list(dir: string): string[] {
+  const prefix = `${dir}/`;
+  const names = Object.keys(FILES)
+    .filter((path) => path.startsWith(prefix))
+    .map((path) => path.slice(prefix.length))
+    .filter((name) => !name.includes("/"));
+  if (names.length === 0) {
+    throw new Error(`no chart data files in ${dir}`);
+  }
+  return names;
 }
 
 /**

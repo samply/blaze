@@ -78,6 +78,12 @@ Rigorous adherence to these patterns is required:
 * **Environment Variables:** Every new environment variable introduced via `#blaze/cfg` in `resources/blaze.edn` must be documented in `docs/deployment/environment-variables.md`, following the existing format (heading, description, default value, since badge).
 * **API Behaviour:** Before finishing, state whether the change alters what a client can observe on an existing interaction or operation (accepted header, parameter, status code, response media type). If it does, update the corresponding page under `docs/api/`, including the sibling pages sharing that behaviour, and badge new sections with the version of the issue's GitHub milestone (`gh issue view <issue-number> --json milestone`). If it's unclear whether a behaviour change is user-facing, ask rather than guess.
 
+## Design Documents
+
+* Before implementing a feature that involves real design decisions (competing approaches, non-obvious rules, migrations), write a design document and get it approved. Bug fixes and small enhancements need none; the GitHub issue is enough.
+* Put it in `specs/YYYY-MM-DD-<topic>-design.md`, never under `docs/`, which is published. Cover the intent, goals and non-goals, the approaches considered with the one chosen, and the decisions made.
+* Commit the design together with the change. Don't commit implementation plans: they are build instructions and go stale once the code exists.
+
 ## Release Notes
 
 When generating a `CHANGELOG.md` entry for a new version:

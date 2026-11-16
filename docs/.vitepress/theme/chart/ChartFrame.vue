@@ -217,6 +217,7 @@ const baselineY = () => props.baseline ?? props.plot.bottom;
               :stroke="entry.color"
             />
             <circle
+              v-if="entry.marker ?? true"
               class="blaze-chart-marker"
               cx="8"
               cy="6"

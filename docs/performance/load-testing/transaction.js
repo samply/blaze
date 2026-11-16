@@ -9,6 +9,10 @@ const system = __ENV.SYSTEM;
 const run = __ENV.RUN;
 const warmup = __ENV.WARMUP || 1000;
 
+// The version the server under test is expected to report. Optional, but when
+// it is set, a different version fails the test.
+const expectedVersion = __ENV.VERSION;
+
 // The concurrency levels of the sweep, one scenario each, run one after the
 // other.
 const sweep = [1, 2, 4, 8, 16, 32, 64, 128];
@@ -209,6 +213,10 @@ function softwareVersion() {
 export function setup() {
 	const version = softwareVersion();
 
+	if (expectedVersion && version !== expectedVersion) {
+		fail(`expected Blaze ${expectedVersion} but the server reports ${version}`);
+	}
+
 	console.log(`testing Blaze ${version}`);
 
 	// The transaction test creates resources itself, so its throughput depends on
@@ -260,6 +268,6 @@ export function handleSummary(data) {
   // A single level run reports on stdout instead, so that it leaves the
   // committed CSV of the sweep alone.
   return singleLevel === null
-    ? { [`data/raw/transaction-${system}-${run}.csv`]: lines }
+    ? { [`data/raw/transaction/${system}/${data.setup_data.version}-${run}.csv`]: lines }
     : { stdout: lines };
 }

@@ -4,7 +4,10 @@ install:
 update:
 	npm update
 
-build: install
+test: install
+	npm test
+
+build: test
 	npm run docs:build
 
-.PHONY: install update build
+.PHONY: install update test build

@@ -6,7 +6,10 @@
 # level of the sweep and the JVM heap is fixed at its maximum size.
 services:
   blaze:
-    image: "samply/blaze:main"
+    # transaction.sh sets IMAGE to the image of the run; the default is the
+    # locally built development image blaze:latest, which need not match the
+    # checkout
+    image: "${IMAGE:-blaze:latest}"
     # the user that owns the data directory, so that reset.sh can empty it
     user: "1000:1000"
     environment:

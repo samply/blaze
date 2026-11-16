@@ -179,7 +179,10 @@ export interface Point {
 export interface Curve {
   name: string;
   color: string;
-  /** A dashed curve reads as a reference, not as a measurement. */
+  /**
+   * A dashed curve reads as a reference, not as a measurement, or, in a
+   * version comparison, as the older of the two versions.
+   */
   dashed?: boolean;
   points: Point[];
 }
@@ -202,6 +205,8 @@ export interface LegendEntry {
   color: string;
   shape: "line" | "rect";
   dashed?: boolean;
+  /** Whether a line entry shows the marker of its curve. Defaults to true. */
+  marker?: boolean;
 }
 
 /** Returns a function projecting a value of `axis` onto `[from, to]`. */

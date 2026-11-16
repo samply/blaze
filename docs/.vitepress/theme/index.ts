@@ -4,6 +4,7 @@ import BarChart from "./chart/BarChart.vue";
 import DiskPerfChart from "./chart/DiskPerfChart.vue";
 import DiskPerfStats from "./chart/DiskPerfStats.vue";
 import LineChart from "./chart/LineChart.vue";
+import VersionedLineChart from "./chart/VersionedLineChart.vue";
 import "./custom.css";
 
 // The chart components are registered globally so that a chart's `src` is
@@ -16,5 +17,6 @@ export default {
     app.component("DiskPerfChart", DiskPerfChart);
     app.component("DiskPerfStats", DiskPerfStats);
     app.component("LineChart", LineChart);
+    app.component("VersionedLineChart", VersionedLineChart);
   },
 } satisfies Theme;

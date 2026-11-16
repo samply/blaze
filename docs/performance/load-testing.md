@@ -40,11 +40,30 @@ The optional `DURATION` environment variable (default 60 s) sets how long each c
 
 The transaction test reads the version of the system under test from its CapabilityStatement and writes it into the `version` column of its results, so that each result file carries the version it was measured against.
 
-Single runs of the transaction test vary by about 5 % in throughput, so the `Makefile` runs it three times per system, keeps each run in `load-testing/data/raw` and publishes the per-level median of the runs. Every run needs an empty server, so for this test k6 runs on the system under test itself, where Blaze is started via the `docker-compose-<system>.yml` of that system. In front of every run, the `reset.sh` script shuts Blaze down, deletes the contents of the host directory the Compose file mounts as data volume, starts Blaze again and waits for it to become healthy:
+Single runs of the transaction test vary by about 5 % in throughput, so each measurement consists of three runs, of which the per-level median is published. Every run needs an empty server, so for this test k6 runs on the system under test itself, where Blaze is started via the `docker-compose-<system>.yml` of that system. In front of every run, the `reset.sh` script shuts Blaze down, deletes the contents of the host directory the Compose file mounts as data volume, starts Blaze again and waits for it to become healthy.
+
+The results of several Blaze versions are kept side by side, so that the development of the performance can be followed over time. A version is either a release like `1.10.0` or, for a development build, the commit hash the build reports as its version in the CapabilityStatement. The `transaction` target of the `Makefile` runs the test on one system, named by `SYSTEM`, against one version. To measure a release, pass its version in `VERSION`. Blaze is then started from the image `samply/blaze:<version>`, and k6 fails the run if the server reports another version:
 
 ```sh
-BASE=http://localhost:8080/fhir make data/transaction-LEA47.csv
+make transaction SYSTEM=LEA47 VERSION=1.10.0
 ```
+
+Without `VERSION`, the target measures a development build. Blaze is then started from the image `blaze:latest`, which has to be built on the system under test beforehand. The commit hash is not known when calling `make`, so the target takes the version from the running server:
+
+```sh
+make transaction SYSTEM=LEA47
+```
+
+To measure another image instead, like the current main branch, name it in `IMAGE`. The results are named after the version the server reports, so they are named correctly whatever image runs. Compose pulls an image only if it's missing, so pull it beforehand to measure its newest build:
+
+```sh
+docker pull samply/blaze:main
+IMAGE=samply/blaze:main make transaction SYSTEM=LEA47
+```
+
+The target always runs, even if the results of that version already exist, and replaces them. Each system keeps the results of at most one development build, so a new development run replaces the previous one. A release run also replaces the development build of that system if its commit is contained in the release, that is, if it is an ancestor of the release tag `v<version>`. The check needs the tags, so run `git fetch --tags` beforehand. If git doesn't know the commit or the tag, the development run is kept and a warning is printed. Only the results of releases accumulate.
+
+The median of the three runs is written to `load-testing/data/transaction/<system>/<version>.csv`, and the single runs are kept in `load-testing/data/raw/transaction/<system>/<version>-<run>.csv`. When the testing method changes, all stored releases are run again with the new method, so that all results of a system were measured the same way.
 
 The transaction test sweeps over the concurrency levels 1 to 128, one after the other. The optional `VUS` environment variable restricts it to a single level, which is what to use while profiling the server: the batches of the transaction log and the resource store grow with the number of concurrent clients, so every level has its own ratio of per-batch to per-entry work that a profile over the whole sweep would blur. Such a run reports its result line on stdout instead of writing the CSV, so it leaves the committed sweep data alone:
 
@@ -94,21 +113,21 @@ All runs start from an empty database and grow it with every request, so there i
 
 Every transaction durably writes its transaction log entry and its resources before it is answered, so the disk's sync behaviour sets the processing time. It does not cap the throughput, though: the transaction log batches all transactions submitted while the previous write was in flight into a single write followed by one fsync, and the resource store group-commits its concurrent writers the same way. The batches grow with the number of concurrent clients, so throughput scales past the disk's raw fsync rate.
 
-All values are the per-level medians of three runs against a development build of Blaze at commit `5773c58b`.
+All values are the per-level medians of three runs. The charts show the newest run of each system by default, a development build of Blaze at commit `5773c58b`, and the text below describes that run. The buttons above each chart select the versions to show, and up to two of them can be compared in the same chart.
 
-<LineChart src="load-testing/data/transaction-LEA47.csv"
+<VersionedLineChart dir="load-testing/data/transaction/LEA47"
   title="Transaction (LEA47)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
 LEA47 scales to about 2630 transactions/s at 32 clients — more than five transactions per fsync at its 484 fsyncs/s — and on to 3327 at 64 clients, but gains little beyond that with 3621 at 128 clients, about seven and a half transactions per fsync. The median processing time roughly doubles at each of the last two levels instead, from 11 ms at 32 clients to 18 ms at 64 and 34 ms at 128, with a q99 of 74 ms at 128 clients. With the throughput staying put while the concurrency doubles, the clients added beyond 64 only queue.
 
-<LineChart src="load-testing/data/transaction-LEA79.csv"
+<VersionedLineChart dir="load-testing/data/transaction/LEA79"
   title="Transaction (LEA79)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
 LEA79 syncs from a write cache in a few microseconds and is not disk-bound at all: throughput scales to about 12,800 transactions/s at 16 clients and grows more slowly from there, to about 16,900 at 64 and 19,600 at 128 clients, with a median processing time of 6.1 ms and a q99 of 8.8 ms at 128 clients.
 
-<LineChart src="load-testing/data/transaction-A5N46.csv"
+<VersionedLineChart dir="load-testing/data/transaction/A5N46"
   title="Transaction (A5N46)"
   x-log :x-min="1" :x-max="128" :x-ticks="[1, 2, 4, 8, 16, 32, 64, 128]" />
 
