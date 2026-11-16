@@ -155,6 +155,16 @@
   and with the ops of later transactions, because the indexing loop dispatches
   the resource indexing of later transactions before it applies earlier ones.
 
+  The `store-tx-commit-entries` is the single write committing a successful
+  transaction. It stores the success marker of that transaction together with
+  its index entries, unless they came in several parts. Only those are stored
+  before, by `store-tx-entries`, so a transaction small enough for a single part
+  doesn't observe `store-tx-entries` at all.
+
+  The `build-patient-last-change-index` is the write of the initial entries of
+  the PatientLastChange index, which a node builds once, on the first start
+  without it.
+
   The `index-resources` of a transaction is observed even if its
   `index-transactions` failed, because the resources were indexed and did cost
   time either way.
@@ -410,29 +420,21 @@
   (advance-error-t! state t))
 
 (defn- store-tx-entries!
-  "Stores `entry-parts`, the index entries of a transaction in parts, one put
-  per part.
+  "Stores `entry-parts`, the index entries of a large transaction in several
+  parts, one put per part.
 
-  A transaction that changes nothing has no part and needs no put. A single
-  part is put on the calling thread. Several parts are put in parallel on
-  `pool`, because putting an entry takes a call into the store, and the store
-  inserts the entries of concurrent puts in parallel.
+  Puts the parts in parallel on `pool`, because putting an entry takes a call
+  into the store, and the store inserts the entries of concurrent puts in
+  parallel.
 
   The parts don't have to be stored atomically, because the entries of a
   transaction are invisible until its success is committed (see
   `commit-success!`)."
   [node-name kv-store pool entry-parts]
   (log/trace "store" (transduce (map count) + entry-parts)
-             "transaction index entries in" (count entry-parts) "part(s)")
+             "transaction index entries in" (count entry-parts) "parts")
   (with-open [_ (prom/timer duration-seconds node-name "store-tx-entries")]
-    (case (count entry-parts)
-      0 nil
-      1 (kv/put! kv-store (first entry-parts))
-      (f/run-parallel! pool (partial kv/put! kv-store) entry-parts))))
-
-(defn- tx-success-entries [t instant]
-  [(tx-success/index-entry t instant)
-   (t-by-instant/index-entry instant t)])
+    (f/run-parallel! pool (partial kv/put! kv-store) entry-parts)))
 
 (defn- changed-handles
   "Returns a vector of the resource handles of `type` changed in each
@@ -778,11 +780,17 @@
           (ac/complete! publish-finished true)
           (log/trace "exit changed resources publisher"))))))
 
-(defn- store-tx-success-entries!
-  "Stores the index entries marking the transaction with `t` as successful."
-  [{:keys [node-name kv-store]} t instant]
-  (with-open [_ (prom/timer duration-seconds node-name "store-tx-success-entries")]
-    (kv/put! kv-store (tx-success-entries t instant))))
+(defn- store-tx-commit-entries!
+  "Stores the index entries marking the transaction with `t` as successful
+  together with `entries`, the index entries of that transaction not stored
+  yet, in a single put.
+
+  That put is atomic, so the entries of the transaction never become visible
+  without its success marker."
+  [{:keys [node-name kv-store]} t instant entries]
+  (with-open [_ (prom/timer duration-seconds node-name "store-tx-commit-entries")]
+    (kv/put! kv-store (conj entries (tx-success/index-entry t instant)
+                            (t-by-instant/index-entry instant t)))))
 
 (defn- update-resource-handle-cache!
   "Updates the resource handle cache with the `resource-handle-updates` of the
@@ -795,13 +803,21 @@
 (defn- commit-success!
   "Commits the success of the transaction with `t`.
 
+  Stores its success marker together with `entries`, its index entries not
+  stored by `verify-tx!` already, in a single write, because each write costs
+  the time of joining the write group of the store, regardless of its size.
+
+  Takes `tx-stats`, the stats of that transaction, over only after its entries
+  are stored, which keeps the stats in sync with the indexes.
+
   Updates the resource handle cache with the `resource-handle-updates` of that
   transaction before advancing to `t`, so that no reader sees `t` before the
   cache reflects it."
-  [{:keys [resource-handle-cache] :as node} t instant
+  [{:keys [resource-handle-cache stats] :as node} t instant entries tx-stats
    resource-handle-updates]
   (log/trace "commit transaction success with t =" t)
-  (store-tx-success-entries! node t instant)
+  (store-tx-commit-entries! node t instant entries)
+  (vreset! stats tx-stats)
   (when resource-handle-cache
     (update-resource-handle-cache! node t resource-handle-updates))
   (advance-t! node t))
@@ -821,18 +837,21 @@
 
 (defn- verify-tx!
   "Verifies the transaction of `tx-chunk-state` against the database value
-  before it and stores its transaction index entries — step 2 of applying a
-  transaction.
+  before it — step 2 of applying a transaction.
 
-  Doesn't wait for the resources of that transaction, because the entries it
-  writes are keyed by its `t` and stay invisible until `commit-tx!` moves the
-  head of the TxSuccess index. Only that last step needs the resources to be
-  indexed.
+  Stores the transaction index entries of an accepted transaction only if they
+  come in several parts, putting them in parallel. Doesn't wait for the
+  resources of that transaction then, because the entries are keyed by its `t`
+  and stay invisible until `commit-tx!` moves the head of the TxSuccess index.
+  Only that last step needs the resources to be indexed.
 
   Returns `tx-chunk-state` marked as verified, carrying the anomaly of a
   rejected transaction, so that `commit-tx!` commits the error instead of the
-  success. Carries the updates of the resource handle cache of an accepted
-  transaction, if the node has one, so that `commit-tx!` can apply them.
+  success. Carries the index entries of an accepted transaction that fit into
+  a single part, so that `commit-tx!` stores them together with its success
+  marker, and its stats, so that `commit-tx!` takes them over once its entries
+  are stored. Carries its updates of the resource handle cache as well, if the
+  node has one, so that `commit-tx!` can apply them.
 
   Drops the chunks of a rejected transaction that aren't dispatched yet, because
   a transaction that produces no version references none of the index entries
@@ -855,13 +874,12 @@
         (when (seq chunks)
           (observe-index-resources! timer pending))
         (assoc tx-chunk-state :verified? true :anomaly result :chunks []))
-      (do
-        (store-tx-entries! node-name kv-store tx-indexer-pool (:entries result))
-        ;; taking the stats over only after the entries were stored keeps them
-        ;; in sync with the indexes, so that a transaction that wasn't stored
-        ;; leaves them untouched
-        (vreset! stats (:stats result))
-        (cond-> (assoc tx-chunk-state :verified? true)
+      (let [[entries & more :as entry-parts] (:entries result)]
+        (when more
+          (store-tx-entries! node-name kv-store tx-indexer-pool entry-parts))
+        (cond-> (assoc tx-chunk-state :verified? true :tx-stats (:stats result))
+          (nil? more)
+          (assoc :entries entries)
           resource-handle-cache
           (assoc :resource-handle-updates (:resource-handle-updates result)))))))
 
@@ -870,11 +888,15 @@
   `tx-chunk-state` — step 3 of applying a transaction.
 
   Runs after the resources of that transaction were indexed, because the success
-  marker is what makes them reachable."
-  [node {{:keys [t instant]} :tx-data :keys [anomaly resource-handle-updates]}]
+  marker is what makes them reachable. The success marker is stored together
+  with the index entries `verify-tx!` left to store, so that the commit of a
+  transaction whose entries fit into a single part is the only write of it."
+  {:arglists '([node tx-chunk-state])}
+  [node {{:keys [t instant]} :tx-data
+         :keys [anomaly entries tx-stats resource-handle-updates]}]
   (if anomaly
     (commit-error! node t anomaly)
-    (commit-success! node t instant resource-handle-updates)))
+    (commit-success! node t instant entries tx-stats resource-handle-updates)))
 
 (defn- cmd-rs-keys
   "Returns the resource store keys of all resources of `tx-cmds` that have to be
@@ -1015,11 +1037,10 @@
   with the size of a transaction. A chunk always fits into the look-ahead, so
   the loop can always dispatch.
 
-  Verifies and stores the transaction index entries of the head transaction as
-  soon as it is the head, without waiting for its own resources, so that a batch
-  of a single transaction overlaps them as well. Only the commit of that
-  transaction waits for them, and a rejected one doesn't dispatch the chunks it
-  has left at all.
+  Verifies the head transaction as soon as it is the head, without waiting for
+  its own resources, so that a batch of a single transaction overlaps them as
+  well. Only the commit of that transaction waits for them, and a rejected one
+  doesn't dispatch the chunks it has left at all.
 
   Chunks are awaited in dispatch order and transactions are applied in order, so
   the order of the observable effects is unchanged. Stops after the transaction
@@ -1553,12 +1574,12 @@
          (d/type-list db "Patient"))))))
 
 (defn build-patient-last-change-index
-  [key {:keys [node-name kv-store tx-indexer-pool] :as node}]
+  [key {:keys [node-name kv-store] :as node}]
   (let [{:keys [type]} (plc/state kv-store)]
     (when (identical? :building type)
       (log/info "Building PatientLastChange index of" (node-util/component-name key "node"))
-      (store-tx-entries! node-name kv-store tx-indexer-pool
-                         [(initial-plc-index-entries node)])
+      (with-open [_ (prom/timer duration-seconds node-name "build-patient-last-change-index")]
+        (kv/put! kv-store (initial-plc-index-entries node)))
       (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))))
 
 (defn- compile-read-only-matcher

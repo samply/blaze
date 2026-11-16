@@ -466,6 +466,13 @@
              (:blaze.db/node config))
       (dissoc :blaze.db/node)))
 
+(defn- with-manual-scheduler
+  "Returns `config` with a scheduler that runs the tasks of the node, like the
+  build of the PatientLastChange index, only when the test says so."
+  [config]
+  (-> (assoc-in config [:blaze.db/node :scheduler] (ig/ref :blaze.test/manual-scheduler))
+      (assoc :blaze.test/manual-scheduler {})))
+
 (defn- duration-seconds-ops
   "Returns the set of ops observed for the node with `node-name`."
   [node-name]
@@ -512,37 +519,37 @@
   (clear-duration-seconds!)
 
   (testing "durations are labeled with the name of the node"
-    (with-system [{:blaze.db/keys [node]} no-resource-handle-cache-config]
+    (with-system [{:blaze.db/keys [node]}
+                  (with-manual-scheduler no-resource-handle-cache-config)]
       @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
            (ac/then-compose (partial tx-result-after-indexing node)))
 
       (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-               "await-resources" "store-tx-entries"
-               "store-tx-success-entries" "advance-t"}
+               "await-resources" "store-tx-commit-entries" "advance-t"}
              (duration-seconds-ops "main"))))
 
     (doseq [name ["main" "admin" "name-153446"]]
       (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
-                    (named-node-config no-resource-handle-cache-config name)]
+                    (named-node-config
+                     (with-manual-scheduler no-resource-handle-cache-config)
+                     name)]
         @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
              (ac/then-compose (partial tx-result-after-indexing node)))
 
         (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-                 "await-resources" "store-tx-entries"
-                 "store-tx-success-entries" "advance-t"}
+                 "await-resources" "store-tx-commit-entries" "advance-t"}
                (duration-seconds-ops name))))))
 
   (testing "with resource handle cache, its update is timed"
     (let [name "rhc-170112"]
       (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
-                    (named-node-config config name)]
+                    (named-node-config (with-manual-scheduler config) name)]
         @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
              (ac/then-compose (partial tx-result-after-indexing node)))
 
         (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-                 "await-resources" "store-tx-entries"
-                 "store-tx-success-entries" "update-resource-handle-cache"
-                 "advance-t"}
+                 "await-resources" "store-tx-commit-entries"
+                 "update-resource-handle-cache" "advance-t"}
                (duration-seconds-ops name)))))))
 
 (deftest transact-test
@@ -922,8 +929,7 @@
     (is node)))
 
 (def ^:private manual-scheduler-config
-  (-> (assoc-in config [:blaze.db/node :scheduler] (ig/ref :blaze.test/manual-scheduler))
-      (assoc :blaze.test/manual-scheduler {})))
+  (with-manual-scheduler config))
 
 (deftest patient-last-change-index-state-test
   (testing "the state is set to current on a fresh start of the node"
@@ -939,6 +945,8 @@
         :type := :current))))
 
 (deftest build-patient-last-change-index-test
+  (clear-duration-seconds!)
+
   (testing "patients existing before the index is built get an entry with the t of the build"
     (with-system [{:blaze.db/keys [node]
                    :blaze.test/keys [manual-scheduler]} manual-scheduler-config]
@@ -953,6 +961,11 @@
 
       (given (plc/state (:kv-store node))
         :type := :current)
+
+      (testing "the build is timed as an op of its own"
+        (is (contains? (duration-seconds-ops "main")
+                       "build-patient-last-change-index"))
+        (is (not (contains? (duration-seconds-ops "main") "store-tx-entries"))))
 
       (with-db [db node]
         (is (= 1 (d/patient-compartment-last-change-t db "0")))
@@ -1299,56 +1312,66 @@
             (testing "only the resource of the put command is fetched"
               (is (= [1] @sizes)))))))))
 
-(defmethod ig/init-key ::tx-entries-signalling-kv-store [_ {:keys [kv-store signal]}]
+(defmethod ig/init-key ::put-recording-kv-store [_ {:keys [kv-store puts]}]
   (reify p/KvStore
     (-new-snapshot [_]
       (p/-new-snapshot kv-store))
     (-get [_ column-family key]
       (p/-get kv-store column-family key))
     (-put [_ entries]
-      ;; the transaction index entries of step 2 are the only ones written into
-      ;; the ResourceAsOf index
-      (when (some (comp #{:resource-as-of-index} first) entries)
-        (ac/complete! signal true))
+      (swap! puts conj (into #{} (map first) entries))
       (p/-put kv-store entries))))
 
-(defn- with-tx-entries-signalling-kv-store
-  "Completes `signal` as soon as the node of `config` writes the transaction
-  index entries of a transaction."
-  [config signal]
+(defn- with-put-recording-kv-store
+  "Records the set of column families of each put of the node of `config` in
+  the atom `puts`."
+  [config puts]
   (-> (assoc-in config [:blaze.db/node :kv-store]
-                (ig/ref ::tx-entries-signalling-kv-store))
-      (assoc ::tx-entries-signalling-kv-store
-             {:kv-store (ig/ref :blaze.db/index-kv-store) :signal signal})))
+                (ig/ref ::put-recording-kv-store))
+      (assoc ::put-recording-kv-store
+             {:kv-store (ig/ref :blaze.db/index-kv-store) :puts puts})))
 
-(deftest index-tx-entries-before-resources-test
-  (testing "the transaction index entries of a transaction are written while its
-            own resources are still being indexed, so that a batch of a single
-            transaction overlaps them as well"
-    (let [released (promise)
-          ;; the resource indexing completes only after the transaction index
-          ;; entries of that same transaction were written
-          gate (ac/future)
-          index-resource resource-indexer/index-resource
-          batch [(tx-data 1 (patients 0 2))]]
-      (with-redefs
-       [resource-indexer/index-resource
-        (fn [resource-indexer last-updated hash resource]
-          (-> gate
-              (ac/then-compose
-               (fn [_]
-                 (index-resource resource-indexer last-updated hash resource)))))]
+(defn- puts-with [column-family puts]
+  (filterv #(contains? % column-family) puts))
 
-        (with-system [{:blaze.db/keys [node]}
-                      (-> (batch-tx-log-config batch released)
-                          (with-tx-entries-signalling-kv-store gate))]
-          (deliver released true)
+(deftest store-tx-entries-test
+  (testing "the transaction index entries of a small transaction are stored
+            together with its success marker in a single put, so that they
+            never become visible without it"
+    (let [puts (atom [])]
+      (with-system [{:blaze.db/keys [node]}
+                    (with-put-recording-kv-store config puts)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-          (let [t (deref (sync-t node 1) 10000 ::timeout)]
-            ;; release the gate in any case, so that the node can be closed
-            (ac/complete! gate true)
+        ;; the transaction index entries are the only ones written into the
+        ;; ResourceAsOf index
+        (given (puts-with :resource-as-of-index @puts)
+          count := 1
+          [0 :tx-success-index] := :tx-success-index)
 
-            (is (not (identical? ::timeout t)))))))))
+        (testing "a rejected transaction stores only its error"
+          (given-failed-future
+           (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"} [:if-match 5]]])
+            ::anom/category := ::anom/conflict)
+
+          (given (puts-with :tx-error-index @puts)
+            count := 1
+            0 := #{:tx-error-index})
+
+          (is (= 1 (count (puts-with :resource-as-of-index @puts))))
+          (is (= 1 (count (puts-with :tx-success-index @puts))))))))
+
+  (testing "a transaction that changes nothing stores only its success marker"
+    (let [puts (atom [])]
+      (with-system [{:blaze.db/keys [node]}
+                    (with-put-recording-kv-store config puts)]
+        (let [patient {:fhir/type :fhir/Patient :id "0"}]
+          @(d/transact node [[:put patient]])
+          @(d/transact node [[:keep "Patient" "0" (hash/generate patient)]]))
+
+        (given (puts-with :tx-success-index @puts)
+          count := 2
+          1 := #{:tx-success-index :t-by-instant-index})))))
 
 (deftest index-batch-transactions-collector-init-test
   (with-system [{collector ::node/index-batch-transactions}
