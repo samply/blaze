@@ -12,7 +12,7 @@
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
@@ -115,6 +115,24 @@
           :url := "https://blaze-server.org/fhir/SearchParameter/Patient-marital-status"
           :name := "PatientMaritalStatus"
           :code := "marital-status")))))
+
+(deftest parse-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+    (testing "the code leaves out the modifier, which is nil if there is none"
+      (are [type param code modifier]
+           (given (sr/parse search-param-registry type param)
+             count := 2
+             [0 :code] := code
+             [1] := modifier)
+        "Observation" "code" "code" nil
+        "Observation" "subject:Patient.gender" "subject:Patient.gender" nil
+        "Observation" "subject:Patient.gender:in" "subject:Patient.gender" "in"
+        "Observation" "subject:Patient.name:exact" "subject:Patient.name" "exact"
+        "Encounter" "patient.gender:in" "patient.gender" "in"
+        "Observation" "encounter:Encounter.subject:Patient.gender" "encounter:Encounter.subject:Patient.gender" nil
+        "Observation" "encounter:Encounter.subject:Patient.name:exact" "encounter:Encounter.subject:Patient.name" "exact"
+        "Encounter" "diagnosis:Condition.subject:Patient.family" "diagnosis:Condition.subject:Patient.family" nil
+        "Encounter" "diagnosis:Condition.subject:Patient.gender:in" "diagnosis:Condition.subject:Patient.gender" "in"))))
 
 (deftest get-by-url-test
   (testing "default system"

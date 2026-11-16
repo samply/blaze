@@ -11,7 +11,7 @@
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :type :fhir.resource/type
                :param string?)
-  :ret (s/or :result (s/tuple :blaze.db/search-param ::search-param/modifier)
+  :ret (s/or :result (s/tuple :blaze.db/search-param (s/nilable ::search-param/modifier))
              :anomaly ::anom/anomaly))
 
 (s/fdef sr/get

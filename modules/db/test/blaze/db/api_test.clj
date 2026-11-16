@@ -10267,6 +10267,13 @@
               [0] := [:sort "_id" :asc]
               [1] := ["active" "true"]))))
 
+      (testing "chained search param with modifier at its last segment"
+        (with-db [db node]
+          (doseq [target [node db]
+                  clauses [[["subject:Patient.general-practitioner:Practitioner" "0"]]
+                           [["encounter:Encounter.subject:Patient.general-practitioner:Practitioner" "0"]]]]
+            (is (= clauses (d/query-clauses @(d/compile-type-query target "Observation" clauses)))))))
+
       (testing "PatientTypeQuery"
         (testing "patient and code"
           (with-db [db node]
