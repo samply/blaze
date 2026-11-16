@@ -1085,6 +1085,8 @@
 
               :else
               (do (commit-tx! node (nth current head))
+                  (vswap! tx-chunk-states update head
+                          node-util/committed-tx-chunk-state)
                   (when (:run? @state)
                     (recur (inc head) dispatch in-flight)))))))
       (finally

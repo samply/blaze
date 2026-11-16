@@ -38,6 +38,10 @@
   :args (s/cat :pool-size pos-int?)
   :ret :blaze.db.node/index-bounds)
 
+(s/fdef node-util/committed-tx-chunk-state
+  :args (s/cat :tx-chunk-state map?)
+  :ret map?)
+
 (s/fdef node-util/reduce-up-to
   :args (s/cat :f ifn? :init any? :m (s/and map? sorted?) :t :blaze.db/t)
   :ret any?)

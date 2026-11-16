@@ -57,12 +57,22 @@
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
 
-(defn- duplicate-commands-anom
-  "Returns a conflict anomaly if two of `cmds` act on the same resource or nil
-  if none do."
-  [cmds]
-  (when-let [{:keys [cmd existing-cmd]} (dup/find-duplicate cmds)]
-    (ba/conflict (dup/duplicate-msg existing-cmd cmd))))
+(defn- command-index
+  "Returns the index of `cmds` (see `dup/index`) or a conflict anomaly if two
+  of `cmds` act on the same resource.
+
+  Returns a delay of the index instead if `distinct-tx-cmds` is true, because
+  the caller knows that `cmds` act on distinct resources. Then the index is
+  built only once the references of a write are checked against it (see
+  `check-referential-integrity-write`). So the large expansions of single
+  commands, like patient purges, which write nothing, don't build it."
+  [distinct-tx-cmds cmds]
+  (if distinct-tx-cmds
+    (delay (:index (dup/index cmds)))
+    (let [{:keys [index duplicate]} (dup/index cmds)]
+      (if-let [{:keys [cmd existing-cmd]} duplicate]
+        (ba/conflict (dup/duplicate-msg existing-cmd cmd))
+        index))))
 
 (defmulti verify
   "Verifies `command`. Returns `res` with added index entries and statistics of
@@ -157,7 +167,6 @@
         (if-let [code (first-disallowed-access-control-code context tx-cmd)]
           (reduced (labelled-new-version-anom "create" type id code))
           (-> (add-version res tid id t hash 1 :create refs)
-              (update :new-resources conj [type id])
               (update-in [:stats tid] inc-num-changes-and-total)))))))
 
 (defmethod verify "hold"
@@ -300,7 +309,6 @@
           (reduced (labelled-new-version-anom "update" type id code))
           (cond->
            (-> (add-version res tid id t hash (inc num-changes) :put refs)
-               (update :new-resources conj [type id])
                (update-in [:stats tid :num-changes] inc-0))
             (or (nil? old-t) (identical? :delete op))
             (update-in [:stats tid :total] inc-0)))))))
@@ -568,7 +576,6 @@
 (def ^:private empty-res
   {:entries []
    :resource-handle-updates []
-   :new-resources #{}
    :deletes {}
    :part-deletes {}
    :multiple-deletes {}})
@@ -581,13 +588,6 @@
   Both maps have at most one entry per type, so that merging them is cheap."
   [multiple-deletes-1 multiple-deletes-2]
   (merge-with (constantly true) multiple-deletes-1 multiple-deletes-2))
-
-(defn- into-unless-empty
-  "Returns `to` with `from` added like `into`, or `from` itself if `to` is
-  empty, so that the collections of a part aren't copied into the empty ones of
-  `empty-res`."
-  [to from]
-  (if (empty? to) from (into to from)))
 
 (defn- conj-part
   "Adds `part`, the entries or the resource handle updates of a part of the
@@ -632,7 +632,6 @@
   (-> (update res :entries conj-part (:entries part-res))
       (update :resource-handle-updates conj-part
               (:resource-handle-updates part-res))
-      (update :new-resources into-unless-empty (:new-resources part-res))
       (update :part-deletes add-part-deletes (:deletes part-res))
       (update :multiple-deletes merge-multiple-deletes (:multiple-deletes part-res))
       (update :stats (partial merge-with (partial merge-with +)) (:stats part-res))))
@@ -800,21 +799,44 @@
     (when-not (true? value)
       value)))
 
+(def ^:private write-ops
+  "The ops of the commands creating or putting a resource."
+  #{"create" "put"})
+
+(defn- written?
+  "Returns true if a command of the transaction creates or puts the resource
+  with `reference`, a tuple of its type and id, according to `index`, the
+  index of its commands (see `dup/index`).
+
+  A put identical to the current version writes nothing, but the resource
+  exists already, so that a reference to it is valid as well."
+  [index reference]
+  (contains? write-ops (:op (dup/command index reference))))
+
 (defn- check-referential-integrity-write
   "Checks the `references` of the resource with `src-type` and `src-id`.
 
   Returns `existing`, the set of references already found to exist in `db`,
   extended by the ones found here, so that every reference is looked up only
   once per transaction, or the anomaly of the first reference violating the
-  referential integrity."
-  [db new-resources deletes existing src-type src-id references]
+  referential integrity.
+
+  The references to the resources written by the transaction, the resource
+  itself included, are found in `index`, the index of its commands (see
+  `dup/index`), or a delay of it (see `command-index`).
+
+  The `existing` are checked before `index`, because they are few, while
+  `index` holds every command. So a reference repeated within a part takes a
+  single cheap lookup."
+  [db index deletes existing src-type src-id references]
   (reduce
    (fn [existing [type id :as reference]]
      (cond
        (deleted? deletes type id)
        (reduced (ref-integrity-del-anom [[src-type src-id]] type id))
 
-       (or (contains? new-resources reference) (contains? existing reference))
+       (or (contains? existing reference)
+           (written? (force index) reference))
        existing
 
        (resource-exists? db type id)
@@ -918,19 +940,20 @@
 
 (defn- referential-integrity-anomaly
   "Checks the referential integrity of `cmds` against `db` with `stats`, using
-  the verification result `res` of `cmds`.
+  `index`, the index of `cmds` (see `dup/index`) or a delay of it (see
+  `command-index`), and the verification result `res` of `cmds`.
 
   Returns the anomaly of the first command violating it or nil if none does.
   Checks the commands in parallel on `pool`, because each check depends only
-  on `db` and `res`.
+  on `db`, `index` and `res`.
 
   The deletes checking references are checked against the current versions in
   the `deletes` of `res`, so that they aren't looked up again. A delete of a
   resource that doesn't exist has none and isn't checked. Neither are the
   references through the `:purged-rev-include-params` of a delete (see
   `delete-rev-include-params`)."
-  {:arglists '([db stats pool res cmds])}
-  [db stats pool {:keys [new-resources deletes multiple-deletes]} cmds]
+  {:arglists '([db stats pool index res cmds])}
+  [db stats pool index {:keys [deletes multiple-deletes]} cmds]
   (with-open [_ (prom/timer tx-u/duration-seconds "check-referential-integrity")]
     (let [rev-include-params-by-type (rev-include-params-by-type db stats
                                                                  multiple-deletes)
@@ -952,8 +975,7 @@
                  existing)
                (if refs
                  (let [existing (check-referential-integrity-write
-                                 db new-resources deletes existing type id
-                                 refs)]
+                                 db index deletes existing type id refs)]
                    (cond-> existing (ba/anomaly? existing) reduced))
                  existing)))
            cmds)]
@@ -988,16 +1010,14 @@
 
   A transaction fails if two of its commands act on the same resource, unless
   `:distinct-tx-cmds` of `context` is true, because the caller knows that they
-  don't, so that checking them doesn't cost time.
+  don't, so that checking them doesn't cost time (see `command-index`).
 
   The `t` is for the new transaction to commit."
   {:arglists '([context t tx-cmds])}
   [{:keys [db-before stats pool distinct-tx-cmds] :as context} t tx-cmds]
   (prom/observe! transaction-sizes (count tx-cmds))
   (ba/try-anomaly
-   (or
-    (when-not distinct-tx-cmds
-      (duplicate-commands-anom tx-cmds))
-    (when-ok [res (verify-tx-cmds* (assoc-label-types context tx-cmds) t tx-cmds)]
-      (or (referential-integrity-anomaly db-before stats pool res tx-cmds)
-          (post-process-res stats t res))))))
+   (when-ok [index (command-index distinct-tx-cmds tx-cmds)
+             res (verify-tx-cmds* (assoc-label-types context tx-cmds) t tx-cmds)]
+     (or (referential-integrity-anomaly db-before stats pool index res tx-cmds)
+         (post-process-res stats t res)))))

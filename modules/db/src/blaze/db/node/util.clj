@@ -77,6 +77,18 @@
     {:chunk-size chunk-size
      :look-ahead (* look-ahead-chunks chunk-size)}))
 
+(defn committed-tx-chunk-state
+  "Returns `tx-chunk-state`, the state the indexing loop keeps for a
+  transaction, without what nothing needs after its commit, so that the loop
+  doesn't keep it for the transactions committed already until the end of
+  their batch.
+
+  Drops the transaction data, which holds the resources of a transaction the
+  node submitted itself, together with the index entries, stats and resource
+  handle updates of the transaction."
+  [tx-chunk-state]
+  (dissoc tx-chunk-state :tx-data :entries :tx-stats :resource-handle-updates))
+
 (defn reduce-up-to
   "Reduces the entries of `m`, a map sorted by t, with a t of at most `t` in the
   order of their t with `f`, a function of the accumulator, the t and the value

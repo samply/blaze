@@ -78,6 +78,40 @@
 (defn- duplicate [[existing-idx existing-cmd] idx cmd]
   {:cmd cmd :idx idx :existing-cmd existing-cmd :existing-idx existing-idx})
 
+(defn index
+  "Returns a map of the index of `cmds` under :index if no command of `cmds`
+  conflicts with an earlier one. Otherwise returns a map of the first
+  conflicting command under :duplicate, as `find-duplicate` returns it.
+
+  The index holds the first command acting on each resource, either on the
+  whole resource or on a version, which `command` returns. A command on the
+  whole resource is the only command acting on that resource.
+
+  Skips commands that don't identify a resource by type and id, like
+  conditional deletes and patient purges, because they are expanded into such
+  commands only later.
+
+  The index is built as a transient map, because it grows by one entry per
+  command, and a transaction can have many thousands of commands, like a
+  patient purge after its expansion."
+  [cmds]
+  (let [index-or-duplicate
+        (reduce-kv
+         (fn [index idx {:keys [type id] :as cmd}]
+           (if (and type id)
+             (let [key [type id]
+                   first-entry (get index key)
+                   t (version cmd)]
+               (if-let [existing (conflict index first-entry key t)]
+                 (reduced {:duplicate (duplicate existing idx cmd)})
+                 (add! index first-entry key t [idx cmd])))
+             index))
+         (transient {})
+         cmds)]
+    (if (:duplicate index-or-duplicate)
+      index-or-duplicate
+      {:index (persistent! index-or-duplicate)})))
+
 (defn find-duplicate
   "Returns the first command of `cmds` that conflicts with an earlier one under
   :cmd and its position in `cmds` under :idx, together with the earlier command
@@ -85,26 +119,14 @@
   commands conflict.
 
   Only delete history version commands act on a single version, so that they
-  can delete different versions of the same resource.
-
-  Skips commands that don't identify a resource by type and id, like
-  conditional deletes and patient purges, because they are expanded into such
-  commands only later.
-
-  The index of the commands is a transient map, because it grows by one entry
-  per command, and a transaction can have many thousands of commands, like a
-  patient purge after its expansion."
+  can delete different versions of the same resource."
   [cmds]
-  (::duplicate
-   (reduce-kv
-    (fn [index idx {:keys [type id] :as cmd}]
-      (if (and type id)
-        (let [key [type id]
-              first-entry (get index key)
-              t (version cmd)]
-          (if-let [existing (conflict index first-entry key t)]
-            (reduced {::duplicate (duplicate existing idx cmd)})
-            (add! index first-entry key t [idx cmd])))
-        index))
-    (transient {})
-    cmds)))
+  (:duplicate (index cmds)))
+
+(defn command
+  "Returns the first command acting on the resource with `key`, a tuple of its
+  type and id, in `index`, the index of commands returned by `index`. Returns
+  nil if no command acts on the resource."
+  [index key]
+  (let [[_idx cmd] (get index key)]
+    cmd))

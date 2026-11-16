@@ -103,12 +103,16 @@
                               #(cond-> % permissions (assoc :permissions permissions)))]
     (if (ba/anomaly? res) res (:entries res))))
 
-(defn- patient-stats
-  "Returns the stats of the Patient type of the verification result `res`.
+(defn- type-stats
+  "Returns a function returning the stats of `type` of a verification result.
 
   A function, because the tid isn't a path element `given` understands."
-  [res]
-  (get-in res [:stats :types (codec/tid "Patient")]))
+  [type]
+  (fn [res] (get-in res [:stats :types (codec/tid type)])))
+
+(def ^:private patient-stats (type-stats "Patient"))
+
+(def ^:private observation-stats (type-stats "Observation"))
 
 (defmulti verify-cmd identity)
 
@@ -1314,7 +1318,21 @@
              node 2
              (create-cmds
               "Observation"
-              (fn [cmd _] (observation-cmd-referencing "0" cmd)))))))))
+              (fn [cmd _] (observation-cmd-referencing "0" cmd))))))))
+
+  (testing "references to resources created in other parts are found"
+    (let [patients (create-cmds "Patient")
+          observations (create-cmds
+                        "Observation"
+                        (fn [cmd idx] (observation-cmd-referencing (str idx) cmd)))]
+      (doseq [cmds [(into patients observations) (into observations patients)]]
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (verify-tx-cmds* node 1 cmds)
+            observation-stats := {:total 2000 :num-changes 2000}))))))
+
+(def ^:private write-referencing-patient-0
+  {:op "put" :type "Observation" :id "0" :hash (hash/generate observation-0)
+   :refs [["Patient" "0"]]})
 
 (defn- num-lookups
   "Returns the number of lookups, hits and misses, of `resource-handle-cache`."
@@ -1360,7 +1378,27 @@
 
       (is (= 1 (num-verify-lookups
                 node resource-handle-cache 2
-                [{:op "delete" :type "Patient" :id "0" :check-refs true}]))))))
+                [{:op "delete" :type "Patient" :id "0" :check-refs true}])))))
+
+  (testing "a write referencing a resource created in the same transaction
+            doesn't look it up again"
+    (with-system [{:blaze.db/keys [node resource-handle-cache]} config]
+      (is (= 1 (num-verify-lookups
+                node resource-handle-cache 1
+                [{:op "create" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)}
+                 write-referencing-patient-0])))))
+
+  (testing "a write referencing a resource put identically in the same
+            transaction doesn't look it up again"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]} config]
+      [[[:put patient-0]]]
+
+      (is (= 2 (num-verify-lookups
+                node resource-handle-cache 2
+                [{:op "put" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)}
+                 write-referencing-patient-0]))))))
 
 (def ^:private should-be-deleted-msg
   "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")
@@ -1388,24 +1426,88 @@
     :else doesnt-exist-msg))
 
 (deftest verify-write-referencing-deleted-resource-test
-  (let [write {:op "put" :type "Observation" :id "0"
-               :hash (hash/generate observation-0) :refs [["Patient" "0"]]}]
-    (doseq [[state txs] patient-0-states
-            op ["delete" "purge"]
-            check-refs [true false]]
-      (testing (format "a write referencing a%s %s patient %s %s references"
-                       (if (= "existing" state) "n" "") state op
-                       (if check-refs "checking" "not checking"))
-        (with-system-data [{:blaze.db/keys [node]} config]
-          txs
+  (doseq [[state txs] patient-0-states
+          op ["delete" "purge"]
+          check-refs [true false]]
+    (testing (format "a write referencing a%s %s patient %s %s references"
+                     (if (= "existing" state) "n" "") state op
+                     (if check-refs "checking" "not checking"))
+      (with-system-data [{:blaze.db/keys [node]} config]
+        txs
 
-          (given (verify-tx-cmds
-                  node (inc (count txs))
-                  [(cond-> {:op op :type "Patient" :id "0"}
-                     check-refs (assoc :check-refs true))
-                   write])
-            ::anom/category := ::anom/conflict
-            ::anom/message := (write-referencing-deleted-msg state op)))))))
+        (given (verify-tx-cmds
+                node (inc (count txs))
+                [(cond-> {:op op :type "Patient" :id "0"}
+                   check-refs (assoc :check-refs true))
+                 write-referencing-patient-0])
+          ::anom/category := ::anom/conflict
+          ::anom/message := (write-referencing-deleted-msg state op))))))
+
+(def ^:private delete-history-of-patient-0
+  {:op "delete-history" :type "Patient" :id "0"})
+
+(def ^:private delete-version-1-of-patient-0
+  {:op "delete-history-version" :type "Patient" :id "0" :t 1})
+
+(def ^:private patient-0-cmds
+  "The commands on Patient/0 that a write referencing it can accompany, with
+  the transactions bringing Patient/0 into the state each command needs."
+  (let [hash (hash/generate patient-0)
+        existing [[[:put patient-0]]]
+        with-two-versions [[[:put patient-0]] [[:put patient-0-v2]]]]
+    {"created" [[] {:op "create" :type "Patient" :id "0" :hash hash}]
+     "put as new resource" [[] {:op "put" :type "Patient" :id "0" :hash hash}]
+     "updated" [existing {:op "put" :type "Patient" :id "0"
+                          :hash (hash/generate patient-0-v2)}]
+     "put identically" [existing {:op "put" :type "Patient" :id "0" :hash hash}]
+     "kept" [existing {:op "keep" :type "Patient" :id "0" :hash hash}]
+     "held" [existing {:op "hold" :type "Patient" :id "0"
+                       :if-none-exist [["_id" "0"]]}]
+     "with its history deleted" [with-two-versions delete-history-of-patient-0]
+     "with a version deleted" [with-two-versions delete-version-1-of-patient-0]}))
+
+(deftest verify-write-referencing-resource-of-same-transaction-test
+  (doseq [distinct-tx-cmds [false true]]
+    (let [verify (fn [node t cmds]
+                   (verify-tx-cmds** node t cmds
+                                     #(cond-> % distinct-tx-cmds
+                                              (assoc :distinct-tx-cmds true))))]
+      (testing (format "commands %sknown to act on distinct resources"
+                       (if distinct-tx-cmds "" "not "))
+        (doseq [[state [txs cmd]] patient-0-cmds
+                cmds [[cmd write-referencing-patient-0]
+                      [write-referencing-patient-0 cmd]]]
+          (testing (format "a write referencing a patient %s in the same
+                            transaction succeeds, in any order" state)
+            (with-system-data [{:blaze.db/keys [node]} config]
+              txs
+
+              (given (verify node (inc (count txs)) cmds)
+                observation-stats := {:total 1 :num-changes 1}))))
+
+        (doseq [cmd [delete-history-of-patient-0 delete-version-1-of-patient-0]]
+          (testing (format "a write referencing a deleted patient with %s in the
+                            same transaction fails" (:op cmd))
+            (with-system-data [{:blaze.db/keys [node]} config]
+              [[[:put patient-0]] [[:delete "Patient" "0"]]]
+
+              (given (verify node 3 [cmd write-referencing-patient-0])
+                ::anom/category := ::anom/conflict
+                ::anom/message := doesnt-exist-msg))))
+
+        (with-system [{:blaze.db/keys [node]} config]
+          (doseq [op ["create" "put"]]
+            (testing (format "a single %s referencing its own resource succeeds"
+                             op)
+              (given (verify node 1 [{:op op :type "Patient" :id "0"
+                                      :hash (hash/generate patient-0)
+                                      :refs [["Patient" "0"]]}])
+                patient-stats := {:total 1 :num-changes 1})))
+
+          (testing "a single write referencing a missing resource fails"
+            (given (verify node 1 [write-referencing-patient-0])
+              ::anom/category := ::anom/conflict
+              ::anom/message := doesnt-exist-msg)))))))
 
 (defn- num-prefix-seeks
   "Returns the number of calls of `sp-vr/index-handles`, the seeks of the

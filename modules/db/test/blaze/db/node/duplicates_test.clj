@@ -82,6 +82,45 @@
         :idx := 2
         :existing-idx := 1))))
 
+(deftest index-test
+  (testing "commands conflicting with each other are returned as duplicate"
+    (given (dup/index [put-0 delete-0])
+      :index := nil
+      [:duplicate :cmd] := delete-0
+      [:duplicate :idx] := 1
+      [:duplicate :existing-cmd] := put-0
+      [:duplicate :existing-idx] := 0))
+
+  (testing "commands not conflicting with each other are indexed"
+    (let [put-1 {:op "put" :type "Observation" :id "1"}
+          {:keys [index duplicate]}
+          (dup/index [put-0 {:op "conditional-delete" :type "Patient"} put-1])]
+      (is (nil? duplicate))
+
+      (testing "under the type and id of the resource they act on"
+        (given (dup/command index ["Patient" "0"])
+          :op := "put"
+          :type := "Patient"
+          :id := "0")
+
+        (given (dup/command index ["Observation" "1"])
+          :op := "put"
+          :type := "Observation"
+          :id := "1"))
+
+      (testing "and there is no command on another resource"
+        (is (nil? (dup/command index ["Patient" "1"]))))))
+
+  (testing "commands on versions are indexed under the first one"
+    (let [{:keys [index]} (dup/index [version-1-of-0 version-2-of-0])]
+      (given (dup/command index ["Patient" "0"])
+        :op := "delete-history-version"
+        :t := 1)))
+
+  (testing "the index of an empty transaction has no commands"
+    (let [{:keys [index]} (dup/index [])]
+      (is (nil? (dup/command index ["Patient" "0"]))))))
+
 (deftest duplicate-msg-test
   (testing "names the earlier command first"
     (is (= "Duplicate transaction commands `put Patient/0` and `delete Patient/0`."

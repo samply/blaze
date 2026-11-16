@@ -1334,6 +1334,10 @@
 (defn- puts-with [column-family puts]
   (filterv #(contains? % column-family) puts))
 
+(def ^:private num-several-parts-patients
+  "A number of Patients whose put commands are verified in several parts."
+  1000)
+
 (deftest store-tx-entries-test
   (testing "the transaction index entries of a small transaction are stored
             together with its success marker in a single put, so that they
@@ -1371,7 +1375,66 @@
 
         (given (puts-with :tx-success-index @puts)
           count := 2
-          1 := #{:tx-success-index :t-by-instant-index})))))
+          1 := #{:tx-success-index :t-by-instant-index}))))
+
+  (testing "the transaction index entries of a large transaction are stored in
+            puts of their own, apart from its success marker, one per part, so
+            that the parts are stored in parallel"
+    (let [puts (atom [])]
+      (with-system [{:blaze.db/keys [node]}
+                    (with-put-recording-kv-store config puts)]
+        @(d/transact node (mapv (partial vector :put)
+                                (patients 0 num-several-parts-patients)))
+
+        (let [entry-puts (puts-with :resource-as-of-index @puts)]
+          (is (< 1 (count entry-puts)))
+          (is (not-any? :tx-success-index entry-puts)))
+
+        (given (puts-with :tx-success-index @puts)
+          count := 1
+          0 := #{:tx-success-index :t-by-instant-index})))))
+
+(defn- complete-on-entries
+  "Returns a watch of the atom of the puts recorded by
+  `with-put-recording-kv-store` that completes `future` as soon as the
+  transaction index entries of a transaction are stored, which are the only
+  ones written into the ResourceAsOf index."
+  [future]
+  (fn [_ _ _ puts]
+    (when (seq (puts-with :resource-as-of-index puts))
+      (ac/complete! future true))))
+
+(defn- gated-by
+  "Returns a replacement of `resource-indexer/index-resource` that indexes a
+  resource only after `gate` completed."
+  [gate]
+  (let [index-resource resource-indexer/index-resource]
+    (fn [resource-indexer last-updated hash resource]
+      (-> gate
+          (ac/then-compose
+           (fn [_]
+             (index-resource resource-indexer last-updated hash resource)))))))
+
+(deftest index-tx-entries-before-resources-test
+  (testing "the transaction index entries of a large transaction are stored
+            while its own resources are still being indexed, so that a batch of
+            a single transaction overlaps them as well"
+    (let [released (promise)
+          puts (atom [])
+          gate (ac/future)
+          batch [(tx-data 1 (patients 0 num-several-parts-patients))]]
+      (add-watch puts ::gate (complete-on-entries gate))
+      (with-redefs [resource-indexer/index-resource (gated-by gate)]
+        (with-system [{:blaze.db/keys [node]}
+                      (-> (batch-tx-log-config batch released)
+                          (with-put-recording-kv-store puts))]
+          (deliver released true)
+
+          (let [t (deref (sync-t node 1) 10000 ::timeout)]
+            ;; release the gate in any case, so that the node can be closed
+            (ac/complete! gate true)
+
+            (is (not (identical? ::timeout t)))))))))
 
 (deftest index-batch-transactions-collector-init-test
   (with-system [{collector ::node/index-batch-transactions}
