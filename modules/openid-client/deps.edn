@@ -9,7 +9,7 @@
   {:local/root "../scheduler"}
 
   cheshire/cheshire
-  {:mvn/version "6.2.0"}
+  {:mvn/version "6.2.1"}
 
   ;; newer version for cheshire dependency
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
