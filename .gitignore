@@ -5,6 +5,8 @@ classes
 .nrepl-port
 validator_cli.jar
 validator_cli.jar.asc
+publisher.jar
+publisher.jar.asc
 
 # Cursive-generated module files (derived from deps.edn, regenerated on sync)
 *.iml
