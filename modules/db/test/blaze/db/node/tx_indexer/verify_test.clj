@@ -24,8 +24,7 @@
    [blaze.db.permissions :as p]
    [blaze.db.test-util :refer [concurrent-calls? config internal-label
                                internal-patient-0 read-only-patient-0
-                               resource-handle-cache-config transact-internal
-                               with-system-data]]
+                               transact-internal with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
    [blaze.db.tx-log.spec]
@@ -1332,15 +1331,14 @@
 
 (deftest verify-resource-handle-lookups-test
   (testing "a create looks up no resource handle, because its id is new"
-    (with-system [{:blaze.db/keys [node resource-handle-cache]}
-                  resource-handle-cache-config]
+    (with-system [{:blaze.db/keys [node resource-handle-cache]} config]
       (is (zero? (num-verify-lookups
                   node resource-handle-cache 1
                   [{:op "create" :type "Patient" :id "0"
                     :hash (hash/generate patient-0)}])))))
 
   (testing "a create of an existing resource still fails"
-    (with-system-data [{:blaze.db/keys [node]} resource-handle-cache-config]
+    (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
       (given (verify-tx-cmds* node 2 [{:op "create" :type "Patient" :id "0"
@@ -1349,8 +1347,7 @@
         ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
 
   (testing "a purge checking references looks up no resource handle"
-    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
-                       resource-handle-cache-config]
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]} config]
       [[[:put patient-0]]]
 
       (is (zero? (num-verify-lookups
@@ -1358,8 +1355,7 @@
                   [{:op "purge" :type "Patient" :id "0" :check-refs true}])))))
 
   (testing "a delete checking references looks up the resource handle only once"
-    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
-                       resource-handle-cache-config]
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]} config]
       [[[:put patient-0]]]
 
       (is (= 1 (num-verify-lookups

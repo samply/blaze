@@ -164,8 +164,7 @@
   (.requestCount ^CacheStats (ccp/-stats resource-handle-cache)))
 
 (deftest rev-include-lookups-test
-  (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
-                     dtu/resource-handle-cache-config]
+  (with-system-data [{:blaze.db/keys [node resource-handle-cache]} dtu/config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Observation :id "0"
              :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
