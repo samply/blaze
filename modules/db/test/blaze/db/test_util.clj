@@ -73,7 +73,8 @@
   "Config of a system that only provides the search param registry."
   {::search-param-registry {}})
 
-(def config
+(def no-resource-handle-cache-config
+  "Config of a node without a resource handle cache."
   {:blaze.db/node
    {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
@@ -146,9 +147,10 @@
 
    ::writing-context {}})
 
-(def resource-handle-cache-config
-  "Config of a node with a resource handle cache."
-  (-> (assoc-in config [:blaze.db/node :resource-handle-cache]
+(def config
+  "Config of a node with a resource handle cache, which is enabled by default
+  in production."
+  (-> (assoc-in no-resource-handle-cache-config [:blaze.db/node :resource-handle-cache]
                 (ig/ref :blaze.db/resource-handle-cache))
       (assoc :blaze.db/resource-handle-cache {:max-size-ratio 0.01})))
 

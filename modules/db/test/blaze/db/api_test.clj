@@ -1857,7 +1857,7 @@
 
 (deftest transact-patient-purge-create-again-test
   (testing "a patient created again after its purge"
-    (doseq [system-config [config dtu/resource-handle-cache-config]]
+    (doseq [system-config [dtu/no-resource-handle-cache-config config]]
       (with-system-data [{:blaze.db/keys [node]} system-config]
         [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
