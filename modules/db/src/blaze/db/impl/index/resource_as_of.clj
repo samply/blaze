@@ -415,6 +415,16 @@
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
       (resource-handle* iter target-buf key-buf value-buf tid id seek-t t since-t))))
 
+(defn uncached-resource-handle
+  "Returns the resource handle with `tid` and `id` when found in `db` and
+  changed after its `since-t`.
+
+  Seeks in the index without the resource handle cache of `db`, so that it
+  neither reads nor inserts entries of the cache."
+  {:arglists '([db tid id])}
+  [{:keys [snapshot t since-t]} tid id]
+  (seek-resource-handle snapshot t t since-t tid id))
+
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` when found in `db` and
   changed after its `since-t`.

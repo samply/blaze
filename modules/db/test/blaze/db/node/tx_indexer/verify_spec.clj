@@ -1,5 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify-spec
   (:require
+   [blaze.db.impl.index.resource-as-of-spec]
    [blaze.db.impl.index.rts-as-of-spec]
    [blaze.db.kv.spec]
    [blaze.db.node.tx-indexer.verify :as verify]

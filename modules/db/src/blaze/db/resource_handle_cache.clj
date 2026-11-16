@@ -62,7 +62,9 @@
   The lookups the indexer does itself while expanding and verifying a
   transaction, like the ones of the referential integrity check, are the ones of
   a reader at the `t` before the transaction. So they insert through the
-  doorkeeper like any other reader.
+  doorkeeper like any other reader. Only the lookup checking that the id of a
+  create is new bypasses the cache, because it's expected to miss, so that it
+  would only cost the lookup and count as a miss.
 
   Inserting:
 
@@ -74,6 +76,13 @@
   key newer than `t` is recorded. It checks this inside a per-key atomic
   operation of the cache that is serialized with the one the indexer uses for
   its update and the recording.
+
+  The indexer neither updates nor records the first version of a resource,
+  because the cache holds no entry of a resource without a version, and a
+  reader of an older database value finds no handle it could insert. A
+  resource purged before has no version either, and the purge recorded its
+  write, so that a reader of a database value before the purge still doesn't
+  insert the purged handle.
 
   For a single key, the insert of a reader and the update of the indexer are
   serialized. If the reader comes first, the indexer finds the entry and
@@ -293,7 +302,8 @@
   transaction was verified in, none of them empty. Each update is a tuple of
   the resource handle of a ResourceAsOf index entry the transaction wrote and
   whether that entry is purged. A purged entry removes the present entry if it
-  isn't older.
+  isn't older. The first versions of resources aren't included (see the
+  namespace doc).
 
   Has to be called by a single thread only, because it prunes the recorded
   writes. The parts are applied in parallel on `pool`, a ForkJoinPool, but the

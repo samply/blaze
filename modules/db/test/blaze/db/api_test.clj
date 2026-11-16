@@ -1855,6 +1855,31 @@
       (f))
     @sizes))
 
+(deftest transact-patient-purge-create-again-test
+  (testing "a patient created again after its purge"
+    (doseq [system-config [config dtu/resource-handle-cache-config]]
+      (with-system-data [{:blaze.db/keys [node]} system-config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (with-db [db-before node]
+          @(d/transact node [[:patient-purge "0"]])
+          @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"
+                                       :gender #fhir/code "male"}]])
+
+          (testing "the database value before the purge still sees the purged
+                    version, also when read repeatedly"
+            (dotimes [_ 2]
+              (given (d/resource-handle db-before "Patient" "0")
+                :t := 1)))
+
+          (testing "a database value after the create sees the new version"
+            (with-db [db-after node]
+              (given (d/resource-handle db-after "Patient" "0")
+                :t := 3)
+
+              (given @(d/pull node (d/resource-handle db-after "Patient" "0"))
+                :gender := #fhir/code "male"))))))))
+
 (deftest transact-patient-purge-duplicate-check-test
   (testing "the expansion of a transaction with a single patient purge isn't
             checked for duplicates, because the expansion of a command acts on

@@ -32,6 +32,7 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.fold :as f]
    [blaze.db.impl.index.patient-last-change :as plc]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.kv.spec]
@@ -91,13 +92,25 @@
              (plc/index-entry ref-id t))))
    refs))
 
+(defn- first-version?
+  "Returns true if `num-changes` is the one of the first version of a resource,
+  because no version of it exists in the database before the transaction."
+  [num-changes]
+  (= 1 (long num-changes)))
+
 (defn- add-version
   "Adds the index entries of the new version of the resource with `tid` and `id`
-  and its update of the resource handle cache to `res`."
+  and its update of the resource handle cache to `res`.
+
+  The first version of a resource needs no update of the resource handle cache,
+  because the cache holds no entry of a resource without a version, and a
+  reader of an older database value finds no handle it could insert, so that
+  its write needn't be recorded either."
   [res tid id t hash num-changes op refs]
-  (-> (update res :entries into (index-entries tid id t hash num-changes op refs))
-      (update :resource-handle-updates conj
-              [(rts/resource-handle tid id t hash num-changes op) false])))
+  (cond-> (update res :entries into (index-entries tid id t hash num-changes op refs))
+    (not (first-version? num-changes))
+    (update :resource-handle-updates conj
+            [(rts/resource-handle tid id t hash num-changes op) false])))
 
 (def ^:private inc-0 (fnil inc 0))
 (def ^:private dec-0 (fnil dec 0))
@@ -124,15 +137,25 @@
   [{:keys [permissions]} {:keys [access-control]}]
   (first (remove (partial p/may-write? permissions) access-control)))
 
+(defn- id-collision?
+  "Returns true if a resource with `tid` and `id` exists in `db`.
+
+  Bypasses the resource handle cache, because the id of a create should be new,
+  so that the lookup is expected to miss the cache anyway. A miss would only
+  cost the lookup and count as a miss in the statistics of the cache, which are
+  meant to show how well it serves reads."
+  [db tid id]
+  (some? (rao/uncached-resource-handle db tid id)))
+
 (defmethod verify "create"
   [{:keys [db-before] :as context} t res {:keys [type id hash refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
-    (if (d/resource-handle db-before type id)
-      (reduced (ba/conflict (id-collision-msg type id (d/t db-before))))
-      (if-let [code (first-disallowed-access-control-code context tx-cmd)]
-        (reduced (labelled-new-version-anom "create" type id code))
-        (let [tid (codec/tid type)]
+    (let [tid (codec/tid type)]
+      (if (id-collision? db-before tid id)
+        (reduced (ba/conflict (id-collision-msg type id (d/t db-before))))
+        (if-let [code (first-disallowed-access-control-code context tx-cmd)]
+          (reduced (labelled-new-version-anom "create" type id code))
           (-> (add-version res tid id t hash 1 :create refs)
               (update :new-resources conj [type id])
               (update-in [:stats tid] inc-num-changes-and-total)))))))
@@ -530,10 +553,17 @@
   `f/fold`).
 
   Returns the anomaly of the first command for which `f` returns a reduced
-  anomaly instead. Fewer than `n` commands are reduced on the calling thread."
+  anomaly instead.
+
+  Reduces at most `n` commands on the calling thread as a single part, without
+  going through `f/fold`, because most transactions are that small and would
+  only pay for partitioning them into a single part."
   [pool n init combine f tx-cmds]
-  (f/fold pool n #(reduce f init %)
-          (first-anomaly-combiner init combine) tx-cmds))
+  (if (<= (count tx-cmds) n)
+    (let [res (reduce f init tx-cmds)]
+      (if (ba/anomaly? res) res (combine init res)))
+    (f/fold pool n #(reduce f init %)
+            (first-anomaly-combiner init combine) tx-cmds)))
 
 (def ^:private empty-res
   {:entries []
@@ -651,17 +681,44 @@
         (into single (map (juxt identity (partial type-shards merged-shards)))
               (keys several))))))
 
+(defn- single-part
+  "Returns a vector of parts holding only `part`, the entries or the resource
+  handle updates of a part, unless it's empty (see `conj-part`)."
+  [part]
+  (conj-part [] part))
+
+(defn- single-part-res
+  "Returns `part-res`, the verification result of all commands of a
+  transaction verified as a single part, in the shape of the result of several
+  parts combined (see `combine-res`).
+
+  Equals the combination of `empty-res` with `part-res` with its deletes
+  merged afterwards (see `merged-deletes`), but only puts the entries and the
+  resource handle updates into a vector of parts, because the `:deletes` of a
+  single part need no merge and its other keys no combination."
+  [part-res]
+  (-> (update part-res :entries single-part)
+      (update :resource-handle-updates single-part)))
+
 (defn- verify-tx-cmds*
   "Verifies `tx-cmds` in parallel on the `:pool` of `context`, because each
   command depends only on the database before the transaction and not on the
   other commands.
 
+  Verifies at most `part-size` commands on the calling thread as a single
+  part (see `single-part-res`), because most transactions are that small and
+  would only pay for combining a single part and merging its deletes.
+
   Returns the verification result with the merged `:deletes` of all parts (see
   `merged-deletes`) or the anomaly of the first failing command."
   [{:keys [pool] :as context} t tx-cmds]
-  (when-ok [res (fold-tx-cmds pool part-size empty-res combine-res
-                              (partial verify context t) tx-cmds)]
-    (assoc res :deletes (merged-deletes pool (:part-deletes res)))))
+  (let [verify-cmd (partial verify context t)]
+    (if (<= (count tx-cmds) part-size)
+      (when-ok [res (reduce verify-cmd empty-res tx-cmds)]
+        (single-part-res res))
+      (when-ok [res (fold-tx-cmds pool part-size empty-res combine-res
+                                  verify-cmd tx-cmds)]
+        (assoc res :deletes (merged-deletes pool (:part-deletes res)))))))
 
 (defn- add-to-last-part
   "Adds `entries` to the last part of `parts`, a vector of vectors of entries,
@@ -920,7 +977,8 @@
   version and of each purged current version and whether that version is
   purged, to be applied to the resource handle cache of the node, if it has
   one. Purged versions of the history aren't included, because the cache only
-  holds current versions. They are in parts like the entries, so that the
+  holds current versions. Neither are the first versions of resources (see
+  `add-version`). They are in parts like the entries, so that the
   cache can apply them in parallel.
 
   The commands of a large transaction are verified in parallel on the `:pool`
