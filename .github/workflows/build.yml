@@ -713,7 +713,7 @@ jobs:
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -834,7 +834,7 @@ jobs:
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -882,7 +882,7 @@ jobs:
 
     steps:
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -939,7 +939,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -974,7 +974,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -1192,7 +1192,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -1996,7 +1996,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2248,7 +2248,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2361,7 +2361,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2457,7 +2457,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2528,7 +2528,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2633,7 +2633,7 @@ jobs:
         restore-keys: fhir-packages
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2728,7 +2728,7 @@ jobs:
         restore-keys: fhir-packages
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2791,7 +2791,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2842,7 +2842,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2897,7 +2897,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2948,7 +2948,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -2993,7 +2993,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3033,7 +3033,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3064,7 +3064,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3102,7 +3102,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3170,7 +3170,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3221,7 +3221,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3276,7 +3276,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3315,7 +3315,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3367,7 +3367,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3416,7 +3416,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3502,7 +3502,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3553,7 +3553,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3611,7 +3611,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3694,7 +3694,7 @@ jobs:
       run: .github/scripts/install-xq.sh
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3808,7 +3808,7 @@ jobs:
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to GHCR
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -3819,7 +3819,7 @@ jobs:
 
     - name: Login to DockerHub
       if: env.dockerhub_username != ''
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
       with:
         username: ${{ env.dockerhub_username }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
