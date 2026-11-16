@@ -37,3 +37,11 @@
 (s/fdef node-util/index-bounds
   :args (s/cat :pool-size pos-int?)
   :ret :blaze.db.node/index-bounds)
+
+(s/fdef node-util/reduce-up-to
+  :args (s/cat :f ifn? :init any? :m (s/and map? sorted?) :t :blaze.db/t)
+  :ret any?)
+
+(s/fdef node-util/remove-up-to
+  :args (s/cat :m (s/and map? sorted?) :t :blaze.db/t)
+  :ret (s/and map? sorted?))
