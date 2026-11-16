@@ -1844,14 +1844,15 @@
                                     (name (first cmd))
                                     (if (= :delete-history-version (first cmd)) "/_history/1" "")))))))
 
-(defn- duplicate-check-sizes
-  "Returns the numbers of commands checked for duplicates while `f` runs."
+(defn- index-sizes
+  "Returns the numbers of commands indexed by `dup/index` while `f` runs, to
+  check them for duplicates or to check references against them."
   [f]
   (let [sizes (atom [])
-        find-duplicate dup/find-duplicate]
-    (with-redefs [dup/find-duplicate (fn [cmds]
-                                       (swap! sizes conj (count cmds))
-                                       (find-duplicate cmds))]
+        index dup/index]
+    (with-redefs [dup/index (fn [cmds]
+                              (swap! sizes conj (count cmds))
+                              (index cmds))]
       (f))
     @sizes))
 
@@ -1882,14 +1883,15 @@
 
 (deftest transact-patient-purge-duplicate-check-test
   (testing "the expansion of a transaction with a single patient purge isn't
-            checked for duplicates, because the expansion of a command acts on
-            every resource at most once"
+            indexed, neither to check it for duplicates, because the expansion
+            of a command acts on every resource at most once, nor to check
+            references against it, because it writes nothing"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
         [:create {:fhir/type :fhir/Observation :id "0"
                   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
 
-      (is (every? #{1} (duplicate-check-sizes
+      (is (every? #{1} (index-sizes
                         #(deref (d/transact node [[:patient-purge "0"]]))))))))
 
 (def ^:private num-several-parts-observations

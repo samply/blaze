@@ -33,6 +33,17 @@
       (let [{:keys [chunk-size look-ahead]} (node-util/index-bounds pool-size)]
         (is (<= chunk-size look-ahead))))))
 
+(deftest committed-tx-chunk-state-test
+  (testing "drops what nothing needs after the commit of a transaction"
+    (given (node-util/committed-tx-chunk-state
+            {:tx-data {:t 1} :verified? true :entries [] :tx-stats {}
+             :resource-handle-updates []})
+      :verified? := true
+      :tx-data := nil
+      :entries := nil
+      :tx-stats := nil
+      :resource-handle-updates := nil)))
+
 (defn- conj-entry [acc t x]
   (conj acc [t x]))
 
