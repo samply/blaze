@@ -309,6 +309,14 @@
   (format "Ambiguous target types `%s` in the chain `%s`. Please use a modifier to constrain the type."
           types s))
 
+(defn- chain-code
+  "Returns the code of the chained search param of `ref-segment`, like
+  `subject:Patient`, followed by `search-param`, which the remaining segments of
+  the chain resolve to. The code leaves out the modifier of the last segment,
+  like the code of any other search param."
+  [ref-segment search-param]
+  (str ref-segment "." (:code search-param)))
+
 (defn- parse-chain
   "Recursively parses a chained search parameter `segments` (already split by
   `.`) starting at `type`. Returns a tuple `[search-param modifier]` or an
@@ -317,7 +325,7 @@
   (let [[code modifier] (str/split (first segments) #":" 2)]
     (if (= 1 (count segments))
       (when-ok [search-param (resolve-search-param index type code)]
-        (cond-> [search-param] modifier (conj modifier)))
+        [search-param modifier])
       (when-ok [{:keys [type target] :as ref-search-param} (resolve-search-param index type code)]
         (cond
           (not= "reference" type)
@@ -326,12 +334,14 @@
           (= 1 (count target))
           (when-ok [[search-param modifier] (parse-chain index (first target) (rest segments) s)]
             (spc/chained-search-param search-param ref-search-param (first target)
-                                      s modifier))
+                                      (chain-code (first segments) search-param)
+                                      modifier))
 
           modifier
           (when-ok [[search-param modifier-2] (parse-chain index modifier (rest segments) s)]
             (spc/chained-search-param search-param ref-search-param modifier
-                                      s modifier-2))
+                                      (chain-code (first segments) search-param)
+                                      modifier-2))
 
           :else
           (ba/incorrect (ambiguous-target-type-msg (str/join ", " target) s)))))))

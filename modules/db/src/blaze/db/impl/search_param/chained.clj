@@ -204,12 +204,15 @@
                        Observation.subject
   * ref-type         - the type of the resources referenced by the first search
                        param
-  * original-code    - the original code like diagnosis:Condition.code or
-                       subject:Patient.gender
-  * modifier         - modifier of `search-param`"
-  [search-param ref-search-param ref-type original-code modifier]
+  * code             - the code like diagnosis:Condition.code or
+                       subject:Patient.gender without the modifier of
+                       `search-param`
+  * modifier         - modifier of `search-param`
+
+  Returns a tuple of the chaining search param and `modifier`."
+  [search-param ref-search-param ref-type code modifier]
   [(->ChainedSearchParam search-param ref-search-param
                          (codec/c-hash (:code ref-search-param))
-                         (codec/tid ref-type) original-code
+                         (codec/tid ref-type) code
                          #(compile-ref-search-param-value ref-search-param %))
    modifier])
