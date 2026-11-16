@@ -32,3 +32,33 @@
     (doseq [pool-size [1 2 4]]
       (let [{:keys [chunk-size look-ahead]} (node-util/index-bounds pool-size)]
         (is (<= chunk-size look-ahead))))))
+
+(defn- conj-entry [acc t x]
+  (conj acc [t x]))
+
+(deftest reduce-up-to-test
+  (testing "reduces the entries with a t of at most t in the order of their t"
+    (is (= [[1 :a] [2 :b]]
+           (node-util/reduce-up-to conj-entry [] (sorted-map 3 :c 1 :a 2 :b) 2))))
+
+  (testing "returns init if the t of no entry was reached"
+    (is (= [] (node-util/reduce-up-to conj-entry [] (sorted-map 1 :a) 0))))
+
+  (testing "without entries"
+    (is (= [] (node-util/reduce-up-to conj-entry [] (sorted-map) 1)))))
+
+(deftest remove-up-to-test
+  (testing "removes the entries with a t of at most t"
+    (is (= [3] (keys (node-util/remove-up-to (sorted-map 1 :a 2 :b 3 :c) 2)))))
+
+  (testing "keeps the map sorted"
+    (is (sorted? (node-util/remove-up-to (sorted-map 1 :a 2 :b) 1))))
+
+  (testing "removes nothing if the t of no entry was reached"
+    (is (= [1 2] (keys (node-util/remove-up-to (sorted-map 1 :a 2 :b) 0)))))
+
+  (testing "removes all entries if the t of every entry was reached"
+    (is (empty? (node-util/remove-up-to (sorted-map 1 :a 2 :b) 3))))
+
+  (testing "without entries"
+    (is (empty? (node-util/remove-up-to (sorted-map) 1)))))

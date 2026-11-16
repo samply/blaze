@@ -76,3 +76,27 @@
   (let [chunk-size (* chunk-factor pool-size)]
     {:chunk-size chunk-size
      :look-ahead (* look-ahead-chunks chunk-size)}))
+
+(defn reduce-up-to
+  "Reduces the entries of `m`, a map sorted by t, with a t of at most `t` in the
+  order of their t with `f`, a function of the accumulator, the t and the value
+  of an entry, starting with `init`.
+
+  Stops at the first entry with a later t, so that usually only the first entry
+  is visited."
+  [f init m t]
+  (reduce-kv
+   (fn [acc entry-t x]
+     (if (<= (long entry-t) (long t))
+       (f acc entry-t x)
+       (reduced acc)))
+   init
+   m))
+
+(defn- dissoc-entry [m t _]
+  (dissoc m t))
+
+(defn remove-up-to
+  "Returns `m`, a map sorted by t, without the entries with a t of at most `t`."
+  [m t]
+  (reduce-up-to dissoc-entry m m t))

@@ -15,7 +15,8 @@
   derived from it, so that completing or cancelling one of them doesn't affect
   the others."
   (:require
-   [blaze.async.comp :as ac]))
+   [blaze.async.comp :as ac]
+   [blaze.db.node.util :as node-util]))
 
 (def empty-waiters
   "Waiters without any waiter."
@@ -36,15 +37,10 @@
     waiters
     (assoc waiters t (ac/future))))
 
-(defn- ready
-  "Returns the entries of `waiters` waiting for a t of at most `t`."
-  [waiters t]
-  (subseq waiters <= t))
-
 (defn remove-ready
   "Returns `waiters` without the waiters waiting for a t of at most `t`."
   [waiters t]
-  (reduce dissoc waiters (map key (ready waiters t))))
+  (node-util/remove-up-to waiters t))
 
 (defn complete-ready!
   "Completes the waiters of `waiters` waiting for a t of at most `reached-t`
@@ -60,7 +56,10 @@
   Returns nil."
   [waiters reached-t t]
   (let [supplier (constantly t)]
-    (run! #(ac/complete-async! (val %) supplier) (ready waiters reached-t))))
+    (node-util/reduce-up-to
+     (fn [_ _ future] (ac/complete-async! future supplier))
+     nil waiters reached-t))
+  nil)
 
 (defn fail-all!
   "Completes all waiters of `waiters` exceptionally with the error `error-fn`

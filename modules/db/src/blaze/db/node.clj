@@ -329,18 +329,20 @@
   in-flight under its `new-t`.
 
   A transaction without a `new-t` never made it into the transaction log and one
-  that is already indexed was released by `release-in-flight` before its `t`
+  that is already indexed was released by `release-indexed` before its `t`
   became known here. Both only stop being counted as submitting."
   [{:keys [t error-t] :as state} new-t]
   (cond-> (update state :submitting dec)
     (and new-t (< (max t error-t) new-t))
-    (update :in-flight conj new-t)))
+    (update :in-flight assoc new-t true)))
 
-(defn- release-in-flight
-  "Stops counting the transactions up to `t` as in-flight, because they are
-  indexed now."
-  [{:keys [in-flight] :as state} t]
-  (assoc state :in-flight (reduce disj in-flight (subseq in-flight <= t))))
+(defn- release-indexed
+  "Stops counting the transactions up to `t` as in-flight and removes the
+  waiters waiting for a t of at most `t`, because those transactions are indexed
+  now."
+  [state t]
+  (-> (update state :in-flight node-util/remove-up-to t)
+      (update :waiters waiters/remove-ready t)))
 
 (defn- index-tx
   "Indexes `tx-data` against the database value at the t of the last
@@ -384,9 +386,7 @@
   (log/trace "advance state to t =" t)
   (with-open [_ (prom/timer duration-seconds node-name "advance-t")]
     (let [{old-waiters :waiters}
-          (swap-state! state #(-> (assoc % :t t)
-                                  (release-in-flight t)
-                                  (update :waiters waiters/remove-ready t)))]
+          (swap-state! state #(release-indexed (assoc % :t t) t))]
       (waiters/complete-ready! old-waiters t t))))
 
 (defn- advance-error-t!
@@ -401,9 +401,7 @@
   [state t]
   (log/trace "advance state to error-t =" t)
   (let [[{old-waiters :waiters current-t :t}]
-        (swap-vals! state #(-> (assoc % :error-t t)
-                               (release-in-flight t)
-                               (update :waiters waiters/remove-ready t)))]
+        (swap-vals! state #(release-indexed (assoc % :error-t t) t))]
     (waiters/complete-ready! old-waiters t current-t)))
 
 (defn- commit-error! [{:keys [kv-store state]} t anomaly]
@@ -1454,6 +1452,10 @@
   `:running-subscriptions` and the `:publish-future` the publishing loop waits
   on.
 
+  The `:in-flight` t's are the keys of a map sorted by t with true as values,
+  because a sorted map can be reduced in the order of its keys without
+  allocating, which keeps releasing the indexed transactions cheap.
+
   The `:failed?` flag only tells that the node stopped because of an error, not
   which one. That distinguishes a node that failed from one that is closing
   normally, which is all any of its callers needs to know.
@@ -1479,7 +1481,7 @@
    :t (or (tx-success/last-t kv-store) 0)
    :error-t 0
    :submitting 0
-   :in-flight (sorted-set)
+   :in-flight (sorted-map)
    :waiters waiters/empty-waiters
    :subscriptions {}
    :subscriptions-closed? false
