@@ -572,7 +572,7 @@
      [{:expr "blaze_db_node_publishing_lag_transactions{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}"
        :legend "{{type}} {{subscriber}}"}]}
     {:title "Durations 0.5 Quantile"
-     :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones."
+     :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones. The store-tx-commit-entries is the single write committing a successful transaction. It stores the success marker of that transaction together with its index entries, unless they came in several parts. Only those are stored before, by store-tx-entries, so store-tx-entries shows up only with large transactions. The build-patient-last-change-index is the write of the initial entries of the PatientLastChange index, which a node builds once, on the first start without it."
      :unit "s"
      :overrides
      [{"matcher" {"id" "byName" "options" "poll-tx-log"}
@@ -581,7 +581,7 @@
      [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Durations 0.99 Quantile"
-     :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones."
+     :description "The ops overlap, so their durations must not be summed to obtain the time of the indexing thread. The index-resources of a transaction runs concurrently with the index-transactions and store-tx-entries of that same transaction and with the ops of later transactions, because the indexing loop dispatches the resource indexing of later transactions before it applies earlier ones. The store-tx-commit-entries is the single write committing a successful transaction. It stores the success marker of that transaction together with its index entries, unless they came in several parts. Only those are stored before, by store-tx-entries, so store-tx-entries shows up only with large transactions. The build-patient-last-change-index is the write of the initial entries of the PatientLastChange index, which a node builds once, on the first start without it."
      :unit "s"
      :overrides
      [{"matcher" {"id" "byName" "options" "poll-tx-log"}
