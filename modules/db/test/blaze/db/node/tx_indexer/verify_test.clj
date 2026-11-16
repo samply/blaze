@@ -186,14 +186,9 @@
             [:entries 4 1 ss-tu/decode-key] := {:t 1}
             [:entries 4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}
 
-            [:resource-handle-updates count] := 1
-            [:resource-handle-updates 0 0 :fhir/type] := :fhir/Patient
-            [:resource-handle-updates 0 0 :id] := "0"
-            [:resource-handle-updates 0 0 :t] := 1
-            [:resource-handle-updates 0 0 :hash] := hash
-            [:resource-handle-updates 0 0 :num-changes] := 1
-            [:resource-handle-updates 0 0 :op] := op
-            [:resource-handle-updates 0 1] := false)))))
+            ;; the first version of a resource needs no update of the resource
+            ;; handle cache
+            :resource-handle-updates := [])))))
 
   (testing "adding a second version of a Patient to a store containing it already"
     (let [hash (hash/generate patient-0-v2)]
@@ -270,6 +265,23 @@
             [4 0] := :system-stats-index
             [4 1 ss-tu/decode-key] := {:t 3}
             [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3})))))
+
+  (testing "adding a second version of an already deleted Patient updates the
+            resource handle cache, because the deleted version is its current
+            one"
+    (let [hash (hash/generate patient-0-v2)]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]]
+         [[:delete "Patient" "0"]]]
+
+        (given (verify-tx-cmds* node 3 [{:op "put" :type "Patient" :id "0"
+                                         :hash hash}])
+          [:resource-handle-updates count] := 1
+          [:resource-handle-updates 0 0 :t] := 3
+          [:resource-handle-updates 0 0 :hash] := hash
+          [:resource-handle-updates 0 0 :num-changes] := 3
+          [:resource-handle-updates 0 0 :op] := :put
+          [:resource-handle-updates 0 1] := false))))
 
   (testing "adding a Patient with identical content"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -402,6 +414,12 @@
         [4 0] := :system-stats-index
         [4 1 ss-tu/decode-key] := {:t 1}
         [4 2 ss-tu/decode-val] := {:total 0 :num-changes 1})))
+
+  (testing "deleting a Patient from an empty store needs no update of the
+            resource handle cache, because it writes the first version"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given (verify-tx-cmds* node 1 [{:op "delete" :type "Patient" :id "0"}])
+        :resource-handle-updates := [])))
 
   (testing "deleting an already deleted Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1186,16 +1204,39 @@
   parallel."
   2000)
 
+(defn- large-tx-resources
+  "Returns `num-large-tx-cmds` resources of `type` with the ids from 0 on."
+  [type]
+  (mapv #(hash-map :fhir/type (keyword "fhir" type) :id (str %))
+        (range num-large-tx-cmds)))
+
+(defn- tx-cmd
+  "Returns a command with `op` acting on `resource` with the hash of it."
+  {:arglists '([op resource])}
+  [op {:fhir/keys [type] :keys [id] :as resource}]
+  {:op op :type (name type) :id id :hash (hash/generate resource)})
+
 (defn- create-cmds
-  "Returns create commands of `num-large-tx-cmds` resources of `type` with the
-  ids from 0 on, applying `f` to each command and its index."
+  "Returns create commands of the `large-tx-resources` of `type`, applying `f`
+  to each command and its index."
   ([type]
    (create-cmds type (fn [cmd _] cmd)))
   ([type f]
-   (let [hash (hash/generate {:fhir/type (keyword "fhir" type) :id "0"})]
-     (mapv
-      #(f {:op "create" :type type :id (str %) :hash hash} %)
-      (range num-large-tx-cmds)))))
+   (into [] (map-indexed #(f (tx-cmd "create" %2) %1))
+         (large-tx-resources type))))
+
+(def ^:private existing-patients-tx
+  "A transaction creating the Patients of `large-tx-resources`."
+  (mapv #(vector :create %) (large-tx-resources "Patient")))
+
+(def ^:private patient-put-cmds
+  "Put commands of new versions of the Patients of `existing-patients-tx`.
+
+  Puts and not creates, because a put looks up the current version with
+  `d/resource-handle`, so that the lookups show how the commands are
+  verified."
+  (mapv #(tx-cmd "put" (assoc % :gender #fhir/code "male"))
+        (large-tx-resources "Patient")))
 
 (defn- type-lookup?
   "Returns a predicate of the arguments of `d/resource-handle` that is true for
@@ -1208,6 +1249,13 @@
     (with-system [{:blaze.db/keys [node]} config]
       (given (verify-tx-cmds* node 1 (create-cmds "Patient"))
         patient-stats := {:total 2000 :num-changes 2000}
+        :resource-handle-updates := [])))
+
+  (testing "the resource handle updates are the ones of the commands in order"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [existing-patients-tx]
+
+      (given (verify-tx-cmds* node 2 patient-put-cmds)
         [:resource-handle-updates count] := 2000
         [:resource-handle-updates 0 0 :id] := "0"
         [:resource-handle-updates 1999 0 :id] := "1999")))
@@ -1230,10 +1278,12 @@
         ::anom/message := "Resource `Patient/1999` already exists in the database with t = 1 and can't be created again.")))
 
   (testing "the commands are verified in parallel"
-    (with-system [{:blaze.db/keys [node]} config]
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [existing-patients-tx]
+
       (is (concurrent-calls?
            #'d/resource-handle (type-lookup? "Patient")
-           #(verify-tx-cmds* node 1 (create-cmds "Patient")))))))
+           #(verify-tx-cmds* node 2 patient-put-cmds))))))
 
 (defn- observation-cmd-referencing
   "Returns `cmd` referencing the Patient with `patient-id`."
@@ -1281,6 +1331,23 @@
     (- (num-lookups resource-handle-cache) lookups-before)))
 
 (deftest verify-resource-handle-lookups-test
+  (testing "a create looks up no resource handle, because its id is new"
+    (with-system [{:blaze.db/keys [node resource-handle-cache]}
+                  resource-handle-cache-config]
+      (is (zero? (num-verify-lookups
+                  node resource-handle-cache 1
+                  [{:op "create" :type "Patient" :id "0"
+                    :hash (hash/generate patient-0)}])))))
+
+  (testing "a create of an existing resource still fails"
+    (with-system-data [{:blaze.db/keys [node]} resource-handle-cache-config]
+      [[[:put patient-0]]]
+
+      (given (verify-tx-cmds* node 2 [{:op "create" :type "Patient" :id "0"
+                                       :hash (hash/generate patient-0)}])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
+
   (testing "a purge checking references looks up no resource handle"
     (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
                        resource-handle-cache-config]

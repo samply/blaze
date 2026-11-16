@@ -162,7 +162,10 @@
   The first counted call of each thread waits until a counted call of a second
   thread arrives, at most 10 seconds. So calls from a single thread, or calls
   of several threads one after another, make `f` take 10 seconds and return
-  false."
+  false.
+
+  Also returns false if fewer than two threads made a counted call, so that a
+  test doesn't pass because `f` stopped calling the function of `var`."
   [var pred f]
   (let [latch (CountDownLatch. 2)
         ^Set threads (ConcurrentHashMap/newKeySet)
@@ -176,7 +179,7 @@
                  (reset! concurrent? false)))
              (apply g args))}
       f)
-    @concurrent?))
+    (and @concurrent? (zero? (.getCount latch)))))
 
 (defn wait-for
   "Waits up to 10 seconds for the value of the atom `state` to satisfy `pred`,

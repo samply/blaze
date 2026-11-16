@@ -1549,11 +1549,11 @@
        [[:create (observation-of-patient-0 "1")]]
        [[:create (observation-of-patient-0 "2")]]]
 
-      ;; the id collision checks of the four creates and the first two
-      ;; lookups of the Patient miss, the third lookup of the Patient hits
+      ;; the first two lookups of the Patient miss, the third one hits, and
+      ;; the id collision checks of the creates bypass the cache
       (given (ccp/-stats resource-handle-cache)
         CacheStats/.hitCount := 1
-        CacheStats/.missCount := 6)))
+        CacheStats/.missCount := 2)))
 
   (testing "the indexer looks up a resource referenced twice in a transaction only once"
     (with-system-data [{:blaze.db/keys [resource-handle-cache]}
@@ -1562,11 +1562,11 @@
        [[:create (observation-of-patient-0 "0")]
         [:create (observation-of-patient-0 "1")]]]
 
-      ;; the id collision checks of the three creates and the single lookup of
-      ;; the Patient miss
+      ;; the single lookup of the Patient misses, and the id collision checks
+      ;; of the creates bypass the cache
       (given (ccp/-stats resource-handle-cache)
         CacheStats/.hitCount := 0
-        CacheStats/.missCount := 4)
+        CacheStats/.missCount := 1)
 
       (testing "so the Patient isn't inserted"
         (is (nil? (cached-handle resource-handle-cache "0" 2))))))
@@ -1712,6 +1712,32 @@
 
           (testing "readers of the purged version don't insert it again"
             (is (nil? (cached-handle resource-handle-cache "0" 2))))))))
+
+  (testing "readers of a purged version don't insert it after the resource is
+            created again"
+    (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
+                       resource-handle-cache-config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-db [db-before node]
+        @(d/transact node [[:patient-purge "0"]])
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"
+                                     :gender #fhir/code "male"}]])
+
+        (testing "the database value before the purge still sees the resource"
+          (given (resource-handle-twice db-before "Patient" "0")
+            :t := 1))
+
+        ;; the create of the first version of the resource doesn't record its
+        ;; write, so only the record of the purge keeps the reader out
+        (is (nil? (cached-handle resource-handle-cache "0" 3)))
+
+        (testing "readers of the new version insert it"
+          (with-db [db node]
+            (resource-handle-twice db "Patient" "0"))
+
+          (given (cached-handle resource-handle-cache "0" 3)
+            :t := 3)))))
 
   (testing "the indexer removes the entry of a purged resource with two versions"
     (with-system-data [{:blaze.db/keys [node resource-handle-cache]}
