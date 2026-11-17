@@ -540,17 +540,28 @@
                  "await-resources" "store-tx-commit-entries" "advance-t"}
                (duration-seconds-ops name))))))
 
-  (testing "with resource handle cache, its update is timed"
+  (testing "with resource handle cache"
     (let [name "rhc-170112"]
       (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
                     (named-node-config (with-manual-scheduler config) name)]
         @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
              (ac/then-compose (partial tx-result-after-indexing node)))
 
-        (is (= #{"poll-tx-log" "index-transactions" "index-resources"
-                 "await-resources" "store-tx-commit-entries"
-                 "update-resource-handle-cache" "advance-t"}
-               (duration-seconds-ops name)))))))
+        (testing "a transaction without updates of the cache doesn't time its
+                  update, because the first version of a resource isn't cached"
+          (is (= #{"poll-tx-log" "index-transactions" "index-resources"
+                   "await-resources" "store-tx-commit-entries" "advance-t"}
+                 (duration-seconds-ops name))))
+
+        @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
+                                          :active #fhir/boolean true}]])
+             (ac/then-compose (partial tx-result-after-indexing node)))
+
+        (testing "a transaction with updates of the cache times its update"
+          (is (= #{"poll-tx-log" "index-transactions" "index-resources"
+                   "await-resources" "store-tx-commit-entries"
+                   "update-resource-handle-cache" "advance-t"}
+                 (duration-seconds-ops name))))))))
 
 (deftest transact-test
   (testing "with transaction result fetching after indexing has completed"

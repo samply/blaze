@@ -812,13 +812,13 @@
 
   Updates the resource handle cache with the `resource-handle-updates` of that
   transaction before advancing to `t`, so that no reader sees `t` before the
-  cache reflects it."
-  [{:keys [resource-handle-cache stats] :as node} t instant entries tx-stats
-   resource-handle-updates]
+  cache reflects it. Skips that update, and so its timing, if the transaction
+  has no updates, which is always the case for a node without a cache."
+  [{:keys [stats] :as node} t instant entries tx-stats resource-handle-updates]
   (log/trace "commit transaction success with t =" t)
   (store-tx-commit-entries! node t instant entries)
   (vreset! stats tx-stats)
-  (when resource-handle-cache
+  (when (seq resource-handle-updates)
     (update-resource-handle-cache! node t resource-handle-updates))
   (advance-t! node t))
 
