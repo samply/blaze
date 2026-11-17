@@ -6,7 +6,7 @@ The system level \$disk-perf operation measures the performance of the disk volu
 POST [base]/$disk-perf
 ```
 
-The operation is formally described by the OperationDefinition with the canonical URL `https://blaze-server.org/fhir/OperationDefinition/disk-perf`, defined in the Blaze IG.
+The operation is formally described by the [OperationDefinition](/fhir/OperationDefinition-disk-perf.html){target="_self"} with the canonical URL `https://blaze-server.org/fhir/OperationDefinition/disk-perf`, defined in the [Blaze Implementation Guide](/fhir/index.html){target="_self"}.
 
 The benchmark runs three phases against temporary files in the chosen database directory:
 

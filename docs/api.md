@@ -52,7 +52,7 @@ The following Operations are implemented:
 
 Some requests like $evaluate-measure or complex FHIR searches with `_summary=count` can take longer as a typical HTTP request response cycle should be open. Typical HTTP request timeouts from client and intermediates are 30 seconds. Requests that take longer than that would require special handling. In oder to overcome that synchronous request handling, FHIR specifies [Asynchronous Request Patterns](http://hl7.org/fhir/R5/async.html).
 
-Blaze implements the [Asynchronous Interaction Request Pattern][8] from FHIR R5.
+Blaze implements the [Asynchronous Interaction Request Pattern][8] from FHIR R5. Internally, Blaze records the request as an [AsyncInteractionRequestBundle](/fhir/StructureDefinition-AsyncInteractionRequestBundle.html){target="_self"}, tracks its processing with an [AsyncInteractionJob](/fhir/StructureDefinition-AsyncInteractionJob.html){target="_self"} and stores the result as an [AsyncInteractionResponseBundle](/fhir/StructureDefinition-AsyncInteractionResponseBundle.html){target="_self"}.
 
 ### Example FHIR Search Request
 

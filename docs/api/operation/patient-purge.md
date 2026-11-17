@@ -18,7 +18,7 @@ The official documentation can be found [here][1].
 
 ## Selected Resources <Badge type="warning" text="Since 1.14.0"/>
 
-The following table lists the search parameters of each resource type of the [Patient compartment](https://hl7.org/fhir/R4/compartmentdefinition-patient.html), which Blaze used before 1.14.0, and the search parameter of the purge GraphDefinition `https://blaze-server.org/fhir/GraphDefinition/PatientPurge`. A resource is purged if it references the patient through the search parameter of the purge GraphDefinition. Resources of the types without one (—) aren't purged, except the patient itself.
+The following table lists the search parameters of each resource type of the [Patient compartment](https://hl7.org/fhir/R4/compartmentdefinition-patient.html), which Blaze used before 1.14.0, and the search parameter of the purge GraphDefinition [`https://blaze-server.org/fhir/GraphDefinition/PatientPurge`](/fhir/GraphDefinition-PatientPurge.html){target="_self"}. A resource is purged if it references the patient through the search parameter of the purge GraphDefinition. Resources of the types without one (—) aren't purged, except the patient itself.
 
 | Resource Type               | Patient Compartment                                   | Purge GraphDefinition |
 |-----------------------------|-------------------------------------------------------|-----------------------|
@@ -113,6 +113,6 @@ GET [base]/Patient/[id]/$graph?graph=https://blaze-server.org/fhir/GraphDefiniti
 
 ## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
 
-Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. Such resources can't be purged. If the patient or one of the [selected resources](#selected-resources) carries the label, the operation fails with an OperationOutcome with code `conflict` and purges no resource at all.
+Resources Blaze owns itself can carry the security label `internal` with the system [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} in `meta.security`. Such resources can't be purged. If the patient or one of the [selected resources](#selected-resources) carries the label, the operation fails with an OperationOutcome with code `conflict` and purges no resource at all.
 
 [1]: <https://build.fhir.org/patient-operation-purge.html>

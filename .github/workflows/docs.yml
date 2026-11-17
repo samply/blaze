@@ -85,6 +85,19 @@ jobs:
         VITE_LATEST_FRONTEND_DIGEST: ${{ steps.release.outputs.frontend_digest }}
       run: make build
 
+    - name: Setup IG Render Toolchain
+      uses: ./.github/actions/setup-ig-render
+
+    # The guide is rendered from the same commit as the documentation around
+    # it, so that a page and the definition it describes never disagree.
+    # Rendering takes about a minute and a half, so it's done on every build
+    # rather than cached.
+    - name: Render IG
+      run: make -C modules/ig publish
+
+    - name: Add IG to Site
+      run: make -C docs add-ig
+
     - name: Setup Pages
       uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 

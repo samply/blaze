@@ -26,7 +26,7 @@ Blaze returns a `200 OK` with a Bundle of type `batch-response`. The response bu
 
 ## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
 
-The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` also apply to the entries of a batch. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails with status `409`.
+The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} also apply to the entries of a batch. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails with status `409`.
 
 ## Handling Errors
 
