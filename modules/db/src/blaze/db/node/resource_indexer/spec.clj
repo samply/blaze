@@ -13,10 +13,14 @@
 (s/def ::resource-indexer/num-threads
   pos-int?)
 
+(s/def ::resource-indexer/node-name
+  string?)
+
 (s/def :blaze.db.node/resource-indexer
   (s/keys
    :req-un
    [:blaze.db/kv-store
     :blaze.db/resource-store
     :blaze.db/search-param-registry
-    ::resource-indexer/executor]))
+    ::resource-indexer/executor
+    ::resource-indexer/node-name]))

@@ -608,40 +608,37 @@
      [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_index_batch_transactions_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
        :legend "{{node}}"}]}]}
 
-  {:title "Transaction Size"
+  {:title "Transaction Size $node"
+   :repeat "node"
    :panels
    [{:title "Transaction Size 0.5 Quantile"
      :description "Mean number of commands per transaction."
      :unit "none"
-     :legend false
      :legend-calcs ["mean"]
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
-       :legend ""}]}
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}
     {:title "Transaction Size 0.9 Quantile"
      :description "90% quantile of number of commands per transaction."
      :unit "none"
-     :legend false
      :legend-calcs ["mean"]
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
-       :legend ""}]}
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}
     {:title "Transaction Size 0.99 Quantile"
      :description "99% quantile of number of commands per transaction."
      :unit "none"
-     :legend false
      :legend-calcs ["mean"]
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
-       :legend ""}]}
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}
     {:title "Transaction Size 0.01 Quantile"
      :description "1% quantile of number of commands per transaction."
      :unit "none"
-     :legend false
      :legend-calcs ["mean"]
      :queries
-     [{:expr "histogram_quantile(0.01, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (le))"
-       :legend ""}]}]}
+     [{:expr "histogram_quantile(0.01, sum(rate(blaze_db_node_transaction_sizes_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
+       :legend "{{node}}"}]}]}
 
   {:title "Resource Store"
    :panels
@@ -691,155 +688,158 @@
      [{:expr "blaze_page_store_estimated_size{job=~\"$job\",instance=~\"$instance\"}"
        :legend "{{type}}"}]}]}
 
-  {:title "Resource Indexer"
+  {:title "Resource Indexer $node"
+   :repeat "node"
    :panels
    [{:title "Resource Indexer Durations 0.5 Quantile"
      :unit "s"
      :stacking true
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Resource Indexer Durations 0.9 Quantile"
      :unit "s"
      :stacking true
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Resource Indexer Durations 0.99 Quantile"
      :unit "s"
      :stacking true
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Number of Index Entries 0.5 Quantile"
      :description "Mean number of index entries of one resource by resource type."
      :unit "none"
      :min nil
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, type, le))"
        :legend "{{type}}"}]}
     {:title "Number of Index Entries 0.9 Quantile"
      :description "Number of index entries of one resource by resource type."
      :unit "none"
      :min nil
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, type, le))"
        :legend "{{type}}"}]}
     {:title "Number of Index Entries 0.99 Quantile"
      :description "Number of index entries of one resource by resource type."
      :unit "none"
      :min nil
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (type, le))"
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_resource_indexer_index_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, type, le))"
        :legend "{{type}}"}]}
     {:title "Ops per Second"
      :unit "ops"
      :legend-calcs ["mean"]
      :queries
-     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op)"
        :legend "{{op}}"}]}
     {:title "Utilization"
      :description "Percentual amount of time, the resource indexer takes for certain actions. Values over 100 % indicate parallel processing."
      :unit "percentunit"
      :stacking true
      :queries
-     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+     [{:expr "sum(rate(blaze_db_resource_indexer_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op)"
        :legend "{{op}}"}]}]}
 
-  {:title "Transaction Indexer"
+  {:title "Transaction Indexer $node"
+   :repeat "node"
    :panels
    [{:title "Durations 0.5 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Durations 0.9 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Durations 0.99 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op, le))"
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_indexer_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
        :legend "{{op}}"}]}
     {:title "Ops per Second"
      :unit "ops"
      :queries
-     [{:expr "sum(rate(blaze_db_tx_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (op)"
+     [{:expr "sum(rate(blaze_db_tx_indexer_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op)"
        :legend "{{op}}"}]}]}
 
-  {:title "Transaction Log"
+  {:title "Transaction Log $node"
+   :repeat "node"
    :panels
    [{:title "Transactions per Second"
      :description "Number of transactions submitted to the transaction log per second."
      :unit "ops"
      :queries
-     [{:expr "sum(rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",op=\"submit\"}[$__rate_interval])) by (node)"
+     [{:expr "sum(rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=\"submit\"}[$__rate_interval])) by (node)"
        :legend "{{node}}"}]}
     {:title "Store Batches per Second"
      :description "Number of batches of transaction data stored per second. Together with the submit rate it gives the number of submits coalesced into one batch."
      :unit "ops"
      :queries
-     [{:expr "sum(rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node)"
+     [{:expr "sum(rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node)"
        :legend "{{node}}"}]}
     {:title "Transaction Log Buffer"
      :description "Number of transaction data entries in the buffer of the local transaction log. Unstored entries wait for the storer thread, so they grow if storing is slower than submitting. Retained entries are already stored and wait for the poller to acknowledge them, so they grow if indexing is slower than storing. Both together are the memory the buffer occupies."
      :unit "none"
      :queries
-     [{:expr "blaze_db_tx_log_buffer_entries{job=~\"$job\",instance=~\"$instance\"}"
-       :legend "{{node}} {{state}}"}]}
+     [{:expr "blaze_db_tx_log_buffer_entries{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}"
+       :legend "{{state}}"}]}
     {:title "Storer Utilization"
      :description "Percentual amount of time the storer thread spends storing transaction data. At 100 % it stores one round after the other without ever waiting for transaction data to arrive. That doesn't mean the transaction log is at its limit: each round stores a whole batch, so the throughput still grows with the batch size. Reaching 100 % only takes a submit rate of one transaction per round."
      :unit "percentunit"
      :max 1
      :queries
-     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval])"
+     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=\"store-round\"}[$__rate_interval])"
        :legend "{{node}}"}]}
     {:title "Mean Store Round Duration"
      :description "Mean duration of one round of the store loop. In contrast to the quantiles, it doesn't depend on the histogram buckets, and it's the duration that determines the throughput: the number of rounds per second is its reciprocal as long as the storer is fully utilized."
      :unit "s"
      :queries
-     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval]) / rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",op=\"store-round\"}[$__rate_interval])"
+     [{:expr "rate(blaze_db_tx_log_duration_seconds_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=\"store-round\"}[$__rate_interval]) / rate(blaze_db_tx_log_duration_seconds_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\",op=\"store-round\"}[$__rate_interval])"
        :legend "{{node}}"}]}
     {:title "Durations 0.5 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
-       :legend "{{node}} {{op}}"}]}
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{op}}"}]}
     {:title "Durations 0.9 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
-       :legend "{{node}} {{op}}"}]}
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{op}}"}]}
     {:title "Durations 0.99 Quantile"
      :unit "s"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, op, le))"
-       :legend "{{node}} {{op}}"}]}
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_duration_seconds_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, op, le))"
+       :legend "{{op}}"}]}
     {:title "Mean Store Batch Size"
      :description "Mean number of transaction data entries stored in one batch. Together with the mean store round duration it gives the throughput of the transaction log, because one round stores one batch."
      :unit "none"
      :queries
-     [{:expr "rate(blaze_db_tx_log_store_batch_entries_sum{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval]) / rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])"
+     [{:expr "rate(blaze_db_tx_log_store_batch_entries_sum{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval]) / rate(blaze_db_tx_log_store_batch_entries_count{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])"
        :legend "{{node}}"}]}
     {:title "Store Batch Size 0.5 Quantile"
      :description "Median number of transaction data entries stored in one batch. Shows how many submits are coalesced. Only the local transaction log stores batches."
      :unit "none"
      :queries
-     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+     [{:expr "histogram_quantile(0.5, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
        :legend "{{node}}"}]}
     {:title "Store Batch Size 0.9 Quantile"
      :description "90% quantile of the number of transaction data entries stored in one batch."
      :unit "none"
      :queries
-     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+     [{:expr "histogram_quantile(0.9, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
        :legend "{{node}}"}]}
     {:title "Store Batch Size 0.99 Quantile"
      :description "99% quantile of the number of transaction data entries stored in one batch."
      :unit "none"
      :queries
-     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\"}[$__rate_interval])) by (node, le))"
+     [{:expr "histogram_quantile(0.99, sum(rate(blaze_db_tx_log_store_batch_entries_bucket{job=~\"$job\",instance=~\"$instance\",node=\"$node\"}[$__rate_interval])) by (node, le))"
        :legend "{{node}}"}]}]}
 
   {:title "JVM"

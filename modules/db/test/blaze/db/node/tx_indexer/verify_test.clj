@@ -63,8 +63,9 @@
   "Returns the verification context of `node`, using the stats the node itself
   keeps, so that the entries are the ones the indexing loop of the node would
   write."
-  [{:keys [read-only-matcher internal-matcher stats tx-indexer-pool]} db]
-  {:db-before db :read-only-matcher read-only-matcher
+  [{:keys [node-name read-only-matcher internal-matcher stats tx-indexer-pool]}
+   db]
+  {:node-name node-name :db-before db :read-only-matcher read-only-matcher
    :internal-matcher internal-matcher :stats @stats :pool tx-indexer-pool})
 
 (defn- flatten-parts

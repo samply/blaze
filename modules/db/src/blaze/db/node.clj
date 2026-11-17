@@ -863,7 +863,8 @@
    {{:keys [t tx-cmds] :as tx-data} :tx-data
     :keys [chunks pending timer] :as tx-chunk-state}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
-  (let [result (index-tx node {:read-only-matcher read-only-matcher
+  (let [result (index-tx node {:node-name node-name
+                               :read-only-matcher read-only-matcher
                                :internal-matcher internal-matcher
                                :stats @stats
                                :pool tx-indexer-pool} tx-data)]

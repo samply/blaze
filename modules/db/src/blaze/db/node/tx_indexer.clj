@@ -37,11 +37,11 @@
   anomaly if verification fails (e.g. precondition not met, referential
   integrity violation, or duplicate commands)."
   {:arglists '([context tx-data])}
-  [{:keys [db-before] :as context} {:keys [t tx-cmds permissions]}]
+  [{:keys [node-name db-before] :as context} {:keys [t tx-cmds permissions]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/t db-before))
   (do-sync [expanded-tx-cmds (expand/expand-tx-cmds context tx-cmds)]
-    (with-open [_ (prom/timer tx-u/duration-seconds "verify-tx-cmds")]
+    (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-tx-cmds")]
       (verify/verify-tx-cmds
        (cond-> context
          permissions (assoc :permissions permissions)

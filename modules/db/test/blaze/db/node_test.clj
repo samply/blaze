@@ -25,6 +25,8 @@
    [blaze.db.node.subscription :as sub]
    [blaze.db.node.subscription-spec]
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
+   [blaze.db.node.tx-indexer.util :as tx-u]
+   [blaze.db.node.tx-indexer.verify :as verify]
    [blaze.db.node.version :as version]
    [blaze.db.resource-cache.spec]
    [blaze.db.resource-handle-cache :as rhc]
@@ -50,6 +52,7 @@
    [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -484,17 +487,17 @@
          (map (comp second :label-values)))
    (metrics/collect node/duration-seconds)))
 
-(defn- duration-seconds-bucket-bounds
-  "Returns the sorted finite upper bounds of the duration buckets.
+(defn- bucket-bounds
+  "Returns the sorted finite upper bounds of the buckets of `histogram`.
 
   Leaves out the +Inf bucket, for which `parse-double` returns nil."
-  []
+  [histogram]
   (into
    (sorted-set)
    (comp (mapcat :samples)
-         (filter (comp #{"blaze_db_node_duration_seconds_bucket"} :name))
+         (filter (comp #(str/ends-with? % "_bucket") :name))
          (keep (comp parse-double last :label-values)))
-   (metrics/collect node/duration-seconds)))
+   (metrics/collect histogram)))
 
 (deftest duration-seconds-buckets-test
   (with-system [{:blaze.db/keys [node]} config]
@@ -502,10 +505,14 @@
          (ac/then-compose (partial tx-result-after-indexing node)))
 
     (testing "the lowest bucket resolves ops of one microsecond"
-      (is (= 1e-6 (first (duration-seconds-bucket-bounds)))))
+      (is (= 1e-6 (first (bucket-bounds node/duration-seconds)))))
 
     (testing "the highest bucket still covers ops of several seconds"
-      (is (<= 3.2768 (last (duration-seconds-bucket-bounds)))))))
+      (is (<= 3.2768 (last (bucket-bounds node/duration-seconds)))))
+
+    (testing "the tx-indexer durations use the same buckets"
+      (is (= (bucket-bounds node/duration-seconds)
+             (bucket-bounds tx-u/duration-seconds))))))
 
 (defn- clear-duration-seconds!
   "Clears the durations observed by earlier tests.
@@ -562,6 +569,36 @@
                    "await-resources" "store-tx-commit-entries"
                    "update-resource-handle-cache" "advance-t"}
                  (duration-seconds-ops name))))))))
+
+(defn- label-values
+  "Returns the set of label values of the samples with `sample-name` collected
+  from `collector`."
+  [collector sample-name]
+  (into
+   #{}
+   (comp (mapcat :samples)
+         (filter (comp #{sample-name} :name))
+         (map :label-values))
+   (metrics/collect collector)))
+
+(deftest tx-indexer-metrics-node-label-test
+  (let [name "name-101432"]
+    (with-system [{node [:blaze.db/node (keyword (str "blaze.db." name) "node")]}
+                  (named-node-config config name)]
+      @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+           (ac/then-compose (partial tx-result-after-indexing node)))
+
+      (testing "the durations of the transaction indexer are labeled with the
+                name of the node"
+        (is (every? (label-values tx-u/duration-seconds
+                                  "blaze_db_tx_indexer_duration_seconds_count")
+                    [[name "expand-tx-cmds"] [name "verify-tx-cmds"]
+                     [name "verify-create"] [name "stats"]])))
+
+      (testing "the transaction sizes are labeled with the name of the node"
+        (is (contains? (label-values verify/transaction-sizes
+                                     "blaze_db_node_transaction_sizes_count")
+                       [name]))))))
 
 (deftest transact-test
   (testing "with transaction result fetching after indexing has completed"

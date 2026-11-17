@@ -2114,7 +2114,7 @@
             ::anom/message := (format "Invalid GraphDefinition `http://example.com/purge|1` for purging Patients: The link to `Observation` uses %s with code `%s`." msg code)))))))
 
 (defn- expand-patient-purge-duration-sum []
-  (:histogram/sum (prom/get tx-u/duration-seconds "expand-patient-purge")))
+  (:histogram/sum (prom/get tx-u/duration-seconds "main" "expand-patient-purge")))
 
 (deftest transact-patient-purge-graph-duration-test
   (testing "the duration of the expansion includes pulling the GraphDefinition,

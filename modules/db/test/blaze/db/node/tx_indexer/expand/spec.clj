@@ -6,4 +6,5 @@
    [clojure.spec.alpha :as s]))
 
 (s/def ::expand/context
-  (s/keys :req-un [::verify/db-before ::verify/stats ::verify/pool]))
+  (s/keys :req-un [::verify/node-name ::verify/db-before ::verify/stats
+                   ::verify/pool]))
