@@ -8,6 +8,7 @@ import {
   type Curve,
   gutter,
   HEIGHT,
+  type LegendEntry,
   logAxis,
   place,
   scale,
@@ -15,11 +16,17 @@ import {
   ticks,
   WIDTH,
 } from "./plot";
+import { versionLegend } from "./versions";
 
 const props = withDefaults(
   defineProps<{
-    /** Data file, relative to `docs/performance`. */
-    src: string;
+    /**
+     * Data file, relative to `docs/performance`. Several files, oldest first,
+     * are drawn on top of each other, all but the last dashed.
+     */
+    src: string | string[];
+    /** One label per file, required for two or more files. */
+    srcLabels?: string[];
     title: string;
     xLabel?: string;
     /** 1-based column holding the x value. */
@@ -43,6 +50,7 @@ const props = withDefaults(
     y2Max?: number | null;
   }>(),
   {
+    srcLabels: () => [],
     xLabel: "Concurrent Clients",
     xCol: 1,
     xLog: false,
@@ -62,25 +70,41 @@ const props = withDefaults(
   },
 );
 
-const data = computed(() => {
-  // Some k6 results start with a header row, which carries no x value.
-  const parsed = rows(props.src);
-  const all =
-    parsed.length > 0 && !isNum(parsed[0], props.xCol) ? parsed.slice(1) : parsed;
-  const values = (col: number) =>
-    all.map((row) => ({ x: num(row, props.xCol), y: num(row, col) }));
-  return {
-    x: all.map((row) => num(row, props.xCol)),
-    y: props.yCols.map(values),
-    y2: props.y2Cols.map(values),
-  };
+const files = computed(() => {
+  const files = Array.isArray(props.src) ? props.src : [props.src];
+  if (files.length > 1 && props.srcLabels.length !== files.length) {
+    throw new Error(
+      `${files.length} src files need ${files.length} src-labels, got ${props.srcLabels.length}`,
+    );
+  }
+  return files;
 });
+
+const data = computed(() =>
+  files.value.map((file) => {
+    // Some k6 results start with a header row, which carries no x value.
+    const parsed = rows(file);
+    const all =
+      parsed.length > 0 && !isNum(parsed[0], props.xCol)
+        ? parsed.slice(1)
+        : parsed;
+    const values = (col: number) =>
+      all.map((row) => ({ x: num(row, props.xCol), y: num(row, col) }));
+    return {
+      x: all.map((row) => num(row, props.xCol)),
+      y: props.yCols.map(values),
+      y2: props.y2Cols.map(values),
+    };
+  }),
+);
+
+const xValues = computed(() => data.value.flatMap((file) => file.x));
 
 const xAxis = computed(() => {
   if (props.xTicks) {
     return logAxis(
-      props.xMin ?? Math.min(...data.value.x),
-      props.xMax ?? Math.max(...data.value.x),
+      props.xMin ?? Math.min(...xValues.value),
+      props.xMax ?? Math.max(...xValues.value),
       props.xTicks,
     );
   }
@@ -88,8 +112,8 @@ const xAxis = computed(() => {
     throw new Error("a log x axis needs an explicit x-ticks list");
   }
   return axis(
-    Math.min(...data.value.x),
-    Math.max(...data.value.x),
+    Math.min(...xValues.value),
+    Math.max(...xValues.value),
     props.xMin,
     props.xMax,
     8,
@@ -97,7 +121,9 @@ const xAxis = computed(() => {
 });
 
 const yAxis = computed(() => {
-  const values = data.value.y.flat().map((point) => point.y);
+  const values = data.value
+    .flatMap((file) => file.y.flat())
+    .map((point) => point.y);
   return axis(
     Math.min(...values),
     Math.max(...values),
@@ -111,7 +137,9 @@ const yAxis = computed(() => {
 // so both scales tend to land on the same gridlines instead of interleaving
 // two sets of horizontal lines.
 const y2Axis = computed(() => {
-  const values = data.value.y2.flat().map((point) => point.y);
+  const values = data.value
+    .flatMap((file) => file.y2.flat())
+    .map((point) => point.y);
   return axis(
     Math.min(...values),
     Math.max(...values),
@@ -140,7 +168,13 @@ const y2 = computed(() =>
   scale(y2Axis.value, plot.value.bottom, plot.value.top),
 );
 
-const curves = computed<Curve[]>(() => {
+const multi = computed(() => files.value.length > 1);
+
+/** The curves of the file at `fileIndex`; only the last file is solid. */
+function curvesOf(fileIndex: number): Curve[] {
+  const file = data.value[fileIndex];
+  const prefix = multi.value ? `${props.srcLabels[fileIndex]} · ` : "";
+  const dashed = multi.value && fileIndex < files.value.length - 1;
   const of = (
     series: { x: number; y: number }[][],
     names: string[],
@@ -149,37 +183,54 @@ const curves = computed<Curve[]>(() => {
     unit: string,
   ) =>
     series.map((points, index) => ({
-      name: names[index] ?? `Series ${index + 1}`,
+      name: `${prefix}${names[index] ?? `Series ${index + 1}`}`,
       color: color(index),
+      dashed,
       points: points.map((point) => ({
         cx: x.value(point.x),
         cy: project(point.y),
-        label: `${props.xLabel} ${tick(point.x)} · ${names[index]}: ${tick(point.y)}${unit}`,
+        label: `${props.xLabel} ${tick(point.x)} · ${prefix}${names[index]}: ${tick(point.y)}${unit}`,
       })),
     }));
   return [
-    ...of(data.value.y, props.ySeries, y.value, () => "var(--blaze-chart-line-y1)", ""),
+    ...of(file.y, props.ySeries, y.value, () => "var(--blaze-chart-line-y1)", ""),
     ...of(
-      data.value.y2,
+      file.y2,
       props.y2Series,
       y2.value,
       (index) => `var(--blaze-chart-line-y2-${Math.min(index + 1, 3)})`,
       " ms",
     ),
   ];
-});
+}
 
-const legend = computed(() =>
-  curves.value.map((curve) => ({
-    name: curve.name,
+const curves = computed<Curve[]>(() =>
+  files.value.flatMap((_, index) => curvesOf(index)),
+);
+
+// With several files, the legend keeps the metrics by colour and names the
+// files by line style, instead of listing every file's curve.
+const legend = computed<LegendEntry[]>(() => {
+  if (!multi.value) {
+    return curves.value.map((curve) => ({
+      name: curve.name,
+      color: curve.color,
+      shape: "line" as const,
+    }));
+  }
+  const last = files.value.length - 1;
+  const metrics = curvesOf(last).map((curve, index) => ({
+    name: [...props.ySeries, ...props.y2Series][index] ?? curve.name,
     color: curve.color,
     shape: "line" as const,
-  })),
-);
+  }));
+  return [...metrics, ...versionLegend(props.srcLabels)];
+});
 
 const description = computed(() =>
   [
     `Line chart. ${props.title}.`,
+    ...(multi.value ? [`Versions ${props.srcLabels.join(", ")}.`] : []),
     `${props.xLabel} from ${tick(xAxis.value.min)} to ${tick(xAxis.value.max)}.`,
     `Left axis ${props.yLabel}: ${props.ySeries.join(", ")}.`,
     `Right axis ${props.y2Label}: ${props.y2Series.join(", ")}.`,

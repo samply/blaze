@@ -82,7 +82,7 @@ PROFILE=count-72514-3 PROFILE_EVENT=alloc REPEATS=32 docs/performance/fhir-searc
 
 ## Transaction Load Test
 
-The transaction test is run by [k6][2] instead of a test script, so it's profiled by the `profile-transaction.sh` script in `docs/performance/load-testing`. It takes the system whose `docker-compose-<system>.yml` Blaze runs with as argument and profiles the single concurrency level given in the `VUS` environment variable, which is required, because every level has its own ratio of per-batch to per-entry work:
+The transaction test is run by [k6][2] instead of a test script, so it's profiled by the `profile-transaction.sh` script in `docs/performance/load-testing`. It takes the system whose `docker-compose-<system>.yml` Blaze runs with as argument and profiles the single concurrency level given in the `VUS` environment variable, which is required, because every level has its own ratio of per-batch to per-entry work. Blaze runs the image the Compose file selects, which is the locally built `blaze:latest` unless `IMAGE` names another:
 
 ```sh
 VUS=128 docs/performance/load-testing/profile-transaction.sh LEA79
