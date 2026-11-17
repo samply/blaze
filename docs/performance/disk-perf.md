@@ -30,7 +30,9 @@ The job outputs the raw numbers of each phase:
 | fsync-latency-p50 / -p95 / -p99              | write + fsync latency percentiles in microseconds                             |
 | direct-io                                    | whether the random reads could bypass the page cache                          |
 
-Each per-level read output carries the number of concurrent readers of its run in the `https://blaze-server.org/fhir/StructureDefinition/disk-perf-concurrency` extension. The admin UI plots the IOPS over the concurrency together with the reference curve of a good local NVMe SSD.
+Each per-level read output carries the number of concurrent readers of its run in the [`https://blaze-server.org/fhir/StructureDefinition/disk-perf-concurrency`](/fhir/StructureDefinition-disk-perf-concurrency.html){target="_self"} extension. The admin UI plots the IOPS over the concurrency together with the reference curve of a good local NVMe SSD.
+
+The job and its outputs are defined by the [DiskPerfJob](/fhir/StructureDefinition-DiskPerfJob.html){target="_self"} profile and the [DiskPerfJobOutput](/fhir/CodeSystem-DiskPerfJobOutput.html){target="_self"} code system.
 
 ### Score
 
@@ -44,6 +46,8 @@ Because every level of the sweep contributes to the score, scores are only compa
 | ≥ 50   | good         | well suited for production use                                          |
 | ≥ 25   | acceptable   | works, but larger deployments will be limited by disk I/O               |
 | < 25   | insufficient | expect poor performance; consider local NVMe SSD storage                |
+
+The ratings are defined by the [DiskPerfRating](/fhir/CodeSystem-DiskPerfRating.html){target="_self"} code system.
 
 If `direct-io` is false, the filesystem doesn't support bypassing the page cache, and the random read numbers are inflated by page cache hits — treat the score as an upper bound in that case.
 

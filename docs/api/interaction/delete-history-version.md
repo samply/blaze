@@ -27,7 +27,7 @@ The delete history version interaction can also be used in [batches](batch.md) a
 
 ## Internal Resources
 
-Resources Blaze owns itself can carry the security label `internal` with the system `https://blaze-server.org/fhir/CodeSystem/AccessControl` in `meta.security`. No historical version of such a resource can be deleted. Blaze returns a `409 Conflict` with an `OperationOutcome` instead. In a transaction, such an entry fails the whole transaction.
+Resources Blaze owns itself can carry the security label `internal` with the system [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} in `meta.security`. No historical version of such a resource can be deleted. Blaze returns a `409 Conflict` with an `OperationOutcome` instead. In a transaction, such an entry fails the whole transaction.
 
 ## Handling Errors
 

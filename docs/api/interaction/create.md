@@ -34,7 +34,7 @@ By default, Blaze enforces referential integrity, so all resources referenced by
 
 ## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
 
-The codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` belong to Blaze alone. Blaze uses them to label resources it owns itself, like base FHIR StructureDefinition resources, which are tagged `read-only`. Clients can't set them. So a resource carrying any code of that CodeSystem, or of its legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`, in `meta.tag` or in `meta.security` can't be created. Blaze returns a `409 Conflict` with an `OperationOutcome` instead. This also applies to copies of Blaze-owned resources that still carry the `read-only` tag, so these codes have to be removed before creating such a copy.
+The codes of the CodeSystem [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} belong to Blaze alone. Blaze uses them to label resources it owns itself, like base FHIR StructureDefinition resources, which are tagged `read-only`. Clients can't set them. So a resource carrying any code of that CodeSystem, or of its legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`, in `meta.tag` or in `meta.security` can't be created. Blaze returns a `409 Conflict` with an `OperationOutcome` instead. This also applies to copies of Blaze-owned resources that still carry the `read-only` tag, so these codes have to be removed before creating such a copy.
 
 A [conditional create](#conditional-create) matching an existing resource doesn't create anything, so it succeeds regardless of these codes.
 

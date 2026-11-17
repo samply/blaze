@@ -48,6 +48,12 @@ const config = defineConfig({
 
     nav: [
       { text: "Home", link: "/" },
+      // The guide isn't a VitePress page, so target bypasses the router.
+      {
+        text: "Implementation Guide",
+        link: "/fhir/index.html",
+        target: "_self",
+      },
       {
         text: `${currentVersion}`,
         items: [

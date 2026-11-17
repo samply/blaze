@@ -13,6 +13,8 @@ POST [base]/$compact
 | database      | 1..1        | code | One of three possible databases: `index`, `transaction` and `resource` |
 | column-family | 1..1        | code | Name of the column family depending on the database. See below.        |
 
+The values of the parameters come from the [Database](/fhir/ValueSet-Database.html){target="_self"} and [ColumnFamily](/fhir/ValueSet-ColumnFamily.html){target="_self"} value sets, and the job the operation creates conforms to the [CompactJob](/fhir/StructureDefinition-CompactJob.html){target="_self"} profile.
+
 ### Column Families
 
 | Database    | Column Family                        |

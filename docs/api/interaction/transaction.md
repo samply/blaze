@@ -55,7 +55,7 @@ A transaction can act on each resource only once. The only exception are [delete
 
 ## Access Control Codes <Badge type="warning" text="Since 1.14.0"/>
 
-The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` also apply to the entries of a transaction. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails the whole transaction with a `409 Conflict`.
+The rules of the [create](create.md), [update](update.md) and [delete](delete.md) interactions regarding resources carrying codes of the CodeSystem [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} also apply to the entries of a transaction. A client can't create or update a resource carrying such a code and can't change or delete an `internal` resource or delete any of its historical versions. Such an entry fails the whole transaction with a `409 Conflict`.
 
 ## Conditional Create
 
