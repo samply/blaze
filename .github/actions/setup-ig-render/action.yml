@@ -43,6 +43,6 @@ runs:
       shell: bash
       env:
         # renovate: datasource=github-release-attachments depName=HL7/fhir-ig-publisher
-        IG_PUBLISHER_VERSION: 3.0.3
-        IG_PUBLISHER_CHECKSUM: eeb61f43ff54d532b8da07c5f5e60bc09c63285f8c5bbb2936467bac049a20af
+        IG_PUBLISHER_VERSION: 3.0.4
+        IG_PUBLISHER_CHECKSUM: 361b8aa8b2c037bcc0faeb66e0f5882f447259edbae92af5457c493b3514e059
       run: .github/scripts/install-ig-publisher.sh
