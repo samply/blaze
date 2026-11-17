@@ -42,11 +42,11 @@
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 
 (defn- expand-tx-cmds
-  "Expands `tx-cmds` against `node` with the stats and the pool the node itself
-  keeps."
-  [{:keys [stats tx-indexer-pool] :as node} tx-cmds]
-  (d/with-db node #(expand/expand-tx-cmds {:db-before % :stats @stats
-                                           :pool tx-indexer-pool}
+  "Expands `tx-cmds` against `node` with its name and the stats and the pool the
+  node itself keeps."
+  [{:keys [node-name stats tx-indexer-pool] :as node} tx-cmds]
+  (d/with-db node #(expand/expand-tx-cmds {:node-name node-name :db-before %
+                                           :stats @stats :pool tx-indexer-pool}
                                           tx-cmds)))
 
 (deftest expand-tx-cmds-conditional-create-test

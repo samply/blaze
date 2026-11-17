@@ -51,11 +51,14 @@
 (set! *warn-on-reflection* true)
 
 (defhistogram transaction-sizes
-  "Number of transaction commands per transaction."
+  "Number of transaction commands per transaction.
+
+  The `node` label distinguishes the individual nodes like main and admin."
   {:namespace "blaze"
    :subsystem "db_node"
    :name "transaction_sizes"}
-  (take 16 (iterate #(* 2 %) 1)))
+  (take 16 (iterate #(* 2 %) 1))
+  "node")
 
 (defn- command-index
   "Returns the index of `cmds` (see `dup/index`) or a conflict anomaly if two
@@ -158,9 +161,10 @@
   (some? (rao/uncached-resource-handle db tid id)))
 
 (defmethod verify "create"
-  [{:keys [db-before] :as context} t res {:keys [type id hash refs] :as tx-cmd}]
+  [{:keys [node-name db-before] :as context} t res
+   {:keys [type id hash refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-create-msg type id))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-create")]
     (let [tid (codec/tid type)]
       (if (id-collision? db-before tid id)
         (reduced (ba/conflict (id-collision-msg type id (d/t db-before))))
@@ -275,10 +279,10 @@
        (d/matches? db-before internal-matcher resource-handle)))
 
 (defmethod verify "put"
-  [{:keys [db-before] :as context} t res
+  [{:keys [node-name db-before] :as context} t res
    {:keys [type id hash if-match if-none-match refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-put-msg type id (u/to-seq if-match) if-none-match))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-put")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-put")]
     (let [tid (codec/tid type)
           if-match (u/to-seq if-match)
           {:keys [num-changes op] :or {num-changes 0} old-t :t old-hash :hash
@@ -319,9 +323,9 @@
     (format "verify-tx-cmd :keep %s/%s" type id)))
 
 (defmethod verify "keep"
-  [{:keys [db-before]} _ res {:keys [type id hash if-match] :as tx-cmd}]
+  [{:keys [node-name db-before]} _ res {:keys [type id hash if-match] :as tx-cmd}]
   (log/trace (verify-tx-cmd-keep-msg type id (u/to-seq if-match)))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-keep")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-keep")]
     (let [if-match (u/to-seq if-match)
           {old-hash :hash old-t :t} (d/resource-handle db-before type id)]
       (cond
@@ -398,9 +402,9 @@
     (update-in res [:deletes type] impl/assoc-delete id true)))
 
 (defmethod verify "delete"
-  [{:keys [db-before] :as context} t res {:keys [type id] :as tx-cmd}]
+  [{:keys [node-name db-before] :as context} t res {:keys [type id] :as tx-cmd}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-delete")]
     (let [tid (codec/tid type)
           {:keys [num-changes op] :or {num-changes 0} :as old-resource-handle}
           (d/resource-handle db-before type id)
@@ -459,9 +463,9 @@
       (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
-  [{:keys [db-before] :as context} t res {:keys [type id]}]
+  [{:keys [node-name db-before] :as context} t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-delete-history")]
     (let [[current-handle :as instance-history]
           (limited-instance-history db-before type id)]
       (cond
@@ -485,9 +489,10 @@
 
 ;; like delete-history but purges only the version with t
 (defmethod verify "delete-history-version"
-  [{:keys [db-before] :as context} t res {:keys [type id] vid :t}]
+  [{:keys [node-name db-before] :as context} t res {:keys [type id] vid :t}]
   (log/trace "verify-tx-cmd :delete-history-version" (str type "/" id "/_history/" vid))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history-version")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name
+                            "verify-delete-history-version")]
     (if-let [handle (d/historic-resource-handle db-before type id vid)]
       (cond
         (internal? context type (d/resource-handle db-before type id))
@@ -502,9 +507,9 @@
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
-  [{:keys [db-before] :as context} t res {:keys [type id] :as tx-cmd}]
+  [{:keys [node-name db-before] :as context} t res {:keys [type id] :as tx-cmd}]
   (log/trace "verify-tx-cmd :purge" (str type "/" id))
-  (with-open [_ (prom/timer tx-u/duration-seconds "verify-purge")]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-purge")]
     (let [tid (codec/tid type)
           instance-history (limited-instance-history db-before type id)]
       (cond
@@ -742,9 +747,10 @@
   transaction as well.
 
   Returns a map of the `:entries`, the `:stats` after the transaction and the
-  `:resource-handle-updates`."
-  [stats t {:keys [entries resource-handle-updates] increments :stats}]
-  (with-open [_ (prom/timer tx-u/duration-seconds "stats")]
+  `:resource-handle-updates`. Times the completion as the node with
+  `node-name`."
+  [node-name stats t {:keys [entries resource-handle-updates] increments :stats}]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "stats")]
     (let [[stat-entries new-stats] (node-stats/apply-tx stats t increments)]
       {:entries (add-to-last-part entries stat-entries)
        :stats new-stats
@@ -951,10 +957,13 @@
   the `deletes` of `res`, so that they aren't looked up again. A delete of a
   resource that doesn't exist has none and isn't checked. Neither are the
   references through the `:purged-rev-include-params` of a delete (see
-  `delete-rev-include-params`)."
-  {:arglists '([db stats pool index res cmds])}
-  [db stats pool index {:keys [deletes multiple-deletes]} cmds]
-  (with-open [_ (prom/timer tx-u/duration-seconds "check-referential-integrity")]
+  `delete-rev-include-params`).
+
+  Times the check as the node with `node-name`."
+  {:arglists '([node-name db stats pool index res cmds])}
+  [node-name db stats pool index {:keys [deletes multiple-deletes]} cmds]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name
+                            "check-referential-integrity")]
     (let [rev-include-params-by-type (rev-include-params-by-type db stats
                                                                  multiple-deletes)
           result
@@ -1012,12 +1021,17 @@
   `:distinct-tx-cmds` of `context` is true, because the caller knows that they
   don't, so that checking them doesn't cost time (see `command-index`).
 
+  The metrics are labeled with the `:node-name` of `context`, the name of the
+  node indexing the transaction.
+
   The `t` is for the new transaction to commit."
   {:arglists '([context t tx-cmds])}
-  [{:keys [db-before stats pool distinct-tx-cmds] :as context} t tx-cmds]
-  (prom/observe! transaction-sizes (count tx-cmds))
+  [{:keys [node-name db-before stats pool distinct-tx-cmds] :as context} t
+   tx-cmds]
+  (prom/observe! transaction-sizes node-name (count tx-cmds))
   (ba/try-anomaly
    (when-ok [index (command-index distinct-tx-cmds tx-cmds)
              res (verify-tx-cmds* (assoc-label-types context tx-cmds) t tx-cmds)]
-     (or (referential-integrity-anomaly db-before stats pool index res tx-cmds)
-         (post-process-res stats t res)))))
+     (or (referential-integrity-anomaly node-name db-before stats pool index res
+                                        tx-cmds)
+         (post-process-res node-name stats t res)))))

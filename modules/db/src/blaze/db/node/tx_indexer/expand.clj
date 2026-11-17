@@ -60,8 +60,8 @@
    :http/status 412))
 
 (defmethod expand "create"
-  [{:keys [db-before]} {:keys [type if-none-exist] :as command}]
-  (with-open [_ (prom/timer tx-u/duration-seconds "expand-create")]
+  [{:keys [node-name db-before]} {:keys [type if-none-exist] :as command}]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "expand-create")]
     (if if-none-exist
       (do-sync [[h1 h2] (conditional-create-matches db-before type if-none-exist)]
         (cond
@@ -112,8 +112,9 @@
    :http/status 412))
 
 (defmethod expand "conditional-delete"
-  [{:keys [db-before]} {:keys [type clauses allow-multiple] :as command}]
-  (with-open [_ (prom/timer tx-u/duration-seconds "expand-conditional-delete")]
+  [{:keys [node-name db-before]} {:keys [type clauses allow-multiple] :as command}]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name
+                            "expand-conditional-delete")]
     (-> (if clauses
           (conditional-delete-matches db-before type clauses)
           (ac/completed-future (d/type-list db-before type)))
@@ -464,8 +465,8 @@
     []))
 
 (defmethod expand "patient-purge"
-  [context command]
-  (with-open [_ (prom/timer tx-u/duration-seconds "expand-patient-purge")]
+  [{:keys [node-name] :as context} command]
+  (with-open [_ (prom/timer tx-u/duration-seconds node-name "expand-patient-purge")]
     (ac/completed-future (patient-purge-tx-cmds context command))))
 
 (defmethod expand :default
@@ -474,13 +475,14 @@
 
 (defn expand-tx-cmds
   "Expands all non-terminal `tx-cmds` into terminal transaction commands in
-  `context`, a map of the `:db-before`, the database before the transaction,
-  its `:stats` and the `:pool`, the ForkJoinPool to expand in parallel on.
+  `context`, a map of the `:node-name`, the name of the node indexing the
+  transaction, the `:db-before`, the database before the transaction, its
+  `:stats` and the `:pool`, the ForkJoinPool to expand in parallel on.
 
   Returns a CompletableFuture that completes with the expanded commands or
   completes exceptionally with an anomaly on errors."
-  [context tx-cmds]
-  (let [timer (prom/timer tx-u/duration-seconds "expand-tx-cmds")
+  [{:keys [node-name] :as context} tx-cmds]
+  (let [timer (prom/timer tx-u/duration-seconds node-name "expand-tx-cmds")
         futures (mapv (partial expand context) tx-cmds)]
     (-> (ac/all-of futures)
         (ac/then-apply (fn [_] (into [] (mapcat ac/join) futures)))

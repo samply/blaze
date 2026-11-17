@@ -47,6 +47,15 @@
   ([title extra]
    (merge {:title title :unit "short" :queries [(query "up")]} extra)))
 
+(def ^:private node-metric-selector
+  "Matches the selector of a metric with a node label, like the ones of the
+  database node, its transaction log and its indexers."
+  #"blaze_db_(?:node|tx_log|tx_indexer|resource_indexer)_\w+\{[^}]*\}")
+
+(defn- node-metric-selectors [row]
+  (mapcat (comp (partial re-seq node-metric-selector) :expr)
+          (mapcat :queries (:panels row))))
+
 (deftest source-test
   (testing "every panel has a title"
     (is (every? (comp string? :title) (source-panels source))))
@@ -66,6 +75,19 @@
                   (or (= 1 (count queries))
                       (apply distinct? (map :legend queries))))
                 (source-panels source))))
+
+  (testing "every row with a metric with a node label is repeated once per
+            node, so that no panel mixes the metrics of several nodes"
+    (doseq [row (:rows source)
+            :when (seq (node-metric-selectors row))]
+      (testing (:title row)
+        (is (= "node" (:repeat row)))
+        (is (str/ends-with? (:title row) "$node")))))
+
+  (testing "every selector of a metric with a node label selects the node of
+            its row"
+    (is (empty? (remove #(str/includes? % "node=\"$node\"")
+                        (mapcat node-metric-selectors (:rows source))))))
 
   (testing "panel count"
     (is (= 119 (count (source-panels source))))))
@@ -127,14 +149,13 @@
                                          "viz" true}}]}]
                (:overrides (first (filter (comp #{title} :title) panels)))))))
 
-    (testing "has no transaction size panels, because their metric has no
-              node label"
+    (testing "has no transaction size panels"
       (is (not-any? #(str/starts-with? (:title %) "Transaction Size") panels))))
 
   (testing "the transaction size panels have a row of their own"
     (is (= ["Transaction Size 0.5 Quantile" "Transaction Size 0.9 Quantile"
             "Transaction Size 0.99 Quantile" "Transaction Size 0.01 Quantile"]
-           (mapv :title (:panels (row-of "Transaction Size")))))))
+           (mapv :title (:panels (row-of "Transaction Size $node")))))))
 
 (deftest dashboard-test
   (testing "of the real source"

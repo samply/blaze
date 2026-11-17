@@ -26,18 +26,22 @@
 (set! *warn-on-reflection* true)
 
 (defhistogram duration-seconds
-  "Durations in resource indexer."
+  "Durations in resource indexer.
+
+  The `node` label distinguishes the individual nodes like main and admin."
   {:namespace "blaze"
    :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 0.00001))
-  "op")
+  "node" "op")
 
 (defhistogram index-entries
-  "Number of index entries of a resource."
+  "Number of index entries of a resource.
+
+  The `node` label distinguishes the individual nodes like main and admin."
   {:namespace "blaze"
    :subsystem "db_resource_indexer"}
   (take 14 (iterate #(* 2 %) 1))
-  "type")
+  "node" "type")
 
 (defn- compartment-resource-type-entry
   "Returns an entry into the :compartment-resource-type-index where `resource`
@@ -89,16 +93,17 @@
 
 (defn- resource-index-entries
   "Returns the index entries of `resource` with `hash`."
-  [search-param-registry last-updated hash resource]
+  [node-name search-param-registry last-updated hash resource]
   (log/trace "Index resource with hash" (str hash))
-  (with-open [_ (prom/timer duration-seconds "index-resource")]
+  (with-open [_ (prom/timer duration-seconds node-name "index-resource")]
     (let [entries (resource-index-entries* search-param-registry last-updated
                                            hash resource)]
-      (prom/observe! index-entries (name (:fhir/type resource)) (count entries))
+      (prom/observe! index-entries node-name (name (:fhir/type resource))
+                     (count entries))
       entries)))
 
-(defn- put! [store entries]
-  (with-open [_ (prom/timer duration-seconds "put")]
+(defn- put! [node-name store entries]
+  (with-open [_ (prom/timer duration-seconds node-name "put")]
     (kv/put! store entries)))
 
 (defn index-resource
@@ -111,10 +116,12 @@
   Indexes a single resource, because the number of resources indexed at once is
   decided by the indexing loop of the node, which bounds it across transaction
   boundaries."
-  [{:keys [kv-store search-param-registry executor]} last-updated hash resource]
+  [{:keys [node-name kv-store search-param-registry executor]} last-updated hash
+   resource]
   (ac/supply-async
-   #(put! kv-store (resource-index-entries search-param-registry last-updated
-                                           hash resource))
+   #(put! node-name kv-store
+          (resource-index-entries node-name search-param-registry last-updated
+                                  hash resource))
    executor))
 
 (defn pool-size
@@ -173,7 +180,7 @@
 (defmethod ig/init-key :blaze.db.node/resource-indexer
   [key resource-indexer]
   (log/info "Init" (node-util/component-name key "resource indexer"))
-  resource-indexer)
+  (assoc resource-indexer :node-name (node-util/node-name key)))
 
 (defmethod m/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))

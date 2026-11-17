@@ -15,6 +15,9 @@
    [blaze.fhir.spec.spec]
    [clojure.spec.alpha :as s]))
 
+(s/def ::verify/node-name
+  string?)
+
 (s/def ::verify/db-before
   :blaze.db/db)
 
@@ -45,8 +48,9 @@
   boolean?)
 
 (s/def ::verify/context
-  (s/keys :req-un [::verify/db-before ::verify/read-only-matcher
-                   ::verify/internal-matcher ::verify/stats ::verify/pool]
+  (s/keys :req-un [::verify/node-name ::verify/db-before
+                   ::verify/read-only-matcher ::verify/internal-matcher
+                   ::verify/stats ::verify/pool]
           :opt-un [::verify/permissions ::verify/distinct-tx-cmds]))
 
 (s/def ::verify/op

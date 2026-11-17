@@ -7,11 +7,16 @@
    [prometheus.alpha :refer [defhistogram]]))
 
 (defhistogram duration-seconds
-  "Durations in transaction indexer."
+  "Durations in transaction indexer.
+
+  The `node` label distinguishes the individual nodes like main and admin.
+
+  The buckets are the same as those of the node durations, so that the
+  durations of both can be compared."
   {:namespace "blaze"
    :subsystem "db_tx_indexer"}
-  (take 16 (iterate #(* 2 %) 0.0001))
-  "op")
+  (take 23 (iterate #(* 2 %) 1e-6))
+  "node" "op")
 
 (defn rev-include-param
   "Returns the tuple of `type`, its tid and the c-hash of `code` that stands

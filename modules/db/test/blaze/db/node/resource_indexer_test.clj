@@ -25,6 +25,7 @@
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.test-util :as tu :refer [given-failed-future]]
@@ -184,6 +185,46 @@
 (deftest index-entries-collector-init-test
   (with-system [{collector ::resource-indexer/index-entries} {::resource-indexer/index-entries {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
+
+(defn- named-config
+  "Returns `config` with the resource indexer belonging to the node with
+  `name`."
+  [name]
+  (-> (assoc config [::node/resource-indexer
+                     (keyword (str "blaze.db.node." name) "resource-indexer")]
+             (::node/resource-indexer config))
+      (dissoc ::node/resource-indexer)))
+
+(defn- label-values
+  "Returns the set of label values of the samples with `sample-name` collected
+  from `collector`."
+  [collector sample-name]
+  (into
+   #{}
+   (comp (mapcat :samples)
+         (filter (comp #{sample-name} :name))
+         (map :label-values))
+   (metrics/collect collector)))
+
+(deftest metrics-node-label-test
+  (let [name "name-102841"]
+    (with-system [{resource-indexer [::node/resource-indexer
+                                     (keyword (str "blaze.db.node." name)
+                                              "resource-indexer")]}
+                  (named-config name)]
+      (let [patient {:fhir/type :fhir/Patient :id "0"}]
+        @(resource-indexer/index-resource resource-indexer last-updated
+                                          (hash/generate patient) patient))
+
+      (testing "the durations are labeled with the name of the node"
+        (is (every? (label-values resource-indexer/duration-seconds
+                                  "blaze_db_resource_indexer_duration_seconds_count")
+                    [[name "index-resource"] [name "put"]])))
+
+      (testing "the index entries are labeled with the name of the node"
+        (is (contains? (label-values resource-indexer/index-entries
+                                     "blaze_db_resource_indexer_index_entries_count")
+                       [name "Patient"]))))))
 
 (deftest fails-on-kv-put-test
   (with-system [{::node/keys [resource-indexer]} config]
