@@ -106,6 +106,12 @@
       ]
     },
     {
+      "groupName": "bouncycastle",
+      "matchPackageNames": [
+        "/org.bouncycastle/"
+      ]
+    },
+    {
       "groupName": "systems.uom",
       "matchPackageNames": [
         "/systems.uom/"
