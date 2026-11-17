@@ -3642,7 +3642,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
-      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -3653,8 +3653,11 @@ jobs:
     - name: Ensure that the PatientLastChange Index does not exist
       run: .github/scripts/check-patient-last-change-index-missing.sh
 
+    # Remove the container explicitly instead of using --rm, because the
+    # removal of --rm containers happens asynchronously after docker stop
+    # returns, so the next docker run can fail with a container name conflict.
     - name: Shut down Blaze
-      run: docker stop blaze
+      run: docker stop blaze && docker rm blaze
 
     - name: Run Latest Blaze with the PatientLastChange Index
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
