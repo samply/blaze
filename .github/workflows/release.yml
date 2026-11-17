@@ -8,6 +8,176 @@ on:
 permissions: read-all
 
 jobs:
+  # The rendering of the Implementation Guide is attached to the release that
+  # publishes it, because a published version is immutable and rebuilding it
+  # later could silently produce something different. Whatever serves the guide
+  # later is populated from those assets.
+  #
+  # A release publishes the guide only when modules/ig changed since the newest
+  # release that carries a rendering. The artifacts change about three times a
+  # year against roughly twenty releases, so publishing per release would fill
+  # the version history with versions that differ in nothing.
+  #
+  # Rendering runs third-party code — Jekyll, the IG template from the FHIR
+  # package registry, restored caches — so it happens in a job that can only
+  # read. Attesting and attaching happen in a second job that runs none of it.
+  render-ig:
+    if: github.event.release.target_commitish == 'main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
+      rendering: ${{ steps.package.outputs.rendering }}
+      package: ${{ steps.package.outputs.package }}
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+      with:
+        egress-policy: audit
+
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.event.release.tag_name }}
+        fetch-depth: 0
+        persist-credentials: false
+
+    # The newest release carrying a rendering is the version the guide was last
+    # published at, so modules/ig is compared against its tag. One API call, no
+    # downloads. With no such release the guide is published unconditionally,
+    # because nothing guarantees that the next release touches modules/ig and
+    # the archive would otherwise stay empty indefinitely.
+    #
+    # The release being published is excluded from that search. Re-running the
+    # workflow after a partial upload would otherwise find the release itself,
+    # diff its tag against itself, and skip — leaving it with some of its assets
+    # and no error.
+    #
+    # The test is coarse: a comment-only edit under modules/ig publishes. At
+    # seven commits touching the guide in 2.5 years that is noise, and the cost
+    # is one superfluous published version rather than a wrong one.
+    - name: Decide Whether to Publish
+      id: decide
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: |
+        tags="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+          --jq '.[] | select(.draft == false and .prerelease == false) | select(.tag_name != env.TAG) | select(any(.assets[]?; .name | startswith("blaze-ig-"))) | .tag_name')"
+        last="${tags%%$'\n'*}"
+
+        if [ -z "$last" ]; then
+          echo "No release carries a rendering yet, publishing."
+          echo "publish=true" >>"$GITHUB_OUTPUT"
+        elif git diff --quiet "$last" HEAD -- modules/ig; then
+          echo "Implementation Guide unchanged since $last, skipping."
+          echo "publish=false" >>"$GITHUB_OUTPUT"
+        else
+          echo "Implementation Guide changed since $last, publishing."
+          echo "publish=true" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Setup Render Toolchain
+      if: steps.decide.outputs.publish == 'true'
+      uses: ./.github/actions/setup-ig-render
+
+    # The version and the date of the guide are the ones of the release that
+    # publishes it.
+    - name: Render IG
+      if: steps.decide.outputs.publish == 'true'
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+        PUBLISHED_AT: ${{ github.event.release.published_at }}
+      run: |
+        make -C modules/ig publish IG_RELEASE=1 IG_VERSION="${TAG#v}" IG_DATE="${PUBLISHED_AT%%T*}"
+
+    # Two assets: the rendering, which is the archive serving draws on, and the
+    # FHIR package, which validators and dependent guides consume directly. The
+    # package is part of the rendering as well, but only reachable by unpacking
+    # it.
+    - name: Package IG
+      id: package
+      if: steps.decide.outputs.publish == 'true'
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+      run: |
+        rendering="ig-assets/blaze-ig-${TAG#v}.tgz"
+        package="ig-assets/blaze-ig-${TAG#v}-package.tgz"
+        mkdir ig-assets
+        tar -czf "$rendering" -C modules/ig/output .
+        cp modules/ig/output/package.tgz "$package"
+        echo "rendering=$rendering" >>"$GITHUB_OUTPUT"
+        echo "package=$package" >>"$GITHUB_OUTPUT"
+
+    - name: Upload IG Assets
+      if: steps.decide.outputs.publish == 'true'
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: ig-assets
+        path: ig-assets/
+
+  attach-ig:
+    needs: render-ig
+    if: needs.render-ig.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+      with:
+        egress-policy: audit
+
+    - name: Download IG Assets
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      with:
+        name: ig-assets
+        path: ig-assets
+
+    # Each asset gets an attestation of its own, attached next to it as
+    # `<asset>.intoto.jsonl` like the dashboard's, so that it can be verified
+    # with `gh attestation verify <asset> --repo samply/blaze`, or offline with
+    # `--bundle`, without downloading the other one.
+    - name: Attest Rendering Provenance
+      id: attest-rendering
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      with:
+        subject-path: ${{ needs.render-ig.outputs.rendering }}
+
+    - name: Attest Package Provenance
+      id: attest-package
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      with:
+        subject-path: ${{ needs.render-ig.outputs.package }}
+
+    - name: Copy IG Provenance
+      env:
+        RENDERING: ${{ needs.render-ig.outputs.rendering }}
+        RENDERING_BUNDLE: ${{ steps.attest-rendering.outputs.bundle-path }}
+        PACKAGE: ${{ needs.render-ig.outputs.package }}
+        PACKAGE_BUNDLE: ${{ steps.attest-package.outputs.bundle-path }}
+      run: |
+        cp "$RENDERING_BUNDLE" "$RENDERING.intoto.jsonl"
+        cp "$PACKAGE_BUNDLE" "$PACKAGE.intoto.jsonl"
+
+    # The assets are attached after the release was published. That works only
+    # as long as immutable releases stay disabled for this repository; with them
+    # enabled, a published release no longer accepts assets, and attaching has
+    # to move into the draft-release job of the build workflow, like the
+    # dashboard.
+    #
+    # Nothing is clobbered, so an asset that is already there fails the upload
+    # instead of being replaced. Re-running after a partial upload therefore
+    # takes deleting the assets that were attached.
+    - name: Upload IG to Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.event.release.tag_name }}
+      run: gh release upload "$TAG" ig-assets/* --repo "$GITHUB_REPOSITORY"
+
   pages:
     if: github.event.release.target_commitish == 'main'
     runs-on: ubuntu-24.04

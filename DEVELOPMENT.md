@@ -54,6 +54,7 @@ The latest LTS/stable releases of:
 * cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
 * [actionlint](https://github.com/rhysd/actionlint)
 * [dashboard-linter](https://github.com/grafana/dashboard-linter), only needed to run `make -C modules/monitoring lint-dashboard`
+* [Ruby](https://www.ruby-lang.org/) with [Bundler](https://bundler.io/), only needed to render the Implementation Guide via `make -C modules/ig publish`. The FHIR IG Publisher shells out to Jekyll to assemble the HTML site, and the Makefile installs the Jekyll pinned in `modules/ig/Gemfile.lock` on first use. The publisher itself is installed by `IG_PUBLISHER_VERSION=<version> IG_PUBLISHER_CHECKSUM=<sha256> .github/scripts/install-ig-publisher.sh`, run from the repository root with the version and the checksum pinned in `.github/actions/setup-ig-render/action.yml`. Building and validating the guide (`make -C modules/ig test`) needs neither.
 
 ## Building Blaze
 

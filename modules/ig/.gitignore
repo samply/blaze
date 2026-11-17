@@ -5,3 +5,7 @@
 /template
 /node_modules
 validator_cli.jar
+/Requirements-fromNarrative.json
+/bin
+/vendor
+/.bundle

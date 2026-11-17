@@ -1,0 +1,48 @@
+name: Set Up the Implementation Guide Render Toolchain
+description: Installs everything `make -C modules/ig publish` needs — Node for SUSHI, Java and the pinned IG Publisher, and Ruby with the locked Jekyll, which the publisher shells out to in order to assemble the HTML site. The gems, the FHIR packages and the IG template the publisher downloads are cached.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+      with:
+        node-version-file: .nvmrc
+
+    - name: Setup Java
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    # Installs Jekyll and its gems as locked in modules/ig/Gemfile.lock into
+    # modules/ig/vendor/bundle, cached by the lockfile. `make publish` finds them
+    # there and puts Jekyll on the publisher's PATH.
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+      with:
+        ruby-version: '3.3'
+        bundler-cache: true
+        working-directory: modules/ig
+
+    # The publisher downloads the FHIR core packages and the IG template, which
+    # takes minutes and yields the same bytes on every run. The pinned publisher
+    # version lives in this file, so hashing it invalidates the cache when the
+    # publisher changes.
+    - name: Cache FHIR Packages
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      with:
+        path: |
+          modules/ig/input-cache
+          modules/ig/template
+          ~/.fhir/packages
+        key: ig-render-cache-${{ hashFiles('modules/ig/ig.ini', 'modules/ig/sushi-config.yaml', '.github/actions/setup-ig-render/action.yml') }}
+        restore-keys: ig-render-cache-
+
+    - name: Install IG Publisher
+      shell: bash
+      env:
+        # renovate: datasource=github-release-attachments depName=HL7/fhir-ig-publisher
+        IG_PUBLISHER_VERSION: 3.0.3
+        IG_PUBLISHER_CHECKSUM: eeb61f43ff54d532b8da07c5f5e60bc09c63285f8c5bbb2936467bac049a20af
+      run: .github/scripts/install-ig-publisher.sh

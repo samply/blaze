@@ -1,0 +1,6 @@
+source "https://rubygems.org"
+
+# The IG Publisher shells out to Jekyll to assemble the HTML site. Pinned
+# through Gemfile.lock, so that a release render uses the same Jekyll and the
+# same transitive gems as the build that was reviewed.
+gem "jekyll", "4.4.1"

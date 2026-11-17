@@ -5,19 +5,29 @@
 # ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
 id: blaze
 canonical: https://blaze-server.org/fhir
-name: blaze
-# title: Example Title
-# description: Example Implementation Guide for getting started with SUSHI
-status: draft # draft | active | retired | unknown
-version: 1.10.0
+name: Blaze
+# Reverse of the domain the guide is published under. A FHIR package name
+# consists of two or more dot-separated namespaces and identifies the publisher
+# first.
+packageId: org.blaze-server
+title: Blaze FHIR Server
+description: Implementation Guide defining the FHIR conformance artifacts of the Blaze FHIR Server
+status: active # draft | active | retired | unknown
+# The version, the date and the release label follow the Blaze release the guide
+# is published with, and CI stamps all three. The values here are what a render
+# that isn't a release is: a build of `main`. It carries no date, so the IG
+# Publisher uses the time of the build.
+version: main
 fhirVersion: 4.0.1 # https://www.hl7.org/fhir/valueset-FHIR-version.html
 copyrightYear: 2024+
 releaseLabel: ci-build # ci-build | draft | qa-preview | ballot | trial-use | release | update | normative+trial-use
-# license: CC0-1.0 # https://www.hl7.org/fhir/valueset-spdx-license.html
+# The guide is a specification rather than code, so it carries a content license
+# instead of the Apache-2.0 of the repository.
+license: CC-BY-4.0 # https://www.hl7.org/fhir/valueset-spdx-license.html
 # jurisdiction: urn:iso:std:iso:3166#US "United States of America" # https://www.hl7.org/fhir/valueset-jurisdiction.html
 publisher:
   name: The Samply Community
-  url: http://example.org/example-publisher
+  url: https://samply.de
   # email: test@example.org
 
 # The dependencies property corresponds to IG.dependsOn. The key is the
@@ -66,6 +76,19 @@ publisher:
 #   excludettl: true
 #   validation: [allow-any-extensions, no-broken-links]
 #
+parameters:
+  # Every rendering is archived per published version, so the archive grows with
+  # each one. Turtle is of no use to Blaze users and the IG database is a build
+  # artefact, so both are left out.
+  #
+  # Dropping a format takes both settings: the wantGen ones stop the publisher
+  # from generating the files, while excludettl is what the template reads to
+  # drop the tab that would otherwise link to them.
+  wantGen-ttl: false
+  wantGen-ttl-html: false
+  excludettl: true
+  no-ig-database: true
+
 # ╭────────────────────────────────────────────menu.xml────────────────────────────────────────────╮
 # │ The menu property will be used to generate the input/menu.xml file. The menu is represented    │
 # │ as a simple structure where the YAML key is the menu item name and the value is the URL.       │
