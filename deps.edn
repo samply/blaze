@@ -123,7 +123,7 @@
     ;; Emacs middleware below this line
 
     cider/cider-nrepl
-    {:mvn/version "0.62.2"}
+    {:mvn/version "0.64.1"}
 
     refactor-nrepl/refactor-nrepl
     {:mvn/version "3.14.0"}
