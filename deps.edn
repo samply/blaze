@@ -152,9 +152,6 @@
    {blaze/db-stub
     {:local/root "modules/db-stub"}
 
-    criterium/criterium
-    {:mvn/version "0.4.6"}
-
     org.clojure/tools.namespace
     {:mvn/version "1.5.1"}}}
 

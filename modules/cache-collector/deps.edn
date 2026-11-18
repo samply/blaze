@@ -26,24 +26,6 @@
 
    :main-opts ["-m" "kaocha.runner"]}
 
-  :test-perf
-  {:extra-paths ["test-perf"]
-
-   :extra-deps
-   {blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}
-
-    criterium/criterium
-    {:mvn/version "0.4.6"}
-
-    org.openjdk.jol/jol-core
-    {:mvn/version "0.17"}}
-
-   ;; JOL needs this
-   :jvm-opts
-   ["-XX:+EnableDynamicAgentLoading"
-    "-Djdk.attach.allowAttachSelf=true"]}
-
   :coverage
   {:extra-deps
    {lambdaisland/kaocha-cloverage
