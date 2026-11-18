@@ -5,8 +5,11 @@
   blaze/util
   {:local/root "../util"}
 
+  ;; JNR is optional: without it, the driver uses a millisecond Java clock for
+  ;; query timestamps, which is fine for our insert-only, content-addressed tables
   org.apache.cassandra/java-driver-core
-  {:mvn/version "4.19.4"}
+  {:mvn/version "4.19.4"
+   :exclusions [com.github.jnr/jnr-posix]}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
