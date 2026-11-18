@@ -9,14 +9,7 @@
   {:local/root "../spec"}
 
   com.walmartlabs/lacinia
-  {:mvn/version "1.3.0"}
-
-  org.antlr/antlr4
-  {:mvn/version "4.10.1"
-   :exclusions
-   [com.ibm.icu/icu4j
-    org.abego.treelayout/org.abego.treelayout.core
-    org.glassfish/javax.json]}}
+  {:mvn/version "1.3.0"}}
 
  :aliases
  {:test

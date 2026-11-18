@@ -247,7 +247,6 @@
     "-d" "modules/thread-pool-executor-collector"
     "-d" "modules/validator"
     "-d" "modules/value-set-expander"
-    "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
     "--exclude" "info.cqframework/cql"
     "--exclude" "info.cqframework/quick"
