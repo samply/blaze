@@ -18,7 +18,8 @@
     (.put TypedDriverOption/REQUEST_THROTTLER_CLASS "ConcurrencyLimitingRequestThrottler")
     (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-requests))
     (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-request-queue-size))
-    (.put TypedDriverOption/REQUEST_TIMEOUT (time/millis request-timeout))))
+    (.put TypedDriverOption/REQUEST_TIMEOUT (time/millis request-timeout))
+    (.put TypedDriverOption/METRICS_FACTORY_CLASS "NoopMetricsFactory")))
 
 (defn build-contact-points [contact-points]
   (map
