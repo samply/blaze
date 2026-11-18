@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "blaze-ig-resolver",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  // The Worker answers only on the routes of the zone, which `make deploy`
+  // derives from the index of the guide, so that a new resource type gets its
+  // route with the deploy that ships it.
+  "workers_dev": false,
+  "preview_urls": false,
+}
