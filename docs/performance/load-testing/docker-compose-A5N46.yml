@@ -13,7 +13,7 @@ services:
     # the user that owns the data directory, so that reset.sh can empty it
     user: "1000:1000"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xms24g -Xmx24g"
+      JAVA_TOOL_OPTIONS: "-Xms24g -Xmx24g -XX:-UseBASE64Intrinsics"
       DB_BLOCK_CACHE_SIZE: "24576"
       DB_SCALE_FACTOR: "4"
       DB_RESOURCE_STORE_KV_THREADS: "128"

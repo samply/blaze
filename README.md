@@ -9,6 +9,9 @@
 
 A FHIR® Server with internal, fast CQL Evaluation Engine
 
+> [!CAUTION]
+> **Security Warning:** To mitigate [CVE-2026-114938](https://www.cve.org/CVERecord?id=CVE-2026-114938), every Blaze instance has to be started with `-XX:-UseBASE64Intrinsics` added to the `JAVA_TOOL_OPTIONS` environment variable, in addition to all other options, like `JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"`. More can be found in the [Environment Variables](https://blaze-server.org/deployment/environment-variables.html#java-tool-options) documentation.
+
 ## Survey
 
 Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
@@ -45,7 +48,7 @@ Documentation can be found [here](https://blaze-server.org).
 Blaze can be started with a single command using docker:
 
 ```sh
-docker run -d --name blaze -p 8080:8080 samply/blaze:latest
+docker run -d --name blaze -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" -p 8080:8080 samply/blaze:latest
 ```
 
 ## Commercial Support

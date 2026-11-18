@@ -3,7 +3,7 @@ services:
     image: "samply/blaze:latest"
     environment:
       BASE_URL: "http://localhost:8080"
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
       LOG_LEVEL: "debug"
     ports:
     - "8080:8080"
@@ -15,7 +15,7 @@ services:
     environment:
       BASE_URL: "http://localhost:8082"
       SERVER_PORT: "8082"
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
       ENFORCE_REFERENTIAL_INTEGRITY: "false"
       LOG_LEVEL: "debug"
     ports:

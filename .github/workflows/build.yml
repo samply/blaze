@@ -1006,7 +1006,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -2028,7 +2028,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e DB_SCALE_FACTOR=2 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e DB_BLOCK_CACHE_SIZE=2048 -e DB_SCALE_FACTOR=2 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Download Synthea Test Data
       uses: ./.github/actions/cloudflare-download
@@ -2489,7 +2489,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2674,7 +2674,7 @@ jobs:
       run: unzip SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx8g -XX:-UseBASE64Intrinsics" -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -e ENABLE_TERMINOLOGY_SNOMED_CT=true -e SNOMED_CT_RELEASE_PATH=/app/sct-release -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data -v ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z:/app/sct-release blaze:latest
 
     - name: Install All KDS Terminology Resources
       run: make -C .github/integration-test-value-set-expand install
@@ -2760,7 +2760,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2826,7 +2826,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2877,7 +2877,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2932,7 +2932,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -2983,7 +2983,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3028,7 +3028,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3068,7 +3068,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3099,7 +3099,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3137,7 +3137,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3205,7 +3205,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_INTERACTION_DELETE_HISTORY=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_INTERACTION_DELETE_HISTORY=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3228,7 +3228,7 @@ jobs:
     - name: Run Blaze with a Tiny Resource Handle Cache
       run: |
         docker rm -f blaze
-        docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO=0.000002 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data-tiny-cache:/app/data blaze:latest
+        docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e DB_RESOURCE_HANDLE_CACHE_SIZE_RATIO=0.000002 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data-tiny-cache:/app/data blaze:latest
 
     - name: Wait for Blaze with a Tiny Resource Handle Cache
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3402,7 +3402,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx8g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx8g -XX:-UseBASE64Intrinsics" -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3591,7 +3591,7 @@ jobs:
       run: mkdir data
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v "$(pwd)/data:/app/data" blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -p 8080:8080 --read-only --tmpfs /tmp:exec -v "$(pwd)/data:/app/data" blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -3646,7 +3646,7 @@ jobs:
       run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
 
     - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -3664,7 +3664,7 @@ jobs:
       run: docker stop blaze && docker rm blaze
 
     - name: Run Latest Blaze with the PatientLastChange Index
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS="-Xmx2g -XX:-UseBASE64Intrinsics" -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health

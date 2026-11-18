@@ -7,7 +7,7 @@ services:
   blaze:
     image: "samply/blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
     ports:
     - "8080:8080"

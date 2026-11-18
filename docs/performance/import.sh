@@ -6,7 +6,7 @@ c=8
 
 import-once() {
   docker run --name blaze --rm -v blaze-data:/app/data \
-    -e JAVA_TOOL_OPTIONS="-Xmx4g" \
+    -e JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics" \
     -e LOG_LEVEL=debug \
     -e DB_BLOCK_CACHE_SIZE=8192 \
     -e DB_MAX_BACKGROUND_JOBS=16 \

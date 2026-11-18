@@ -12,7 +12,7 @@
 Blaze can be started with a single command using docker:
 
 ```sh-vue
-docker run -d --name blaze -p 8080:8080 samply/blaze:{{ tag }}@{{ digest }}
+docker run -d --name blaze -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" -p 8080:8080 samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 ## Verification <Badge type="warning" text="Since 1.0" />

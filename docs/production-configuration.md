@@ -66,7 +66,7 @@ The list of all environment variables can be found in the [Environment Variables
 
 | Name                           | Use for                 | Default | Examples                                              |
 |:-------------------------------|-------------------------|:--------|:------------------------------------------------------|
-| `JAVA_TOOL_OPTIONS`            | Heap Mem                | —       | -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g   |
+| `JAVA_TOOL_OPTIONS`            | Heap Mem                | —       | -Xmx2g, -Xmx4g, -Xmx8g, -Xmx16g, -Xmx32g or -Xmx64g, always together with `-XX:-UseBASE64Intrinsics` |
 | `DB_BLOCK_CACHE_SIZE`          | Block Cache             | 128     | 2048, 4096, 8192, 16384, 32768 or 65536 (in megabyte) |
 | `DB_SCALE_FACTOR`              | DB Buffers/File Sizes   | 1       | 1, 2, 4, 8 or 16                                      |
 | `CQL_EXPR_CACHE_SIZE`          | CQL Expression Cache    | —       | 128, 512, 1024 (in megabyte)                          |
