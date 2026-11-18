@@ -20,6 +20,7 @@
    [blaze.db.node.duplicates :as dup]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.tx-indexer.util :as tx-u]
+   [blaze.db.permissions :as p]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry]
    [blaze.db.test-util :as dtu :refer [config internal-label internal-patient-0
@@ -289,6 +290,65 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is (= 2 @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]]))))))
+
+(defn- t-and-patient-ids [db]
+  (ac/completed-future
+   [(d/t db) (mapv :id (d/type-list db "Patient"))]))
+
+(deftest transact-then-test
+  (testing "calls f with the database value at the t of the transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (is (= [2 ["0" "1"]]
+             @(d/transact-then node [[:create {:fhir/type :fhir/Patient :id "1"}]]
+                               t-and-patient-ids)))))
+
+  (testing "fails with the transaction error without calling f"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [called (volatile! false)]
+        (given-failed-future
+         (d/transact-then
+          node
+          [[:put {:fhir/type :fhir/Patient :id "0"}]
+           [:put {:fhir/type :fhir/Patient :id "0"}]]
+          (fn [_] (vreset! called true) (ac/completed-future nil)))
+          ::anom/category := ::anom/incorrect
+          :blaze.db/tx-cmd-indices := [0 1])
+
+        (is (false? @called)))))
+
+  (testing "fails if f throws"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given-failed-future
+       (d/transact-then node [[:create {:fhir/type :fhir/Patient :id "0"}]]
+                        (fn [_] (ba/throw-anom (ba/fault "msg-104512"))))
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-104512")))
+
+  (testing "fails if f returns an anomaly"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given-failed-future
+       (d/transact-then node [[:create {:fhir/type :fhir/Patient :id "0"}]]
+                        (fn [_] (ba/fault "msg-111014")))
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-111014")))
+
+  (testing "without permissions, a read-only resource can't be updated"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (given-failed-future
+       (d/transact-then node [[:put (assoc read-only-patient-0 :gender #fhir/code "female")]]
+                        t-of)
+        ::anom/category := ::anom/conflict)))
+
+  (testing "internal code can update a read-only resource"
+    (with-system [{:blaze.db/keys [node]} config]
+      (transact-internal node [[:create read-only-patient-0]])
+
+      (is (= 2 @(d/transact-then node [[:put (assoc read-only-patient-0 :gender #fhir/code "female")]]
+                                 p/internal t-of))))))
 
 (defn- create-tx-op [resource-gen]
   (gen/fmap (partial vector :create) resource-gen))

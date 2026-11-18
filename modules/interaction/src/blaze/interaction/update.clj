@@ -25,18 +25,19 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
-(defn- build-response [request type id tx-op db-after]
-  (let [[new-handle old-handle] (into [] (take 2) (d/instance-history db-after (name type) id))]
+(defn- instance-history [db type id]
+  (into [] (take 2) (d/instance-history db (name type) id)))
+
+(defn- build-response [request db type id tx-op]
+  (let [[new-handle old-handle] (instance-history db type id)]
     (response/build-response
-     (response-context request db-after)
+     (response-context request db)
      tx-op
      old-handle
      new-handle)))
 
 (defn- transact [node request type id tx-op]
-  (-> (d/transact node [tx-op])
-      (ac/then-compose
-       #(d/with-sync-db node % (partial build-response request type id tx-op)))))
+  (d/transact-then node [tx-op] #(build-response request % type id tx-op)))
 
 (defn- update-resource
   [{:keys [node]}

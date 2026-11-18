@@ -43,19 +43,21 @@
   "Builds the OperationOutcome response of a conditional delete of resources
   matching the client's `clauses` with `db`, the database after the delete."
   [db type clauses]
-  (ring/response
-   {:fhir/type :fhir/OperationOutcome
-    :issue
-    [{:fhir/type :fhir.OperationOutcome/issue
-      :severity #fhir/code "success"
-      :code #fhir/code "success"
-      :diagnostics (type/string (diagnostics (num-deleted db) type clauses))}]}))
-
-(defmethod m/pre-init-spec :blaze.interaction/conditional-delete-type [_]
-  (s/keys :req-un [:blaze.db/node :blaze/value-set-expander]))
+  (ac/completed-future
+   (ring/response
+    {:fhir/type :fhir/OperationOutcome
+     :issue
+     [{:fhir/type :fhir.OperationOutcome/issue
+       :severity #fhir/code "success"
+       :code #fhir/code "success"
+       :diagnostics (type/string (diagnostics (num-deleted db) type clauses))}]})))
 
 (defn- conditional-delete-op [type clauses]
   (cond-> [:conditional-delete type] (seq clauses) (conj clauses)))
+
+(defn- operation-outcome-preferred? [headers]
+  (= :blaze.preference.return/OperationOutcome
+     (handler-util/preference headers "return")))
 
 (defn- expand-value-sets [value-set-expander type clauses]
   (if (seq clauses)
@@ -69,16 +71,15 @@
   Returns a CompletableFuture of the response. Only an OperationOutcome
   response, which states the number of deleted resources, needs the database
   after the delete."
-  [node type return-preference clauses expanded-clauses]
-  (let [t-future (d/transact node [(conditional-delete-op type expanded-clauses)])]
-    (if (= :blaze.preference.return/OperationOutcome return-preference)
-      (-> t-future
-          (ac/then-compose
-           (fn [t]
-             (d/with-sync-db node t
-               #(ac/completed-future (outcome-response % type clauses))))))
-      (do-sync [_ t-future]
+  [node type headers clauses expanded-clauses]
+  (let [tx-ops [(conditional-delete-op type expanded-clauses)]]
+    (if (operation-outcome-preferred? headers)
+      (d/transact-then node tx-ops #(outcome-response % type clauses))
+      (do-sync [_ (d/transact node tx-ops)]
         (ring/status 204)))))
+
+(defmethod m/pre-init-spec :blaze.interaction/conditional-delete-type [_]
+  (s/keys :req-un [:blaze.db/node :blaze/value-set-expander]))
 
 (defmethod ig/init-key :blaze.interaction/conditional-delete-type
   [_ {:keys [node value-set-expander]}]
@@ -88,5 +89,4 @@
     (let [clauses (fsc/search-clauses query-params)]
       (-> (expand-value-sets value-set-expander type clauses)
           (ac/then-compose
-           (partial conditional-delete node type
-                    (handler-util/preference headers "return") clauses))))))
+           (partial conditional-delete node type headers clauses))))))
