@@ -12,7 +12,7 @@ A public demo server is available at [https://r4.blaze-server.org/fhir/][9] to t
 * [Versioned Read](api/interaction/vread.md)
 * [Update](api/interaction/update.md)
 * [Delete](api/interaction/delete.md)
-* [Delete History](api/interaction/delete-history.md) <Badge type="warning" text="Since 0.30.1"/>
+* [Delete History](api/interaction/delete-history.md) <Badge type="warning" text="Since 0.30.1"/> <Badge type="tip" text="Stable 1.14.0"/>
 * [Delete History Version](api/interaction/delete-history-version.md) <Badge type="warning" text="Since 1.14.0"/>
 * [History](api/interaction/history-instance.md)
 
@@ -42,7 +42,7 @@ The following Operations are implemented:
 * [Resource $graph](api/operation/graph.md) <Badge type="warning" text="Since 1.14.0"/>
 * [Measure $evaluate-measure](api/operation/measure-evaluate-measure.md)
 * [Patient $everything](api/operation/patient-everything.md) <Badge type="warning" text="Since 0.22"/>
-* [Patient $purge](api/operation/patient-purge.md) <Badge type="warning" text="Since 0.30.1"/>
+* [Patient $purge](api/operation/patient-purge.md) <Badge type="warning" text="Since 0.30.1"/> <Badge type="tip" text="Stable 1.14.0"/>
 * [CodeSystem $lookup](api/operation/code-system-lookup.md) <Badge type="warning" text="Since 1.7.0"/>
 * [CodeSystem $validate-code](api/operation/code-system-validate-code.md) <Badge type="warning" text="Since 0.32"/>
 * [ValueSet $expand](api/operation/value-set-expand.md) <Badge type="warning" text="Since 0.32"/>
