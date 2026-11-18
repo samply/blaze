@@ -17,6 +17,7 @@
    [blaze.module :as m :refer [reg-collector]]
    [blaze.time :as bt]
    [blaze.util :as u]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [integrant.core :as ig]
@@ -229,7 +230,7 @@
 
 (defmethod m/pre-init-spec :blaze.fhir.operation/cql [_]
   (s/keys :req-un [:blaze.db/node :blaze/terminology-service :blaze/clock
-                   :blaze/rng-fn]
+                   :blaze/rng-fn :blaze/value-set-expander]
           :opt [::expr/cache]))
 
 (defmethod ig/init-key :blaze.fhir.operation/cql [_ context]

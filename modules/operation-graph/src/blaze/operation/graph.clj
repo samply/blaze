@@ -2,6 +2,7 @@
   "Main entry point into the Resource $graph operation.
 
   See: https://build.fhir.org/resource-operation-graph.html"
+  (:refer-clojure :exclude [compile])
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
@@ -14,6 +15,7 @@
    [blaze.operation.graph.cache :as cache]
    [blaze.operation.graph.compiler :as c]
    [blaze.operation.graph.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.core :as reitit]
@@ -24,14 +26,19 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- pull-graph-defs
+  "Returns a CompletableFuture that will complete with all GraphDefinitions with
+  canonical `uri` in `db`."
+  [db uri]
+  (if-ok [handles (d/type-query db "GraphDefinition" [["url" uri]])]
+    (d/pull-many db (vec handles))
+    ac/completed-future))
+
 (defn- find-graph-def [db uri]
-  (-> (d/type-query db "GraphDefinition" [["url" uri]])
-      (ac/then-compose
-       (fn [handles]
-         (do-sync [graph-defs (d/pull-many db (vec handles))]
-           (or (first (fu/sort-by-priority graph-defs))
-               (ba/not-found (format "The graph definition `%s` was not found." uri)
-                             :http/status 400)))))))
+  (do-sync [graph-defs (pull-graph-defs db uri)]
+    (or (first (fu/sort-by-priority graph-defs))
+        (ba/not-found (format "The graph definition `%s` was not found." uri)
+                      :http/status 400))))
 
 (defn- find-node [{:keys [nodes]} id]
   (nodes id))
@@ -44,13 +51,12 @@
 (defn- process-link
   [db graph resource state {:keys [target-id resource-handles]}]
   (let [target-node (find-node graph target-id)]
-    (-> (resource-handles db resource target-node)
-        (ac/then-compose
-         (fn [handles]
-           (reduce
-            (partial process-node db graph target-node)
-            state
-            handles))))))
+    (if-ok [handles (resource-handles db resource target-node)]
+      (reduce
+       (partial process-node db graph target-node)
+       state
+       handles)
+      ac/completed-future)))
 
 (defn- pull-resource
   "Returns a CompletableFuture that will complete with the resource of
@@ -143,17 +149,28 @@
       (when-ok [{:keys [graph]} (params-from-body body)]
         (or graph (ba/incorrect "Missing param `graph`")))))
 
-(defn- handler [{:keys [compiled-graph-cache] :as context}]
+(defn- compile
+  "Returns a CompletableFuture that will complete with `graph-def` compiled,
+  taken from the compiled graph cache, with the value sets of its link params
+  expanded (see `c/expand-value-sets`), or will complete exceptionally with an
+  anomaly if the graph can't be compiled or a value set can't be expanded."
+  {:arglists '([context graph-def])}
+  [{:keys [compiled-graph-cache value-set-expander]} graph-def]
+  (if-ok [graph (cache/compile compiled-graph-cache graph-def)]
+    (c/expand-value-sets value-set-expander graph)
+    ac/completed-future))
+
+(defn- handler [context]
   (fn [{:blaze/keys [db]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params :as request}]
     (if-ok [resource-handle (fhir-util/resource-handle db type id)
             graph-uri (graph-uri request)]
       (-> (find-graph-def db graph-uri)
+          (ac/then-compose (partial compile context))
           (ac/then-compose
-           (fn [graph-def]
-             (if-ok [graph (cache/compile compiled-graph-cache graph-def)
-                     start-node (start-node graph type id)]
+           (fn [graph]
+             (if-ok [start-node (start-node graph type id)]
                (do-sync [resources (process-start-node db graph start-node resource-handle)]
                  (ring/response
                   {:fhir/type :fhir/Bundle
@@ -165,7 +182,8 @@
       ac/completed-future)))
 
 (defmethod m/pre-init-spec :blaze.operation/graph [_]
-  (s/keys :req-un [::compiled-graph-cache :blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
+  (s/keys :req-un [::compiled-graph-cache :blaze/clock :blaze/rng-fn :blaze/page-id-cipher
+                   :blaze/value-set-expander]))
 
 (defmethod ig/init-key :blaze.operation/graph [_ context]
   (log/info "Init FHIR Resource $graph operation handler")

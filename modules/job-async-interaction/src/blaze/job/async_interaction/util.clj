@@ -39,14 +39,14 @@
   (format "Can't find the request bundle with id `%s` of job with id `%s`."
           bundle-id job-id))
 
+(defn- pull-request-bundle* [db job type id]
+  (if-let [handle (d/resource-handle db type id)]
+    (if (d/deleted? handle)
+      (ba/not-found (deleted-msg job id))
+      (d/pull db handle))
+    (ba/not-found (not-found-msg job id))))
+
 (defn pull-request-bundle [node job]
   (if-ok [[type id] (request-bundle-ref job)]
-    (-> (d/with-db node #(ac/completed-future (d/resource-handle % type id)))
-        (ac/then-compose
-         (fn [handle]
-           (if handle
-             (if-not (d/deleted? handle)
-               (d/pull node handle)
-               (ac/completed-future (ba/not-found (deleted-msg job id))))
-             (ac/completed-future (ba/not-found (not-found-msg job id)))))))
+    (d/with-db node #(pull-request-bundle* % job type id))
     ac/completed-future))

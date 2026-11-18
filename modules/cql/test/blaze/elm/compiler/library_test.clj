@@ -31,8 +31,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn- compile-context [{:blaze.db/keys [node] ::ts/keys [local]}]
-  {:node node :terminology-service local})
+(defn- compile-context
+  [{:blaze.db/keys [node] ::ts/keys [local] :blaze/keys [value-set-expander]}]
+  {:node node :terminology-service local :value-set-expander value-set-expander})
 
 (def ^:private default-opts {})
 
@@ -1262,7 +1263,8 @@
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
               '(exists
-                (retrieve "Condition" [["code:in" "http://fhir.org/VCL?v1=(http://system-115910)*"]])))
+                (retrieve "Condition" [["code" "http://system-115910|code-115927"
+                                        "http://system-115910|code-140541"]])))
 
             (testing "there are no references to resolve"
               (is (= expression-defs (library/resolve-all-refs expression-defs))))

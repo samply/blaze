@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.graphql
   "Main entry point into the $graphql operation."
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.executors :as ex]
@@ -52,7 +53,15 @@
 (defn- type-query [db type args]
   (if (seq args)
     (d/type-query db type (clauses args))
-    (ac/completed-future (d/type-list db type))))
+    (d/type-list db type)))
+
+(defn- pull-type-list
+  "Returns a CompletableFuture that will complete with the resources of `type`
+  matching `args` in `db`."
+  [db type args]
+  (if-ok [handles (type-query db type args)]
+    (d/pull-many db (vec handles))
+    ac/completed-future))
 
 (defn- read-json [source]
   (j/read-value source j/keyword-keys-object-mapper))
@@ -66,8 +75,7 @@
 (defn- resolve-type-list [type {:keys [writing-context db]} args _]
   (log/trace (format "execute %sList query" type))
   (let [result (resolve/resolve-promise)]
-    (-> (type-query db type args)
-        (ac/then-compose #(d/pull-many db (vec %)))
+    (-> (pull-type-list db type args)
         (ac/when-complete
          (fn [r e]
            (resolve/deliver! result (mapv (partial write-read-json writing-context) r) (some-> e to-error)))))

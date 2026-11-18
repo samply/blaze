@@ -15,7 +15,7 @@
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
-   [blaze.interaction.test-util :refer [coding v3-ObservationValue wrap-error]]
+   [blaze.interaction.test-util :refer [coding icd-10-gm-code-system icd-10-gm-empty-vcl v3-ObservationValue wrap-error]]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
@@ -68,7 +68,8 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-system
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -94,7 +95,8 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing clock"
     (given-failed-system (update config :blaze.interaction/search-system dissoc :clock)
@@ -119,6 +121,12 @@
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.interaction/search-system dissoc :value-set-expander)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.interaction/search-system ::search-util/link] ::invalid)
@@ -153,6 +161,13 @@
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-system :value-set-expander] ::invalid)
+      :key := :blaze.interaction/search-system
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest search-duration-seconds-collector-init-test
@@ -975,3 +990,20 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :diagnostics] := #fhir/string "msg-104114"))))))
+
+(deftest handler-value-set-test
+  (testing "empty value set"
+    (doseq [params [{"_tag:in" icd-10-gm-empty-vcl}
+                    {"_tag:in" icd-10-gm-empty-vcl "_summary" "count"}]]
+      (with-handler [handler]
+        [[[:put icd-10-gm-code-system]
+          [:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]} @(handler {:params params})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Bundle
+            :total := #fhir/unsignedInt 0
+            :entry := nil))))))

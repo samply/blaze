@@ -53,6 +53,25 @@
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
 
+(deftest all-values-test
+  (testing "with no futures"
+    (is (= [] @(ac/all-values []))))
+
+  (testing "with two successful futures"
+    (let [a (ac/future)
+          b (ac/future)
+          all (ac/all-values [a b])]
+      (ac/complete! b 2)
+      (ac/complete! a 1)
+
+      (is (= [1 2] @all))))
+
+  (testing "with one failed future"
+    (given-failed-future (ac/all-values [(ac/completed-future 1)
+                                         (ac/completed-future (ba/fault "msg-104512"))])
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-104512")))
+
 (deftest complete-test
   (let [future (ac/future)]
     (ac/complete! future 1)

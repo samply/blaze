@@ -29,6 +29,22 @@
   [search-param-registry type param]
   (p/-parse search-param-registry type param))
 
+(defn value-set-param-code
+  "Returns the code of the search parameter `param`, relative to `type`,
+  without its modifier if `param` is a token search parameter with the `in`
+  modifier, so that its values are URLs of value sets. Returns nil otherwise.
+  Chained search parameters are resolved.
+
+  The database doesn't expand value sets. So clauses with such a search
+  parameter have to be expanded into plain token clauses, which use the
+  returned code, before they are given to the database."
+  [search-param-registry type param]
+  (if-ok [[{:keys [code] :as search-param} modifier] (parse search-param-registry type param)]
+    (when (and (= "in" modifier)
+               (nil? (search-param/validate-modifier search-param modifier)))
+      code)
+    (constantly nil)))
+
 (defn get
   "Returns the search parameter with `code` and `type` or nil if not found."
   [search-param-registry code type]
@@ -374,11 +390,11 @@
           (first kinds))))))
 
 (defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
-  (s/keys :req-un [:blaze.fhir/structure-definition-repo :blaze/terminology-service]
+  (s/keys :req-un [:blaze.fhir/structure-definition-repo]
           :opt-un [::extra-bundle-file]))
 
 (defmethod ig/init-key :blaze.db/search-param-registry
-  [_ {:keys [structure-definition-repo terminology-service extra-bundle-file]}]
+  [_ {:keys [structure-definition-repo extra-bundle-file]}]
   (log/info
    (cond-> "Init in-memory fixed R4 search parameter registry"
      extra-bundle-file
@@ -386,8 +402,7 @@
   (let [entries (read-bundle-entries extra-bundle-file)
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")
         expression-types (sdr/expression-types structure-definition-repo)
-        context {:expression-type (partial expression-type expression-types)
-                 :terminology-service terminology-service}]
+        context {:expression-type (partial expression-type expression-types)}]
     (if-ok [{url-index :index} (build-url-index context entries)]
       (let [index (build-index url-index entries)
             {:keys [index]} (add-special (assoc context :index index))

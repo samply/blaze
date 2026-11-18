@@ -1,12 +1,15 @@
 (ns blaze.interaction.transaction.bundle-test
   (:require
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.transaction.bundle-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.value-set-expander.protocols :as vsep]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
@@ -16,11 +19,77 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def ^:private value-set-expander
+  (reify vsep/ValueSetExpander
+    (-expand-condition-clauses [_ _ clauses]
+      (ac/completed-future
+       (condp = clauses
+         [["gender:in" "url-1"]] [["gender" "system-1|male"]]
+         [["gender:in" "url-empty"]] (ba/incorrect "msg-165412" :http/status 422)
+         [["gender:in" "url-unknown"]] (ba/fault "msg-112933")
+         clauses)))))
+
+(defn- assoc-tx-ops [db entries]
+  (bundle/assoc-tx-ops db @(bundle/expand-value-sets value-set-expander entries)))
+
+(defn- conditional-create-entry [if-none-exist]
+  {:fhir/type :fhir.Bundle/entry
+   ::fhir-util/interaction "create"
+   :resource {:fhir/type :fhir/Patient :id "id-112516"}
+   :request
+   {:fhir/type :fhir.Bundle.entry/request
+    :method #fhir/code "POST"
+    :url #fhir/uri "Patient"
+    :ifNoneExist (type/string if-none-exist)}})
+
+(defn- conditional-delete-entry [url]
+  {:fhir/type :fhir.Bundle/entry
+   ::fhir-util/interaction "conditional-delete-type"
+   :request
+   {:fhir/type :fhir.Bundle.entry/request
+    :method #fhir/code "DELETE"
+    :url (type/uri url)}})
+
+(deftest expand-value-sets-test
+  (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
+    (with-db [db node]
+      (testing "conditional create"
+        (given (assoc-tx-ops db [(conditional-create-entry "gender:in=url-1")])
+          [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-112516"}
+                         [["gender" "system-1|male"]]])
+
+        (testing "with an empty value set fails"
+          (given-failed-future (bundle/expand-value-sets
+                                value-set-expander
+                                [(conditional-create-entry "gender:in=url-empty")])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "msg-165412"
+            :http/status := 422)))
+
+      (testing "conditional delete"
+        (given (assoc-tx-ops db [(conditional-delete-entry "Patient?gender:in=url-1")])
+          [0 :tx-op] := [:conditional-delete "Patient" [["gender" "system-1|male"]]])
+
+        (testing "with an empty value set fails"
+          (given-failed-future (bundle/expand-value-sets
+                                value-set-expander
+                                [(conditional-delete-entry "Patient?gender:in=url-empty")])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "msg-165412"
+            :http/status := 422)))))
+
+  (testing "expansion errors"
+    (given-failed-future (bundle/expand-value-sets
+                          value-set-expander
+                          [(conditional-create-entry "gender:in=url-unknown")])
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-112933")))
+
 (deftest tx-ops-test
   (with-system [{:blaze.db/keys [node]} api-stub/mem-node-config]
     (with-db [db node]
       (testing "create"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "create"
@@ -36,7 +105,7 @@
           [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220129"}]))
 
       (testing "conditional create"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "create"
@@ -55,7 +124,7 @@
                          [["birthdate" "2020"]]])
 
         (testing "with empty :ifNoneExist"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "create"
@@ -72,7 +141,7 @@
             [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}]))
 
         (testing "with ignorable _sort search parameter"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "create"
@@ -89,7 +158,7 @@
             [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}]))
 
         (testing "with search parameter without value"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "create"
@@ -106,7 +175,7 @@
             [0 :tx-op] := [:create {:fhir/type :fhir/Patient :id "id-220200"}])))
 
       (testing "update"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "update"
@@ -122,7 +191,7 @@
           [0 :tx-op] := [:put {:fhir/type :fhir/Patient :id "id-214728"}])
 
         (testing "with precondition"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "update"
@@ -141,7 +210,7 @@
                            [:if-match 215150]])))
 
       (testing "conditional update"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "update"
@@ -160,7 +229,7 @@
                          [:if-none-match :any]]))
 
       (testing "delete"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "delete"
@@ -174,7 +243,7 @@
           [0 :tx-op] := [:delete "Patient" "id-215232"]))
 
       (testing "delete history version"
-        (given (bundle/assoc-tx-ops
+        (given (assoc-tx-ops
                 db
                 [{:fhir/type :fhir.Bundle/entry
                   ::fhir-util/interaction "delete-history-version"
@@ -189,7 +258,7 @@
           [0 :tx-op] := [:delete-history-version "Patient" "id-215232" 1])
 
         (testing "with a version id that can't denote a version"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "delete-history-version"
@@ -206,7 +275,7 @@
       (testing "conditional delete"
         (testing "without search params"
           (doseq [url [#fhir/uri "Patient" #fhir/uri "Patient?"]]
-            (given (bundle/assoc-tx-ops
+            (given (assoc-tx-ops
                     db
                     [{:fhir/type :fhir.Bundle/entry
                       ::fhir-util/interaction "conditional-delete-type"
@@ -218,7 +287,7 @@
               [0 :tx-op] := [:conditional-delete "Patient"])))
 
         (testing "with search params"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "conditional-delete-type"
@@ -231,7 +300,7 @@
 
         (testing "with search params which are ignored"
           (doseq [url [#fhir/uri "Patient?name-170043" #fhir/uri "Patient?_sort=a"]]
-            (given (bundle/assoc-tx-ops
+            (given (assoc-tx-ops
                     db
                     [{:fhir/type :fhir.Bundle/entry
                       ::fhir-util/interaction "conditional-delete-type"
@@ -249,7 +318,7 @@
     (with-db [db node]
       (testing "update"
         (testing "with older precondition"
-          (given (bundle/assoc-tx-ops
+          (given (assoc-tx-ops
                   db
                   [{:fhir/type :fhir.Bundle/entry
                     ::fhir-util/interaction "update"

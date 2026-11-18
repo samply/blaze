@@ -1,5 +1,6 @@
 (ns blaze.rest-api.capabilities-handler-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.impl.search-param]
@@ -17,13 +18,14 @@
    [blaze.rest-api.spec]
    [blaze.spec]
    [blaze.terminology-service :as-alias ts]
-   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [blaze.test-util :as tu :refer [given-failed-future satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
    [juxt.iota :refer [given]]
@@ -356,6 +358,12 @@
         [:rest 0 :resource 0 :profile] := #fhir/canonical "http://hl7.org/fhir/StructureDefinition/Patient"
         [:rest 0 :resource 0 :supportedProfile count] := 1
         [:rest 0 :resource 0 :supportedProfile 0] := #fhir/canonical "url-084829")
+
+      (testing "failing supported profiles query"
+        (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-140522"))]
+          (given-failed-future (handler {})
+            ::anom/category := ::anom/fault
+            ::anom/message := "msg-140522")))
 
       (testing "filtering by _elements=software doesn't load supported profiles"
         (with-redefs [d/type-query (fn [_ _ _] (throw (Exception.)))]

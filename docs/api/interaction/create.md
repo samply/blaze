@@ -56,6 +56,12 @@ The outcome depends on the number of resources matching the search:
 
 The search and the potential creation are executed in the same transaction, so conditional creates are safe against concurrent requests. An empty `If-None-Exist` header or one containing only ignorable search parameters like `_sort` results in a normal, unconditional create.
 
+### Value Sets <Badge type="warning" text="Since 1.14.0"/>
+
+Search parameters with the `in` modifier in the `If-None-Exist` header are expanded. If all value sets of a search parameter expand to no codes, no resource can match, so the resource would always be created. Because such a condition is most likely a mistake, Blaze returns a `422 Unprocessable Entity` with an `OperationOutcome` naming the value set and doesn't create a resource.
+
+Because the condition is stored together with the codes of its value sets, the value sets of a condition can expand to at most 10,000 codes in total. A condition with more codes results in a `409 Conflict` with an `OperationOutcome` with code `too-costly`.
+
 Conditional create can also be used in [transaction](transaction.md) and [batch](batch.md) requests via `Bundle.entry.request.ifNoneExist`. However, references to already existing resources currently can't be resolved. If you need this feature, please vote on the issue [Implement Conditional References](https://github.com/samply/blaze/issues/433).
 
 [1]: <https://hl7.org/fhir/http.html#ccreate>

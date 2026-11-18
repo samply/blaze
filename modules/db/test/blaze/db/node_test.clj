@@ -956,6 +956,65 @@
             :level := :error
             [:vargs 1] := "msg-172037"))))))
 
+(def ^:private legacy-value-set-msg
+  "Can't index the transaction with t = 1. %s contains the unexpanded value set `%s`. The transaction was written by an earlier version of Blaze, which expanded value sets while indexing. Please open an issue at https://github.com/samply/blaze/issues if you need to index such a transaction.")
+
+(defn- submit-legacy-tx-cmd!
+  "Submits `tx-cmd` directly to the transaction log of `node`, bypassing the
+  validation of `node/submit-tx`, like an earlier version of Blaze did."
+  [{:keys [tx-log]} tx-cmd]
+  @(tx-log/submit tx-log [tx-cmd] nil nil))
+
+(deftest legacy-value-set-clause-test
+  (testing "a conditional delete with an unexpanded value set stops the indexer"
+    (with-global-log-capture [captured "Error while indexing:"]
+      (with-system [{:blaze.db/keys [node]} config]
+        (submit-legacy-tx-cmd!
+         node {:op "conditional-delete" :type "Patient"
+               :clauses [["gender:in" "url-104829"]]})
+
+        (given (deref captured 10000 ::timeout)
+          :level := :error
+          [:vargs 1] := (format legacy-value-set-msg
+                                "Conditional delete of Patients with query `gender:in=url-104829`"
+                                "url-104829"))
+
+        @(:index-finished node)
+
+        (testing "the transaction neither succeeded nor failed"
+          (given @(:state node)
+            :t := 0
+            :error-t := 0
+            :failed? := true))
+
+        (testing "waiting for the transaction fails"
+          (given-failed-future (node/tx-result node 1)
+            ::anom/category := ::anom/unavailable
+            ::anom/message := "The database node `main` stopped because of an unrecoverable error.")))))
+
+  (testing "a conditional create with an unexpanded value set stops the indexer"
+    (let [patient {:fhir/type :fhir/Patient :id "0"}]
+      (with-global-log-capture [captured "Error while indexing:"]
+        (with-system [{:blaze.db/keys [node] resource-store ::rs/kv} config]
+          @(rs/put! resource-store {(hash/generate patient) patient})
+          (submit-legacy-tx-cmd!
+           node {:op "create" :type "Patient" :id "0"
+                 :hash (hash/generate patient)
+                 :if-none-exist [["gender:in" "url-105012"]]})
+
+          (given (deref captured 10000 ::timeout)
+            :level := :error
+            [:vargs 1] := (format legacy-value-set-msg
+                                  "Conditional create of a Patient with query `gender:in=url-105012`"
+                                  "url-105012"))
+
+          @(:index-finished node)
+
+          (given @(:state node)
+            :t := 0
+            :error-t := 0
+            :failed? := true))))))
+
 (deftest publish-loop-error-test
   (testing "an error in the publishing loop is logged"
     (with-global-log-capture [captured "Error while publishing changed resources:"]
@@ -1746,9 +1805,9 @@
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "female"}]]]
 
       (with-db [db node]
-        (vec @(d/type-query db "Patient" [["gender" "male"]])))
+        (vec (d/type-query db "Patient" [["gender" "male"]])))
       (with-db [db node]
-        (given (vec @(d/type-query db "Patient" [["gender" "male"]]))
+        (given (vec (d/type-query db "Patient" [["gender" "male"]]))
           count := 1
           [0 :id] := "0"))
 
@@ -1759,7 +1818,7 @@
 
       (testing "running it again gives the same result"
         (with-db [db node]
-          (given (vec @(d/type-query db "Patient" [["gender" "male"]]))
+          (given (vec (d/type-query db "Patient" [["gender" "male"]]))
             count := 1
             [0 :id] := "0")))))
 

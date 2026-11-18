@@ -14,6 +14,12 @@
   :ret (s/or :result (s/tuple :blaze.db/search-param (s/nilable ::search-param/modifier))
              :anomaly ::anom/anomaly))
 
+(s/fdef sr/value-set-param-code
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :type :fhir.resource/type
+               :param string?)
+  :ret (s/nilable string?))
+
 (s/fdef sr/get
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :code string? :type :fhir.resource/type)

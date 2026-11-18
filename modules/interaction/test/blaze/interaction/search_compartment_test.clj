@@ -14,7 +14,7 @@
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.search.util-spec]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [icd-10-gm-c69-c72-vcl icd-10-gm-code-system icd-10-gm-concept icd-10-gm-empty-vcl wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.middleware.fhir.page-id :as page-id]
@@ -29,10 +29,12 @@
    [blaze.util-spec]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
+   [ring.util.codec :as codec]
    [taoensso.timbre :as log]))
 
 (st/instrument)
@@ -69,7 +71,8 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/search-compartment
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
@@ -94,7 +97,8 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing clock"
     (given-failed-system (update config :blaze.interaction/search-compartment dissoc :clock)
@@ -119,6 +123,12 @@
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.interaction/search-compartment dissoc :value-set-expander)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid link function"
     (given-failed-system (assoc-in config [:blaze.interaction/search-compartment ::search-util/link] ::invalid)
@@ -153,6 +163,13 @@
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.interaction/search-compartment :value-set-expander] ::invalid)
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn- wrap-defaults [handler]
@@ -862,3 +879,72 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code "error"
                 [:issue 0 :diagnostics] := #fhir/string "msg-100043"))))))))
+
+(deftest handler-value-set-test
+  (testing "all pages keep the value set in their self link"
+    (with-handler [handler]
+      [[[:put icd-10-gm-code-system]
+        [:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code (icd-10-gm-concept "C71")}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code (icd-10-gm-concept "C69-C72")}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+               :code (icd-10-gm-concept "C73")}]]]
+
+      (let [self-link (str base-url context-path "/Patient/0/Observation?code%3Ain="
+                           (codec/url-encode icd-10-gm-c69-c72-vcl) "&_count=1")
+            {:keys [status body]}
+            @(handler
+              {:path-params {:id "0" :type "Observation"}
+               :params {"code:in" icd-10-gm-c69-c72-vcl "_count" "1"}})]
+
+        (is (= 200 status))
+
+        (testing "the first page"
+          (given body
+            :total := #fhir/unsignedInt 2
+            [:entry count] := 1
+            [:entry 0 :resource :id] := "0")
+
+          (is (= self-link (link-url body "self"))))
+
+        (testing "the second page"
+          (let [{:keys [status body]}
+                @(handler
+                  {::reitit/match (page-match-of "Patient" "0")
+                   :path-params {:id "0" :type "Observation"
+                                 :page-id (last (str/split (link-url body "next") #"/"))}})]
+
+            (is (= 200 status))
+
+            (given body
+              [:entry count] := 1
+              [:entry 0 :resource :id] := "1")
+
+            (is (= self-link (link-url body "self"))))))))
+
+  (testing "empty value set"
+    (doseq [params [{"code:in" icd-10-gm-empty-vcl}
+                    {"code:in" icd-10-gm-empty-vcl "_summary" "count"}]]
+      (with-handler [handler]
+        [[[:put icd-10-gm-code-system]
+          [:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+                 :code (icd-10-gm-concept "C73")}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {:path-params {:id "0" :type "Observation"}
+                 :params params})]
+
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Bundle
+            :total := #fhir/unsignedInt 0
+            :entry := nil))))))

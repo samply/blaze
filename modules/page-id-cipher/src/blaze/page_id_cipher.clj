@@ -79,6 +79,7 @@
   the default rotation period, a paging link stays usable for at least three
   hours and is guaranteed to be dead after five."
   (:require
+   [blaze.anomaly :refer [when-ok]]
    [blaze.async.comp :as ac]
    [blaze.async.flow :as flow]
    [blaze.coll.core :as coll]
@@ -105,16 +106,18 @@
   "The identifier value the key set `DocumentReference` is looked up with."
   "page-id-cipher")
 
-(defn- find-key-set-resource
-  "Returns a CompletableFuture that will complete with the resource handle of
-  the key set `DocumentReference` in the current database of `node`, or `nil`
-  if it doesn't exist yet."
+(defn- pull-key-set-resource
+  "Returns a CompletableFuture that will complete with the key set
+  `DocumentReference` in the current database of `node`, or `nil` if it doesn't
+  exist yet."
   [node]
-  (log/trace "try to find the key set resource")
+  (log/trace "try to pull the key set resource")
   (d/with-db node
     (fn [db]
-      (-> (d/type-query db "DocumentReference" [["identifier" key-set-identifier]])
-          (ac/then-apply coll/first)))))
+      (when-ok [handles (d/type-query db "DocumentReference" [["identifier" key-set-identifier]])]
+        (if-let [handle (coll/first handles)]
+          (d/pull db handle)
+          (ac/completed-future nil))))))
 
 (defn- b64-encode [bytes]
   (.encodeToString (Base64/getEncoder) bytes))
@@ -157,11 +160,11 @@
   resource with the key set as first attachment, creating that resource with a
   freshly generated key set if it doesn't exist yet."
   [{:keys [node] :as context}]
-  (-> (find-key-set-resource node)
+  (-> (pull-key-set-resource node)
       (ac/then-compose
-       (fn [handle]
-         (if handle
-           (d/pull node handle)
+       (fn [resource]
+         (if resource
+           (ac/completed-future resource)
            ;; the current database of `node` includes the transaction after it
            ;; completed
            (-> (d/transact node [(key-set-resource-create-op context)])
@@ -251,8 +254,8 @@
   instances subscribed to the changed `DocumentReference` resources of `node`,
   including this instance."
   ([node]
-   (when-let [handle @(find-key-set-resource node)]
-     @(rotate-keys* node @(d/pull node handle)))))
+   (when-let [resource @(pull-key-set-resource node)]
+     @(rotate-keys* node resource))))
 
 (defn- schedule-key-rotation
   "Schedules the key rotation to run every `key-rotation-period`, one hour by

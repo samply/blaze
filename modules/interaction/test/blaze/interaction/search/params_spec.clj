@@ -7,6 +7,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.util-spec]
    [blaze.page-store.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef params/decode
@@ -14,4 +15,10 @@
                :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
                :query-params (s/nilable :ring.request/query-params)
                :paging-params (s/nilable :ring.request/query-params))
+  :ret ac/completable-future?)
+
+(s/fdef params/expand-value-sets
+  :args (s/cat :value-set-expander :blaze/value-set-expander
+               :type :fhir.resource/type
+               :params map?)
   :ret ac/completable-future?)

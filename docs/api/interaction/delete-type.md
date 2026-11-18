@@ -31,6 +31,12 @@ The successful response will have the status code `204 No Content` with no paylo
 }
 ```
 
+## Value Sets <Badge type="warning" text="Since 1.14.0"/>
+
+Search parameters with the `in` modifier are expanded. If all value sets of a search parameter expand to no codes, no resource can match, so nothing would ever be deleted. Because such a condition is most likely a mistake, Blaze returns a `422 Unprocessable Entity` with an `OperationOutcome` naming the value set and deletes nothing.
+
+Because the condition is stored together with the codes of its value sets, the value sets of a condition can expand to at most 10,000 codes in total. A condition with more codes results in a `409 Conflict` with an `OperationOutcome` with code `too-costly`.
+
 ## Read-Only and Internal Resources
 
 Like the [delete](delete.md) interaction, the conditional delete can't delete [read-only](delete.md#read-only-resources) resources. If one of the matching resources is read-only, Blaze returns a `409 Conflict` with an `OperationOutcome` and deletes no resource at all.

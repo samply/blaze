@@ -14,6 +14,8 @@
    [blaze.module :as m]
    [blaze.validator :as validator]
    [blaze.validator.spec]
+   [blaze.value-set-expander :as vse]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -35,26 +37,35 @@
   (if-let [handle (d/resource-handle db-after type id)]
     (response/build-response
      (response-context request db-after) tx-op nil handle)
-    (-> (d/type-query db-after type conditional-clauses)
-        (ac/then-compose
-         (fn [handles]
-           (let [handle (coll/first handles)]
-             (response/build-response
-              (response-context request db-after) tx-op handle handle)))))))
+    (if-ok [handles (d/type-query db-after type conditional-clauses)]
+      (let [handle (coll/first handles)]
+        (response/build-response
+         (response-context request db-after) tx-op handle handle))
+      ac/completed-future)))
+
+(defn- expand-value-sets
+  "Returns a CompletableFuture of the `conditional-clauses` with expanded value
+  sets or of nil if there are none (see `vse/expand-condition-clauses`)."
+  [value-set-expander type conditional-clauses]
+  (if (seq conditional-clauses)
+    (vse/expand-condition-clauses value-set-expander type conditional-clauses)
+    (ac/completed-future nil)))
 
 (defn- create-resource
-  [{:keys [node]}
+  [{:keys [node value-set-expander]}
    {{{:fhir.resource/keys [type]} :data} ::reitit/match
     {if-none-exist "if-none-exist"} :headers
     :as request}
    {:keys [id] :as resource}]
-  (let [conditional-clauses (iu/conditional-clauses if-none-exist)
-        tx-op (create-op resource conditional-clauses)]
-    (-> (d/transact node [tx-op])
-        (ac/then-compose
-         #(d/with-sync-db node %
-            (partial build-response request type id tx-op
-                     conditional-clauses))))))
+  (-> (expand-value-sets value-set-expander type (iu/conditional-clauses if-none-exist))
+      (ac/then-compose
+       (fn [conditional-clauses]
+         (let [tx-op (create-op resource conditional-clauses)]
+           (-> (d/transact node [tx-op])
+               (ac/then-compose
+                #(d/with-sync-db node %
+                   (partial build-response request type id tx-op
+                            conditional-clauses)))))))))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."
@@ -94,7 +105,8 @@
       ac/completed-future)))
 
 (defmethod m/pre-init-spec :blaze.interaction/create [_]
-  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn
+                   :blaze/value-set-expander]
           :opt-un [:blaze/validator]))
 
 (defmethod ig/init-key :blaze.interaction/create [_ context]

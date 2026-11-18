@@ -1,6 +1,8 @@
 (ns blaze.page-id-cipher-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.flow :as flow]
+   [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.node :as node]
@@ -22,9 +24,6 @@
    [blaze.page-id-cipher.spec]
    [blaze.scheduler.spec]
    [blaze.scheduler.test-util :as stu]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
@@ -117,10 +116,7 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-
-   ::ts/not-available {}
+   {:structure-definition-repo structure-definition-repo}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo
@@ -203,7 +199,18 @@
 
   (testing "success"
     (with-system [{:blaze/keys [page-id-cipher]} config]
-      (is (s/valid? :blaze/page-id-cipher page-id-cipher)))))
+      (is (s/valid? :blaze/page-id-cipher page-id-cipher))))
+
+  (testing "failing key set query"
+    (let [called (promise)]
+      (with-redefs [d/type-query (fn [_ _ _]
+                                   (deliver called ::called)
+                                   (ba/fault "msg-154012"))]
+        (given-failed-system config
+          :key := :blaze/page-id-cipher
+          :reason := ::ig/build-threw-exception))
+
+      (is (= ::called (deref called 0 ::not-called))))))
 
 (defn- rotate-keys!
   "Triggers one key rotation on `manual-scheduler` and returns the state of

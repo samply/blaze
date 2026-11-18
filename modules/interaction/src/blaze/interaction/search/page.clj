@@ -12,6 +12,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.module :as m]
    [blaze.page-store :as page-store]
+   [blaze.value-set-expander :as vse]
    [prometheus.alpha :as prom]
    [reitit.core :as reitit]
    [ring.util.response :as ring]))
@@ -161,19 +162,22 @@
 
   Completes exceptionally with an anomaly if any of the `match-futures` does."
   [pull-timer match-futures]
-  (do-sync [_ (ac/all-of match-futures)]
+  (do-sync [matches (ac/all-values match-futures)]
     (prom/observe-duration! pull-timer)
-    (mapv ac/join match-futures)))
+    matches))
 
 (defn gen-token-fn
   "Returns a function of `clauses` that will return a CompletableFuture of a
   token encoding the clauses or of nil if no token should be generated.
 
-  Tokens are only generated on POST search requests (routes with the name
+  Tokens are generated on POST search requests (routes with the name
   `search`), because there the clauses come from the form body and are not
-  visible in the URL."
-  [{:keys [page-store]} {{{route-name :name} :data} ::reitit/match}]
-  (if (= "search" (some-> route-name name))
+  visible in the URL. They are also generated if the clauses in `params` hold
+  expanded value sets, because the codes don't fit into a URL and all pages
+  have to use the same expansion."
+  [{:keys [page-store]} {{{route-name :name} :data} ::reitit/match} params]
+  (if (or (= "search" (some-> route-name name))
+          (vse/expanded? (:clauses params)))
     (fn [clauses]
       (if (empty? clauses)
         (ac/completed-future nil)
@@ -265,6 +269,16 @@
     :type #fhir/code "searchset"
     :total (type/unsignedInt total)
     :link [(self-link context clauses)]}))
+
+(defn unsatisfiable-response
+  "Returns the response of a search whose clauses in `params` can't match any
+  resource, because a value set is empty. The response is computed without a
+  database call."
+  {:arglists '([context params])}
+  [context {:keys [summary? clauses]}]
+  (if summary?
+    (summary-response context 0 clauses)
+    (ring/response (zero-bundle context clauses))))
 
 (defn include-xf [context]
   (map (partial search-util/include-entry context)))

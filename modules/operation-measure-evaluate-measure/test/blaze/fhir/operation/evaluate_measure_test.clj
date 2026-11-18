@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
@@ -79,6 +80,7 @@
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)
     :terminology-service (ig/ref ::ts/local)
+    :value-set-expander (ig/ref :blaze/value-set-expander)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -109,7 +111,8 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing terminology-service"
     (given-failed-system (update config ::evaluate-measure/handler dissoc :terminology-service)
@@ -134,6 +137,12 @@
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config ::evaluate-measure/handler dissoc :value-set-expander)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [::evaluate-measure/handler :node] ::invalid)
@@ -168,6 +177,13 @@
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :value-set-expander] ::invalid)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid report-persistence"
@@ -436,6 +452,26 @@
             [:issue 0 :severity] := #fhir/code "error"
             [:issue 0 :code] := #fhir/code "value"
             [:issue 0 :diagnostics] := (type/string (format "The Library resource with canonical URI `%s` was not found." (:value library-ref))))))))
+
+  (testing "Returns Server Error on Failing Library Query"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Measure :id "0"
+               :library [#fhir/canonical "library-url-144935"]}]]]
+
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-144935"))]
+        (let [{:keys [status body]}
+              @(handler
+                {:path-params {:id "0"}
+                 :params {"periodStart" "2014"
+                          "periodEnd" "2015"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "exception"
+            [:issue 0 :diagnostics] := #fhir/string "msg-144935")))))
 
   (testing "Returns Server Error on Missing Measure Content"
     (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
@@ -1067,7 +1103,24 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "not-supported"
           [:issue 0 :diagnostics] := #fhir/string "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-          [:issue 0 :expression first] := #fhir/string "Measure.library")))))
+          [:issue 0 :expression first] := #fhir/string "Measure.library"))))
+
+  (testing "Returns Server Error on Failing Measure Query"
+    (with-handler [handler]
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-145012"))]
+        (let [{:keys [status body]}
+              @(handler
+                {:params {"measure" "url-145012"
+                          "periodStart" "2014"
+                          "periodEnd" "2015"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "exception"
+            [:issue 0 :diagnostics] := #fhir/string "msg-145012"))))))
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}

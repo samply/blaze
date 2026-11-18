@@ -26,9 +26,6 @@
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [with-global-log-capture]]
    [blaze.time :as bt]
    [clojure.spec.alpha :as s]
@@ -128,10 +125,7 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-
-   ::ts/not-available {}
+   {:structure-definition-repo structure-definition-repo}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo

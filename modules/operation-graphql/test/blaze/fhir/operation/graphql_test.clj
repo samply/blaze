@@ -1,6 +1,8 @@
 (ns blaze.fhir.operation.graphql-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-cache :as rc]
    [blaze.db.spec]
@@ -245,6 +247,19 @@
                 [:data :ObservationList count] := 1
                 [:data :ObservationList 0 :subject :reference] := "Patient/0"
                 [:errors] :? empty?)))))))
+
+  (testing "failing type query"
+    (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-142047"))]
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :get
+                 :params {"query" "{ ObservationList(code: \"39156-5\") { subject { reference } } }"}})]
+
+          (is (= 200 status))
+
+          (given body
+            [:errors 0 :message] := "msg-142047")))))
 
   (testing "missing resource contents"
     (with-redefs [rc/multi-get (fn [_ _] (ac/completed-future {}))]

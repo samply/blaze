@@ -38,6 +38,7 @@
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)
     :terminology-service (ig/ref ::ts/local)
+    :value-set-expander (ig/ref :blaze/value-set-expander)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze/job-scheduler
@@ -63,7 +64,8 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing terminology-service"
     (given-failed-system (update config :blaze.fhir.operation/cql dissoc :terminology-service)
@@ -82,6 +84,12 @@
       :key := :blaze.fhir.operation/cql
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.fhir.operation/cql dissoc :value-set-expander)
+      :key := :blaze.fhir.operation/cql
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.fhir.operation/cql :node] ::invalid)
@@ -109,6 +117,13 @@
       :key := :blaze.fhir.operation/cql
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.fhir.operation/cql :value-set-expander] ::invalid)
+      :key := :blaze.fhir.operation/cql
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init"

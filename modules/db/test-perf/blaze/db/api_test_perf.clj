@@ -18,7 +18,6 @@
    [blaze.fhir.writing-context]
    [blaze.log]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.terminology-service.not-available]
    [clojure.test :refer [deftest]]
    [criterium.core :as criterium]
    [integrant.core :as ig]
@@ -84,10 +83,7 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref :blaze.terminology-service/not-available)}
-
-   :blaze.terminology-service/not-available {}
+   {:structure-definition-repo structure-definition-repo}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo
@@ -134,9 +130,9 @@
           (map observation-tx-data)
           (range 2))
 
-    (let [query @(d/compile-compartment-query
-                  node "Patient" "Observation"
-                  [["code" "system-191514|code-191518"]])]
+    (let [query (d/compile-compartment-query
+                 node "Patient" "Observation"
+                 [["code" "system-191514|code-191518"]])]
       ;; 5.75 µs / 120 ns - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
       @(d/with-db node
          (fn [db]

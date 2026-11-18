@@ -1,6 +1,6 @@
 (ns blaze.terminology-service.local.code-system.default
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.util :as fu]
@@ -52,15 +52,14 @@
   [{:keys [db] ::cs/keys [required-content graph-cache]
     :or {required-content #{"complete" "fragment"}}}
    url & [version]]
-  (-> (code-system-query db url version)
-      (ac/then-compose
-       (fn [handles]
-         (do-sync [code-systems (d/pull-many db (vec handles))]
-           (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
-             (if (required-content (:value content))
-               (assoc code-system :default/graph (get-graph graph-cache code-system))
-               (code-system-not-required-content-anom code-system required-content))
-             (ba/not-found (not-found-msg url version))))))))
+  (if-ok [handles (code-system-query db url version)]
+    (do-sync [code-systems (d/pull-many db (vec handles))]
+      (if-let [{:keys [content] :as code-system} (first (fu/sort-by-priority code-systems))]
+        (if (required-content (:value content))
+          (assoc code-system :default/graph (get-graph graph-cache code-system))
+          (code-system-not-required-content-anom code-system required-content))
+        (ba/not-found (not-found-msg url version))))
+    ac/completed-future))
 
 (defmethod c/enhance :default
   [_ {concepts :concept :as code-system}]

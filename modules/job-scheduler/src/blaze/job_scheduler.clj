@@ -1,6 +1,6 @@
 (ns blaze.job-scheduler
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.async.flow :as flow]
    [blaze.coll.core :as coll]
@@ -200,13 +200,12 @@
   (log/error "Failed to dispatch the pending jobs on start of the job scheduler:"
              message))
 
-(defn- pending-job-handles [db]
-  (do-sync [handles (d/type-query db "Task" [["status" "ready" "in-progress"]])]
-    (vec handles)))
+(defn- pull-pending-jobs [db]
+  (when-ok [handles (d/type-query db "Task" [["status" "ready" "in-progress"]])]
+    (d/pull-many db (vec handles))))
 
 (defn- pending-jobs [node]
-  (-> (d/with-db node pending-job-handles)
-      (ac/then-compose (partial d/pull-many node))))
+  (d/with-db node pull-pending-jobs))
 
 (defn- dispatch-pending-jobs
   "Dispatches the jobs of `node` that are pending, because they became ready
@@ -227,16 +226,21 @@
         (run! (partial dispatch-job job-scheduler) jobs))
       (ac/exceptionally dispatch-pending-jobs-error-handler)))
 
-(defn- current-job-number-observation-handle [db]
-  (do-sync [handles (d/type-query db "Observation" [["identifier" "job-number"]])]
-    (coll/first handles)))
+(defn- pull-current-job-number-observation
+  "Returns a CompletableFuture that will complete with the Observation holding
+  the current job number in `db` or with nil if there is none."
+  [db]
+  (when-ok [handles (d/type-query db "Observation" [["identifier" "job-number"]])]
+    (if-let [handle (coll/first handles)]
+      (d/pull db handle)
+      (ac/completed-future nil))))
 
 (defn- current-job-number-observation [{:keys [node] :as context}]
-  (-> (d/with-db node current-job-number-observation-handle)
+  (-> (d/with-db node pull-current-job-number-observation)
       (ac/then-compose
-       (fn [handle]
-         (if handle
-           (d/pull node handle)
+       (fn [observation]
+         (if observation
+           (ac/completed-future observation)
            (-> (d/transact node
                            [[:create
                              {:fhir/type :fhir/Observation

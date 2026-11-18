@@ -25,7 +25,7 @@
     ;; the clauses are taken from a query compiled over all types, while the
     ;; queries under test are restricted to a subset of types in order to test
     ;; starting with a type that isn't part of the query
-    (let [{:keys [clauses]} @(d/compile-system-query node [["_tag" "system-131647|code-131652"]])]
+    (let [{:keys [clauses]} (d/compile-system-query node [["_tag" "system-131647|code-131652"]])]
 
       (testing "starting with a type coming before the only type of the query
                 returns all matches of that type"

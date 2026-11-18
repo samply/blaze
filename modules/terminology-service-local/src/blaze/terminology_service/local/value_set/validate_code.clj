@@ -278,9 +278,7 @@
           (cs/find context url))))))
 
 (defn- supplements [context extensions]
-  (let [futures (into [] (supplement-xf context) extensions)]
-    (do-sync [_ (ac/all-of futures)]
-      (mapv ac/join futures))))
+  (ac/all-values (into [] (supplement-xf context) extensions)))
 
 (defn- validate-code* [context {extensions :extension :as value-set} params]
   (-> (supplements context extensions)

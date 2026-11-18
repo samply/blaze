@@ -150,7 +150,8 @@
   :blaze.interaction/create
   {:node #blaze/ref :blaze.db.main/node
    :clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :value-set-expander #blaze/ref :blaze/value-set-expander}
 
   :blaze.interaction/delete
   {:node #blaze/ref :blaze.db.main/node}
@@ -162,7 +163,8 @@
   {:node #blaze/ref :blaze.db.main/node}
 
   :blaze.interaction/conditional-delete-type
-  {:node #blaze/ref :blaze.db.main/node}
+  {:node #blaze/ref :blaze.db.main/node
+   :value-set-expander #blaze/ref :blaze/value-set-expander}
 
   :blaze.interaction/read {}
   :blaze.interaction/vread {}
@@ -172,7 +174,8 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
-   :page-id-cipher #blaze/ref :blaze/page-id-cipher}
+   :page-id-cipher #blaze/ref :blaze/page-id-cipher
+   :value-set-expander #blaze/ref :blaze/value-set-expander}
 
   :blaze.interaction.search-system/search-duration-seconds {}
 
@@ -182,6 +185,7 @@
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
    :page-id-cipher #blaze/ref :blaze/page-id-cipher
+   :value-set-expander #blaze/ref :blaze/value-set-expander
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   :blaze.interaction.search-type/search-duration-seconds {}
@@ -191,13 +195,15 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-store #blaze/ref :blaze/page-store
-   :page-id-cipher #blaze/ref :blaze/page-id-cipher}
+   :page-id-cipher #blaze/ref :blaze/page-id-cipher
+   :value-set-expander #blaze/ref :blaze/value-set-expander}
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db.main/node
    :batch-handler #blaze/ref :blaze.rest-api/batch-handler
    :clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :value-set-expander #blaze/ref :blaze/value-set-expander}
 
   :blaze.interaction/update
   {:node #blaze/ref :blaze.db.main/node}
@@ -247,6 +253,7 @@
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db.main/node
    :terminology-service #blaze/ref :blaze.terminology-service/not-available
+   :value-set-expander #blaze/ref :blaze/value-set-expander
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
@@ -451,8 +458,18 @@
   ;;
   :blaze.db/search-param-registry
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
-   :terminology-service #blaze/ref :blaze.terminology-service/not-available
    :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
+
+  ;;
+  ;; Value Set Expander
+  ;;
+  ;; The value set expander expands the value sets of search clauses with the
+  ;; `in` modifier into plain token clauses before they are given to the
+  ;; database, because the database doesn't expand value sets.
+  ;;
+  :blaze/value-set-expander
+  {:search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :terminology-service #blaze/ref :blaze.terminology-service/not-available}
 
   ;;
   ;; Job Scheduler
@@ -1603,7 +1620,8 @@
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
     :blaze.terminology-service/local
-    {:clock #blaze/ref :blaze/clock
+    {:node #blaze/ref :blaze.db.main/node
+     :clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
      :graph-cache #blaze/ref :blaze.terminology-service.local/graph-cache
      :enable-bcp-13 true
@@ -1620,7 +1638,7 @@
     :blaze.rest-api/capabilities-handler
     {:terminology-service #blaze/ref :blaze.terminology-service/local}
 
-    :blaze.db/search-param-registry
+    :blaze/value-set-expander
     {:terminology-service #blaze/ref :blaze.terminology-service/local}}}
 
   {:key :terminology-loinc
@@ -1659,7 +1677,7 @@
     :blaze.fhir.operation.evaluate-measure/handler
     {:terminology-service #blaze/ref :blaze.terminology-service/extern}
 
-    :blaze.db/search-param-registry
+    :blaze/value-set-expander
     {:terminology-service #blaze/ref :blaze.terminology-service/extern}}}
 
   ;; OpenID Authentication for the Extern Terminology Service
@@ -1732,7 +1750,8 @@
     {:compiled-graph-cache #blaze/ref :blaze.operation.graph/compiled-graph-cache
      :clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
-     :page-id-cipher #blaze/ref :blaze/page-id-cipher}
+     :page-id-cipher #blaze/ref :blaze/page-id-cipher
+     :value-set-expander #blaze/ref :blaze/value-set-expander}
 
     :blaze.operation.graph/compiled-graph-cache {}
 
@@ -1756,6 +1775,7 @@
     :blaze.fhir.operation/cql
     {:node #blaze/ref :blaze.db.main/node
      :terminology-service #blaze/ref :blaze.terminology-service/not-available
+     :value-set-expander #blaze/ref :blaze/value-set-expander
      :clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn}
 

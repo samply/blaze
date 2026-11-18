@@ -85,6 +85,9 @@
   blaze/terminology-service-local
   {:local/root "modules/terminology-service-local"}
 
+  blaze/value-set-expander
+  {:local/root "modules/value-set-expander"}
+
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
 
@@ -243,6 +246,7 @@
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"
     "-d" "modules/validator"
+    "-d" "modules/value-set-expander"
     "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
     "--exclude" "info.cqframework/cql"

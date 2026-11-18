@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index
   "This namespace contains query functions."
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.index-handle :as ih]
@@ -15,12 +15,12 @@
   [registry type [param & values :as clause] lenient?]
   (let [values (cond->> values (< 1 (count values)) (into [] (distinct)))]
     (if (empty? values)
-      (ac/completed-future (ba/incorrect (format "Clause `%s` isn't valid." clause)))
+      (ba/incorrect (format "Clause `%s` isn't valid." clause))
       (if-ok [[search-param modifier] (sr/parse registry type param)
               _ (search-param/validate-modifier search-param modifier)]
-        (-> (search-param/compile-values search-param modifier values)
-            (ac/then-apply (fn [cv] [search-param modifier values cv])))
-        #(ac/completed-future (if lenient? nil %))))))
+        (when-ok [compiled-values (search-param/compile-values search-param modifier values)]
+          [search-param modifier values compiled-values])
+        #(when-not lenient? %)))))
 
 (defn- resolve-sort-clause
   [registry type [_ param direction :as clause]]
@@ -40,7 +40,7 @@
 
 (defn- resolve-search-clause-only [registry type clause lenient?]
   (if (identical? :sort (first clause))
-    (ac/completed-future (ba/incorrect "Sort clauses are only allowed at first position."))
+    (ba/incorrect "Sort clauses are only allowed at first position.")
     (resolve-search-clause registry type clause lenient?)))
 
 (defn- multiple-clauses? [disjunction]
@@ -71,48 +71,42 @@
     clauses))
 
 (defn- resolve-disjunction [registry type disjunction lenient?]
-  (let [clause-futures
-        (mapv #(resolve-search-clause-only registry type % lenient?)
-              (cond-> disjunction (not (multiple-clauses? disjunction)) vector))]
-    (-> (ac/all-of clause-futures)
-        (ac/then-apply
-         (fn [_] (validate-disjunction (into [] (keep ac/join) clause-futures)))))))
+  (when-ok [clauses (transduce
+                     (comp (keep #(resolve-search-clause-only registry type % lenient?))
+                           (halt-when ba/anomaly?))
+                     conj
+                     (cond-> disjunction (not (multiple-clauses? disjunction)) vector))]
+    (validate-disjunction clauses)))
 
 (defn resolve-search-params* [registry type clauses lenient?]
-  (let [disjunction-futures
-        (mapv #(resolve-disjunction registry type % lenient?) clauses)]
-    (-> (ac/all-of disjunction-futures)
-        (ac/then-apply
-         (fn [_]
-           (into [] (comp (map ac/join) (remove empty?)) disjunction-futures))))))
+  (transduce
+   (comp (map #(resolve-disjunction registry type % lenient?))
+         (halt-when ba/anomaly?)
+         (remove empty?))
+   conj
+   clauses))
 
 (defn resolve-search-params
   "Resolves all search parameter `clauses` for resource `type` against
-  `registry` in parallel.
+  `registry`.
 
-  Returns a CompletableFuture that completes with a map of
-  `:search-clauses` and optionally `:sort-clause` or completes exceptionally
-  with an anomaly if any clause references an unknown search parameter and
-  `lenient?` is false.
+  Returns a map of `:search-clauses` and optionally `:sort-clause` or an
+  anomaly if any clause references an unknown search parameter and `lenient?`
+  is false.
 
   When `lenient?` is true, clauses that reference unknown search
   parameters are silently dropped instead of causing a failure."
   [registry type clauses lenient?]
   (if (identical? :sort (ffirst clauses))
-    (if-ok [sort-clause (resolve-sort-clause registry type (first clauses))]
-      (-> (resolve-search-params* registry type (rest clauses) lenient?)
-          (ac/then-apply
-           (fn [search-clauses]
-             (cond-> {:sort-clause sort-clause}
-               (seq search-clauses)
-               (assoc :search-clauses search-clauses)))))
-      ac/completed-future)
-    (-> (resolve-search-params* registry type clauses lenient?)
-        (ac/then-apply
-         (fn [search-clauses]
-           (cond-> {}
-             (seq search-clauses)
-             (assoc :search-clauses search-clauses)))))))
+    (when-ok [sort-clause (resolve-sort-clause registry type (first clauses))
+              search-clauses (resolve-search-params* registry type (rest clauses) lenient?)]
+      (cond-> {:sort-clause sort-clause}
+        (seq search-clauses)
+        (assoc :search-clauses search-clauses)))
+    (when-ok [search-clauses (resolve-search-params* registry type clauses lenient?)]
+      (cond-> {}
+        (seq search-clauses)
+        (assoc :search-clauses search-clauses)))))
 
 (defn- matcher [db [search-param modifier _ values]]
   (search-param/matcher search-param db modifier values))
@@ -385,8 +379,8 @@
 (defn compartment-clauses
   [search-param-registry compartment-code search-param-codes type]
   (let [clauses [(mapv #(vector % (str compartment-code "/0")) search-param-codes)]]
-    (-> (resolve-search-params search-param-registry type clauses false)
-        (ac/then-apply :search-clauses))))
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses false)]
+      (:search-clauses clauses))))
 
 (defn- supports-ordered-compartment-index-handles [[search-param modifier values]]
   (p/-supports-ordered-compartment-index-handles search-param modifier values))

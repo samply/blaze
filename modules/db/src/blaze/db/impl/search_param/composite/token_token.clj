@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.composite.token-token
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -19,12 +18,10 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (if-ok [[v1 v2] (cc/split-value value)]
-      (let [f1 (cc/compile-component-value c1 v1)
-            f2 (cc/compile-component-value c2 v2)]
-        (-> (ac/all-of [f1 f2])
-            (ac/then-apply (fn [_] (bs/concat (ac/join f1) (ac/join f2))))))
-      ac/completed-future))
+    (when-ok [[v1 v2] (cc/split-value value)
+              cv1 (cc/compile-component-value c1 v1)
+              cv2 (cc/compile-component-value c2 v2)]
+      (bs/concat cv1 cv2)))
 
   (-estimated-scan-size [_ db tid _ compiled-value]
     (sp-vr/estimated-scan-size (:kv-store db) c-hash tid compiled-value))

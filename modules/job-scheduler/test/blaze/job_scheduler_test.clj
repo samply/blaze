@@ -27,9 +27,6 @@
    [blaze.job.util :as job-util]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.spec]
-   [blaze.terminology-service :as-alias ts]
-   [blaze.terminology-service-spec]
-   [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -327,10 +324,7 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :terminology-service (ig/ref ::ts/not-available)}
-
-   ::ts/not-available {}
+   {:structure-definition-repo structure-definition-repo}
 
    [:blaze.fhir/parsing-context :blaze.fhir.parsing-context/resource-store]
    {:structure-definition-repo structure-definition-repo
@@ -557,6 +551,13 @@
             (given @(d/pull node (d/resource-handle db "Bundle" bundle-id))
               :fhir/type := :fhir/Bundle
               :type := #fhir/code "batch")))))))
+
+(deftest create-job-failing-job-number-query-test
+  (with-system [{:blaze/keys [job-scheduler]} config]
+    (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-155011"))]
+      (given-failed-future (js/create-job job-scheduler (ready-job "test"))
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-155011"))))
 
 (deftest create-job-concurrently-test
   (testing "all jobs are created with unique job numbers"
@@ -1447,7 +1448,7 @@
         @(js/create-job job-scheduler (ready-job "no-op"))
 
         (with-redefs [d/type-query
-                      (fn [_ _ _] (ac/completed-future (ba/fault "fault-131512")))]
+                      (fn [_ _ _] (ba/fault "fault-131512"))]
           (with-restarted-job-scheduler system
             (fn [job-scheduler]
               (testing "the job scheduler is valid"

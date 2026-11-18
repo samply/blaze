@@ -8,13 +8,15 @@
    [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.response.create-spec]
    [blaze.fhir.search-clauses-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.interaction.create]
-   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.test-util :refer [icd-10-gm-c69-c72-vcl icd-10-gm-code-system icd-10-gm-concept icd-10-gm-empty-vcl icd-10-gm-empty-vcl-msg type-query-failing-at wrap-error]]
    [blaze.interaction.util-spec]
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
@@ -48,7 +50,8 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/create
-   {:node (ig/ref :blaze.db/node)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -67,7 +70,8 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing clock"
     (given-failed-system (update config :blaze.interaction/create dissoc :clock)
@@ -80,6 +84,12 @@
       :key := :blaze.interaction/create
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.interaction/create dissoc :value-set-expander)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.interaction/create :node] ::invalid)
@@ -102,6 +112,13 @@
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.interaction/create :value-set-expander] ::invalid)
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "invalid validator"
     (given-failed-system (assoc-in config [:blaze.interaction/create :validator] ::invalid)
       :key := :blaze.interaction/create
@@ -116,11 +133,13 @@
             :blaze/base-url base-url
             ::reitit/router router))))
 
-(defmacro with-handler [[handler-binding] & more]
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.interaction/create} config]
+    `(with-system-data [{handler# :blaze.interaction/create
+                         node# :blaze.db/node} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
+       (let [~handler-binding (-> handler# wrap-defaults wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 (def patient-match
@@ -405,6 +424,28 @@
               :fhir/type := :fhir/Patient
               :id := "0")))))
 
+    (testing "with matching patient and failing query after the transaction"
+      (let [type-query d/type-query]
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier
+                   [#fhir/Identifier{:value #fhir/string "095156"}]}]]]
+
+          (with-redefs [d/type-query (type-query-failing-at type-query 2 "msg-150112")]
+            (let [{:keys [status body]}
+                  @(handler
+                    {::reitit/match patient-match
+                     :headers {"if-none-exist" "identifier=095156"}
+                     :body {:fhir/type :fhir/Patient}})]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :code] := #fhir/code "exception"
+                [:issue 0 :diagnostics] := #fhir/string "msg-150112"))))))
+
     (testing "with multiple matching patients"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
@@ -426,6 +467,51 @@
               [:issue 0 :severity] := #fhir/code "error"
               [:issue 0 :code] := #fhir/code "conflict"
               [:issue 0 :diagnostics] := #fhir/string "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+
+  (testing "conditional create with a value set"
+    (testing "with a matching observation"
+      (with-handler [handler]
+        [[[:put icd-10-gm-code-system]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code (icd-10-gm-concept "C71")}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match observation-match
+                 :headers {"if-none-exist" (str "code:in=" icd-10-gm-c69-c72-vcl)}
+                 :body {:fhir/type :fhir/Observation}})]
+
+          (testing "the existing observation is returned"
+            (is (= 200 status))
+
+            (given body
+              :fhir/type := :fhir/Observation
+              :id := "0")))))
+
+    (testing "with an empty value set"
+      (with-handler [handler node]
+        [[[:put icd-10-gm-code-system]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code (icd-10-gm-concept "C73")}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                {::reitit/match observation-match
+                 :headers {"if-none-exist" (str "code:in=" icd-10-gm-empty-vcl)}
+                 :body {:fhir/type :fhir/Observation}})]
+
+          (testing "the create fails"
+            (is (= 422 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
+              [:issue 0 :diagnostics] := (type/string icd-10-gm-empty-vcl-msg)))
+
+          (testing "no observation is created"
+            (with-db [db node]
+              (is (= ["0"] (mapv :id (d/type-list db "Observation"))))))))))
 
   (testing "with disabled referential integrity check"
     (with-system [{handler :blaze.interaction/create}

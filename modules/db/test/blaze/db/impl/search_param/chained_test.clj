@@ -46,7 +46,7 @@
 
       (let [[search-param] (sr/parse search-param-registry "Observation" "subject:Patient.gender")
             search-param (assoc search-param :ref-search-param unsupported-estimation-search-param)
-            compiled-value @(p/-compile-value search-param nil "male")]
+            compiled-value (p/-compile-value search-param nil "male")]
         (with-db [db node]
           (is (ba/unsupported? (p/-estimated-scan-size search-param db (codec/tid "Observation") nil compiled-value)))
 

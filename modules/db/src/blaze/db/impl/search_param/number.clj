@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.number
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.protocols :as p]
@@ -51,15 +50,14 @@
 
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (ac/completed-future
-       (if-ok [decimal-value (system/parse-decimal value)]
-         (case op
-           :eq
-           (u/eq-value codec/number decimal-value)
-           (:gt :lt :ge :le)
-           {:op op :exact-value (codec/number decimal-value)}
-           (ba/unsupported (u/unsupported-prefix-msg op)))
-         #(assoc % ::anom/message (u/invalid-decimal-value-msg value))))))
+      (if-ok [decimal-value (system/parse-decimal value)]
+        (case op
+          :eq
+          (u/eq-value codec/number decimal-value)
+          (:gt :lt :ge :le)
+          {:op op :exact-value (codec/number decimal-value)}
+          (ba/unsupported (u/unsupported-prefix-msg op)))
+        #(assoc % ::anom/message (u/invalid-decimal-value-msg value)))))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

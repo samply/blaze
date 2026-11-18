@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.near
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.impl.index.index-handle :as ih]
@@ -118,13 +117,12 @@
 
   (-compile-value [_ _ value]
     (let [[lat long dist unit] (str/split value #"\|" 4)]
-      (ac/completed-future
-       (when-ok [parsed-lat (parse-latitude lat)
-                 parsed-long (parse-longitude long)
-                 parsed-dist (parse-distance dist unit)]
-         {:latitude parsed-lat
-          :longitude parsed-long
-          :distance parsed-dist}))))
+      (when-ok [parsed-lat (parse-latitude lat)
+                parsed-long (parse-longitude long)
+                parsed-dist (parse-distance dist unit)]
+        {:latitude parsed-lat
+         :longitude parsed-long
+         :distance parsed-dist})))
 
   (-estimated-scan-size [_ db tid _ _]
     (rao/estimated-scan-size (:kv-store db) tid))

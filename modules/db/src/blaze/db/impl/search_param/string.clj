@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.string
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -80,7 +79,7 @@
     (some->> modifier (u/modifier-anom #{"contains" "exact" "missing" "text"} code)))
 
   (-compile-value [_ _ value]
-    (ac/completed-future (codec/string (normalize value))))
+    (codec/string (normalize value)))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

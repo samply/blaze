@@ -2,9 +2,48 @@
   "FHIR Bundle specific stuff."
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle.links :as links]
-   [blaze.interaction.util :as iu]))
+   [blaze.interaction.util :as iu]
+   [blaze.value-set-expander :as vse]))
+
+(defn- conditional-delete-type-query-params [{{{url :value} :url} :request}]
+  (fhir-util/match-type-query-params url))
+
+(defn- conditional-type-clauses
+  "Returns a tuple of the resource type and the conditional clauses of `entry`
+  or nil if `entry` has no conditional clauses."
+  [{::fhir-util/keys [interaction] :as entry}]
+  (case interaction
+    "create"
+    (when-let [clauses (iu/conditional-clauses (-> entry :request :ifNoneExist :value))]
+      [(name (-> entry :resource :fhir/type)) clauses])
+    "conditional-delete-type"
+    (let [[type query-params] (conditional-delete-type-query-params entry)]
+      (when-let [clauses (iu/conditional-clauses query-params)]
+        [type clauses]))
+    nil))
+
+(defn- expand-entry-value-sets [value-set-expander entry]
+  (if-let [[type clauses] (conditional-type-clauses entry)]
+    (if (seq clauses)
+      (do-sync [clauses (vse/expand-condition-clauses value-set-expander type clauses)]
+        (assoc entry ::clauses clauses))
+      (ac/completed-future entry))
+    (ac/completed-future entry)))
+
+(defn expand-value-sets
+  "Returns a CompletableFuture that will complete with `entries` in which
+  conditional creates and deletes carry their conditional clauses with
+  expanded value sets under ::clauses, or will complete exceptionally if a
+  value set can't be expanded or a value set of a condition expands to no codes
+  (see `vse/expand-condition-clauses`).
+
+  Has to be called before `assoc-tx-ops`, because the database doesn't expand
+  value sets."
+  [value-set-expander entries]
+  (ac/all-values (mapv (partial expand-entry-value-sets value-set-expander) entries)))
 
 (defmulti entry-tx-op
   "Returns `entry` with the transaction operation of its interaction associated
@@ -14,14 +53,13 @@
   (fn [_ entry] (::fhir-util/interaction entry)))
 
 (defmethod entry-tx-op "create"
-  [_ {:keys [resource] {{if-none-exist :value} :ifNoneExist} :request :as entry}]
-  (let [clauses (iu/conditional-clauses if-none-exist)]
-    (assoc entry
-           :tx-op
-           (cond->
-            [:create (iu/strip-meta resource)]
-             (seq clauses)
-             (conj clauses)))))
+  [_ {:keys [resource] ::keys [clauses] :as entry}]
+  (assoc entry
+         :tx-op
+         (cond->
+          [:create (iu/strip-meta resource)]
+           (seq clauses)
+           (conj clauses))))
 
 (defmethod entry-tx-op "update"
   [db
@@ -42,9 +80,8 @@
       t (assoc :tx-op [:delete-history-version type id t]))))
 
 (defmethod entry-tx-op "conditional-delete-type"
-  [_ {{{url :value} :url} :request :as entry}]
-  (let [[type query-params] (fhir-util/match-type-query-params url)
-        clauses (iu/conditional-clauses query-params)]
+  [_ {::keys [clauses] :as entry}]
+  (let [[type] (conditional-delete-type-query-params entry)]
     (assoc entry :tx-op (cond-> [:conditional-delete type] (seq clauses) (conj clauses)))))
 
 (defmethod entry-tx-op :default

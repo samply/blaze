@@ -73,10 +73,6 @@
     (-> (reduce-kv #(assoc! %1 %2 (ac/join %3)) (transient {}) futures)
         (persistent!))))
 
-(defn- merge-futures [futures-1 futures-2]
-  (do-sync [_ (ac/all-of [futures-1 futures-2])]
-    (merge (ac/join futures-1) (ac/join futures-2))))
-
 (deftype DefaultResourceCache [^AsyncLoadingCache cache resource-store]
   p/ResourceCache
   (-get [_ key]
@@ -104,7 +100,8 @@
         (pos? (.size keys-to-load))
         ;; use the protocol method directly because keys will not
         ;; satisfy the spec of the rs/multi-get function
-        (merge-futures (rs/-multi-get resource-store (Collections/unmodifiableList keys-to-load))))))
+        (ac/then-combine (rs/-multi-get resource-store (Collections/unmodifiableList keys-to-load))
+                         merge))))
 
   ccp/StatsCache
   (-stats [_]

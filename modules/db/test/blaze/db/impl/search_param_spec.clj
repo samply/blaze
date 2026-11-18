@@ -1,6 +1,5 @@
 (ns blaze.db.impl.search-param-spec
   (:require
-   [blaze.async.comp :as ac]
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
@@ -39,7 +38,7 @@
   :args (s/cat :search-param :blaze.db/search-param
                :modifier (s/nilable string?)
                :values (s/coll-of some? :min-count 1))
-  :ret ac/completable-future?)
+  :ret (s/or :compiled-values vector? :anomaly ::anom/anomaly))
 
 (s/fdef search-param/index-handles
   :args (s/cat :search-param :blaze.db/search-param

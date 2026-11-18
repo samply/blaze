@@ -30,20 +30,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defprotocol TerminologyServiceLocal
-  (-post-init [_ node]))
-
-(defn post-init!
-  "Post intitialization hat supplies the database node and ensuares that
-  built-in code systems exist.
-
-  The database node can't be supplied at normal initialization, because the
-  terminology service is needed by the node itself.
-
-  This function will block and return an anomaly on erros."
-  [terminology-service node]
-  (-post-init terminology-service node))
-
 (defn- check-url-system [url system url-param-name system-param-name]
   (when-not (= url (or system url))
     (ba/incorrect (format "Parameter `%s` differs from parameter `%s`."
@@ -305,19 +291,11 @@
    "lenient-display-validation" {:action :copy :coerce fu/coerce-boolean}
    "activeOnly" {:action :copy :coerce fu/coerce-boolean}})
 
-(defn- with-db
-  "Calls `f` with the current database value of the node in `vnode`, if the
-  terminology service is initialized."
-  [vnode f]
-  (if-some [node @vnode]
-    (d/with-db node f)
-    (ac/completed-future (ba/unavailable "Terminology service is unavailable."))))
-
 (defn- with-db-t
-  "Like `with-db` but associates the t of the database value with the anomaly
-  under :t in case of errors."
-  [vnode f]
-  (with-db vnode
+  "Like `d/with-db` but associates the t of the database value with the
+  anomaly under :t in case of errors."
+  [node f]
+  (d/with-db node
     (fn [db]
       (-> (f db)
           (ac/exceptionally #(assoc % :t (d/t db)))))))
@@ -326,22 +304,16 @@
   (cond-> (assoc context :db db)
     tx-resources (assoc :tx-resources tx-resources)))
 
-(defn- terminology-service [config context vnode]
+(defn- terminology-service [node context]
   (reify
-    TerminologyServiceLocal
-    (-post-init [_ node]
-      (ensure-code-systems (assoc config :node node) context)
-      (load-all-code-systems node)
-      (vreset! vnode node))
-
     p/TerminologyService
     (-code-systems [_]
-      (with-db vnode c/code-systems))
+      (d/with-db node c/code-systems))
 
     (-code-system-lookup [_ params]
       (if-ok [params (fu/coerce-params cs-lookup-param-specs params)
               params (cs-lookup-more context params)]
-        (with-db-t vnode
+        (with-db-t node
           (fn [db]
             (do-sync [code-system (find-code-system (context-with-db context db params) params)]
               (cs/lookup code-system params))))
@@ -350,7 +322,7 @@
     (-code-system-validate-code [_ params]
       (if-ok [params (fu/coerce-params cs-validate-code-param-specs params)
               [first-params :as all-params] (cs-validate-code-more context params)]
-        (with-db-t vnode
+        (with-db-t node
           (fn [db]
             (do-sync [code-system (find-code-system (context-with-db context db first-params)
                                                     first-params)]
@@ -360,7 +332,7 @@
     (-expand-value-set [_ params]
       (if-ok [params (fu/coerce-params vs-expand-param-specs params)
               params (expand-vs-more params)]
-        (with-db-t vnode
+        (with-db-t node
           (fn [db]
             (let [context (-> (context-with-db context db params)
                               (assoc :params params))]
@@ -373,7 +345,7 @@
       (let [validate-params (partial fu/coerce-params vs-validate-code-param-specs)]
         (if-ok [params (validate-params params)
                 params (vs-validate-code-more params)]
-          (with-db-t vnode
+          (with-db-t node
             (fn [db]
               (let [context (context-with-db context db params)]
                 (-> (find-value-set context params)
@@ -391,13 +363,16 @@
           ac/completed-future)))))
 
 (defmethod m/pre-init-spec ::ts/local [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn ::graph-cache]
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn ::graph-cache]
           :opt-un [::enable-bcp-13 ::enable-bcp-47 ::enable-ucum ::loinc ::sct]))
 
 (defmethod ig/init-key ::ts/local
-  [_ config]
+  [_ {:keys [node] :as config}]
   (log/info "Init local terminology service")
-  (terminology-service config (context config) (volatile! nil)))
+  (let [context (context config)]
+    (ensure-code-systems config context)
+    (load-all-code-systems node)
+    (terminology-service node context)))
 
 (defmethod m/pre-init-spec ::graph-cache [_]
   (s/keys :opt-un [::num-concepts]))

@@ -782,6 +782,44 @@ The query execution will then:
 
 This is much more efficient than scanning all observations with `status=final` and then checking the code for each of them.
 
+## Value Sets
+
+A search clause with a `token` search parameter and the `in` modifier, like `["code:in" "http://example.com/ValueSet/foo"]`, matches resources with a code from that value set. The codes of a value set are the result of its expansion by the terminology service, which can change over time, for example if a code system is updated. The database has to be deterministic: a query against a database value has to return the same resources whenever it runs, which only holds if it doesn't depend on anything outside of the database. That also covers the conditions of conditional creates and deletes, which every node runs while indexing a transaction. So the database doesn't expand value sets. Instead, callers expand them into plain token clauses before they hand clauses to the database.
+
+### Value Set Expander
+
+The value set expander (`modules/value-set-expander`) replaces every clause with a `token` search parameter and the `in` modifier by a plain token clause of the same search parameter. That clause holds the distinct `system|code` values of all value sets of the clause in sorted order, so `["code:in" "url-1" "url-2"]` becomes `["code" "system-1|code-1" "system-1|code-2" ...]`. Chained search parameters are expanded as well, so `subject:Patient.gender:in` becomes `subject:Patient.gender`. Clauses with the `in` modifier on search parameters of other types are kept, so that the database rejects them as usual.
+
+Every expanded clause carries the clause it was expanded from in its metadata. That is used to show the clauses as the client wrote them, for example in the self link of a search. CQL uses it to show value sets unexpanded in the display form of expressions, for example in logs and in the list of Bloom filters. The forms of expressions, which are the keys of the expression cache, hold the codes of the expansion instead. A Bloom filter holds the patients for which an expression returned true with the expansion at its creation, so its key has to change if the expansion changes. Otherwise patients with a code that was added to the value set later would be missed.
+
+Expansions are cached by the URL of the value set. The cache holds up to 1000 expansions and refreshes an expansion one hour after it was loaded. Failed expansions aren't cached.
+
+The callers are the search interactions, the conditional create and conditional delete interactions, transaction and batch bundles, CQL retrieves and the link parameters of `$graph`.
+
+### Empty Value Sets
+
+A clause whose value sets all expand to no codes can't become a plain token clause, because such a clause needs at least one value. No resource can match it. What follows depends on the caller:
+
+*   **Searches:** In a disjunction, the clause is dropped. If a clause or a disjunction can't match any resource, the whole search can't, so Blaze answers with an empty bundle without querying the database.
+*   **CQL retrieves and `$graph` links:** They return no resources.
+*   **Conditions of writes:** The `If-None-Exist` clauses of a conditional create and the clauses of a conditional delete, also in transaction and batch bundles, fail with a `422 Unprocessable Entity`. Such a condition would never match, so a conditional create would always create and a conditional delete would never delete, which is most likely not what the client intended.
+
+### Large Value Sets
+
+The conditions of writes are stored in the transaction log together with the codes of their value sets. A large value set would make a single record of the transaction log too large, for example larger than the default maximum message size of 1 MB of Kafka, and a bulk load would store its codes once per command. So the value sets of a condition can expand to at most 10,000 codes in total. A condition with more codes fails with a `409 Conflict` and the issue code `too-costly`, like other requests whose costs are limited. Searches, CQL retrieves and `$graph` links aren't limited, because their expanded clauses aren't stored in the transaction log.
+
+### Paging
+
+All pages of a search have to use the same expansion, also if the value set changes or its cached expansion is refreshed while paging. So the expanded clauses of a search are kept in the page store, also for searches issued via GET, and the paging links refer to them by their token. Tokens are derived from the SHA-256 hash of the clauses, so the same clauses share one token. Next to the token, the page id carries the clauses as the client wrote them, so that the self link of every page shows the `in` modifier as given.
+
+### Guards in the Database
+
+The database rejects value sets wherever they show up:
+
+*   **Queries:** The database doesn't support the `in` modifier on token search parameters, so compiling a query with a clause that still holds a value set fails with an unsupported anomaly. The modifier is rejected when the values of the clause are compiled, not when the modifier is validated, so that lenient compilation, which drops clauses with invalid modifiers, doesn't drop the clause and return too many resources.
+*   **Transactions:** `d/transact` rejects the `create` and `conditional-delete` commands whose clauses hold a value set, before anything is written to the resource store or the transaction log.
+*   **Indexing:** Earlier versions of Blaze expanded value sets while indexing, so the transaction log can still contain commands whose clauses hold a value set. Indexing such a transaction fails the node (see [Node Failure](#node-failure)) with a message naming the `t` of the transaction and the value set.
+
 ## RocksDB Details
 
 RocksDB is used for all three databases (index, transaction, and resource) in the standalone storage variant, and for the index database in the distributed variant.

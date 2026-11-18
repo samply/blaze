@@ -78,9 +78,12 @@
   define InInitialPopulation:
     true")
 
-(defn- compile-library [{:blaze.db/keys [node] ::ts/keys [local]} cql]
+(defn- compile-library
+  [{:blaze.db/keys [node] ::ts/keys [local] :blaze/keys [value-set-expander]} cql]
   (when-ok [library (cql-translator/translate cql)]
-    (library/compile-library {:node node :terminology-service local} library {})))
+    (library/compile-library {:node node :terminology-service local
+                              :value-set-expander value-set-expander}
+                             library {})))
 
 (defn- failing-eval [msg]
   (fn [_ _ _] (throw (Exception. ^String msg))))

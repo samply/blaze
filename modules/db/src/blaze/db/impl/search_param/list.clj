@@ -2,7 +2,6 @@
   "https://www.hl7.org/fhir/search.html#list"
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.index-handle :as ih]
@@ -49,7 +48,7 @@
     (some->> modifier (u/unknown-modifier-anom code)))
 
   (-compile-value [_ _ value]
-    (ac/completed-future (u/compile-id value)))
+    (u/compile-id value))
 
   (-estimated-scan-size [_ _ _ _ _]
     (ba/unsupported))

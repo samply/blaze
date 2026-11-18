@@ -8,7 +8,7 @@
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec]
    [blaze.fhir.search-clauses-spec]
@@ -25,7 +25,7 @@
    [blaze.interaction.read]
    [blaze.interaction.search-type]
    [blaze.interaction.search.util :as search-util]
-   [blaze.interaction.test-util :refer [with-tx-in-between wrap-error]]
+   [blaze.interaction.test-util :refer [icd-10-gm-c69-c72-vcl icd-10-gm-code-system icd-10-gm-concept icd-10-gm-empty-vcl icd-10-gm-empty-vcl-msg type-query-failing-at with-tx-in-between wrap-error]]
    [blaze.interaction.transaction]
    [blaze.interaction.update]
    [blaze.interaction.util-spec]
@@ -47,6 +47,7 @@
    [reitit.core :as reitit]
    [reitit.ring]
    [ring.middleware.params :refer [wrap-params]]
+   [ring.util.codec :as codec]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -152,18 +153,21 @@
   (assoc
    api-stub/mem-node-config
    :blaze.interaction/transaction
-   {:node (ig/ref :blaze.db/node)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)
     :batch-handler (ig/ref ::batch-handler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.interaction/create
-   {:node (ig/ref :blaze.db/node)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.interaction/search-type
-   {::search-util/link (ig/ref ::search-util/link)
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    ::search-util/link (ig/ref ::search-util/link)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
@@ -181,7 +185,8 @@
    {:node (ig/ref :blaze.db/node)}
 
    :blaze.interaction/conditional-delete-type
-   {:node (ig/ref :blaze.db/node)}
+   {:value-set-expander (ig/ref :blaze/value-set-expander)
+    :node (ig/ref :blaze.db/node)}
 
    :blaze.interaction/delete-history
    {:node (ig/ref :blaze.db/node)}
@@ -249,7 +254,8 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing batch-handler"
     (given-failed-system (update config :blaze.interaction/transaction dissoc :batch-handler)
@@ -268,6 +274,12 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.interaction/transaction dissoc :value-set-expander)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid node"
     (given-failed-system (assoc-in config [:blaze.interaction/transaction :node] ::invalid)
@@ -295,6 +307,13 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/rng-fn]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.interaction/transaction :value-set-expander] ::invalid)
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid validator"
@@ -974,6 +993,138 @@
                     :status := #fhir/string "200"
                     :etag := #fhir/string "W/\"1\""
                     :lastModified := #fhir/instant #system/date-time "1970-01-01T00:00:00Z"))))))))))
+
+(deftest handler-failing-type-query-test
+  (testing "conditional create with matching patient and failing query after the transaction"
+    (let [type-query d/type-query]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :identifier
+                 [#fhir/Identifier{:value #fhir/string "095156"}]}]]]
+
+        (with-redefs [d/type-query (type-query-failing-at type-query 2 "msg-150415")]
+          (let [{:keys [status body]}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type #fhir/code "transaction"
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :resource
+                      {:fhir/type :fhir/Patient}
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "POST"
+                       :url #fhir/uri "Patient"
+                       :ifNoneExist #fhir/string "identifier=095156"}}]}})]
+
+            (is (= 500 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "exception"
+              [:issue 0 :diagnostics] := #fhir/string "msg-150415")))))))
+
+(deftest handler-value-set-test
+  (doseq [type ["batch" "transaction"]]
+    (testing (str "in " type)
+      (testing "conditional create of an existing observation"
+        (with-handler [handler]
+          [[[:put icd-10-gm-code-system]
+            [:put {:fhir/type :fhir/Observation :id "0" :code (icd-10-gm-concept "C71")}]]]
+
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type (type/code type)
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :resource {:fhir/type :fhir/Observation}
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "POST"
+                       :url #fhir/uri "Observation"
+                       :ifNoneExist (type/string (str "code:in=" icd-10-gm-c69-c72-vcl))}}]}})]
+
+            (is (= 200 status))
+
+            (testing "the existing observation is kept"
+              (given response
+                :status := #fhir/string "200"
+                :etag := #fhir/string "W/\"1\"")))))
+
+      (testing "conditional create with an empty value set"
+        (with-handler [handler node]
+          [[[:put icd-10-gm-code-system]
+            [:put {:fhir/type :fhir/Observation :id "0" :code (icd-10-gm-concept "C73")}]]]
+
+          (let [{:keys [status body]}
+                @(handler
+                  {:body
+                   {:fhir/type :fhir/Bundle
+                    :type (type/code type)
+                    :entry
+                    [{:fhir/type :fhir.Bundle/entry
+                      :resource {:fhir/type :fhir/Observation}
+                      :request
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code "POST"
+                       :url #fhir/uri "Observation"
+                       :ifNoneExist (type/string (str "code:in=" icd-10-gm-empty-vcl))}}]}})]
+
+            (if (= "transaction" type)
+              (testing "the transaction fails"
+                (is (= 422 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code "error"
+                  [:issue 0 :code] := #fhir/code "invalid"
+                  [:issue 0 :diagnostics] := (type/string icd-10-gm-empty-vcl-msg)))
+              (testing "the entry fails"
+                (is (= 200 status))
+
+                (given body
+                  [:entry 0 :response :status] := #fhir/string "422"
+                  [:entry 0 :response :outcome :issue 0 :diagnostics] := (type/string icd-10-gm-empty-vcl-msg))))
+
+            (testing "no observation is created"
+              (with-db [db node]
+                (is (= ["0"] (mapv :id (d/type-list db "Observation")))))))))
+
+      ;; the batch handler of this test doesn't parse query strings
+      (when (= "transaction" type)
+        (testing "conditional delete with an empty value set"
+          (with-handler [handler node]
+            [[[:put icd-10-gm-code-system]
+              [:put {:fhir/type :fhir/Observation :id "0" :code (icd-10-gm-concept "C73")}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                    {:body
+                     {:fhir/type :fhir/Bundle
+                      :type (type/code type)
+                      :entry
+                      [{:fhir/type :fhir.Bundle/entry
+                        :request
+                        {:fhir/type :fhir.Bundle.entry/request
+                         :method #fhir/code "DELETE"
+                         :url (type/uri (str "Observation?code:in=" (codec/url-encode icd-10-gm-empty-vcl)))}}]}})]
+
+              (testing "the transaction fails"
+                (is (= 422 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code "error"
+                  [:issue 0 :code] := #fhir/code "invalid"
+                  [:issue 0 :diagnostics] := (type/string icd-10-gm-empty-vcl-msg)))
+
+              (testing "the observation still exists"
+                (with-db [db node]
+                  (is (= ["0"] (mapv :id (d/type-list db "Observation")))))))))))))
 
 (deftest handler-delete-interaction-test
   (doseq [type ["transaction" "batch"]]

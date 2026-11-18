@@ -25,6 +25,10 @@ The following common search parameters, defined on all resources, are supported:
 
 The resulting resources are returned in a stable but unspecified order — resources of the same type are grouped together and sorted by logical resource id within each type — matching the order of the search without any search parameters.
 
+## Token in Modifier <Badge type="warning" text="Since 1.14.0"/>
+
+The `in` modifier of the `_tag` and `_security` search parameters expands value sets the same way as the [search-type](search-type.md#value-set-expansion) interaction does.
+
 ## Search Result Parameters
 
 | Name          | Since  | Description                                                     |

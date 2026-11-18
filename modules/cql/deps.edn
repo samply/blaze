@@ -7,6 +7,9 @@
   blaze/terminology-service
   {:local/root "../terminology-service"}
 
+  blaze/value-set-expander
+  {:local/root "../value-set-expander"}
+
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
   {:mvn/version "2.23.0"
    :exclusions [javax.xml.bind/jaxb-api]}

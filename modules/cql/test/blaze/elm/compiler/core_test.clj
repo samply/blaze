@@ -98,6 +98,18 @@
       (is (= '{"a" (call "f")}
              (core/display-form (form-expr {"a" f}))))))
 
+  (testing "forms with a display form are displayed as that"
+    (is (= '(retrieve "Observation" [["code:in" "url-1"]])
+           (core/display-form
+            (form-expr
+             (list 'retrieve "Observation"
+                   (core/with-display-form [["code" "system|code"]]
+                     [["code:in" "url-1"]])))))))
+
+  (testing "the display form doesn't change the form"
+    (is (= [["code" "system|code"]]
+           (core/with-display-form [["code" "system|code"]] [["code:in" "url-1"]]))))
+
   (testing "anonymous function applications without name stay unchanged"
     (is (= '((fn [] 1)) (core/display-form (form-expr '((fn [] 1)))))))
 

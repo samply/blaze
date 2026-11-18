@@ -306,6 +306,13 @@
     (fn [~binding-form]
       ~@body)))
 
+(defn all-values
+  "Returns a CompletableFuture that will complete with a vector of the values of
+  all `futures` in order, or will complete exceptionally if one of them does."
+  [futures]
+  (do-sync [_ (all-of futures)]
+    (mapv join futures)))
+
 (defn- retryable? [{::anom/keys [category]}]
   (#{::anom/busy ::anom/unavailable} category))
 

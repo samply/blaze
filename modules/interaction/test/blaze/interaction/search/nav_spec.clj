@@ -36,3 +36,8 @@
                :t :blaze.db/t
                :offset (s/nilable map?))
   :ret string?)
+
+(s/fdef nav/client-clauses
+  :args (s/cat :params (s/nilable map?)
+               :clauses (s/nilable :blaze.db.query/clauses))
+  :ret (s/nilable :blaze.db.query/clauses))

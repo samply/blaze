@@ -1,5 +1,6 @@
 (ns blaze.terminology-service.local-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
@@ -52,9 +53,16 @@
     (given-failed-system {::ts/local {}}
       :key := ::ts/local
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
+
+  (testing "missing node"
+    (given-failed-system (update config ::ts/local dissoc :node)
+      :key := ::ts/local
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "missing rng-fn"
     (given-failed-system (update config ::ts/local dissoc :rng-fn)
@@ -67,6 +75,13 @@
       :key := ::ts/local
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :graph-cache))))
+
+  (testing "invalid node"
+    (given-failed-system (assoc-in config [::ts/local :node] ::invalid)
+      :key := ::ts/local
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-failed-system (assoc-in config [::ts/local :clock] ::invalid)
@@ -89,11 +104,11 @@
       [:cause-data ::s/problems 0 :via] := [::local/graph-cache]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "no post-init"
-    (mtu/with-system [{terminology-service ::ts/local} config]
-      (given-failed-future (ts/code-systems terminology-service)
-        ::anom/category := ::anom/unavailable
-        ::anom/message := "Terminology service is unavailable."))))
+  (testing "the terminology service is available right after init"
+    (mtu/with-system [{terminology-service ::ts/local} (assoc-in config [::ts/local :enable-bcp-13] true)]
+      (given @(ts/code-systems terminology-service)
+        count := 1
+        [0 :uri] := #fhir/canonical "urn:ietf:bcp:13"))))
 
 (def bcp-13-config
   (assoc-in api-stub/mem-node-config [::ts/local :enable-bcp-13] true))
@@ -127,7 +142,8 @@
   (assoc
    api-stub/mem-node-config
    ::ts/local
-   {:clock (ig/ref :blaze.test/fixed-clock)
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)
     :graph-cache (ig/ref ::local/graph-cache)
     :enable-bcp-13 true
@@ -963,6 +979,14 @@
       (given-failed-future (code-system-validate-code ts)
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
+
+    (testing "failing CodeSystem query"
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-143925"))]
+        (given-failed-future (code-system-validate-code ts
+                               "url" #fhir/uri "system-143925"
+                               "code" #fhir/code "code-143925")
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-143925")))
 
     (testing "missing url"
       (given-failed-future (code-system-validate-code ts
@@ -1909,6 +1933,12 @@
       (given-failed-future (expand-value-set ts)
         ::anom/category := ::anom/incorrect
         ::anom/message := "Missing both parameters `url` and `valueSet`."))
+
+    (testing "failing ValueSet query"
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-144012"))]
+        (given-failed-future (expand-value-set ts "url" #fhir/uri "value-set-144012")
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-144012")))
 
     (testing "unsupported parameter"
       (given-failed-future (expand-value-set ts

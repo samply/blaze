@@ -1,6 +1,8 @@
 (ns blaze.operation.graph-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.search-clauses-spec]
    [blaze.fhir.spec.type :as type]
@@ -27,6 +29,7 @@
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
+   [ring.util.codec :as codec]
    [taoensso.timbre :as log]))
 
 (st/instrument)
@@ -39,6 +42,7 @@
    api-stub/mem-node-config
    :blaze.operation/graph
    {:compiled-graph-cache (ig/ref ::graph/compiled-graph-cache)
+    :value-set-expander (ig/ref :blaze/value-set-expander)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
@@ -59,7 +63,8 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :compiled-graph-cache))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "missing clock"
     (given-failed-system (update config :blaze.operation/graph dissoc :clock)
@@ -78,6 +83,12 @@
       :key := :blaze.operation/graph
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
+
+  (testing "missing value-set-expander"
+    (given-failed-system (update config :blaze.operation/graph dissoc :value-set-expander)
+      :key := :blaze.operation/graph
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :value-set-expander))))
 
   (testing "invalid graph-cache"
     (given-failed-system (assoc-in config [:blaze.operation/graph :compiled-graph-cache] ::invalid)
@@ -105,6 +116,13 @@
       :key := :blaze.operation/graph
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze/page-id-cipher]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid value-set-expander"
+    (given-failed-system (assoc-in config [:blaze.operation/graph :value-set-expander] ::invalid)
+      :key := :blaze.operation/graph
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/value-set-expander]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest compiled-graph-cache-init-test
@@ -232,6 +250,23 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := #fhir/string "The graph definition `151647` was not found."))))
+
+  (testing "failing GraphDefinition query"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "145711"}]]]
+
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-141236"))]
+        (let [{:keys [status body]}
+              @(handler {:path-params {:id "145711"}
+                         :query-params {"graph" "151647"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "exception"
+            [:issue 0 :diagnostics] := #fhir/string "msg-141236")))))
 
   (testing "invalid GraphDefinition"
     (with-handler [handler]
@@ -1179,3 +1214,73 @@
           [:issue 0 :severity] := #fhir/code "error"
           [:issue 0 :code] := #fhir/code "invalid"
           [:issue 0 :diagnostics] := #fhir/string "Invalid value for parameter `graph`. Has to be a uri.")))))
+
+(def ^:private icd-10-gm-code-system
+  {:fhir/type :fhir/CodeSystem :id "icd-10-gm"
+   :url #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+   :content #fhir/code "fragment"
+   :concept
+   [{:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C69-C72"}
+    {:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C71"
+     :property
+     [{:fhir/type :fhir.CodeSystem.concept/property
+       :code #fhir/code "parent"
+       :value #fhir/code "C69-C72"}]}
+    {:fhir/type :fhir.CodeSystem/concept
+     :code #fhir/code "C73"}]})
+
+(defn- observation [id code]
+  {:fhir/type :fhir/Observation :id id
+   :subject #fhir/Reference{:reference #fhir/string "Patient/0"}
+   :code (type/codeable-concept
+          {:coding [(type/coding {:system #fhir/uri "http://fhir.de/CodeSystem/bfarm/icd-10-gm"
+                                  :code (type/code code)})]})})
+
+(defn- value-set-graph-def [vcl]
+  (g-tu/graph-def
+   :nodes
+   [(g-tu/node "patient" "Patient")
+    (g-tu/node "observation" "Observation")]
+   :link
+   [(g-tu/link "patient" "observation"
+               :params (str "patient={ref}&code:in=" (codec/url-encode vcl)))]))
+
+(deftest handler-value-set-test
+  (testing "link params with a value set"
+    (with-handler [handler]
+      [[[:put icd-10-gm-code-system]
+        [:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put (observation "0" "C71")]
+        [:put (observation "1" "C73")]
+        [:put (value-set-graph-def "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<<C69-C72")]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 2
+          [:entry 0 :resource :id] := "0"
+          [:entry 1 :resource :fhir/type] := :fhir/Observation
+          [:entry 1 :resource :id] := "0"))))
+
+  (testing "link params with an empty value set"
+    (with-handler [handler]
+      [[[:put icd-10-gm-code-system]
+        [:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put (observation "0" "C73")]
+        [:put (value-set-graph-def "http://fhir.org/VCL?v1=(http://fhir.de/CodeSystem/bfarm/icd-10-gm)concept<C73")]]]
+
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}
+                       :query-params {"graph" "144200"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :total := #fhir/unsignedInt 1
+          [:entry 0 :resource :fhir/type] := :fhir/Patient)))))

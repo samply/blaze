@@ -1,6 +1,7 @@
 (ns blaze.rest-api.capabilities-handler
   (:refer-clojure :exclude [str])
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.search-param-registry :as sr]
@@ -318,11 +319,10 @@
   (d/type-query db "StructureDefinition" [["type" type] ["derivation" "constraint"]]))
 
 (defn- supported-profiles [db type]
-  (-> (supported-profiles-query db type)
-      (ac/then-compose
-       (fn [handles]
-         (do-sync [profiles (d/pull-many db (vec handles))]
-           (mapv profile-canonical profiles))))))
+  (if-ok [handles (supported-profiles-query db type)]
+    (do-sync [profiles (d/pull-many db (vec handles))]
+      (mapv profile-canonical profiles))
+    ac/completed-future))
 
 (defn- assoc-supported-profiles** [db {:keys [type] :as resource}]
   (do-sync [supported-profiles (supported-profiles db (:value type))]
@@ -330,9 +330,7 @@
       (seq supported-profiles) (assoc :supportedProfile supported-profiles))))
 
 (defn- assoc-supported-profiles* [db resources]
-  (let [futures (mapv (partial assoc-supported-profiles** db) resources)]
-    (do-sync [_ (ac/all-of futures)]
-      (mapv ac/join futures))))
+  (ac/all-values (mapv (partial assoc-supported-profiles** db) resources)))
 
 (defn- assoc-supported-profiles [{[{:keys [resource]}] :rest :as capability-statement-base} db]
   (do-sync [resource (assoc-supported-profiles* db resource)]

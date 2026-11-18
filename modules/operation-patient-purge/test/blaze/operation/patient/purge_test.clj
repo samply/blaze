@@ -1,5 +1,6 @@
 (ns blaze.operation.patient.purge-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-db with-system-data]]
@@ -15,6 +16,7 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
@@ -144,7 +146,14 @@
           count := 2
           [0 :meta :security] := [internal-label]
           [1 :id] := "copy"
-          [1 :meta :security count] := 0)))))
+          [1 :meta :security count] := 0))))
+
+  (testing "failing GraphDefinition query"
+    (with-system [system api-stub/mem-node-config]
+      (with-redefs [d/type-query (fn [_ _ _] (ba/fault "msg-153512"))]
+        (given (ba/try-anomaly (ig/init-key :blaze.operation.patient/purge (purge-config system)))
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-153512")))))
 
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")

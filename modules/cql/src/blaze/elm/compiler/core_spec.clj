@@ -20,6 +20,10 @@
                :op-forms (s/coll-of any?))
   :ret list?)
 
+(s/fdef core/with-display-form
+  :args (s/cat :form ::core/form :display-form any?)
+  :ret ::core/form)
+
 (s/fdef core/display-form
   :args (s/cat :expression core/expr?)
   :ret any?)

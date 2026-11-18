@@ -1,5 +1,6 @@
 (ns blaze.terminology-service.local.code-system.util
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.permissions :as p]
@@ -14,8 +15,9 @@
   (type/meta {:tag (canonical/codings "CodeSystem/AccessControl" "read-only")}))
 
 (defn code-systems [db url]
-  (-> (d/type-query db "CodeSystem" [["url" url]])
-      (ac/then-compose #(d/pull-many db (vec %)))))
+  (if-ok [handles (d/type-query db "CodeSystem" [["url" url]])]
+    (d/pull-many db (vec handles))
+    ac/completed-future))
 
 (defn code-system-versions [db url]
   (do-sync [code-systems (code-systems db url)]

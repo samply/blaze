@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.codec.date :as codec-date]
@@ -19,7 +18,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future given-thrown]]
+   [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
@@ -55,16 +54,14 @@
       :clojure.spec.alpha/failure := :instrument))
 
   (testing "uri canonical-url expression-type with bad expression returns compile anomaly"
-    (given (sc/search-param {:expression-type (constantly :canonical-url)
-                             :terminology-service nil}
+    (given (sc/search-param {:expression-type (constantly :canonical-url)}
                             {:type "uri" :name "url" :base ["ValueSet"] :code "url"
                              :expression "Patient."})
       ::anom/category := ::anom/fault))
 
   (testing "uri canonical-url expression-type with union-paths anomaly in derived version-expression"
     (with-redefs [fhir-path/union-paths (fn [_] (ba/fault "union-paths-boom-165230"))]
-      (given (sc/search-param {:expression-type (constantly :canonical-url)
-                               :terminology-service nil}
+      (given (sc/search-param {:expression-type (constantly :canonical-url)}
                               {:type "uri" :name "url" :base ["ValueSet"] :code "url"
                                :expression "ValueSet.url"})
         ::anom/category := ::anom/fault
@@ -77,8 +74,7 @@
                       (if (= expr "ValueSet.version")
                         (ba/fault "version-expression-compile-boom-165402")
                         (real-compile expr)))]
-        (given (sc/search-param {:expression-type (constantly :canonical-url)
-                                 :terminology-service nil}
+        (given (sc/search-param {:expression-type (constantly :canonical-url)}
                                 {:type "uri" :name "url" :base ["ValueSet"] :code "url"
                                  :expression "ValueSet.url"})
           ::anom/category := ::anom/fault
@@ -88,35 +84,41 @@
   (sr/get search-param-registry "birthdate" "Patient"))
 
 (defn compile-birthdate [search-param-registry value]
-  (-> (search-param/compile-values (birthdate search-param-registry) nil [value])
-      (ac/then-apply first)))
+  (when-ok [values (search-param/compile-values (birthdate search-param-registry) nil [value])]
+    (first values)))
 
 (deftest compile-value-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
     (testing "Date"
-      (given @(compile-birthdate search-param-registry "2020-10-30")
+      (given (compile-birthdate search-param-registry "2020-10-30")
         :op := :eq
         :lower-bound := (codec-date/encode-lower-bound #system/date-time"2020-10-30")
         :upper-bound := (codec-date/encode-upper-bound #system/date-time"2020-10-30")))
 
     (testing "error message names the search param"
-      (given-failed-future (search-param/compile-values
-                            (birthdate search-param-registry) nil ["a"])
+      (given (search-param/compile-values
+              (birthdate search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `birthdate`: Invalid date-time value `a`."))
 
+    (testing "error message names the _lastUpdated search param"
+      (given (search-param/compile-values
+              (sr/get search-param-registry "_lastUpdated" "Patient") nil ["a"])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Error in search parameter `_lastUpdated`: Invalid date-time value `a`."))
+
     (testing "error message names the search param with modifier"
-      (given-failed-future (search-param/compile-values
-                            (birthdate search-param-registry) "missing" ["a"])
+      (given (search-param/compile-values
+              (birthdate search-param-registry) "missing" ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `birthdate:missing`: Invalid date-time value `a`."))
 
     (testing "error without message stays without message"
-      (given-failed-future (search-param/compile-values
-                            (reify p/SearchParam
-                              (-compile-value [_ _ _]
-                                (ac/completed-future (ba/fault))))
-                            nil ["a"])
+      (given (search-param/compile-values
+              (reify p/SearchParam
+                (-compile-value [_ _ _]
+                  (ba/fault)))
+              nil ["a"])
         ::anom/category := ::anom/fault
         ::anom/message := nil))))
 

@@ -42,6 +42,10 @@
   :args (s/cat :canonical string?)
   :ret (s/tuple string? (s/coll-of string?)))
 
+(s/fdef u/unsupported-modifier-anom
+  :args (s/cat :code string? :modifier string?)
+  :ret ::anom/anomaly)
+
 (s/fdef u/unknown-modifier-anom
   :args (s/cat :code string? :modifier string?)
   :ret ::anom/anomaly)

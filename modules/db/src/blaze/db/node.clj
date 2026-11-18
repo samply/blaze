@@ -69,7 +69,7 @@
   are being shut down."
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -361,9 +361,8 @@
   [{:keys [node-name state] :as node} context tx-data]
   (with-open [_ (prom/timer duration-seconds node-name "index-transactions")]
     (ba/try-anomaly
-     (ac/join
-      (db/with-db node (:t @state)
-        #(tx-indexer/index-tx (assoc context :db-before %) tx-data))))))
+     (db/call-with-db node (:t @state) 0
+       #(tx-indexer/index-tx (assoc context :db-before %) tx-data)))))
 
 (defn- swap-state!
   "Applies `f` to `state` and wakes up the publishing loop, so that it examines
@@ -835,6 +834,25 @@
   (-> (ac/all-of (mapv second pending))
       (ac/when-complete (fn [_ _] (prom/observe-duration! timer)))))
 
+(defn- legacy-value-set-msg [t message]
+  (format "Can't index the transaction with t = %d. %s The transaction was written by an earlier version of Blaze, which expanded value sets while indexing. Please open an issue at https://github.com/samply/blaze/issues if you need to index such a transaction."
+          t message))
+
+(defn- throw-when-unexpanded-value-set
+  "Throws `anomaly` of the transaction with `t` if it is about an unexpanded
+  value set, so that the indexing loop stops. Returns `anomaly` otherwise.
+
+  Transactions written by earlier versions of Blaze can contain value sets in
+  conditional creates and deletes. Indexing such a transaction would need to
+  expand them, so that its outcome could differ from the original run or from
+  other nodes. Recording a failed transaction instead would let nodes drift
+  apart silently."
+  {:arglists '([t anomaly])}
+  [t {:blaze.db/keys [unexpanded-value-set] :as anomaly}]
+  (if unexpanded-value-set
+    (ba/throw-anom (update anomaly ::anom/message (partial legacy-value-set-msg t)))
+    anomaly))
+
 (defn- verify-tx!
   "Verifies the transaction of `tx-chunk-state` against the database value
   before it — step 2 of applying a transaction.
@@ -870,6 +888,7 @@
                                :pool tx-indexer-pool} tx-data)]
     (if (ba/anomaly? result)
       (do
+        (throw-when-unexpanded-value-set t result)
         ;; dropping the chunks left makes the ones dispatched the last ones, so
         ;; the timer is observed here instead of by `dispatch-chunk!`
         (when (seq chunks)
@@ -1248,16 +1267,14 @@
                    other-clauses))))))))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
-  (-> (index/resolve-search-params search-param-registry type clauses lenient?)
-      (ac/then-apply
-       (fn [clauses]
-         (if (empty? clauses)
-           (qt/->EmptyTypeQuery (codec/tid type))
-           (or (try-compile-patient-type-query search-param-registry type clauses)
-               (qt/->TypeQuery (codec/tid type) clauses)))))))
+  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses lenient?)]
+    (if (empty? clauses)
+      (qt/->EmptyTypeQuery (codec/tid type))
+      (or (try-compile-patient-type-query search-param-registry type clauses)
+          (qt/->TypeQuery (codec/tid type) clauses)))))
 
 (defn- compile-system-query [search-param-registry clauses lenient?]
-  (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses lenient?)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry "Resource" clauses lenient?)]
     (cond
       (:sort-clause clauses)
       (ba/unsupported "Sort clauses aren't supported in system-level queries.")
@@ -1272,28 +1289,25 @@
   (let [search-param-codes (sr/compartment-resources search-param-registry code type)]
     (if (seq search-param-codes)
       (index/compartment-clauses search-param-registry code search-param-codes type)
-      (ac/completed-future (ba/unsupported (format "Unsupported `%s` compartment query of type `%s`." code type))))))
+      (ba/unsupported (format "Unsupported `%s` compartment query of type `%s`." code type)))))
 
 (defn- compile-compartment-query
   ([search-param-registry code type]
-   (do-sync [clauses (compartment-clauses search-param-registry code type)]
+   (when-ok [clauses (compartment-clauses search-param-registry code type)]
      (qc/->CompartmentListQuery code clauses (codec/tid type))))
   ([search-param-registry code type clauses lenient?]
-   (-> (index/resolve-search-params search-param-registry type clauses lenient?)
-       (ac/then-compose
-        (fn [clauses]
-          (if (:sort-clause clauses)
-            (ac/completed-future (ba/unsupported "Sorting is unsupported in compartment queries."))
-            (let [search-clauses (:search-clauses clauses)]
-              (if (empty? search-clauses)
-                (compile-compartment-query search-param-registry code type)
-                (let [[scan-clauses other-clauses] (index/compartment-query-plan* search-clauses)]
-                  (if (seq scan-clauses)
-                    (ac/completed-future
-                     (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                            scan-clauses other-clauses))
-                    (do-sync [clauses (compartment-clauses search-param-registry code type)]
-                      (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))))
+   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses lenient?)]
+     (if (:sort-clause clauses)
+       (ba/unsupported "Sorting is unsupported in compartment queries.")
+       (let [search-clauses (:search-clauses clauses)]
+         (if (empty? search-clauses)
+           (compile-compartment-query search-param-registry code type)
+           (let [[scan-clauses other-clauses] (index/compartment-query-plan* search-clauses)]
+             (if (seq scan-clauses)
+               (qc/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                      scan-clauses other-clauses)
+               (when-ok [clauses (compartment-clauses search-param-registry code type)]
+                 (qc/->CompartmentSeekQuery code clauses (codec/tid type) other-clauses))))))))))
 
 (defn- subset-resource-fn [elements]
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
@@ -1305,7 +1319,7 @@
   (map (subset-resource-fn elements)))
 
 (defn- compile-system-matcher [search-param-registry clauses]
-  (do-sync [clauses (index/resolve-search-params search-param-registry "Resource" clauses false)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry "Resource" clauses false)]
     (db/->Matcher (:search-clauses clauses))))
 
 (defn- sync-timeout-msg [timeout]
@@ -1359,6 +1373,7 @@
         :else
         (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
           (if-ok [_ (validation/validate-tx-cmds tx-cmds)
+                  _ (validation/validate-value-sets search-param-registry tx-cmds)
                   _ (acquire-in-flight!)]
             (-> (rs/put! resource-store entries)
                 ;; submits on the common ForkJoinPool, because the resource
@@ -1387,7 +1402,7 @@
     (compile-type-query search-param-registry type clauses true))
 
   (-compile-type-matcher [_ type clauses]
-    (do-sync [clauses (index/resolve-search-params search-param-registry type clauses false)]
+    (when-ok [clauses (index/resolve-search-params search-param-registry type clauses false)]
       (db/->Matcher (:search-clauses clauses))))
 
   (-compile-system-query [_ clauses]
@@ -1589,7 +1604,7 @@
   "Compiles a matcher of resources tagged read-only in the current or legacy
   AccessControl system."
   [search-param-registry]
-  (ac/join
+  (ba/throw-when
    (compile-system-matcher
     search-param-registry
     [(into ["_tag"] (map #(str % "|read-only")) (canonical/urls "CodeSystem/AccessControl"))])))
@@ -1601,7 +1616,7 @@
   The legacy system isn't matched, because the internal label was introduced
   after the canonical base changed."
   [search-param-registry]
-  (ac/join
+  (ba/throw-when
    (compile-system-matcher
     search-param-registry
     [["_security" (str (canonical/url "CodeSystem/AccessControl") "|internal")]])))

@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.byte-string-spec]
@@ -18,7 +17,7 @@
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
@@ -49,10 +48,9 @@
   [(bs/subs bs 0 4) (bs/subs bs 4)])
 
 (defn compile-code-quantity-value [search-param-registry value]
-  (-> (code-value-quantity-param search-param-registry)
-      (search-param/compile-values nil [value])
-      (ac/join)
-      (first)))
+  (when-ok [values (-> (code-value-quantity-param search-param-registry)
+                       (search-param/compile-values nil [value]))]
+    (first values)))
 
 (deftest validate-modifier-test
   (with-system [{search-param-registry ::dtu/search-param-registry} dtu/search-param-registry-config]
@@ -76,14 +74,14 @@
         :exact-value := (bs/concat (codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.00M))))
 
     (testing "invalid quantity decimal value"
-      (given-failed-future (search-param/compile-values
-                            (code-value-quantity-param search-param-registry) nil ["a$a"])
+      (given (search-param/compile-values
+              (code-value-quantity-param search-param-registry) nil ["a$a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error in search parameter `code-value-quantity`: Invalid decimal value `a`."))
 
     (testing "unsupported quantity prefix"
-      (given-failed-future (search-param/compile-values
-                            (code-value-quantity-param search-param-registry) nil ["a$ne1"])
+      (given (search-param/compile-values
+              (code-value-quantity-param search-param-registry) nil ["a$ne1"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Error in search parameter `code-value-quantity`: Unsupported prefix `ne`."))))
 

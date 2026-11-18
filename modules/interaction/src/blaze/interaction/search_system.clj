@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-   [blaze.anomaly :refer [when-ok]]
+   [blaze.anomaly :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
@@ -15,6 +15,7 @@
    [blaze.interaction.search.util.spec]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.page-store.spec]
+   [blaze.value-set-expander.spec]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -61,25 +62,22 @@
 
 (defn- compile-query
   [{:blaze.preference/keys [handling] {:keys [clauses]} :params} db]
-  (if (empty? clauses)
-    (ac/completed-future nil)
-    (let [timer (prom/timer search-duration-seconds "compile-query")]
-      (do-sync [query (compile-system-query db clauses handling)]
-        (prom/observe-duration! timer)
-        query))))
+  (when (seq clauses)
+    (with-open [_ (prom/timer search-duration-seconds "compile-query")]
+      (compile-system-query db clauses handling))))
 
 (defn- build-page
   "Compiles the query and scans one page worth of resource handles, already
   pulling the match resources concurrently during the scan (see
   `page/build-page`).
 
-  Returns a CompletableFuture that will complete with the page map containing
-  :matches, :match-futures, :next-match, optional :includes, :pull-timer and the
-  used :query, or will complete exceptionally with an anomaly in case of errors."
+  Returns the page map containing :matches, :match-futures, :next-match,
+  optional :includes, :pull-timer and the used :query, or an anomaly in case of
+  errors."
   [{:blaze/keys [db]
     {:keys [include-defs page-size page-type page-id] :as params} :params
     :as context}]
-  (do-sync [query (compile-query context db)]
+  (when-ok [query (compile-query context db)]
     (let [pull (page/match-pull-fn context db query params)]
       (with-open [_ (prom/timer search-duration-seconds "scan")]
         (when-ok [handles (if query
@@ -104,29 +102,29 @@
   or will complete exceptionally with an anomaly in case of errors."
   {:arglists '([context])}
   [{:blaze/keys [db] :keys [params] :as context}]
-  (-> (build-page context)
-      (ac/then-compose
-       (fn [{:keys [matches match-futures includes next-match query pull-timer]}]
-         (let [total-future (page/total-future db query #(d/system-total db)
-                                               params matches next-match)
-               match-future (page/pull-matches pull-timer match-futures)
-               include-future (if (seq includes)
-                                (page/pull-includes search-duration-seconds db
-                                                    includes (page/include-pull-opts params))
-                                (ac/completed-future nil))]
-           (-> (ac/all-of [total-future match-future include-future])
-               (ac/exceptionally
-                #(assoc %
-                        ::anom/category ::anom/fault
-                        :fhir/issue "incomplete"))
-               (ac/then-apply
-                (fn [_]
-                  (cond->
-                   {:entries (entries context match-future include-future)
-                    :next-handle next-match
-                    :total (ac/join total-future)}
-                    query
-                    (assoc :clauses (d/query-clauses query)))))))))))
+  (if-ok [{:keys [matches match-futures includes next-match query pull-timer]}
+          (build-page context)]
+    (let [total-future (page/total-future db query #(d/system-total db)
+                                          params matches next-match)
+          match-future (page/pull-matches pull-timer match-futures)
+          include-future (if (seq includes)
+                           (page/pull-includes search-duration-seconds db
+                                               includes (page/include-pull-opts params))
+                           (ac/completed-future nil))]
+      (-> (ac/all-of [total-future match-future include-future])
+          (ac/exceptionally
+           #(assoc %
+                   ::anom/category ::anom/fault
+                   :fhir/issue "incomplete"))
+          (ac/then-apply
+           (fn [_]
+             (cond->
+              {:entries (entries context match-future include-future)
+               :next-handle next-match
+               :total (ac/join total-future)}
+               query
+               (assoc :clauses (d/query-clauses query)))))))
+    ac/completed-future))
 
 (defn- page-start
   "Returns the type qualified start-id of the current page in the form
@@ -173,19 +171,19 @@
     :blaze.preference/keys [handling] :as context}]
   (if (empty? clauses)
     (no-query-summary-response context)
-    (-> (compile-system-query db clauses handling)
-        (ac/then-compose
-         (fn [query]
-           (let [clauses (d/query-clauses query)]
-             (if (empty? clauses)
-               (no-query-summary-response context)
-               (do-sync [total (d/count-query db query)]
-                 (page/summary-response context total clauses)))))))))
+    (if-ok [query (compile-system-query db clauses handling)]
+      (let [clauses (d/query-clauses query)]
+        (if (empty? clauses)
+          (no-query-summary-response context)
+          (do-sync [total (d/count-query db query)]
+            (page/summary-response context total clauses))))
+      ac/completed-future)))
 
-(defn- search [{:keys [params] :as context}]
-  (if (:summary? params)
-    (search-summary context)
-    (search-normal context)))
+(defn- search [{{:keys [summary? unsatisfiable?] :as params} :params :as context}]
+  (cond
+    unsatisfiable? (ac/completed-future (page/unsatisfiable-response context params))
+    summary? (search-summary context)
+    :else (search-normal context)))
 
 (defn- page-match [{::reitit/keys [router]}]
   (fn [page-id]
@@ -193,16 +191,18 @@
 
 (defn- self-link-url-fn [{:blaze/keys [base-url] ::reitit/keys [match]} params]
   (fn [clauses]
-    (nav/url base-url match params clauses)))
+    (nav/url base-url match params
+             (nav/client-clauses params clauses))))
 
 (defn- search-context
-  [{:keys [page-store page-id-cipher] :as context}
+  [{:keys [page-store page-id-cipher value-set-expander] :as context}
    {:keys [headers params]
     :blaze/keys [base-url db paging-params]
     ::reitit/keys [router match]
     :as request}]
   (let [handling (handler-util/preference headers "handling")]
-    (do-sync [params (params/decode page-store handling params paging-params)]
+    (do-sync [params (-> (params/decode page-store handling params paging-params)
+                         (ac/then-compose (partial params/expand-value-sets value-set-expander "Resource")))]
       (cond->
        (assoc context
               :blaze/base-url base-url
@@ -211,7 +211,7 @@
               ::reitit/match match
               :params params
               :self-link-url-fn (self-link-url-fn request params)
-              :gen-token-fn (page/gen-token-fn context request)
+              :gen-token-fn (page/gen-token-fn context request params)
               :first-link-url-fn (page/first-link-url-fn request page-id-cipher
                                                          page-match params)
               :page-link-url-fn (page/page-link-url-fn request page-id-cipher
@@ -222,7 +222,7 @@
 (defmethod m/pre-init-spec :blaze.interaction/search-system [_]
   (s/keys :req [::search-util/link]
           :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
-                   :blaze/page-id-cipher]))
+                   :blaze/page-id-cipher :blaze/value-set-expander]))
 
 (defmethod ig/init-key :blaze.interaction/search-system [_ context]
   (log/info "Init FHIR search-system interaction handler")

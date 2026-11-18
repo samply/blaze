@@ -5,7 +5,7 @@
   GraphDefinition `PatientPurge` of the Blaze IG, which is installed at startup
   if it doesn't exist."
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -65,7 +65,7 @@
    ["_security" (str (canonical/url "CodeSystem/AccessControl") "|internal")]])
 
 (defn- graph-def-exists? [db graph-def]
-  (do-sync [handles (d/type-query db "GraphDefinition" (graph-def-clauses graph-def))]
+  (when-ok [handles (d/type-query db "GraphDefinition" (graph-def-clauses graph-def))]
     (not (coll/empty? handles))))
 
 (defn- create-graph-def
@@ -86,7 +86,7 @@
   the database `node`."
   {:arglists '([context graph-def])}
   [{:keys [node] :as context} graph-def]
-  (-> (d/with-db node #(graph-def-exists? % graph-def))
+  (-> (d/with-db node #(ac/completed-future (graph-def-exists? % graph-def)))
       (ac/then-compose
        (fn [exists?]
          (if exists?

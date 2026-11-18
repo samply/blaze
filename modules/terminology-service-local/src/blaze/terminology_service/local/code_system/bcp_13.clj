@@ -3,8 +3,8 @@
   https://datatracker.ietf.org/doc/html/rfc2046
   https://www.iana.org/assignments/media-types/media-types.xhtml"
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -70,7 +70,7 @@
     {:code (type/code code) :system url :version version}))
 
 (defn- bcp-13-handle [db]
-  (do-sync [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:13"]])]
+  (when-ok [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:13"]])]
     (coll/first handles)))
 
 (defn- create-code-system [{:keys [node] :as context}]
@@ -80,7 +80,7 @@
 (defn ensure-code-system
   "Ensures that the BCP-13 code system is present in the database node."
   [{:keys [node] :as context}]
-  (-> (d/with-db node bcp-13-handle)
+  (-> (d/with-db node (comp ac/completed-future bcp-13-handle))
       (ac/then-compose
        (fn [handle]
          (if handle

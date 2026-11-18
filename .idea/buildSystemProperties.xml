@@ -587,6 +587,14 @@
             </ModuleState>
           </value>
         </entry>
+        <entry key="value-set-expander">
+          <value>
+            <ModuleState>
+              <option name="buildSystemId" value="CLOJURE_DEPS" />
+              <option name="displayName" value="value-set-expander" />
+            </ModuleState>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

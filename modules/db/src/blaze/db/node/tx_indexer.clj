@@ -1,6 +1,6 @@
 (ns blaze.db.node.tx-indexer
   (:require
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.anomaly :refer [when-ok]]
    [blaze.db.api :as d]
    [blaze.db.node.tx-indexer.expand :as expand]
    [blaze.db.node.tx-indexer.util :as tx-u]
@@ -26,21 +26,31 @@
 
   Expands any conditional transaction commands (e.g. conditional
   creates/deletes) against the database value `:db-before` and its `:stats` in
-  `context` asynchronously, then verifies the expanded commands against the
-  full context at transaction point `t`. Both run their parallel parts on the
-  `:pool` of `context`, a ForkJoinPool. The commands are verified against the
+  `context`, then verifies the expanded commands against the full context at
+  transaction point `t`. Both run their parallel parts on the `:pool` of
+  `context`, a ForkJoinPool. The commands are verified against the
   `permissions` of the transaction, absent permissions allowing to write no
   AccessControl code.
 
-  Returns a CompletableFuture that completes with a collection of
-  `blaze.db.kv/put-entry` values to be written to the KV store, or with an
-  anomaly if verification fails (e.g. precondition not met, referential
-  integrity violation, or duplicate commands)."
+  Returns a map with the following keys, or an anomaly if expansion or
+  verification fails (e.g. precondition not met, referential integrity
+  violation, or duplicate commands):
+
+   * :entries                 - the `blaze.db.kv/put-entry` values to be written
+                                to the KV store, in parts that can be stored in
+                                parallel
+   * :stats                   - the stats of `context` with the transaction
+                                applied, to be taken over by the node after the
+                                entries were stored
+   * :resource-handle-updates - the updates of the resource handle cache of the
+                                node, in parts that can be applied in parallel
+
+  See `blaze.db.node.tx-indexer.verify/verify-tx-cmds` for details."
   {:arglists '([context tx-data])}
   [{:keys [node-name db-before] :as context} {:keys [t tx-cmds permissions]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/t db-before))
-  (do-sync [expanded-tx-cmds (expand/expand-tx-cmds context tx-cmds)]
+  (when-ok [expanded-tx-cmds (expand/expand-tx-cmds context tx-cmds)]
     (with-open [_ (prom/timer tx-u/duration-seconds node-name "verify-tx-cmds")]
       (verify/verify-tx-cmds
        (cond-> context

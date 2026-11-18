@@ -4,8 +4,8 @@
   https://www.iana.org/assignments/language-subtags-tags-extensions/language-subtags-tags-extensions.xhtml#language-subtags"
   (:refer-clojure :exclude [str])
   (:require
-   [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -82,7 +82,7 @@
     {:code (type/code code) :display display :system url :version version}))
 
 (defn- bcp-47-handle [db]
-  (do-sync [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:47"]])]
+  (when-ok [handles (d/type-query db "CodeSystem" [["url" "urn:ietf:bcp:47"]])]
     (coll/first handles)))
 
 (defn- create-code-system [{:keys [node] :as context}]
@@ -92,7 +92,7 @@
 (defn ensure-code-system
   "Ensures that the BCP-47 code system is present in the database node."
   [{:keys [node] :as context}]
-  (-> (d/with-db node bcp-47-handle)
+  (-> (d/with-db node (comp ac/completed-future bcp-47-handle))
       (ac/then-compose
        (fn [handle]
          (if handle

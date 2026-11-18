@@ -123,9 +123,10 @@
   match (by status, version, then recency, per `fu/sort-by-priority`) or nil
   if none was found."
   [db library-ref]
-  (do-sync [libraries (-> (d/type-query db "Library" (canonical-clauses library-ref))
-                          (ac/then-compose (fn [handles] (d/pull-many db (vec handles)))))]
-    (first (fu/sort-by-priority libraries))))
+  (if-ok [handles (d/type-query db "Library" (canonical-clauses library-ref))]
+    (do-sync [libraries (d/pull-many db (vec handles))]
+      (first (fu/sort-by-priority libraries)))
+    ac/completed-future))
 
 (defn- existing-library-handle [db id]
   (when-let [handle (d/resource-handle db "Library" id)]
@@ -178,14 +179,17 @@
   "Compiles the CQL code from the first library resource which is referenced
   from `measure`.
 
-  The `db` is used to load the library resource and `node` is used for
-  compilation.
+  The `db` is used to load the library resource and its node is used for
+  compilation, together with the `terminology-service` and the
+  `value-set-expander` of `context`.
 
   Returns an anomaly on errors."
-  [db terminology-service measure opts]
+  {:arglists '([db context measure opts])}
+  [db {:keys [terminology-service value-set-expander]} measure opts]
   (if-let [library-ref (-> measure :library first :value)]
     (do-sync [library (find-library db library-ref)]
-      (let [context (cond-> {:node (d/node db)}
+      (let [context (cond-> {:node (d/node db)
+                             :value-set-expander value-set-expander}
                       terminology-service
                       (assoc :terminology-service terminology-service))]
         (compile-library context library opts)))
@@ -459,7 +463,7 @@
         :timeout timeout))))
 
 (defn- enhance-context
-  [{:keys [clock db timeout terminology-service]
+  [{:keys [clock db timeout]
     :blaze/keys [cancelled?]
     ::expr/keys [cache]
     :or {timeout (time/hours 1)}
@@ -469,7 +473,7 @@
         now (bt/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
-              (compile-primary-library db terminology-service measure {})]
+              (compile-primary-library db context measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))
                 parameters (cql-params/effective-parameters
                             parameter-default-values in-parameters)]
