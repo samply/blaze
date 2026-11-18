@@ -25,7 +25,7 @@ services:
   blaze:
     image: "samply/blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx16g -agentpath:/opt/async-profiler/lib/libasyncProfiler.so"
+      JAVA_TOOL_OPTIONS: "-Xmx16g -agentpath:/opt/async-profiler/lib/libasyncProfiler.so -XX:-UseBASE64Intrinsics"
     ports:
     - "8080:8080"
     volumes:

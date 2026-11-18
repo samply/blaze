@@ -41,7 +41,7 @@ Dell PowerEdge R630 with 32 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz,
 
 ```sh
 docker run --name blaze --rm -v blaze-data:/app/data \
-  -e JAVA_TOOL_OPTIONS="-Xmx16g" \
+  -e JAVA_TOOL_OPTIONS="-Xmx16g -XX:-UseBASE64Intrinsics" \
   -e LOG_LEVEL=debug \
   -p 8080:8080 \
   -p 8081:8081 \
@@ -226,7 +226,7 @@ docker run -v $(pwd)/output:/gen/output/fhir synthea-gen synthea.jar -s 32562625
 
 ```sh
 docker run --name blaze --rm -v blaze-data:/app/data \
-    -e JAVA_TOOL_OPTIONS="-Xmx4g" \
+    -e JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics" \
     -e LOG_LEVEL=debug \
     -p 8080:8080 \
     -d samply/blaze:0.11.0

@@ -17,7 +17,7 @@ docker volume create blaze-data
 ## Blaze
 
 ```sh-vue
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
+docker run -d --name blaze -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 Blaze should log something like this:
@@ -68,7 +68,7 @@ services:
   blaze:
     image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
     ports:
     - "8080:8080"
     volumes:

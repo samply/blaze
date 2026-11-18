@@ -5,7 +5,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
       LOG_LEVEL: "debug"
       ALLOW_MULTIPLE_DELETE: "true"
       ENABLE_INTERACTION_DELETE_HISTORY: "${ENABLE_INTERACTION_DELETE_HISTORY:-false}"

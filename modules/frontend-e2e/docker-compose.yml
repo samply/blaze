@@ -55,7 +55,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx4g"
+      JAVA_TOOL_OPTIONS: "-Xmx4g -XX:-UseBASE64Intrinsics"
       LOG_LEVEL: "debug"
       ENABLE_ADMIN_API: "true"
       ENABLE_TERMINOLOGY_SERVICE: "true"

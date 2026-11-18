@@ -146,7 +146,7 @@ The keyspace has an replication factor of two, which means that every table row 
 blaze-1:
   image: "blaze:latest"
   environment:
-    JAVA_TOOL_OPTIONS: "-Xmx1g"
+    JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
     STORAGE: "distributed"
     DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
     DB_KAFKA_MAX_REQUEST_SIZE: "10485760"

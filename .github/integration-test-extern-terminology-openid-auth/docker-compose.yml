@@ -19,7 +19,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
       DB_BLOCK_CACHE_SIZE: "2048"
       DB_SCALE_FACTOR: "2"
       EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
@@ -47,7 +47,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx5g"
+      JAVA_TOOL_OPTIONS: "-Xmx5g -XX:-UseBASE64Intrinsics"
       ENABLE_TERMINOLOGY_SERVICE: "true"
       ENABLE_TERMINOLOGY_LOINC: "true"
       ENABLE_TERMINOLOGY_SNOMED_CT: "true"
