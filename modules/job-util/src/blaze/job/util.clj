@@ -262,13 +262,12 @@
   ([node t id]
    (d/with-sync-db node t #(pull-job* % id))))
 
-(defn- then-pull-job [stage node id]
-  (ac/then-compose stage #(pull-job node % id)))
+(defn- transact-then-pull-job [node tx-ops id]
+  (d/transact-then node tx-ops #(pull-job* % id)))
 
 (defn- transact-update [node {:keys [id] :as job} new-job other-resources]
   (-> (if-ok [new-job (check-transition job new-job)]
-        (-> (d/transact node (tx-ops new-job other-resources))
-            (then-pull-job node id))
+        (transact-then-pull-job node (tx-ops new-job other-resources) id)
         ac/completed-future)
       (ac/exceptionally handle-update-error)))
 
@@ -328,9 +327,8 @@
       (ac/then-compose
        #(if-ok [new-job (f %)
                 new-job (check-transition % new-job)]
-          (d/transact node [(update-tx-op new-job)])
+          (transact-then-pull-job node [(update-tx-op new-job)] id)
           ac/completed-future))
-      (then-pull-job node id)
       (ac/exceptionally-compose (maybe-retry node n i id f))))
 
 (defn update-job-with-retry

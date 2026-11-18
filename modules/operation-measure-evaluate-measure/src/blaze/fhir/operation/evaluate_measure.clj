@@ -43,25 +43,22 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
+(defn- build-response [request db id]
+  (response/build-response
+   (response-context request db)
+   nil
+   nil
+   (d/resource-handle db "MeasureReport" id)))
+
 (defn- persist-response
-  "Persists the `MeasureReport` (together with any other `:tx-ops`) and returns a
-  `201 Created` response referencing the persisted resource."
-  [{:keys [node] :as context} request result]
-  (let [id (m/luid context)]
-    (-> (d/transact node (tx-ops result id))
-        (ac/then-compose
-         (fn [t]
-           (d/with-sync-db node t
-             (fn [db-after]
-               (response/build-response
-                (response-context request db-after)
-                nil
-                nil
-                (d/resource-handle db-after "MeasureReport" id)))))))))
+  "Persists the `MeasureReport` (together with any other `:tx-ops`) and returns
+  a `201 Created` response referencing the persisted resource."
+  [{:keys [node]} id request result]
+  (d/transact-then node (tx-ops result id) #(build-response request % id)))
 
 (defn- inline-response
-  "Returns the `MeasureReport` inline with a `200 OK` response without persisting
-  it.
+  "Returns the `MeasureReport` inline with a `200 OK` response without
+  persisting it.
 
   Any `:tx-ops` (e.g. the `List` resources of a `subject-list` report, which are
   referenced from the report) are still transacted so that the references in the
@@ -91,7 +88,7 @@
           (ac/then-compose
            (fn process-result [result]
              (if (and (= :post request-method) report-persistence)
-               (persist-response context request result)
+               (persist-response context (m/luid context) request result)
                (inline-response context result))))))))
 
 (defn- measure-with-id-not-found-msg [id]

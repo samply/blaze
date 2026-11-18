@@ -83,8 +83,8 @@
 
   Returns a CompletableFuture that will complete with the `t` of the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors. Use `with-sync-db` with that
-  `t` to obtain the database value after the transaction. Fails with an unavailable
+  in case of a transaction error or other errors. Use `transact-then` to obtain
+  the database value after the transaction. Fails with an unavailable
   anomaly if `node` is closed, because its indexing loop wouldn't pick the
   transaction up anymore. Fails with a busy anomaly if `node` already has the
   maximum number of transactions submitted but not yet indexed, before anything
@@ -93,6 +93,25 @@
    (submit-tx node tx-ops nil))
   ([node tx-ops permissions]
    (submit-tx node tx-ops permissions)))
+
+(defn transact-then
+  "Submits `tx-ops` (transaction operators) with the `permissions` of the
+  caller like `transact` and calls `f` with the database value at the `t` of
+  the transaction after it committed on `node`.
+
+  The rules of `transact` regarding `permissions` and `tx-ops` apply. The
+  database value is valid only within a scope like the one of `with-db`.
+
+  Returns a CompletableFuture that will complete with the result of the future
+  returned by `f` after the scope has ended or will complete exceptionally with
+  an anomaly in case of a transaction error, without calling `f`, or in case of
+  other errors."
+  ([node tx-ops f]
+   (-> (transact node tx-ops)
+       (ac/then-compose #(with-sync-db node % f))))
+  ([node tx-ops permissions f]
+   (-> (transact node tx-ops permissions)
+       (ac/then-compose #(with-sync-db node % f)))))
 
 (defn subscribe-changes!
   "Subscribes `subscriber` to the resource handles of `type` changed in each

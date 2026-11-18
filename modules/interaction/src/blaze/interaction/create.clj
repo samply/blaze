@@ -33,14 +33,14 @@
       return-preference
       (assoc :blaze.preference/return return-preference))))
 
-(defn- build-response [request type id tx-op conditional-clauses db-after]
-  (if-let [handle (d/resource-handle db-after type id)]
+(defn- build-response [request db type id tx-op conditional-clauses]
+  (if-let [handle (d/resource-handle db type id)]
     (response/build-response
-     (response-context request db-after) tx-op nil handle)
-    (if-ok [handles (d/type-query db-after type conditional-clauses)]
+     (response-context request db) tx-op nil handle)
+    (if-ok [handles (d/type-query db type conditional-clauses)]
       (let [handle (coll/first handles)]
         (response/build-response
-         (response-context request db-after) tx-op handle handle))
+         (response-context request db) tx-op handle handle))
       ac/completed-future)))
 
 (defn- expand-value-sets
@@ -59,13 +59,10 @@
    {:keys [id] :as resource}]
   (-> (expand-value-sets value-set-expander type (iu/conditional-clauses if-none-exist))
       (ac/then-compose
-       (fn [conditional-clauses]
-         (let [tx-op (create-op resource conditional-clauses)]
-           (-> (d/transact node [tx-op])
-               (ac/then-compose
-                #(d/with-sync-db node %
-                   (partial build-response request type id tx-op
-                            conditional-clauses)))))))))
+       (fn [clauses]
+         (let [tx-op (create-op resource clauses)
+               build-response #(build-response request % type id tx-op clauses)]
+           (d/transact-then node [tx-op] build-response))))))
 
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."

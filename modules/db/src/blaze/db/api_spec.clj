@@ -30,6 +30,11 @@
                :permissions (s/? :blaze.db/permissions))
   :ret ac/completable-future?)
 
+(s/fdef d/transact-then
+  :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops
+               :permissions (s/? :blaze.db/permissions) :f ifn?)
+  :ret ac/completable-future?)
+
 (s/fdef d/subscribe-changes!
   :args (s/cat :node :blaze.db/node :type :fhir.resource/type :name string?
                :subscriber flow/subscriber?)
