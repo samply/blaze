@@ -13,7 +13,7 @@ runs:
       uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
       with:
         distribution: 'temurin'
-        java-version: '21'
+        java-version: '25'
 
     # Installs Jekyll and its gems as locked in modules/ig/Gemfile.lock into
     # modules/ig/vendor/bundle, cached by the lockfile. `make publish` finds them
