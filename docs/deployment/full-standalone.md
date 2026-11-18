@@ -132,7 +132,7 @@ An nginx server is used as the ingress component. You should see the configurati
 
 ```yaml
 ingress:
-  image: "nginx:1.27.2"
+  image: "nginx:latest"
   environment:
     BLAZE_HOST: "blaze.localhost"
     KEYCLOAK_HOST: "keycloak.localhost"
@@ -268,7 +268,7 @@ On top of the realm an admin user with name `admin` and password `admin` is conf
 
 ```yaml
 keycloak:
-  image: "quay.io/keycloak/keycloak:26.4.2"
+  image: "quay.io/keycloak/keycloak:latest"
   command: "start --import-realm --hostname=keycloak.localhost --proxy-headers forwarded --http-enabled true"
   environment:
     KC_BOOTSTRAP_ADMIN_USERNAME: admin
