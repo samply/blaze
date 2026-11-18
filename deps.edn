@@ -113,7 +113,7 @@
   :deps-prep
   {:deps
    {org.clojure/tools.deps
-    {:mvn/version "0.31.1629"}}
+    {:mvn/version "0.31.1646"}}
    :ns-default deps-prep}
 
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
@@ -173,7 +173,7 @@
     {:mvn/version "2.11.1276"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "2.0.18"}}
+    {:mvn/version "2.0.20"}}
 
    :main-opts
    ["-m" "antq.core"

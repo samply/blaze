@@ -6,7 +6,7 @@
 
    :deps
    {metosin/jsonista
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.0.2"}}
 
    :ns-default build}
 
