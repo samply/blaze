@@ -15,7 +15,7 @@ The official documentation can be found [here][1].
 
 ## Selected Resources <Badge type="warning" text="Since 1.14.0"/>
 
-The following table lists the search parameters of each resource type of the [Patient compartment](https://hl7.org/fhir/R4/compartmentdefinition-patient.html), which Blaze used before 1.14.0, and the search parameter of the purge GraphDefinition [`https://blaze-server.org/fhir/GraphDefinition/PatientPurge`](/fhir/GraphDefinition-PatientPurge.html){target="_self"}. A resource is purged if it references the patient through the search parameter of the purge GraphDefinition. Resources of the types without one (—) aren't purged, except the patient itself.
+The following table lists the search parameters of each resource type of the [Patient compartment](https://hl7.org/fhir/R4/compartmentdefinition-patient.html), which Blaze used before 1.14.0, and the search parameter of the purge GraphDefinition [`https://blaze-server.org/fhir/GraphDefinition/PatientPurge`](/fhir/GraphDefinition-PatientPurge.html){target="_self"}. A resource is purged if its current version references the patient through the search parameter of the purge GraphDefinition (see [Current and Historical Versions](#current-and-historical-versions)). Resources of the types without one (—) aren't purged, except the patient itself.
 
 | Resource Type               | Patient Compartment                                   | Purge GraphDefinition |
 |-----------------------------|-------------------------------------------------------|-----------------------|
@@ -107,6 +107,41 @@ The resources a purge would erase can be previewed with the [\$graph](graph.md) 
 ```
 GET [base]/Patient/[id]/$graph?graph=https://blaze-server.org/fhir/GraphDefinition/PatientPurge
 ```
+
+## Current and Historical Versions <Badge type="warning" text="Since 1.14.0"/>
+
+The selection looks at the current version of each resource only. A selected resource is purged with all of its versions, including historical versions that referenced another patient. A resource whose current version doesn't reference the patient isn't touched, even if some of its historical versions do. These are resources assigned to another patient and deleted resources.
+
+### Resources Assigned to Another Patient
+
+A resource whose current version references another patient keeps all of its versions, including the ones that reference the purged patient. That happens after two patients, that turned out to be the same person, were merged, or after a resource assigned to the wrong patient was corrected:
+
+* **Merged patients:** both patients are the same person, so the history of the resource, like a `preliminary` Observation followed by its `final` version, is data of the remaining patient. So the patient merged into the remaining one can be purged after the merge without losing any data of the remaining patient, including the history of its resources.
+* **Corrected assignment:** the resource was always about the other patient, so neither its current nor its historical versions are data about the purged patient. Only the versions before the correction keep the reference to the purged patient, which carries nothing but its id. The history is part of the record of the other patient and documents the correction. Retention obligations for that record usually outweigh the erasure of the references to the purged patient.
+
+> [!TIP]
+> Ids of patients should never contain directly identifying information, like the name, the date of birth or the insurance number of the patient. Then the references left over after a purge don't reveal who the patient was. Ids assigned by Blaze on [create](../interaction/create.md) contain no information about the patient. Clients choosing ids on [update](../interaction/update.md) should follow the same rule, for example by using UUIDs.
+
+The history of a resource records the versions as they were written. A historical version can't be changed afterwards, so neither a merge nor a correction can make it reference the other patient.
+
+### Deleted Resources
+
+A resource deleted before the purge isn't purged. Its current version is the deletion, which doesn't reference any patient. Its earlier versions, including their content and the reference to the purged patient, stay readable via [versioned read](../interaction/vread.md), [instance history](../interaction/history-instance.md), [type history](../interaction/history-type.md) and [system history](../interaction/history-system.md).
+
+Deleting is often the wrong way to handle wrong data anyway. Many resources have a status element that overlaps with the idea of deletion (see [delete](https://hl7.org/fhir/R4/http.html#delete) and [Entered in Error Summary](https://hl7.org/fhir/R4/lifecycle.html#error) in the FHIR specification). A wrong Observation, for example, should get the status `entered-in-error` instead of being deleted. It still references the patient, so it's purged together with the patient.
+
+### Removing Left-Over Versions
+
+The versions referencing the patient that a purge leaves can be removed in two ways:
+
+* **Purge first:** purge the patient before deleting any of its resources. A resource that is still selected is purged with all of its versions.
+* **Delete history:** remove the historical versions of the affected resources with the [delete history](../interaction/delete-history.md) interaction, or single versions with the [delete history version](../interaction/delete-history-version.md) interaction. For a deleted resource, delete history keeps only the deletion.
+
+## Erasure of Personal Data <Badge type="warning" text="Since 1.14.0"/>
+
+The operation can serve requests for the erasure of personal data under Art. 17 of the [GDPR](https://eur-lex.europa.eu/eli/reg/2016/679/oj), but it doesn't guarantee that all data about the patient is gone. The GDPR defines personal data by its content, while the operation selects resources by their references to the patient. It doesn't find data about the patient outside the [selected resources](#selected-resources), like a reference in an extension, a name in the narrative text or a note of a resource of another patient, nor the versions described in [Current and Historical Versions](#current-and-historical-versions).
+
+Whether an erasure is required, and whether an exception of Art. 17(3) GDPR applies, like for the history of a resource assigned to another patient, is up to the controller. Blaze only provides the means.
 
 ## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
 
