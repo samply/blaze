@@ -1,6 +1,6 @@
 {:deps
  {org.apache.httpcomponents.core5/httpcore5
-  {:mvn/version "5.4.4"}}
+  {:mvn/version "5.5"}}
 
  :aliases
  {:test
