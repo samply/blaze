@@ -2,8 +2,27 @@
  {blaze/fhir-client
   {:local/root "../fhir-client"}
 
+  ;; exclude parts of jepsen's tree that Blaze's tests never load
   jepsen/jepsen
-  {:mvn/version "0.3.15"}}
+  {:mvn/version "0.3.15"
+   :exclusions
+   [;; ring-core extras not needed by ring.util.response
+    crypto-equality/crypto-equality
+    crypto-random/crypto-random
+    ;; only used for SSH agent authentication; the tests never SSH
+    net.java.dev.jna/jna
+    net.java.dev.jna/jna-platform
+    org.apache.commons/commons-fileupload2-core
+    ;; old duplicate of bcprov-jdk18on which comes with sshj
+    org.bouncycastle/bcprov-jdk15on
+    ;; jepsen.web uses http-kit, not Jetty
+    org.ring-clojure/ring-jakarta-servlet
+    ring/ring-devel
+    ring/ring-jetty-adapter]}
+
+  ;; unilog excludes slf4j-api from its deps; it used to come in via Jetty
+  org.slf4j/slf4j-api
+  {:mvn/version "2.0.20"}}
 
  :aliases
  {:test
