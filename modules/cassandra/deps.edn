@@ -7,9 +7,16 @@
 
   ;; JNR is optional: without it, the driver uses a millisecond Java clock for
   ;; query timestamps, which is fine for our insert-only, content-addressed tables
+  ;;
+  ;; driver metrics are disabled (NoopMetricsFactory) and Session.getMetrics
+  ;; is never called, so the metrics libraries are excluded to reduce the
+  ;; dependency attack surface
   org.apache.cassandra/java-driver-core
   {:mvn/version "4.19.4"
-   :exclusions [com.github.jnr/jnr-posix]}
+   :exclusions
+   [com.github.jnr/jnr-posix
+    io.dropwizard.metrics/metrics-core
+    org.hdrhistogram/HdrHistogram]}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind

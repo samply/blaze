@@ -28,7 +28,10 @@
         100000
 
         TypedDriverOption/REQUEST_TIMEOUT
-        (time/millis 2000))))
+        (time/millis 2000)
+
+        TypedDriverOption/METRICS_FACTORY_CLASS
+        "NoopMetricsFactory")))
 
   (testing "custom values"
     (let [^OptionsMap options (config/options {:max-concurrent-requests 32
