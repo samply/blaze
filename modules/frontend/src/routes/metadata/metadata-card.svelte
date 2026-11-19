@@ -149,8 +149,8 @@
       {/each}
     </Table>
   {:else}
-    <pre class="flex overflow-auto text-sm"><code class="p-4"
-        ><JsonObject object={capabilityStatement} /></code
-      ></pre>
+    <pre class="flex overflow-auto text-sm"
+      ><code class="p-4"><JsonObject object={capabilityStatement} /></code></pre
+    >
   {/if}
 </div>
