@@ -95,8 +95,8 @@
       </dl>
     </div>
   {:else}
-    <pre in:fade|global={fadeParams} class="flex overflow-auto text-sm dark:text-gray-200"><code
-        class="p-4"><JsonObject object={resource} /></code
-      ></pre>
+    <pre in:fade|global={fadeParams} class="flex overflow-auto text-sm dark:text-gray-200"
+      ><code class="p-4"><JsonObject object={resource} /></code></pre
+    >
   {/if}
 </div>
