@@ -1,0 +1,111 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/samply/blaze/.vex/blaze.openvex.json",
+  "author": "Blaze maintainers",
+  "timestamp": "2026-11-20T00:00:00Z",
+  "version": 1,
+  "statements": [
+    {
+      "vulnerability": {
+        "@id": "https://github.com/clojure/clojure/security/advisories/GHSA-x4c4-68gp-vrhc",
+        "name": "GHSA-x4c4-68gp-vrhc"
+      },
+      "products": [
+        {
+          "@id": "pkg:oci/blaze?repository_url=index.docker.io%2Fsamply%2Fblaze",
+          "subcomponents": [
+            {
+              "@id": "pkg:maven/org.clojure/clojure@1.12.5"
+            },
+            {
+              "@id": "pkg:maven/org.clojure/clojure@1.12.4"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:oci/blaze?repository_url=ghcr.io%2Fsamply%2Fblaze",
+          "subcomponents": [
+            {
+              "@id": "pkg:maven/org.clojure/clojure@1.12.5"
+            },
+            {
+              "@id": "pkg:maven/org.clojure/clojure@1.12.4"
+            }
+          ]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The gadget chain only runs inside ObjectInputStream.readObject on attacker-controlled bytes. Neither Blaze nor any library on its runtime classpath deserializes Java objects from the network, a database or Kafka. All wire and storage formats are JSON, XML or CBOR. Analysed for Blaze 1.10.0 to 1.13.0, see https://github.com/samply/blaze/issues/4732."
+    },
+    {
+      "vulnerability": {
+        "@id": "https://github.com/advisories/GHSA-xxph-c9ww-hj94",
+        "name": "CVE-2026-102554",
+        "aliases": [
+          "GHSA-xxph-c9ww-hj94"
+        ]
+      },
+      "products": [
+        {
+          "@id": "pkg:oci/blaze?repository_url=index.docker.io%2Fsamply%2Fblaze",
+          "subcomponents": [
+            {
+              "@id": "pkg:maven/com.google.guava/guava@33.7.1-jre"
+            },
+            {
+              "@id": "pkg:maven/com.google.guava/guava@33.6.0-jre"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:oci/blaze?repository_url=ghcr.io%2Fsamply%2Fblaze",
+          "subcomponents": [
+            {
+              "@id": "pkg:maven/com.google.guava/guava@33.7.1-jre"
+            },
+            {
+              "@id": "pkg:maven/com.google.guava/guava@33.6.0-jre"
+            }
+          ]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_in_execute_path",
+      "impact_statement": "The excessive allocation only happens inside ObjectInputStream.readObject of CompactHashMap, CompactHashSet or MapMakerInternalMap. Neither Blaze nor any library on its runtime classpath deserializes Java objects from the network, a database or Kafka. All wire and storage formats are JSON, XML or CBOR. Analysed for Blaze 1.10.0 and 1.11.0, see https://github.com/samply/blaze/issues/4732."
+    },
+    {
+      "vulnerability": {
+        "@id": "https://nvd.nist.gov/vuln/detail/CVE-2026-4738",
+        "name": "CVE-2026-4738"
+      },
+      "products": [
+        {
+          "@id": "pkg:oci/blaze-frontend?repository_url=index.docker.io%2Fsamply%2Fblaze-frontend",
+          "subcomponents": [
+            {
+              "@id": "pkg:apk/alpine/zlib@1.3.2-r1"
+            },
+            {
+              "@id": "pkg:apk/alpine/zlib@1.3.2-r0"
+            }
+          ]
+        },
+        {
+          "@id": "pkg:oci/blaze-frontend?repository_url=ghcr.io%2Fsamply%2Fblaze-frontend",
+          "subcomponents": [
+            {
+              "@id": "pkg:apk/alpine/zlib@1.3.2-r1"
+            },
+            {
+              "@id": "pkg:apk/alpine/zlib@1.3.2-r0"
+            }
+          ]
+        }
+      ],
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "The vulnerability is in the optional infback9 code of the zlib contrib directory (inftree9.c). The libz library of the Alpine zlib package doesn't contain that code: it exports no infback9 functions. Besides, the Node.js process of the frontend doesn't load libz, because Node.js has its own zlib built in. Only apk uses libz. The two zlib copies built into Node.js (its own and the one of V8) don't contain the infback9 code either. Analysed for Blaze Frontend 1.10.0 to 1.13.0 on amd64 and arm64, see https://github.com/samply/blaze/issues/4732."
+    }
+  ]
+}
