@@ -193,6 +193,10 @@ const config = defineConfig({
         ],
       },
       {
+        text: "Admin API",
+        items: [{ text: "Overview", link: "/api/admin" }],
+      },
+      {
         text: "CQL Queries",
         items: [
           { text: "via blazectl", link: "/cql-queries/blazectl" },

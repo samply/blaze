@@ -39,7 +39,6 @@
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [jsonista.core :as j]
-   [reitit.openapi :as openapi]
    [reitit.ring]
    [reitit.ring.spec]
    [ring.util.response :as ring]
@@ -55,11 +54,6 @@
   (fn [_]
     (-> (ring/response {:settings settings :features features})
         (ac/completed-future))))
-
-(def ^:private openapi-handler
-  (let [handler (openapi/create-openapi-handler)]
-    (fn [request]
-      (ac/completed-future (handler request)))))
 
 (defn- block-cache [long-property]
   (if-ok [capacity (long-property "rocksdb.block-cache-capacity")
@@ -254,9 +248,8 @@
     :as context}]
   (reitit.ring/router
    [""
-    {:openapi {:id :admin-api}
-     :middleware
-     (cond-> [[wrap-output writing-context] openapi/openapi-feature]
+    {:middleware
+     (cond-> [[wrap-output writing-context]]
        (seq auth-backends)
        (conj wrap-auth-guard))
      :response-type :json
@@ -264,98 +257,24 @@
     [""
      {:get
       {:handler (root-handler context)}}]
-    ["/openapi.json"
-     {:get
-      {:handler openapi-handler
-       :openapi
-       {:info
-        {:title "Blaze Admin API"
-         :description "The Blaze Admin API is used to monitor and control a Blaze server instance."
-         :version "0.22"}
-        :components
-        {:schemas
-         {"ColumnFamilyMetadata"
-          {:type "object"
-           :description "Metadata about a column family like total and level based number of files."
-           :properties
-           {:name {:type "string"}
-            :size {:type "number"}
-            :num-files {:type "number"}
-            :levels
-            {:type "array"
-             :items
-             {:type "object"
-              :description "Level metadata."
-              :properties
-              {:level {:type "number"}
-               :size {:type "number"}
-               :num-files {:type "number"}}}}}}
-          "BloomFilter"
-          {:type "object"}}
-         :parameters
-         {:db
-          {:name "db"
-           :in "path"
-           :description "The name of the database like index, transaction or resource."
-           :required true
-           :schema {:type "string"}}
-          :column-family
-          {:name "column-family"
-           :in "path"
-           :description "The name of the column family like default."
-           :required true
-           :schema {:type "string"}}}}}
-       :no-doc true}}]
     ["/dbs"
      {}
      [""
       {:get
        {:handler (databases-handler dbs)
-        :summary "Fetch the list of all database names."
-        :openapi
-        {:operation-id "getDatabases"
-         :responses
-         {200
-          {:description "List of database names."
-           :content
-           {"application/json"
-            {:schema
-             {:type "array"
-              :items {:type "string"}}}}}}}}}]
+        :summary "Fetch the list of all database names."}}]
      ["/{db}"
       {:middleware [[wrap-dbs-db dbs]]}
       ["/stats"
        {:get
         {:handler db-stats-handler
-         :summary "Fetch stats of a database."
-         :openapi
-         {:operation-id "getDatabaseStats"
-          :parameters
-          [{"$ref" "#/components/parameters/db"}]
-          :responses
-          {200
-           {:description "Database statistics."
-            :content
-            {"application/json"
-             {:schema
-              {:type "object"}}}}}}}}]
+         :summary "Fetch stats of a database."}}]
       ["/column-families"
        {}
        [""
         {:get
          {:handler column-families-handler
-          :summary "Fetch the list of all column families of a database."
-          :openapi
-          {:operation-id "getDatabaseColumnFamilies"
-           :parameters
-           [{"$ref" "#/components/parameters/db"}]
-           :responses
-           {200
-            {:description "A list of column families."
-             :content
-             {"application/json"
-              {:schema
-               {:type "array"}}}}}}}}]
+          :summary "Fetch the list of all column families of a database."}}]
        ["/{column-family}"
         {}
         ["/state"
@@ -365,40 +284,11 @@
         ["/metadata"
          {:get
           {:handler cf-metadata-handler
-           :summary "Fetch the metadata of a column family of a database."
-           :openapi
-           {:operation-id "getColumnFamilyMetadata"
-            :parameters
-            [{"$ref" "#/components/parameters/db"}
-             {"$ref" "#/components/parameters/columnFamily"}]
-            :responses
-            {200
-             {:description "Column family metadata."
-              :content
-              {"application/json"
-               {:schema
-                {"$ref" "#/components/schemas/ColumnFamilyMetadata"}}}}}}}}]
+           :summary "Fetch the metadata of a column family of a database."}}]
         ["/tables"
          {:get
           {:handler cf-tables-handler
-           :summary "Fetch the list of all tables of a column family of a database."
-           :openapi
-           {:operation-id "getColumnFamilyTables"
-            :parameters
-            [{"$ref" "#/components/parameters/db"}
-             {"$ref" "#/components/parameters/columnFamily"}]
-            :responses
-            {200
-             {:description "A list of column family tables."
-              :content
-              {"application/json"
-               {:schema
-                {:type "array"
-                 :items
-                 {:type "object"
-                  :properties
-                  {:data-size {:type "number"}
-                   :total-raw-key-size {:type "number"}}}}}}}}}}}]]]]]
+           :summary "Fetch the list of all tables of a column family of a database."}}]]]]]
     ["/Task"
      {:fhir.resource/type "Task"
       :response-type :fhir
@@ -437,30 +327,11 @@
      ["/cache-stats"
       {:get
        {:handler cql-cache-stats-handler
-        :summary "Fetch CQL cache stats."
-        :openapi
-        {:operation-id "cql-cache-stats"
-         :responses
-         {200
-          {:description "CQL cache stats."
-           :content
-           {"application/json"
-            {:schema
-             {:type "object"}}}}}}}}]
+        :summary "Fetch CQL cache stats."}}]
      ["/bloom-filters"
       {:get
        {:handler cql-bloom-filters-handler
-        :summary "Fetch the list of all CQL Bloom filters."
-        :openapi
-        {:operation-id "cql-bloom-filters"
-         :responses
-         {200
-          {:description "A list of CQL Bloom filters."
-           :content
-           {"application/json"
-            {:schema
-             {:type "array"
-              :items {"$ref" "#/components/schemas/BloomFilter"}}}}}}}}}]]]
+        :summary "Fetch the list of all CQL Bloom filters."}}]]]
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 

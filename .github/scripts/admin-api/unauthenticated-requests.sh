@@ -12,29 +12,33 @@ base="http://localhost:8080"
 access_token=$(curl -sSfH 'Accept: application/json' -d 'grant_type=client_credentials' -u account:e11a3a8e-6e24-4f9d-b914-da7619e8b31f http://localhost:8090/realms/blaze/protocol/openid-connect/token | jq -r .access_token)
 test_non_empty "access token" "$access_token"
 
-fill_path_params() {
-  sed -e 's/{db}/index/g' -e 's/{column-family}/default/g' -e 's/{id}/AAAAAAAAAAAAAAAA/g'
-}
-
-# the OpenAPI spec lists all endpoints of the Admin API except itself
-endpoints=$(curl -sSfH 'Accept: application/json' --oauth2-bearer "$access_token" "$base/fhir/__admin/openapi.json" \
-  | jq -r '.paths | to_entries[] | .key as $path | .value | keys[] | "\(.) \($path)"' \
-  | fill_path_params)
-endpoints="$endpoints
-get /fhir/__admin/openapi.json
-get /fhir/__admin/unknown"
-
-test_le "minimum number of endpoints" 15 "$(echo "$endpoints" | wc -l)"
+# all endpoints of the Admin API, the unit test `blaze.admin-api-test/unauthenticated-test`
+# covers every route of the router
+endpoints=$(cat <<'EOF'
+get /fhir/__admin
+get /fhir/__admin/dbs
+get /fhir/__admin/dbs/index/stats
+get /fhir/__admin/dbs/index/column-families
+get /fhir/__admin/dbs/index/column-families/default/state
+get /fhir/__admin/dbs/index/column-families/default/metadata
+get /fhir/__admin/dbs/index/column-families/default/tables
+get /fhir/__admin/Task
+post /fhir/__admin/Task
+get /fhir/__admin/Task/AAAAAAAAAAAAAAAA
+get /fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history
+post /fhir/__admin/Task/AAAAAAAAAAAAAAAA/$pause
+post /fhir/__admin/Task/AAAAAAAAAAAAAAAA/$resume
+post /fhir/__admin/Task/AAAAAAAAAAAAAAAA/$cancel
+get /fhir/__admin/cql/cache-stats
+get /fhir/__admin/cql/bloom-filters
+get /fhir/__admin/unknown
+EOF
+)
 
 body_file=$(mktemp)
 trap 'rm -f "$body_file"' EXIT
 
 while read -r method path; do
-  if [[ "$path" == *"{"* ]]; then
-    echo "🆘 unknown path param in $path"
-    exit 1
-  fi
-
   echo "${method^^} $path"
   response=$(curl -s -X "${method^^}" -o "$body_file" -w '%{response_code} %{content_type}' "$base$path")
   test "status" "${response%% *}" "401"
