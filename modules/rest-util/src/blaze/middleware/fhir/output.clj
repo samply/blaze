@@ -8,14 +8,15 @@
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.util :as handler-util]
+   [blaze.http.util :as hu]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
-   [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.core.protocols :as rp]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [com.github.benmanes.caffeine.cache Caffeine LoadingCache]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +27,10 @@
   (take 17 (iterate #(* 2 %) 0.00001))
   "format")
 
-(def ^:private parse-accept (parse/fast-memoize 1000 parse/parse-accept))
+(def ^:private ^LoadingCache accept-cache
+  (-> (Caffeine/newBuilder)
+      (.maximumSize 1000)
+      (.build hu/parse-accept)))
 
 (defn- generate-error-payload [generation-fn e]
   (-> e
@@ -106,8 +110,8 @@
 (defn- request-format
   [{{:strs [accept]} :headers {format "_format"} :query-params}]
   (or (some-> format format-key)
-      (if-let [accept (parse-accept accept)]
-        (some format-key accept)
+      (if accept
+        (some format-key (.get accept-cache accept))
         :fhir+json)))
 
 (defn handle-response [writing-context opts request response]

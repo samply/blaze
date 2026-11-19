@@ -5,6 +5,7 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.util :as fu]
+   [blaze.http.util :as hu]
    [blaze.module :as m]
    [blaze.spec]
    [blaze.terminology-service :as ts]
@@ -23,7 +24,6 @@
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [muuntaja.parse :as parse]
    [taoensso.timbre :as log])
   (:import
    [com.github.benmanes.caffeine.cache Caffeine]))
@@ -266,7 +266,7 @@
 (defn- coerce-display-language [value]
   (if (#{:fhir/code :fhir/string} (:fhir/type value))
     (if-some [value (:value value)]
-      (parse/parse-accept-charset value)
+      (hu/parse-accept-language value)
       (ba/incorrect "Missing value."))
     (ba/incorrect "Expect FHIR code or string.")))
 

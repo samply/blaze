@@ -234,6 +234,7 @@ jobs:
         - fhir-structure
         - graph-definition
         - http-client
+        - http-util
         - interaction
         - jepsen
         - job-async-interaction

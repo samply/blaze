@@ -203,6 +203,7 @@
     "-d" "modules/fhir-structure"
     "-d" "modules/graph-definition"
     "-d" "modules/http-client"
+    "-d" "modules/http-util"
     "-d" "modules/interaction"
     "-d" "modules/jepsen"
     "-d" "modules/job-async-interaction"

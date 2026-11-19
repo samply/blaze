@@ -1,5 +1,6 @@
 (ns blaze.rest-api.middleware.forwarded-test
   (:require
+   [blaze.http.util-spec]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.rest-api.middleware.forwarded :refer [wrap-forwarded]]
    [blaze.rest-api.middleware.forwarded-spec]
