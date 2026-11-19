@@ -2,6 +2,7 @@
   (:require
    [blaze.async.comp-spec]
    [blaze.handler.util :as handler-util]
+   [blaze.http.util-spec]
    [blaze.luid.spec]
    [blaze.test-util :as tu :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]

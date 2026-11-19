@@ -175,6 +175,17 @@ Paging links are completely opaque and have to be followed as is. Clients must n
 
 Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 10 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
 
+## Content Negotiation
+
+Blaze returns FHIR resources as JSON or XML. The format is chosen as follows:
+
+* The `_format` query parameter takes precedence over the `Accept` header. Supported values are `json`, `xml`, `application/fhir+json`, `application/fhir+xml`, `application/json`, `application/xml`, `text/json` and `text/xml`.
+* Otherwise the first supported media type of the `Accept` header is used, after sorting its media types by descending q-value. Media types with the same q-value keep their order, except `*/*`, which comes last. Media types with a q-value of 0 are not acceptable and are ignored. `*/*` and `application/*` select `application/fhir+json` and `text/*` selects `text/json`.
+* Without an `Accept` header, Blaze returns `application/fhir+json`.
+* If the `Accept` header contains no supported media type, Blaze answers with `406 Not Acceptable`.
+
+The `Accept` header is parsed according to [RFC 9110][10]: media types and parameter names are case-insensitive and quoted parameter values may contain commas and semicolons.
+
 ## Absolute URLs
 
 Blaze has to generate absolute URLs of its own in links and Location headers. By default Blaze assumes to be accessible under `http://localhost:8080`. The [environment variable](deployment/environment-variables.md) `BASE_URL` can be used to change this.
@@ -190,3 +201,4 @@ Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy hea
 [7]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>
 [8]: <http://hl7.org/fhir/R5/async-bundle.html>
 [9]: <https://r4.blaze-server.org/fhir/>
+[10]: <https://www.rfc-editor.org/rfc/rfc9110#name-accept>

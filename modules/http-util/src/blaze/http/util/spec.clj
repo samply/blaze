@@ -6,7 +6,7 @@
   string?)
 
 (s/def :blaze.http.header.element.param/value
-  string?)
+  (s/nilable string?))
 
 (s/def :blaze.http.header.element/param
   (s/keys :req-un [:blaze.http.header.element.param/name
@@ -19,7 +19,7 @@
   string?)
 
 (s/def :blaze.http.header.element/value
-  string?)
+  (s/nilable string?))
 
 (s/def :blaze.http.header/element
   (s/keys :req-un [:blaze.http.header.element/name

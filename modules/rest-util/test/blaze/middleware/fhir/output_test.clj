@@ -7,6 +7,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.fhir.writing-context]
+   [blaze.http.util-spec]
    [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.middleware.fhir.output-spec]
    [blaze.module.test-util.ring :refer [call]]
@@ -112,11 +113,18 @@
     (doseq [[accept content-type] [["application/fhir+json" "application/fhir+json;charset=utf-8"]
                                    ["application/json" "application/json;charset=utf-8"]
                                    ["text/json" "text/json;charset=utf-8"]
-                                   ["application/fhir+xml;q=0.9, application/fhir+json;q=1.0" "application/fhir+json;charset=utf-8"]]]
+                                   ["application/fhir+xml;q=0.9, application/fhir+json;q=1.0" "application/fhir+json;charset=utf-8"]
+                                   ["Application/FHIR+JSON" "application/fhir+json;charset=utf-8"]
+                                   ["application/fhir+xml;Q=0.9, application/fhir+json" "application/fhir+json;charset=utf-8"]
+                                   ["application/fhir+xml;q=0, application/fhir+json;q=0.1" "application/fhir+json;charset=utf-8"]]]
       (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
         :status := 200
         [:headers "Content-Type"] := content-type
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
+
+  (testing "not acceptable accept headers"
+    (doseq [accept ["text/plain" "json" ";" "application/fhir+json;q=0"]]
+      (is (nil? (call resource-handler-200-with-patient {:headers {"accept" accept}})))))
 
   (testing "_format overrides"
     (doseq [[accept format content-type] [["application/fhir+xml" "application/fhir+json" "application/fhir+json;charset=utf-8"]
@@ -147,6 +155,7 @@
              ["application/xml" "application/xml;charset=utf-8"]
              ["text/xml" "text/xml;charset=utf-8"]
              ["application/fhir+json;q=0.9, application/fhir+xml;q=1.0" "application/fhir+xml;charset=utf-8"]
+             ["application/fhir+json;x=\"a, b\";q=0.9, application/fhir+xml" "application/fhir+xml;charset=utf-8"]
              ;; Safari
              ["text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" "application/xml;charset=utf-8"]
              ;; Chrome

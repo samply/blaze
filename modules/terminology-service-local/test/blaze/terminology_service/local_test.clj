@@ -8,6 +8,7 @@
    [blaze.fhir.test-util :refer [parameter parameter-part structure-definition-repo]]
    [blaze.fhir.util :as fu]
    [blaze.fhir.util-spec]
+   [blaze.http.util-spec]
    [blaze.module.test-util :as mtu :refer [given-failed-system]]
    [blaze.path :refer [path]]
    [blaze.spec]
@@ -8280,7 +8281,18 @@
           [(parameter "code") 0 :value] := #fhir/code "26465-5"
           [(parameter "display") 0 :value] := #fhir/string "designation-104319"
           [(parameter "system") 0 :value] := #fhir/uri "http://loinc.org"
-          [(parameter "version") 0 :value] := #fhir/string "2.83")))))
+          [(parameter "version") 0 :value] := #fhir/string "2.83"))
+
+      (testing "with displayLanguage list"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri "value-set-102658"
+                  "code" #fhir/code "26465-5"
+                  "system" #fhir/uri "http://loinc.org"
+                  "display" #fhir/string "designation-104319"
+                  "displayLanguage" #fhir/code "en;q=0.5, DE")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "display") 0 :value] := #fhir/string "designation-104319")))))
 
 (deftest value-set-validate-code-loinc-include-concept-test
   (testing "non-matching concept"
