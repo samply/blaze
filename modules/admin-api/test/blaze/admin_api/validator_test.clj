@@ -11,6 +11,7 @@
    [jsonista.core :as j]
    [juxt.iota :refer [given]]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
@@ -79,3 +80,29 @@
       (given (validator/validate validator "{")
         :fhir/type := :fhir/OperationOutcome
         [:issue 0 :severity] := #fhir/code "fatal"))))
+
+(deftest no-http-client-test
+  (testing "neither OkHttp, Okio nor the Kotlin stdlib are on the classpath"
+    (doseq [class-name ["okhttp3.OkHttpClient" "okio.Okio" "kotlin.Unit"]]
+      (is (thrown? ClassNotFoundException (Class/forName class-name))))))
+
+(deftest validate-unresolvable-test
+  (with-system [{validator :blaze.admin-api/validator} config]
+    (testing "unknown profile, extension and canonical don't lead to a remote fetch"
+      (let [job (-> (re-index-job canonical/base)
+                    (update-in [:meta :profile] conj "http://example.com/StructureDefinition/unknown")
+                    (assoc :extension [{:url "http://example.com/StructureDefinition/unknown-extension"
+                                        :valueString "foo"}])
+                    (assoc :instantiatesCanonical "http://example.com/fhir/ActivityDefinition/unknown"))
+            outcome (validate validator job)]
+        (is (= :fhir/OperationOutcome (:fhir/type outcome)))
+
+        (testing "the unknown extension is an error"
+          (given (error-issues outcome)
+            count := 1
+            [0 :code] := #fhir/code "structure"
+            [0 :diagnostics :value] := "The extension http://example.com/StructureDefinition/unknown-extension could not be found so is not allowed here"))
+
+        (testing "the unknown profile is only a warning"
+          (given (filterv (comp #{"warning"} :value :severity) (:issue outcome))
+            [2 :diagnostics :value] := "Profile reference 'http://example.com/StructureDefinition/unknown' has not been checked because it could not be found"))))))

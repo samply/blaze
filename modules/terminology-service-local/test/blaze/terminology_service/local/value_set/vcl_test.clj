@@ -3,7 +3,7 @@
    [blaze.terminology-service.local.value-set.vcl :as vcl]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -70,3 +70,8 @@
     [:compose :include 0 :concept count] := 2
     [:compose :include 0 :concept 0 :code] := #fhir/code "male"
     [:compose :include 0 :concept 1 :code] := #fhir/code "female"))
+
+(deftest no-http-client-test
+  (testing "neither OkHttp, Okio nor the Kotlin stdlib are on the classpath"
+    (doseq [class-name ["okhttp3.OkHttpClient" "okio.Okio" "kotlin.Unit"]]
+      (is (thrown? ClassNotFoundException (Class/forName class-name))))))
