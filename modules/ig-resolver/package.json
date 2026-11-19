@@ -1,0 +1,11 @@
+{
+  "name": "blaze-ig-resolver",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "wrangler": "4.164.0"
+  }
+}

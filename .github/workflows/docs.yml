@@ -85,6 +85,9 @@ jobs:
         VITE_LATEST_FRONTEND_DIGEST: ${{ steps.release.outputs.frontend_digest }}
       run: make build
 
+    - name: Test IG Resolver
+      run: make -C modules/ig-resolver test
+
     - name: Setup IG Render Toolchain
       uses: ./.github/actions/setup-ig-render
 
@@ -97,6 +100,17 @@ jobs:
 
     - name: Add IG to Site
       run: make -C docs add-ig
+
+    # The index of the resources of the guide is built from the same render as
+    # the site, so the Worker resolves exactly the files that are deployed.
+    - name: Index IG Resources
+      run: make -C modules/ig-resolver index
+
+    - name: Upload IG Index
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: ig-resolver-index
+        path: modules/ig-resolver/target
 
     - name: Setup Pages
       uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
@@ -120,3 +134,46 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+  # The IG resolver is deployed after the site, so that a route of the resolver
+  # never points at a file that isn't live yet. Its credentials live in the
+  # github-pages environment, which only main can use. Installing and deploying
+  # are skipped until they are configured. That's checked per step, because the
+  # variables of an environment aren't available yet in the `if` of a job.
+  deploy-ig-resolver:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    needs: [ deploy-pages ]
+    environment:
+      name: github-pages
+      url: https://blaze-server.org/fhir/
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Setup Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: 'modules/ig-resolver/package-lock.json'
+
+    - name: Download IG Index
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+      with:
+        name: ig-resolver-index
+        path: modules/ig-resolver/target
+
+    # Separate from the deploy, so that the install scripts of the dependencies
+    # don't run with the Cloudflare token in their environment.
+    - name: Install IG Resolver
+      if: vars.CLOUDFLARE_ACCOUNT_ID != ''
+      run: make -C modules/ig-resolver install
+
+    - name: Deploy IG Resolver
+      if: vars.CLOUDFLARE_ACCOUNT_ID != ''
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        WRANGLER_SEND_METRICS: 'false'
+      run: make -C modules/ig-resolver deploy
