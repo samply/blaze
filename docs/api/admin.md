@@ -21,9 +21,3 @@ Requests without a valid token are answered with `401 Unauthorized`. The body of
 ```
 
 * FHIR endpoints, like `/fhir/__admin/Task`, return an OperationOutcome with the issue code `login`.
-
-## OpenAPI Spec
-
-```sh
-curl http://localhost:8080/fhir/__admin/openapi.json
-```
