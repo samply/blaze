@@ -1,5 +1,101 @@
 # Changelog
 
+## v1.14.0
+
+### Notes
+
+This release mitigates [CVE-2026-114938](https://github.com/samply/blaze/issues/4699). Every Blaze instance has to be started with `-XX:-UseBASE64Intrinsics` added to the `JAVA_TOOL_OPTIONS` environment variable, in addition to all other options, like `JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"`. More can be found in the [Environment Variables](https://blaze-server.org/deployment/environment-variables.html#java-tool-options) documentation.
+
+Please check the following changes when updating:
+
+* The codes of the CodeSystem `https://blaze-server.org/fhir/CodeSystem/AccessControl` belong to Blaze alone. Creating or updating a resource carrying any of these codes, or the codes of the legacy system `https://samply.github.io/blaze/fhir/CodeSystem/AccessControl`, in `meta.tag` or `meta.security` now fails with `409 Conflict`. This also applies to copies of Blaze-owned resources that still carry the `read-only` tag, so these codes have to be removed before writing such a copy.
+* The operation `$purge` on Patient no longer purges all resources of the Patient compartment. It purges only resources that belong to the patient, as selected by the GraphDefinition [`PatientPurge`](https://blaze-server.org/fhir/GraphDefinition-PatientPurge.html), so resources of other patients are kept. Please see [Selected Resources](https://blaze-server.org/api/operation/patient-purge.html#selected-resources) for details.
+* The operation `$purge` on Patient and the delete history interaction are no longer alpha. Both stay behind their feature toggles.
+* The Admin API no longer serves an OpenAPI spec at `/fhir/__admin/openapi.json`.
+
+### Survey
+
+Please take one minute to fill out the short [Blaze Usage Survey](https://tally.so/r/gD7VGP) — your feedback helps us prioritize future development.
+
+### Security
+
+* Make All Java Dependencies Visible to Image Scanners ([#4565](https://github.com/samply/blaze/issues/4565))
+* Upgrade Java Libraries With Known Vulnerabilities ([#4566](https://github.com/samply/blaze/issues/4566))
+* Mitigate CVE-2026-114938 via JAVA_TOOL_OPTIONS ([#4699](https://github.com/samply/blaze/issues/4699))
+* Publish OpenVEX Statements for Blaze Images ([#4732](https://github.com/samply/blaze/issues/4732))
+
+### Enhancements
+
+* Implement Operation $graph ([#2793](https://github.com/samply/blaze/issues/2793))
+* Render the Implementation Guide and Attach It to the Release ([#3743](https://github.com/samply/blaze/issues/3743))
+* Update LOINC to Version 2.83 ([#4534](https://github.com/samply/blaze/issues/4534))
+* Allow Deploying the Frontend Without Login ([#4540](https://github.com/samply/blaze/issues/4540))
+* Implement the Delete History Version Interaction ([#4583](https://github.com/samply/blaze/issues/4583))
+* Authorize Transactions by Caller Permissions ([#4602](https://github.com/samply/blaze/issues/4602))
+* Support the $graph Operation on All Resource Types ([#4611](https://github.com/samply/blaze/issues/4611))
+* Publish the Implementation Guide at Its Canonical URLs ([#4676](https://github.com/samply/blaze/issues/4676))
+* Serve the Implementation Guide at blaze-server.org/fhir ([#4679](https://github.com/samply/blaze/issues/4679))
+
+### Performance
+
+* Speed Up Referential Integrity Check of Deletes ([#4621](https://github.com/samply/blaze/issues/4621))
+* Skip Deleted Referrers Before Resolving Them ([#4631](https://github.com/samply/blaze/issues/4631))
+* Make advance-t! Cheaper per Transaction ([#4656](https://github.com/samply/blaze/issues/4656))
+* Store Transaction Entries With Its Success Marker ([#4658](https://github.com/samply/blaze/issues/4658))
+* Check Write References Against the Command Index ([#4659](https://github.com/samply/blaze/issues/4659))
+* Skip Resource Handle Cache Update Without Updates ([#4663](https://github.com/samply/blaze/issues/4663))
+
+### Bugfixes
+
+* Fix Error Polling Async Status of On-Hold Job ([#4527](https://github.com/samply/blaze/issues/4527))
+* Fix Unauthenticated Admin API Requests Returning 500 ([#4572](https://github.com/samply/blaze/issues/4572))
+* Fix Patient $purge Not Removing Deleted or Reassigned Compartment Resources ([#4577](https://github.com/samply/blaze/issues/4577))
+* Drop Number of Changes on Since Databases ([#4579](https://github.com/samply/blaze/issues/4579))
+* Fix Versioned Read in Batch and Transaction Bundles ([#4590](https://github.com/samply/blaze/issues/4590))
+* Fix Patient $purge Purging Resources of Other Patients ([#4596](https://github.com/samply/blaze/issues/4596))
+* Fix CQL List Operators on Retrieve Results ([#4622](https://github.com/samply/blaze/issues/4622))
+* Move Value Set Expansion out of the Database ([#4640](https://github.com/samply/blaze/issues/4640))
+* Fix Doubled Modifier of Chained Search Params ([#4662](https://github.com/samply/blaze/issues/4662))
+* Add Node Label to Indexer Metrics ([#4677](https://github.com/samply/blaze/issues/4677))
+
+### Documentation
+
+* Document How Patient $purge Selects Resources ([#4582](https://github.com/samply/blaze/issues/4582))
+* Update Demo Server Links ([#4588](https://github.com/samply/blaze/issues/4588))
+* Document the $graph Operation ([#4608](https://github.com/samply/blaze/issues/4608))
+* Use Latest nginx and Keycloak Images in Docs ([#4702](https://github.com/samply/blaze/issues/4702))
+* Define the Missing Artifacts in the Implementation Guide ([#4738](https://github.com/samply/blaze/issues/4738))
+
+### Maintenance
+
+* Pick Up Pending Jobs on Job Scheduler Start ([#4541](https://github.com/samply/blaze/issues/4541))
+* Simplify Rendering of Resources in the Frontend ([#4543](https://github.com/samply/blaze/issues/4543))
+* Enforce Job Status Transitions ([#4545](https://github.com/samply/blaze/issues/4545))
+* Remove Alpha State of Patient $purge and Delete History ([#4557](https://github.com/samply/blaze/issues/4557))
+* Remove Unused buddy-core Dependency From rest-util ([#4571](https://github.com/samply/blaze/issues/4571))
+* Use Jsonista Instead of Cheshire for Page IDs ([#4574](https://github.com/samply/blaze/issues/4574))
+* Move GraphDefinition Compiler into Own Module ([#4584](https://github.com/samply/blaze/issues/4584))
+* Validate GraphDefinition on Compile ([#4585](https://github.com/samply/blaze/issues/4585))
+* Prefer do-sync Over a Single then-apply ([#4615](https://github.com/samply/blaze/issues/4615))
+* Don't Implement Counted on Reducible Collections ([#4617](https://github.com/samply/blaze/issues/4617))
+* Omit Unused LOINC Files from Uberjar ([#4626](https://github.com/samply/blaze/issues/4626))
+* Ignore Build-Only Vulnerabilities in Frontend OSV Scan ([#4627](https://github.com/samply/blaze/issues/4627))
+* Add Timers for the Commit of Transactions ([#4645](https://github.com/samply/blaze/issues/4645))
+* Add Profiling to the Transaction Load Test ([#4647](https://github.com/samply/blaze/issues/4647))
+* Add transact-then Function to the DB API ([#4688](https://github.com/samply/blaze/issues/4688))
+* Remove Unused ANTLR 4 Tool Dependency ([#4706](https://github.com/samply/blaze/issues/4706))
+* Exclude JNR Native Libraries of the Cassandra Driver ([#4708](https://github.com/samply/blaze/issues/4708))
+* Remove Unused Test Dependencies ([#4709](https://github.com/samply/blaze/issues/4709))
+* Ship the Declared Clojure Version in the Uberjar ([#4710](https://github.com/samply/blaze/issues/4710))
+* Exclude Unused Metrics Libraries of the Cassandra Driver ([#4715](https://github.com/samply/blaze/issues/4715))
+* Exclude OkHttp, Okio and Kotlin Stdlib From HAPI Deps ([#4719](https://github.com/samply/blaze/issues/4719))
+* Replace Muuntaja Parse with Own Header Parsing ([#4720](https://github.com/samply/blaze/issues/4720))
+* Exclude Unused Jepsen Dependencies ([#4726](https://github.com/samply/blaze/issues/4726))
+* Remove OpenAPI Spec from Admin API ([#4731](https://github.com/samply/blaze/issues/4731))
+* Strip Unused Native Libraries from Uberjar ([#4754](https://github.com/samply/blaze/issues/4754))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/133?closed=1).
+
 ## v1.13.0
 
 ### Notes

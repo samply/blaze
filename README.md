@@ -28,7 +28,7 @@ A demo installation can be found [here](https://r4.blaze-server.org/fhir/).
 
 Blaze is stable and widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe.
 
-Latest release: [v1.13.0][5]
+Latest release: [v1.14.0][5]
 
 ## Key Features
 
@@ -82,7 +82,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [2]: <https://blaze-server.org/api/operation/measure-evaluate-measure.html>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v1.13.0>
+[5]: <https://github.com/samply/blaze/releases/tag/v1.14.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
