@@ -100,7 +100,7 @@
   ;; has to be declared here, because the root deps of tools.deps override the
   ;; version declared in modules/module-base, which has to match this one
   org.clojure/clojure
-  {:mvn/version "1.12.6"}
+  {:mvn/version "1.12.7"}
 
   org.slf4j/slf4j-nop
   {:mvn/version "2.0.20"}
