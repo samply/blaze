@@ -13,6 +13,8 @@ For `GET` requests, the in parameters are taken from the query string. For `POST
 
 In the `Parameters` resource, each parameter has to use the value type given in the table below, so `valueDate` for `start` and `end`, `valueInstant` for `_since` and `valueInteger` for `_count`. A parameter with an invalid value or a different type results in a `400 Bad Request`. In the query string, only invalid `start` and `end` values are rejected, invalid `_since` and `_count` values are ignored.
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name    | Cardinality | Type    | Documentation                                                                                                                                                                          |
@@ -139,8 +141,6 @@ The `next` link of the returned Bundle can be followed to fetch the remaining pa
 curl -s "http://localhost:8080/fhir/Patient/0/\$everything?_count=500" | \
   jq -r '.link[] | select(.relation == "next") | .url'
 ```
-
-The official documentation can be found [here][1].
 
 [1]: <https://www.hl7.org/fhir/R4/operation-patient-everything.html>
 [2]: <https://www.hl7.org/fhir/R4/compartmentdefinition-patient.html>

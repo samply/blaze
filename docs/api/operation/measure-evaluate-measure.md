@@ -9,6 +9,8 @@ POST [base]/Measure/$evaluate-measure
 POST [base]/Measure/[id]/$evaluate-measure
 ```
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name        | Cardinality | Type               | Documentation                                                                                                                                                                                                  |
@@ -76,8 +78,6 @@ The following rules apply:
 Currently the common primitive types (`boolean`, `integer`, `decimal`, `string`, `code`, `date` and `dateTime`) together with the `List`/`Tuple` rules are supported. Unsupported types return an error.
 
 A detailed example can be found in the [CQL Evaluation API documentation](../../cql-queries/api.md#evaluation-with-parameters).
-
-The official documentation can be found [here][1].
 
 [1]: <https://hl7.org/fhir/R4/operation-measure-evaluate-measure.html>
 [2]: <https://github.com/samply/blazectl>

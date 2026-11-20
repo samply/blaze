@@ -7,6 +7,8 @@ GET [base]/CodeSystem/$lookup
 GET [base]/CodeSystem/[id]/$lookup
 ```
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name        | Cardinality | Type   | Documentation                                                                     |
@@ -20,7 +22,5 @@ GET [base]/CodeSystem/[id]/$lookup
 ## Resolution of CodeSystem Resources
 
 More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
-
-The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/codesystem-operation-lookup.html>

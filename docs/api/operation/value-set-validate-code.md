@@ -7,6 +7,8 @@ GET [base]/ValueSet/$validate-code
 GET [base]/ValueSet/[id]/$validate-code
 ```
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name            | Cardinality | Type            | Documentation                                                                                                                                                                                                                              |
@@ -26,7 +28,5 @@ GET [base]/ValueSet/[id]/$validate-code
 ## Resolution of ValueSet and CodeSystem Resources
 
 More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
-
-The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/valueset-operation-validate-code.html>

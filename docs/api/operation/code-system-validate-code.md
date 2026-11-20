@@ -7,6 +7,8 @@ GET [base]/CodeSystem/$validate-code
 GET [base]/CodeSystem/[id]/$validate-code
 ```
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name            | Cardinality | Type            | Documentation                                                                                                  |
@@ -24,7 +26,5 @@ GET [base]/CodeSystem/[id]/$validate-code
 ## Resolution of CodeSystem Resources
 
 More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
-
-The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/codesystem-operation-validate-code.html>
