@@ -6,8 +6,9 @@ import type { Format } from "./negotiate.ts";
 export type Files = Record<Format, string>;
 
 /**
- * Maps the read path `<resourceType>/<id>` of every resource of the guide,
- * relative to `basePath`, to its rendered files.
+ * Maps the read path `<resourceType>/<id>` of every resource of the guide, and
+ * the URIs a NamingSystem defines, relative to `basePath`, to its rendered
+ * files.
  */
 export type Index = {
   basePath: string;

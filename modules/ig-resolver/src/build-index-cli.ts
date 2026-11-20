@@ -59,6 +59,6 @@ writeFileSync(
 );
 
 console.log(
-  `Indexed ${Object.keys(index.resources).length} resources on these routes:`,
+  `Indexed ${Object.keys(index.resources).length} paths on these routes:`,
 );
 for (const route of routes(canonical, index)) console.log(`  ${route}`);

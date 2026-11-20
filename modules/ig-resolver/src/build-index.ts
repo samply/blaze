@@ -7,6 +7,7 @@ export type Resource = {
   resourceType: string;
   id: string;
   url?: string;
+  uniqueId?: { type: string; value: string }[];
 };
 
 /**
@@ -41,6 +42,24 @@ function checkUrl(canonical: string, resource: Resource): void {
 }
 
 /**
+ * Returns the paths, relative to `canonical`, of the URIs a NamingSystem
+ * defines on `canonical`. A NamingSystem has no url of its own, so it is
+ * identified by these URIs instead, like the system of an identifier.
+ */
+function uriPaths(canonical: string, { uniqueId = [] }: Resource): string[] {
+  const prefix = `${canonical}/`;
+  return uniqueId
+    .filter(({ type, value }) => type === "uri" && value.startsWith(prefix))
+    .map(({ value }) => value.slice(prefix.length));
+}
+
+function paths(canonical: string, resource: Resource): string[] {
+  return resource.resourceType === "NamingSystem"
+    ? [readPath(resource), ...uriPaths(canonical, resource)]
+    : [readPath(resource)];
+}
+
+/**
  * Returns the index of `resources`, the resources of the guide with the
  * canonical base URL `canonical`.
  */
@@ -51,11 +70,12 @@ export function buildIndex(canonical: string, resources: Resource[]): Index {
   };
   for (const resource of resources) {
     checkUrl(canonical, resource);
-    const path = readPath(resource);
-    if (Object.hasOwn(index.resources, path)) {
-      throw new Error(`${path} occurs more than once.`);
+    for (const path of paths(canonical, resource)) {
+      if (Object.hasOwn(index.resources, path)) {
+        throw new Error(`${path} occurs more than once.`);
+      }
+      index.resources[path] = renderedFiles(resource);
     }
-    index.resources[path] = renderedFiles(resource);
   }
   return index;
 }
@@ -73,14 +93,17 @@ export function missingFiles(
 }
 
 /**
- * Returns the Worker routes covering the read paths of `index`, one per
- * resource type. Routing per type keeps the pages and assets of the guide away
- * from the Worker, so they don't count against its request limit.
+ * Returns the Worker routes covering the paths of `index`, one per first path
+ * segment, the resource type of a read path. Routing per segment keeps the
+ * pages and assets of the guide away from the Worker, so they don't count
+ * against its request limit.
  */
 export function routes(canonical: string, index: Index): string[] {
   const { host } = new URL(canonical);
-  const types = new Set(
+  const segments = new Set(
     Object.keys(index.resources).map((path) => path.split("/")[0]),
   );
-  return [...types].sort().map((type) => `${host}${index.basePath}/${type}/*`);
+  return [...segments]
+    .sort()
+    .map((segment) => `${host}${index.basePath}/${segment}/*`);
 }

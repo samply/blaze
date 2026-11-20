@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Checks that every link from the documentation into the Implementation Guide
 # points to a file of the rendering. VitePress doesn't check these links itself,
@@ -6,8 +7,6 @@
 # copied into the site only after VitePress built it.
 #
 # Usage: check-ig-links.sh <dist-dir>
-
-set -euo pipefail
 
 dist="$1"
 
