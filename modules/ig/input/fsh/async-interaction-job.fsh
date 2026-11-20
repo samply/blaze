@@ -19,6 +19,15 @@ Description: "Types of the outputs of an asynchronous interaction job."
 * #bundle "Bundle"
 * #processing-duration "Processing Duration"
 
+Extension: ReturnPreference
+Id: return-preference
+Title: "Return Preference"
+Description: "The return preference of the `Prefer` header of an asynchronous request, one of `minimal`, `representation` and `OperationOutcome`. The request is executed later, without its HTTP headers, so the preference is kept with the request in the request bundle."
+* ^status = #active
+* ^context[0].type = #element
+* ^context[0].expression = "Bundle.entry.request"
+* value[x] only code
+
 Profile: AsyncInteractionJob
 Parent: Job
 Description: "A job executing a request of the Asynchronous Interaction Request Pattern. Its input references the request bundle and its output the response bundle."
@@ -61,6 +70,7 @@ Description: "The batch bundle holding the request of an asynchronous interactio
 * type = $BT#batch
 * entry 1..*
 * entry.request 1..1
+* entry.request.extension contains ReturnPreference named returnPreference 0..1
 * entry.search 0..0
 
 Profile: AsyncInteractionResponseBundle

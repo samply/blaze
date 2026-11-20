@@ -55,6 +55,62 @@ describe("buildIndex", () => {
     });
   });
 
+  describe("NamingSystem", () => {
+    const namingSystem = (value: string, type = "uri") => ({
+      resourceType: "NamingSystem",
+      id: "JobNumberNamingSystem",
+      uniqueId: [{ type, value }],
+    });
+
+    const files = {
+      html: "NamingSystem-JobNumberNamingSystem.html",
+      json: "NamingSystem-JobNumberNamingSystem.json",
+      xml: "NamingSystem-JobNumberNamingSystem.xml",
+    };
+
+    it("maps its URI on the canonical to its rendered files", () => {
+      const index = buildIndex(canonical, [
+        namingSystem("https://blaze-server.org/fhir/sid/JobNumber"),
+      ]);
+
+      assert.deepEqual(index.resources, {
+        "NamingSystem/JobNumberNamingSystem": files,
+        "sid/JobNumber": files,
+      });
+    });
+
+    it("doesn't map a URI outside the canonical", () => {
+      const index = buildIndex(canonical, [
+        namingSystem("https://example.com/fhir/sid/JobNumber"),
+      ]);
+
+      assert.deepEqual(Object.keys(index.resources), [
+        "NamingSystem/JobNumberNamingSystem",
+      ]);
+    });
+
+    it("doesn't map a unique id other than a URI", () => {
+      const index = buildIndex(canonical, [
+        namingSystem("https://blaze-server.org/fhir/sid/JobNumber", "other"),
+      ]);
+
+      assert.deepEqual(Object.keys(index.resources), [
+        "NamingSystem/JobNumberNamingSystem",
+      ]);
+    });
+
+    it("fails on a URI that is the read path of another resource", () => {
+      assert.throws(
+        () =>
+          buildIndex(canonical, [
+            { resourceType: "Task", id: "A" },
+            namingSystem("https://blaze-server.org/fhir/Task/A"),
+          ]),
+        { message: "Task/A occurs more than once." },
+      );
+    });
+  });
+
   it("fails on a url that isn't the read URL of its resource", () => {
     assert.throws(
       () =>
@@ -123,6 +179,23 @@ describe("routes", () => {
     assert.deepEqual(routes(canonical, index), [
       "blaze-server.org/fhir/CodeSystem/*",
       "blaze-server.org/fhir/ValueSet/*",
+    ]);
+  });
+
+  it("covers the URI of a NamingSystem", () => {
+    const index = buildIndex(canonical, [
+      {
+        resourceType: "NamingSystem",
+        id: "JobNumberNamingSystem",
+        uniqueId: [
+          { type: "uri", value: "https://blaze-server.org/fhir/sid/JobNumber" },
+        ],
+      },
+    ]);
+
+    assert.deepEqual(routes(canonical, index), [
+      "blaze-server.org/fhir/NamingSystem/*",
+      "blaze-server.org/fhir/sid/*",
     ]);
   });
 });

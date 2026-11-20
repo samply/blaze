@@ -1766,7 +1766,7 @@
    {:blaze.rest-api/operations
     [#:blaze.rest-api.operation
       {:code "cql"
-       :def-uri "https://hl7.org/fhir/uv/cql/OperationDefinition-cql-cql.html"
+       :def-uri "http://hl7.org/fhir/uv/cql/OperationDefinition/cql-cql"
        :affects-state false
        :resource-types ["Resource"]
        :system-handler #blaze/ref :blaze.fhir.operation/cql

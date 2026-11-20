@@ -1,12 +1,11 @@
 #!/bin/bash
+set -euo pipefail
 
 # Checks that the QA report of the rendered Implementation Guide lists no errors
 # and no broken links. The IG Publisher reports both without failing, so without
 # this check they would go unnoticed in a passing build.
 #
 # Usage: check-ig-qa.sh [<output-dir>]
-
-set -euo pipefail
 
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"

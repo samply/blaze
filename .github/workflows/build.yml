@@ -1430,6 +1430,10 @@ jobs:
     - name: Download Observation Resources that end before the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
 
+    - name: Check Capability Statement of Operation CQL
+      if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
+      run: .github/scripts/check-capability-statement-cql.sh
+
     - name: Operation CQL Arithmetic
       if: ${{ matrix.feature == 'full' || matrix.feature == 'cql' }}
       run: .github/scripts/operation-cql-arithmetic.sh

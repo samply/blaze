@@ -6,6 +6,8 @@ The system level \$compact operation is used to compact column families of Rocks
 POST [base]/$compact
 ```
 
+The operation is formally described by the [OperationDefinition](/fhir/OperationDefinition-compact.html){target="_self"} with the canonical URL `https://blaze-server.org/fhir/OperationDefinition/compact`, defined in the [Blaze Implementation Guide](/fhir/index.html){target="_self"}.
+
 ## In Parameters
 
 | Name          | Cardinality | Type | Documentation                                                          |

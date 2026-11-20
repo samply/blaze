@@ -32,6 +32,17 @@ Blaze doesn't support the `practitioner` and `lastReceivedOn` input parameters d
 * a detailed documentation how to use the \$evaluate-measure API can be found [here](../../cql-queries/api.md)
 * a documentation how to use \$evaluate-measure via blazectl can be found [here](../../cql-queries/blazectl.md)
 
+## Extensions
+
+The `MeasureReport` carries two extensions about its evaluation, defined in the [Blaze Implementation Guide](/fhir/index.html){target="_self"}:
+
+| Extension                                                                               | Type     | Documentation                                                                                                 |
+|-----------------------------------------------------------------------------------------|----------|---------------------------------------------------------------------------------------------------------------|
+| [Evaluation Duration](/fhir/StructureDefinition-eval-duration.html){target="_self"}     | Quantity | The duration the evaluation took, in seconds.                                                                 |
+| [Bloom Filter Ratio](/fhir/StructureDefinition-bloom-filter-ratio.html){target="_self"} | Ratio    | The number of Bloom filters available over the number requested. Both are 0 without the CQL expression cache. |
+
+To stay backward compatible with existing clients, Blaze emits both extensions under the current `https://blaze-server.org/fhir` canonical and the legacy `https://samply.github.io/blaze/fhir` canonical; the legacy canonical will be removed in the next major version (v2).
+
 ## Library Resolution
 
 `Measure.library` references the [Library][7] resource holding the CQL used for evaluation. Only the first library canonical is considered; Blaze currently only supports measures with exactly one library. Blaze resolves it as a canonical reference, per [FHIR R4 §2.3.0.5][8]:
