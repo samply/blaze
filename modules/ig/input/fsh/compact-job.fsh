@@ -1,18 +1,21 @@
 CodeSystem: CompactJobParameter
 Id: CompactJobParameter
 Title: "Compact Job Parameter"
-* ^status = #active
+Description: "Types of the inputs of a compact job."
+* insert ShareableCodeSystem
 * #database "Database"
 * #column-family "Column Family"
 
 CodeSystem: CompactJobOutput
 Id: CompactJobOutput
 Title: "Compact Job Output"
-* ^status = #active
+Description: "Types of the outputs of a compact job."
+* insert ShareableCodeSystem
 * #processing-duration "Processing Duration"
 
 Profile: CompactJob
 Parent: Job
+Description: "A job compacting one column family of one of the databases of Blaze."
 * code = JobType#compact "Compact a Database Column Family"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
@@ -45,6 +48,7 @@ Parent: Job
 
 Instance: CompactJobExample
 InstanceOf: CompactJob
+Description: "A compact job of the search param value index that is ready to be executed."
 * status = #ready
 * intent = #order
 * code = JobType#compact "Compact a Database Column Family"

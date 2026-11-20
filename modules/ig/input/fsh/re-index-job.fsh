@@ -3,13 +3,15 @@ Alias: UCUM = http://unitsofmeasure.org
 CodeSystem: ReIndexJobParameter
 Id: ReIndexJobParameter
 Title: "(Re)Index Job Parameter"
-* ^status = #active
+Description: "Types of the inputs of a (re)index job."
+* insert ShareableCodeSystem
 * #search-param-url "Search Param URL"
 
 CodeSystem: ReIndexJobOutput
 Id: ReIndexJobOutput
 Title: "(Re)Index Job Output"
-* ^status = #active
+Description: "Types of the outputs of a (re)index job."
+* insert ShareableCodeSystem
 * #total-resources "Total Resources"
 * #resources-processed "Resources Processed"
 * #processing-duration "Processing Duration"
@@ -17,6 +19,7 @@ Title: "(Re)Index Job Output"
 
 Profile: ReIndexJob
 Parent: Job
+Description: "A job (re)indexing all resources of one search parameter."
 * code = JobType#re-index "(Re)Index a Search Parameter"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
@@ -57,6 +60,7 @@ Parent: Job
 
 Instance: ReIndexJobReadyExample
 InstanceOf: ReIndexJob
+Description: "A (re)index job that is ready to be executed."
 * status = #ready
 * intent = #order
 * code = JobType#re-index "(Re)Index a Search Parameter"
@@ -66,6 +70,7 @@ InstanceOf: ReIndexJob
 
 Instance: ReIndexJobInProgressExample
 InstanceOf: ReIndexJob
+Description: "A (re)index job that is in progress."
 * status = #in-progress
 * statusReason = JobStatusReason#started "Started"
 * intent = #order
@@ -82,6 +87,7 @@ InstanceOf: ReIndexJob
 
 Instance: ReIndexJobFailedExample
 InstanceOf: ReIndexJob
+Description: "A (re)index job that failed."
 * status = #failed
 * intent = #order
 * code = JobType#re-index "(Re)Index a Search Parameter"

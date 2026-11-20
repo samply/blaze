@@ -1,7 +1,8 @@
 CodeSystem: Database
 Id: Database
 Title: "Database"
-* ^status = #active
+Description: "The databases Blaze stores its data in."
+* insert ShareableCodeSystem
 * #index "Index"
 * #transaction "Transaction"
 * #resource "Resource"
@@ -9,5 +10,6 @@ Title: "Database"
 ValueSet: Database
 Id: Database
 Title: "Database Value Set"
-* ^status = #active
+Description: "All databases Blaze stores its data in."
+* insert ShareableValueSet
 * include codes from system Database

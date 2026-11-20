@@ -1,7 +1,8 @@
 CodeSystem: ValidationStatus
 Id: ValidationStatus
 Title: "Validation Status"
-* ^status = #active
+Description: "The status of a resource as determined by the external validation. Carried as tag in Resource.meta.tag."
+* insert ShareableCodeSystem
 * #invalid "Invalid"
 
 Extension: ValidationOutcome
