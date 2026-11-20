@@ -41,6 +41,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+      start_interval: 2s
     depends_on:
       backend:
         condition: service_healthy
@@ -74,7 +75,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      # Blaze can start slowly while the Playwright dependencies are installed in parallel.
+      start_period: 120s
+      start_interval: 2s
 
   keycloak:
     image: "quay.io/keycloak/keycloak:26.4.2@sha256:3617b09bb4b7510a8d8d9b9fc5707399e2d70688dbcc2f8fb013a144829be1b9"

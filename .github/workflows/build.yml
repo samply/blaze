@@ -3474,9 +3474,6 @@ jobs:
     - name: Run Keycloak
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d keycloak
 
-    - name: Install Dependencies
-      uses: ./.github/actions/install-playwright
-
     - name: Download SNOMED CT Release
       uses: ./.github/actions/speicherwolke-download
       with:
@@ -3485,6 +3482,14 @@ jobs:
 
     - name: Unzip SNOMED CT Release
       run: unzip ./SnomedCT_InternationalRF2_PRODUCTION_20250701T120000Z.zip -d modules/frontend-e2e
+
+      # Blaze starts while the dependencies are installed. The ingress has to
+      # run as well, because Blaze reaches Keycloak through it.
+    - name: Run Blaze and Ingress
+      run: docker compose -f modules/frontend-e2e/docker-compose.yml up -d ingress
+
+    - name: Install Dependencies
+      uses: ./.github/actions/install-playwright
 
     - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose.yml up --wait
@@ -3555,10 +3560,14 @@ jobs:
     - name: Generate Ingress Certificates
       run: make build-ingress
 
+      # Blaze starts while the dependencies are installed.
+    - name: Run Blaze
+      run: docker compose -f modules/frontend-e2e/docker-compose-no-auth.yml up -d backend
+
     - name: Install Dependencies
       uses: ./.github/actions/install-playwright
 
-    - name: Run Blaze
+    - name: Run Everything Else
       run: docker compose -f modules/frontend-e2e/docker-compose-no-auth.yml up --wait
 
     - name: Docker Logs
