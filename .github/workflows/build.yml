@@ -127,6 +127,10 @@ jobs:
         name: ig-rendering
         path: modules/ig/output
 
+    # Runs after the upload, so that a failing render can still be reviewed.
+    - name: Check IG QA Report
+      run: .github/scripts/check-ig-qa.sh
+
   prep-deps:
     runs-on: ubuntu-24.04
 

@@ -1,7 +1,8 @@
 CodeSystem: ColumnFamily
 Id: ColumnFamily
 Title: "Column Family"
-* ^status = #active
+Description: "The column families of the databases Blaze stores its data in."
+* insert ShareableCodeSystem
 * #default
 * #search-param-value-index
 * #resource-value-index
@@ -23,5 +24,6 @@ Title: "Column Family"
 ValueSet: ColumnFamily
 Id: ColumnFamily
 Title: "Column Family Value Set"
-* ^status = #active
+Description: "All column families of the databases Blaze stores its data in."
+* insert ShareableValueSet
 * include codes from system ColumnFamily

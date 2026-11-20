@@ -1,7 +1,8 @@
 CodeSystem: JobType
 Id: JobType
 Title: "Job Type"
-* ^status = #active
+Description: "The types of jobs Blaze executes."
+* insert ShareableCodeSystem
 * #async-interaction "Asynchronous Interaction Request"
 * #async-bulk-data "Asynchronous Bulk Data Request"
 * #compact "Compact a Database Column Family"
@@ -11,7 +12,8 @@ Title: "Job Type"
 CodeSystem: JobStatusReason
 Id: JobStatusReason
 Title: "Job Status Reason"
-* ^status = #active
+Description: "The reasons for the status of a job."
+* insert ShareableCodeSystem
 * #orderly-shutdown "Orderly Shutdown"
 * #paused "Paused"
 * #resumed "Resumed"
@@ -21,21 +23,24 @@ Title: "Job Status Reason"
 CodeSystem: JobCancelledSubStatus
 Id: JobCancelledSubStatus
 Title: "Job Cancelled Sub Status"
-* ^status = #active
+Description: "The sub status of a cancelled job, telling whether the cancellation was only requested or is already finished."
+* insert ShareableCodeSystem
 * #requested "Requested"
 * #finished "Finished"
 
 CodeSystem: JobOutput
 Id: JobOutput
 Title: "Job Output"
-* ^status = #active
+Description: "Types of the outputs all jobs share."
+* insert ShareableCodeSystem
 * #error-category "Error Category"
 * #error "Error"
 
 CodeSystem: ErrorCategory
 Id: ErrorCategory
 Title: "Error Category"
-* ^status = #active
+Description: "The categories of the error a failed job reports."
+* insert ShareableCodeSystem
 * #unavailable
 * #interrupted
 * #busy
@@ -49,11 +54,13 @@ Title: "Error Category"
 ValueSet: ErrorCategory
 Id: ErrorCategory
 Title: "Error Category Value Set"
-* ^status = #active
+Description: "All categories of the error a failed job reports."
+* insert ShareableValueSet
 * include codes from system ErrorCategory
 
 Profile: Job
 Parent: Task
+Description: "The base profile of all jobs Blaze executes. A job is a Task with a type, the time it was authored and, if it failed, an error."
 * obeys status-reason-in-progress
 * obeys status-reason-on-hold
 * identifier ^slicing.discriminator.type = #pattern

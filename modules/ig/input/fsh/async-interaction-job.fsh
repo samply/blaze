@@ -6,19 +6,22 @@ Alias: $LOINC = http://loinc.org
 CodeSystem: AsyncInteractionJobParameter
 Id: AsyncInteractionJobParameter
 Title: "Async Interaction Job Parameter"
-* ^status = #active
+Description: "Types of the inputs of an asynchronous interaction job."
+* insert ShareableCodeSystem
 * #bundle "Bundle"
 * #t "Database Point in Time"
 
 CodeSystem: AsyncInteractionJobOutput
 Id: AsyncInteractionJobOutput
 Title: "Async Interaction Job Output"
-* ^status = #active
+Description: "Types of the outputs of an asynchronous interaction job."
+* insert ShareableCodeSystem
 * #bundle "Bundle"
 * #processing-duration "Processing Duration"
 
 Profile: AsyncInteractionJob
 Parent: Job
+Description: "A job executing a request of the Asynchronous Interaction Request Pattern. Its input references the request bundle and its output the response bundle."
 * code = JobType#async-interaction "Asynchronous Interaction Request"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
@@ -54,6 +57,7 @@ Parent: Job
 
 Profile: AsyncInteractionRequestBundle
 Parent: Bundle
+Description: "The batch bundle holding the request of an asynchronous interaction job."
 * type = $BT#batch
 * entry 1..*
 * entry.request 1..1
@@ -61,6 +65,7 @@ Parent: Bundle
 
 Profile: AsyncInteractionResponseBundle
 Parent: Bundle
+Description: "The batch-response bundle holding the response of an asynchronous interaction job."
 * type = $BT#batch-response
 * entry 1..*
 * entry.response 1..1
@@ -68,17 +73,19 @@ Parent: Bundle
 
 Instance: AsyncInteractionJobSearchObservationReadyExample
 InstanceOf: AsyncInteractionJob
+Description: "An asynchronous interaction job counting Observations that is ready to be executed."
 * status = #ready
 * intent = #order
 * code = JobType#async-interaction "Asynchronous Interaction Request"
 * authoredOn = "2024-05-20T15:25:20.927Z"
 * input[bundle].type = AsyncInteractionJobParameter#bundle "Bundle"
-* input[bundle].valueReference.reference = "Bundle/foo"
+* input[bundle].valueReference.reference = "Bundle/AsyncInteractionJobSearchObservationRequestBundleExample"
 * input[t].type = AsyncInteractionJobParameter#t "Database Point in Time"
 * input[t].valueUnsignedInt = 347856
 
 Instance: AsyncInteractionJobSearchObservationRequestBundleExample
 InstanceOf: AsyncInteractionRequestBundle
+Description: "The request bundle of an asynchronous interaction job counting Observations."
 * type = $BT#batch
 * entry.request.method = $HV#GET
 * entry.request.url = "Observation?code=http://loinc.org|8310-5&_summary=count"
@@ -91,18 +98,20 @@ Usage: #inline
 
 Instance: AsyncInteractionJobSearchObservationResponseBundleExample
 InstanceOf: AsyncInteractionResponseBundle
+Description: "The response bundle of an asynchronous interaction job counting Observations."
 * type = $BT#batch-response
 * entry.resource = SearchObservationBundle
 * entry.response.status = "200"
 
 Instance: AsyncInteractionJobSearchObservationCancellationRequestedExample
 InstanceOf: AsyncInteractionJob
+Description: "An asynchronous interaction job counting Observations whose cancellation was requested."
 * status = #cancelled
 * intent = #order
 * businessStatus = JobCancelledSubStatus#requested "Requested"
 * code = JobType#async-interaction "Asynchronous Interaction Request"
 * authoredOn = "2024-05-20T15:25:20.927Z"
 * input[bundle].type = AsyncInteractionJobParameter#bundle "Bundle"
-* input[bundle].valueReference.reference = "Bundle/foo"
+* input[bundle].valueReference.reference = "Bundle/AsyncInteractionJobSearchObservationRequestBundleExample"
 * input[t].type = AsyncInteractionJobParameter#t "Database Point in Time"
 * input[t].valueUnsignedInt = 347856

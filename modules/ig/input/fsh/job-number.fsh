@@ -1,6 +1,7 @@
 Instance: JobNumberNamingSystem
 InstanceOf: NamingSystem
 Usage: #definition
+Description: "The naming system of the number every job in Blaze is identified by."
 * name = "JobNumber"
 * status = #active
 * kind = #identifier

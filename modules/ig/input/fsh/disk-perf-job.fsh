@@ -1,7 +1,8 @@
 CodeSystem: DiskPerfJobParameter
 Id: DiskPerfJobParameter
 Title: "Disk Performance Job Parameter"
-* ^status = #active
+Description: "Types of the inputs of a disk performance job."
+* insert ShareableCodeSystem
 * #database "Database"
 * #file-size "File Size"
 * #phase-duration "Phase Duration"
@@ -10,7 +11,8 @@ Title: "Disk Performance Job Parameter"
 CodeSystem: DiskPerfJobOutput
 Id: DiskPerfJobOutput
 Title: "Disk Performance Job Output"
-* ^status = #active
+Description: "Types of the outputs of a disk performance job."
+* insert ShareableCodeSystem
 * #current-phase "Current Phase"
 * #phase-progress "Phase Progress"
 * #seq-write-throughput "Sequential Write Throughput"
@@ -41,7 +43,8 @@ Description: "The number of concurrent readers of one run of the random read swe
 CodeSystem: DiskPerfPhase
 Id: DiskPerfPhase
 Title: "Disk Performance Phase"
-* ^status = #active
+Description: "The phases of the disk performance benchmark."
+* insert ShareableCodeSystem
 * #seq-write "Sequential Write"
 * #rand-read "Random Read"
 * #fsync "Fsync"
@@ -49,13 +52,15 @@ Title: "Disk Performance Phase"
 ValueSet: DiskPerfPhase
 Id: DiskPerfPhase
 Title: "Disk Performance Phase Value Set"
-* ^status = #active
+Description: "All phases of the disk performance benchmark."
+* insert ShareableValueSet
 * include codes from system DiskPerfPhase
 
 CodeSystem: DiskPerfRating
 Id: DiskPerfRating
 Title: "Disk Performance Rating"
-* ^status = #active
+Description: "The ratings of the overall disk performance score."
+* insert ShareableCodeSystem
 * #excellent "Excellent"
 * #good "Good"
 * #acceptable "Acceptable"
@@ -64,11 +69,13 @@ Title: "Disk Performance Rating"
 ValueSet: DiskPerfRating
 Id: DiskPerfRating
 Title: "Disk Performance Rating Value Set"
-* ^status = #active
+Description: "All ratings of the overall disk performance score."
+* insert ShareableValueSet
 * include codes from system DiskPerfRating
 
 Profile: DiskPerfJob
 Parent: Job
+Description: "A job measuring the performance of the disk volume of one of the database directories of Blaze."
 * code = JobType#disk-perf "Measure Disk Performance"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
@@ -281,6 +288,7 @@ Expression: "value.ofType(positiveInt) <= 1024"
 
 Instance: DiskPerfJobExample
 InstanceOf: DiskPerfJob
+Description: "A disk performance job of the index database that is ready to be executed."
 * status = #ready
 * intent = #order
 * code = JobType#disk-perf "Measure Disk Performance"

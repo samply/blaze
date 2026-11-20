@@ -1,7 +1,7 @@
 Instance: TaskInput
 InstanceOf: SearchParameter
 Usage: #definition
-* name = "input"
+* name = "TaskInput"
 * status = #active
 * description = "Reference to inputs of a task."
 * code = #input
@@ -12,7 +12,7 @@ Usage: #definition
 Instance: TaskOutput
 InstanceOf: SearchParameter
 Usage: #definition
-* name = "output"
+* name = "TaskOutput"
 * status = #active
 * description = "Reference to outputs of a task."
 * code = #output
@@ -22,6 +22,7 @@ Usage: #definition
 
 Instance: JobSearchParameterBundle
 InstanceOf: Bundle
+Description: "The search parameters Blaze adds to Task in order to search jobs by the resources their inputs and outputs reference."
 * type = #collection
 * entry[0].fullUrl = "https://blaze-server.org/fhir/SearchParameter/TaskInput"
 * entry[0].resource = TaskInput
