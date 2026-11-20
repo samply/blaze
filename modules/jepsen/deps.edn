@@ -24,6 +24,23 @@
   org.slf4j/slf4j-api
   {:mvn/version "2.0.20"}}
 
+ ;; Jepsen's tree contains version ranges (net.schmizz/sshj [0.8.1,) from
+ ;; jsch.agentproxy.sshj and org.clojure/clojure [1.2.0,] from analemma), which
+ ;; the resolver can only resolve with maven-metadata.xml. Under the default
+ ;; daily update policy it downloads that metadata again whenever the copy in
+ ;; the local repo is older than a day, even if all artifacts are there. Never
+ ;; updating it lets a restored CI cache work offline.
+ :mvn/repos
+ {"central"
+  {:url "https://repo1.maven.org/maven2/"
+   :releases {:update :never}
+   :snapshots {:update :never}}
+
+  "clojars"
+  {:url "https://repo.clojars.org/"
+   :releases {:update :never}
+   :snapshots {:update :never}}}
+
  :aliases
  {:test
   {:extra-paths ["test"]
