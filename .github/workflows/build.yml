@@ -909,6 +909,9 @@ jobs:
         - blaze
         - blaze-frontend
       fail-fast: false
+    env:
+      # renovate: datasource=github-releases depName=aquasecurity/trivy
+      TRIVY_VERSION: v0.76.2
 
     steps:
     - name: Login to GHCR
@@ -924,26 +927,57 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-    - name: Run Trivy Vulnerability Scanner
+    # OS packages are scanned for critical and high vulnerabilities only. Their
+    # medium and low vulnerabilities mostly have no fix yet, or the fix arrives
+    # with the next base image update.
+    - name: Scan OS Packages
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       env:
-        # renovate: datasource=github-releases depName=aquasecurity/trivy
-        TRIVY_VERSION: v0.76.2
         TRIVY_NO_PROGRESS: true
         TRIVY_VEX: .vex/blaze.openvex.json
       with:
         version: ${{ env.TRIVY_VERSION }}
         image-ref: ${{ matrix.image }}:latest
+        vuln-type: os
         format: sarif
-        output: trivy-results.sarif
+        output: trivy-results-os.sarif
         severity: 'CRITICAL,HIGH'
+        limit-severities-for-sarif: true
         timeout: '15m0s'
 
-    - name: Upload Trivy Scan Results to GitHub Security Tab
+    # Libraries are also scanned for medium vulnerabilities, because they can
+    # matter for Blaze, and GitHub's dependency alerts don't read deps.edn.
+    - name: Scan Libraries
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      env:
+        TRIVY_NO_PROGRESS: true
+        TRIVY_VEX: .vex/blaze.openvex.json
+      with:
+        version: ${{ env.TRIVY_VERSION }}
+        skip-setup-trivy: true
+        image-ref: ${{ matrix.image }}:latest
+        vuln-type: library
+        format: sarif
+        output: trivy-results-library.sarif
+        severity: 'CRITICAL,HIGH,MEDIUM'
+        limit-severities-for-sarif: true
+        timeout: '15m0s'
+
+    # The OS package results keep the category the single scan had before, so
+    # that its alerts are closed and not left behind in an unused category.
+    - name: Upload OS Package Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
       uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
       with:
-        sarif_file: trivy-results.sarif
+        sarif_file: trivy-results-os.sarif
+        category: .github/workflows/build.yml:image-scan/image:${{ matrix.image }}
+
+    - name: Upload Library Scan Results to GitHub Security Tab
+      if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
+      uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+      with:
+        sarif_file: trivy-results-library.sarif
+        category: .github/workflows/build.yml:image-scan/image:${{ matrix.image }}/library
 
   # Checks that every subcomponent of the published VEX statements occurs in a
   # release the statements cover, and that Trivy and Grype apply the statements
