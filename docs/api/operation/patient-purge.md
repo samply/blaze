@@ -3,15 +3,17 @@
 > [!NOTE]
 > The operation \$purge on Patient is an optional feature that has to be enabled by setting [`ENABLE_OPERATION_PATIENT_PURGE`](../../deployment/environment-variables.md#enable-operation-patient-purge) to `true`. Before 1.14.0, it was **alpha** and shouldn't be used in production.
 
-The patient \$purge operation is used to request the removal of all current and historical versions of the patient and all resources selected by the [purge GraphDefinition](#selected-resources). The return is an OperationOutcome with results and/or details about execution. The `code` of the first issue of the OperationOutcome is either `success` on successful purging of all resources or an error.
+The \$purge operation removes all current and historical versions of one patient and of all [selected resources](#selected-resources). The result is an OperationOutcome.
 
 ```
 POST [base]/Patient/[id]/$purge
 ```
 
-All resources selected by the [purge GraphDefinition](#selected-resources) are marked as purged immediately. All reads which happen after the \$purge operation completes, will not see any of the purged resources. Only active [paging sessions](../../api.md#paging-sessions) and [asynchronous requests](../../api.md#asynchronous-requests) started before the patient \$purge operation will be able to access the purged versions for a limited amount of time.  
+Blaze supports the operation only at instance level and only via `POST`.
 
-The official documentation can be found [here][1].
+The patient and all selected resources are marked as purged immediately. All reads which happen after the \$purge operation completes, will not see any of the purged resources. Only active [paging sessions](../../api.md#paging-sessions) and [asynchronous requests](../../api.md#asynchronous-requests) started before the patient \$purge operation will be able to access the purged versions for a limited amount of time.
+
+The FHIR specification can be found [here][1].
 
 ## Selected Resources <Badge type="warning" text="Since 1.14.0"/>
 
@@ -126,16 +128,15 @@ The history of a resource records the versions as they were written. A historica
 
 ### Deleted Resources
 
-A resource deleted before the purge isn't purged. Its current version is the deletion, which doesn't reference any patient. Its earlier versions, including their content and the reference to the purged patient, stay readable via [versioned read](../interaction/vread.md), [instance history](../interaction/history-instance.md), [type history](../interaction/history-type.md) and [system history](../interaction/history-system.md).
+A resource deleted before the purge isn't purged. A delete doesn't remove the versions of a resource. It adds a new version, the deletion marker, which has no content. The deletion marker is the current version of the resource, and it doesn't reference any patient. The earlier versions, including their content and the reference to the purged patient, stay readable via [versioned read](../interaction/vread.md), [instance history](../interaction/history-instance.md), [type history](../interaction/history-type.md) and [system history](../interaction/history-system.md).
+
+To prevent that, purge the patient instead of deleting its resources. A resource that still references the patient is selected and purged with all of its versions.
 
 Deleting is often the wrong way to handle wrong data anyway. Many resources have a status element that overlaps with the idea of deletion (see [delete](https://hl7.org/fhir/R4/http.html#delete) and [Entered in Error Summary](https://hl7.org/fhir/R4/lifecycle.html#error) in the FHIR specification). A wrong Observation, for example, should get the status `entered-in-error` instead of being deleted. It still references the patient, so it's purged together with the patient.
 
 ### Removing Left-Over Versions
 
-The versions referencing the patient that a purge leaves can be removed in two ways:
-
-* **Purge first:** purge the patient before deleting any of its resources. A resource that is still selected is purged with all of its versions.
-* **Delete history:** remove the historical versions of the affected resources with the [delete history](../interaction/delete-history.md) interaction, or single versions with the [delete history version](../interaction/delete-history-version.md) interaction. For a deleted resource, delete history keeps only the deletion.
+After a purge, versions that reference the patient can remain in the history of resources assigned to another patient and of deleted resources. The [delete history](../interaction/delete-history.md) interaction removes all versions of such a resource except the current one. For a deleted resource, the current version is the deletion marker, so no data of the patient remains. The [delete history version](../interaction/delete-history-version.md) interaction removes a single historical version.
 
 ## Erasure of Personal Data <Badge type="warning" text="Since 1.14.0"/>
 
@@ -146,5 +147,30 @@ Whether an erasure is required, and whether an exception of Art. 17(3) GDPR appl
 ## Internal Resources <Badge type="warning" text="Since 1.14.0"/>
 
 Resources Blaze owns itself can carry the security label `internal` with the system [`https://blaze-server.org/fhir/CodeSystem/AccessControl`](/fhir/CodeSystem-AccessControl.html){target="_self"} in `meta.security`. Such resources can't be purged. If the patient or one of the [selected resources](#selected-resources) carries the label, the operation fails with an OperationOutcome with code `conflict` and purges no resource at all.
+
+## Response
+
+On success the operation returns a `200 OK` together with an OperationOutcome whose first issue has the code `success`. That is also the case if the patient doesn't exist. The following errors can occur:
+
+| Status | Issue Code | Reason                                                                                                                                                                      |
+|--------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 409    | conflict   | Referential integrity is enforced and a resource that isn't purged still references the patient or one of the purged resources. See [Selected Resources](#selected-resources). |
+| 409    | conflict   | The patient or one of the selected resources is internal. See [Internal Resources](#internal-resources).                                                                    |
+
+If an error occurs, no resource is purged.
+
+## Examples
+
+Preview the resources a purge of the patient with the id `0` would erase:
+
+```sh
+curl -s "http://localhost:8080/fhir/Patient/0/\$graph?graph=https://blaze-server.org/fhir/GraphDefinition/PatientPurge"
+```
+
+Purge that patient:
+
+```sh
+curl -s -X POST "http://localhost:8080/fhir/Patient/0/\$purge"
+```
 
 [1]: <https://build.fhir.org/patient-operation-purge.html>

@@ -13,6 +13,8 @@ For `GET` requests, the `graph` parameter is taken from the query string. For `P
 
 In the `Parameters` resource, the `graph` parameter has to have a string value, like `valueCanonical`, `valueUri` or `valueString`. Other values, like a `valueBoolean`, result in a `400 Bad Request`.
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name  | Cardinality | Type      | Documentation                                                                                          |
@@ -204,8 +206,6 @@ Count the returned resources by type:
 curl -s "http://localhost:8080/fhir/Patient/0/\$graph?graph=patient-heart-rate-encounter" | \
   jq -r '.entry | group_by(.resource.resourceType)[] | [.[0].resource.resourceType, length] | @csv'
 ```
-
-The official documentation can be found [here][1].
 
 [1]: <https://hl7.org/fhir/R5/resource-operation-graph.html>
 [2]: <https://hl7.org/fhir/R4/graphdefinition.html>

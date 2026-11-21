@@ -7,6 +7,8 @@ GET [base]/ValueSet/$expand
 GET [base]/ValueSet/[id]/$expand
 ```
 
+The FHIR specification can be found [here][1].
+
 ## In Parameters
 
 | Name              | Cardinality | Type      | Documentation                                                                                                                                                                                 |
@@ -86,7 +88,5 @@ A new `ValueSet.expansion.identifier` is only generated if the existing expansio
 ## Resolution of ValueSet and CodeSystem Resources
 
 More on resolution of terminology resources can be found [here](../../terminology-service/resource-resolution.md).
-
-The official documentation can be found [here][1].
 
 [1]: <http://hl7.org/fhir/R4/valueset-operation-expand.html>

@@ -17,6 +17,13 @@ const config = defineConfig({
 
   base: base,
   lastUpdated: true,
+  vite: {
+    optimizeDeps: {
+      // mermaid imports CommonJS modules, like fastdom, that the dev server
+      // can only serve after pre-bundling
+      include: ["mermaid"],
+    },
+  },
 
   themeConfig: {
     logo: {
