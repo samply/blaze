@@ -6,6 +6,6 @@
     "test": "node --test 'src/**/*.test.ts'"
   },
   "devDependencies": {
-    "wrangler": "4.164.0"
+    "wrangler": "4.166.0"
   }
 }
