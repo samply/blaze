@@ -47,15 +47,20 @@
 (defn- pom-properties-path [lib]
   (format "META-INF/maven/%s/%s/pom.properties" (namespace lib) (artifact-id lib)))
 
-(defn- jar-pom-properties-paths
-  "Returns the paths of all pom.properties files in the jar at `path`."
-  [^String path]
+(defn- jar-paths
+  "Returns the paths of all entries in the jar at `path` matching `re`."
+  [^String path re]
   (with-open [jar (ZipFile. path)]
     (into
      #{}
      (comp (map #(.getName ^ZipEntry %))
-           (filter #(re-matches #"META-INF/maven/.+/pom\.properties" %)))
+           (filter #(re-matches re %)))
      (enumeration-seq (.entries jar)))))
+
+(defn- jar-pom-properties-paths
+  "Returns the paths of all pom.properties files in the jar at `path`."
+  [path]
+  (jar-paths path #"META-INF/maven/.+/pom\.properties"))
 
 (defn- write-pom-properties
   "Writes a pom.properties file for every Maven library that no jar brings one
@@ -98,6 +103,45 @@
   (with-open [jar (ZipFile. ^String uber-file)]
     (when-let [problems (seq (keep #(pom-properties-problem jar %) maven-libs))]
       (throw (ex-info (str "Invalid pom.properties files in " uber-file ":\n"
+                           (str/join "\n" (sort problems)))
+                      {})))))
+
+(def ^:private native-lib
+  "Matches native libraries."
+  ".+\\.(so|dll|dylib|jnilib|a)$")
+
+(def ^:private foreign-native-lib
+  "Matches native libraries for other platforms than Linux amd64 and aarch64,
+  the platforms of the Docker image.
+
+  Most libraries put their native libraries into one directory per platform,
+  RocksDB encodes the platform in the file name."
+  (str "^(?!(.*/)?[Ll]inux/(amd64|x86_64|aarch64)/[^/]+$"
+       "|librocksdbjni-linux(64|-aarch64)\\.so$)"
+       native-lib))
+
+(defn- native-lib-problem
+  "Returns a description of the problem with the native libraries of the Maven
+  library `lib` in the uberjar with `uber-paths` or nil if there is none.
+
+  The uberjar has to keep the native libraries of exactly two platforms, Linux
+  amd64 and aarch64, of every library that has native libraries at all."
+  {:arglists '([uber-paths [lib coord]])}
+  [uber-paths [lib {:keys [paths]}]]
+  (let [all (into #{} (mapcat #(jar-paths % (re-pattern native-lib))) paths)
+        kept (sort (filter uber-paths all))]
+    (when (and (seq all) (not= 2 (count kept)))
+      (format "%s: expected the native libraries for Linux amd64 and aarch64 but found: %s"
+              lib (str/join ", " kept)))))
+
+(defn check-native-libs
+  "Fails if the uberjar doesn't keep the native libraries of exactly two
+  platforms, Linux amd64 and aarch64, of every Maven library that has native
+  libraries."
+  [_]
+  (let [uber-paths (jar-paths uber-file #".+")]
+    (when-let [problems (seq (keep #(native-lib-problem uber-paths %) maven-libs))]
+      (throw (ex-info (str "Invalid native libraries in " uber-file ":\n"
                            (str/join "\n" (sort problems)))
                       {})))))
 
@@ -199,13 +243,7 @@
             "^HISTORY-JAVA.md"
             "^dse_protocol_v\\d.spec"
             "^native_protocol_v\\d.spec"
-            ".*-musl.so$"
-            ".*-ppc64le.so$"
-            ".*-s390x.so$"
-            ".*-linux32.so$"
-            ".*-linux-riscv64.so$"
-            ".*.dll$"
-            ".*.jnilib$"]
+            foreign-native-lib]
            :conflict-handlers
            {"META-INF/io.netty.versions.properties" :append
             :default :warn}}))
