@@ -927,6 +927,7 @@ jobs:
         # renovate: datasource=github-releases depName=aquasecurity/trivy
         TRIVY_VERSION: v0.76.2
         TRIVY_NO_PROGRESS: true
+        TRIVY_VEX: .vex/blaze.openvex.json
       with:
         version: ${{ env.TRIVY_VERSION }}
         image-ref: ${{ matrix.image }}:latest
@@ -940,6 +941,107 @@ jobs:
       uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       with:
         sarif_file: trivy-results.sarif
+
+  # Checks that every subcomponent of the published VEX statements occurs in a
+  # release the statements cover, and that Trivy and Grype apply the statements
+  # to a released image with a finding that a statement covers.
+  vex-test:
+    name: vex-test (${{ matrix.image.name }})
+    if: github.event_name != 'push' || github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image:
+        # Blaze 1.11.0 ships Guava 33.7.1-jre.
+        - name: blaze
+          reference: blaze:1.11.0@sha256:7b85c55df66122061abade67c715959b38508bb74bc28f62f262771e00f9a66c
+          vulnerability: CVE-2026-102554
+          # The GitHub advisory data of Grype gives the affected range as
+          # <=33.7.1, and Maven ordering puts 33.7.1-jre after 33.7.1, so Grype
+          # misses the finding by default. With CPE matching, it reports the
+          # finding against the same Guava PURL, which is enough to check that
+          # Grype applies the statement.
+          grype-match-java-using-cpes: true
+          # The releases the statements cover.
+          releases: >-
+            1.10.0@sha256:4d6e55b357c71886b6e9baed6a8ed5ec1918f6ceee4e4f950659f223e69b92c9
+            1.11.0@sha256:7b85c55df66122061abade67c715959b38508bb74bc28f62f262771e00f9a66c
+            1.12.0@sha256:665c2f69efa333b3ea7b289973e087ee0db5429daa4c82fab7cbb6ca06f48624
+            1.12.1@sha256:ecea2fd1f646d60d4653eb623df3bd85998e0a405fb7e90abc91dcf2ffa7fded
+            1.13.0@sha256:808d04a6224ca926ab2422d4235cd008399b5e4d4f5855d52fd2715de295f1c2
+        # Blaze Frontend 1.13.0 ships zlib 1.3.2-r1.
+        - name: blaze-frontend
+          reference: blaze-frontend:1.13.0@sha256:f613391e0eb4eb35cb67d46f3e869b6009b691f738a7573e75222253666e4805
+          vulnerability: CVE-2026-4738
+          grype-match-java-using-cpes: false
+          releases: >-
+            1.10.0@sha256:454062e9fbf56ad36d971b6c75e92d3654ad73d92a99840cbea7bb8123488911
+            1.11.0@sha256:6426ecdcf2f43017fa9189c9038cb2abd203fda70e2f823854acdd47e84be1fd
+            1.12.0@sha256:21101680d5f0003ef334d4255bf78d022e7f252e38edb344486ef39045f89500
+            1.12.1@sha256:9c3eb857ddf95aa22d190acea0da88348acbb495c1b0fc68faed0810f64a726b
+            1.13.0@sha256:f613391e0eb4eb35cb67d46f3e869b6009b691f738a7573e75222253666e4805
+      fail-fast: false
+    env:
+      VEX_DOCUMENT: .vex/blaze.openvex.json
+      IMAGE_NAME: ${{ matrix.image.name }}
+      IMAGE: ${{ matrix.image.reference }}
+      VULNERABILITY: ${{ matrix.image.vulnerability }}
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Check VEX Document
+      env:
+        # The OpenVEX spec has no releases, so the JSON schema is pinned to a
+        # commit and its checksum.
+        OPENVEX_SPEC_COMMIT: 93139bd
+        OPENVEX_SCHEMA_CHECKSUM: 9373597734ed1d3ea5161a8b46d3866c4a8cfe76fd632fdd16aef01fb34b3238
+        # renovate: datasource=pypi depName=check-jsonschema
+        CHECK_JSONSCHEMA_VERSION: 0.39.0
+      run: .github/scripts/check-vex-document.sh "$VEX_DOCUMENT"
+
+    - name: Install Trivy
+      env:
+        # renovate: datasource=github-release-attachments depName=aquasecurity/trivy
+        TRIVY_VERSION: v0.76.2
+        TRIVY_CHECKSUM: bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf
+      run: .github/scripts/install-trivy.sh
+
+    - name: Install Grype
+      env:
+        # renovate: datasource=github-release-attachments depName=anchore/grype
+        GRYPE_VERSION: v0.122.1
+        GRYPE_CHECKSUM: f1ba7e2917ee1395618de20a98da0aa7c0fb1788927797651047c50502a37538
+      run: .github/scripts/install-grype.sh
+
+    - name: Check Subcomponents
+      env:
+        TRIVY_NO_PROGRESS: true
+        RELEASES: ${{ matrix.image.releases }}
+      run: |
+        read -ra releases <<< "$RELEASES"
+        .github/scripts/check-vex-subcomponents.sh "$IMAGE_NAME" "$VEX_DOCUMENT" "${releases[@]}"
+
+    - name: Check Trivy Docker Hub
+      env:
+        TRIVY_NO_PROGRESS: true
+      run: .github/scripts/check-vex-suppression.sh trivy "samply/$IMAGE" "$VEX_DOCUMENT" "$VULNERABILITY"
+
+    - name: Check Trivy GHCR
+      env:
+        TRIVY_NO_PROGRESS: true
+      run: .github/scripts/check-vex-suppression.sh trivy "ghcr.io/samply/$IMAGE" "$VEX_DOCUMENT" "$VULNERABILITY"
+
+    - name: Check Grype Docker Hub
+      env:
+        GRYPE_MATCH_JAVA_USING_CPES: ${{ matrix.image.grype-match-java-using-cpes }}
+      run: .github/scripts/check-vex-suppression.sh grype "samply/$IMAGE" "$VEX_DOCUMENT" "$VULNERABILITY"
+
+    - name: Check Grype GHCR
+      env:
+        GRYPE_MATCH_JAVA_USING_CPES: ${{ matrix.image.grype-match-java-using-cpes }}
+      run: .github/scripts/check-vex-suppression.sh grype "ghcr.io/samply/$IMAGE" "$VEX_DOCUMENT" "$VULNERABILITY"
 
   image-labels-test:
     name: image-labels-test (${{ matrix.image.name }})
@@ -3784,6 +3886,7 @@ jobs:
     - test-mem-size
     - test-root
     - image-scan
+    - vex-test
     - image-labels-test
     - cql-expr-cache-test
     - integration-test
