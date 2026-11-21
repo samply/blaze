@@ -736,6 +736,9 @@ jobs:
     - name: Check pom.properties Files of Uberjar
       run: clojure -T:build check-pom-properties
 
+    - name: Check Native Libraries of Uberjar
+      run: clojure -T:build check-native-libs
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
 
