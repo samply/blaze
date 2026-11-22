@@ -200,6 +200,8 @@ backend:
     LOG_LEVEL: "debug"
     ENABLE_ADMIN_API: "true"
     OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
+    OPENID_PROVIDER_ISSUER: "https://keycloak.localhost/realms/blaze"
+    OPENID_AUDIENCE: "account"
     OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
     OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
   extra_hosts:
@@ -218,7 +220,7 @@ backend:
 > [!IMPORTANT]
 > Please remove the `extra_hosts` key if you use an external running Keycloak instance.
 
-Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
+Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`. Both are feature toggles that enable features needed by the frontend. The `OPENID_PROVIDER_URL` should be set to the same value as `AUTH_ISSUER` at the frontend. `OPENID_PROVIDER_ISSUER` and `OPENID_AUDIENCE` are mandatory with `OPENID_PROVIDER_URL` <Badge type="warning" text="Since 1.15.0"/>: the issuer is the `iss` claim of the access tokens, here the same as `AUTH_ISSUER`, and the audience has to be contained in their `aud` claim, here the client ID `account`, which the realm adds with an audience mapper. Without them Blaze doesn't start, unless the deprecated [`OPENID_LEGACY_MODE`](./environment-variables.md#openid-legacy-mode) is enabled. See [Authentication](../authentication.md) for details. The `OPENID_CLIENT_TRUST_STORE` is only needed if the server certificate of Keycloak isn't signed by a standard certificate authority. The file `keycloak-trust-store.p12` is generated in the ingress module. You can use similar scripts to generate the trust store in your environment. Full documentation of the environment variables can be found [here](./environment-variables.md).
 
 ### Without Login <Badge type="warning" text="Since 1.14.0"/>
 

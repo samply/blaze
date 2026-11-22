@@ -6,6 +6,7 @@
    [blaze.handler.fhir.util.spec]
    [blaze.handler.util :as handler-util]
    [blaze.job-scheduler.spec]
+   [blaze.middleware.authentication :refer [wrap-authentication]]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.module :as m :refer [reg-collector]]
@@ -16,7 +17,6 @@
    [blaze.rest-api.spec]
    [blaze.rest-api.structure-definitions :as structure-definitions]
    [blaze.spec]
-   [buddy.auth.middleware :refer [wrap-authentication]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.ring]
@@ -37,7 +37,7 @@
 
 (defn- handler
   "Whole app Ring handler."
-  [{:keys [job-scheduler writing-context auth-backends] :as config}]
+  [{:keys [job-scheduler writing-context auth-backend] :as config}]
   (-> (reitit.ring/ring-handler
        (router config)
        (reitit.ring/routes
@@ -45,8 +45,8 @@
         (fhir-output/wrap-output handler-util/default-handler writing-context {:accept-all? true}))
        {:middleware
         (cond-> [[wrap-job-scheduler job-scheduler]]
-          (seq auth-backends)
-          (conj #(apply wrap-authentication % auth-backends)))})
+          auth-backend
+          (conj [wrap-authentication auth-backend]))})
       wrap-decode-dollar
       wrap-log))
 
@@ -68,7 +68,7 @@
     :blaze/page-id-cipher]
    :opt-un
    [:blaze/context-path
-    ::auth-backends
+    ::auth-backend
     ::search-system-handler
     ::transaction-handler
     ::history-system-handler

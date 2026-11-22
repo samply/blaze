@@ -1,11 +1,11 @@
 (ns blaze.rest-api.spec
   (:require
+   [blaze.auth.spec]
    [blaze.db.spec]
    [blaze.executors :as ex]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.operation :as-alias operation]
    [blaze.spec]
-   [buddy.auth.protocols :as p]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]))
 
@@ -17,8 +17,8 @@
 (s/def ::rest-api/admin-node
   :blaze.db/node)
 
-(s/def ::rest-api/auth-backends
-  (s/coll-of #(satisfies? p/IAuthentication %)))
+(s/def ::rest-api/auth-backend
+  :blaze.auth/backend)
 
 (s/def ::rest-api/search-system-handler
   fn?)

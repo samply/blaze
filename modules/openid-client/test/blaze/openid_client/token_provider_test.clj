@@ -11,6 +11,7 @@
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -52,6 +53,23 @@
     (-> (.onPost http-client "http://localhost:8080/token")
         (.doReturnJSON "{\"access_token\":\"my-token\",\"expires_in\":3600}"))
     http-client))
+
+(defmethod ig/init-key ::http-client [_ {:keys [config token]}]
+  (let [http-client (HttpClientMock.)]
+    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
+        (.doReturnJSON config))
+    (-> (.onPost http-client "http://localhost:8080/token")
+        (.doReturnJSON token))
+    http-client))
+
+(def ^:private config-doc "{\"token_endpoint\":\"http://localhost:8080/token\"}")
+(def ^:private token-doc "{\"access_token\":\"my-token\",\"expires_in\":3600}")
+
+(defn- padded
+  "Returns the ASCII JSON document `json` padded with trailing whitespace to
+  exactly `n` bytes."
+  [json n]
+  (str json (str/join (repeat (- n (count json)) " "))))
 
 (def ^:private base-config
   {::oic/token-provider
@@ -180,6 +198,59 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [::tp/client-secret]
       [:cause-data ::s/problems 0 :val] := ::invalid)))
+
+(defn- config-docs [config token]
+  (-> (assoc-in base-config [::oic/token-provider :http-client] (ig/ref ::http-client))
+      (assoc ::http-client {:config config :token token})))
+
+(defn- token-after-tick [config]
+  (with-system [{::oic/keys [token-provider]
+                 :blaze.test/keys [manual-scheduler]} config]
+    (stu/tick! manual-scheduler)
+    (tp/current-token token-provider)))
+
+(deftest strict-json-test
+  (testing "OpenID configuration of 1 MiB"
+    (is (= "my-token" (token-after-tick (config-docs (padded config-doc 1048576) token-doc)))))
+
+  (testing "OpenID configuration of 1 MiB and one byte more"
+    (given (token-after-tick (config-docs (padded config-doc 1048577) token-doc))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while fetching the OpenID config from: http://localhost:8080/.well-known/openid-configuration"))
+
+  (testing "OpenID configuration with duplicate keys"
+    (given (token-after-tick (config-docs "{\"token_endpoint\":\"http://localhost:8080/token\",\"token_endpoint\":\"http://localhost:8080/token\"}" token-doc))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while fetching the OpenID config from: http://localhost:8080/.well-known/openid-configuration"))
+
+  (testing "token response of 1 MiB"
+    (is (= "my-token" (token-after-tick (config-docs config-doc (padded token-doc 1048576))))))
+
+  (testing "token response of 1 MiB and one byte more"
+    (given (token-after-tick (config-docs config-doc (padded token-doc 1048577)))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while obtaining a token from: http://localhost:8080/token"))
+
+  (testing "token response with duplicate keys"
+    (given (token-after-tick (config-docs config-doc "{\"access_token\":\"a\",\"access_token\":\"b\"}"))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while obtaining a token from: http://localhost:8080/token"))
+
+  (testing "access token of 64 KiB"
+    (let [token (str/join (repeat 65536 "a"))]
+      (is (= token (token-after-tick (config-docs config-doc (format "{\"access_token\":\"%s\"}" token)))))))
+
+  (testing "access token of 64 KiB and one character more"
+    (given (token-after-tick (config-docs config-doc (format "{\"access_token\":\"%s\"}" (str/join (repeat 65537 "a")))))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while obtaining a token from: http://localhost:8080/token"))
+
+  (testing "nesting of 8 levels"
+    (is (= "my-token" (token-after-tick (config-docs config-doc "{\"access_token\":\"my-token\",\"x\":[[[[[[[1]]]]]]]}")))))
+
+  (testing "nesting of 9 levels"
+    (given (token-after-tick (config-docs config-doc "{\"access_token\":\"my-token\",\"x\":[[[[[[[[1]]]]]]]]}"))
+      ::anom/category := ::anom/fault)))
 
 (deftest current-token-test
   (testing "config not found"

@@ -1,6 +1,7 @@
 (ns blaze.openid-client.token-provider
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.http-client.json :as json]
    [blaze.http-client.spec]
    [blaze.module :as m]
    [blaze.openid-client.token-provider.impl :as impl]
@@ -20,29 +21,51 @@
 
 (def ^:private ^:const well-known-uri "/.well-known/openid-configuration")
 
-(defn- fetch-config [http-client uri]
+(defn- send-request
+  "Returns the response of `request` with a body stream or an anomaly.
+
+  An error status doesn't throw, so that `json/parse-response` can close the
+  body stream."
+  [request]
   (try
-    (:body (hc/get uri {:http-client http-client :accept :json :as :json}))
-    (catch Throwable _
-      (ba/fault (str "Error while fetching the OpenID config from: " uri)))))
+    (hc/request (assoc request :accept :json :as :stream :throw-exceptions false))
+    (catch Throwable e
+      (ba/fault (ex-message e)))))
+
+(defn- fetch-json
+  "Fetches and parses the JSON document of `request` with the strict mapper,
+  which limits it to 1 MiB."
+  [request]
+  (when-ok [response (send-request request)]
+    (json/parse-response impl/mapper response)))
+
+(defn- replace-anomaly [x msg]
+  (if (ba/anomaly? x) (ba/fault msg) x))
+
+(defn- fetch-config [http-client uri]
+  (-> (fetch-json {:http-client http-client :method :get :url uri})
+      (replace-anomaly (str "Error while fetching the OpenID config from: " uri))))
 
 (defn- missing-token-endpoint-msg [provider-url]
   (format "Missing `token_endpoint` in OpenID config at `%s`." provider-url))
 
+(defn- token-state
+  {:arglists '([token-response])}
+  [{:keys [access_token expires_in]}]
+  (ba/try-all ::anom/fault
+              {:token access_token
+               :expires-at (when expires_in
+                             (time/plus (bt/instant) (time/seconds (long expires_in))))}))
+
 (defn- post-token [http-client token-endpoint client-id client-secret]
-  (try
-    (let [response (:body (hc/post token-endpoint
-                                   {:http-client http-client
-                                    :form-params {:grant_type "client_credentials"
-                                                  :client_id client-id
-                                                  :client_secret client-secret}
-                                    :accept :json
-                                    :as :json}))]
-      {:token (:access_token response)
-       :expires-at (when-let [expires-in (:expires_in response)]
-                     (time/plus (bt/instant) (time/seconds (long expires-in))))})
-    (catch Throwable _
-      (ba/fault (str "Error while obtaining a token from: " token-endpoint)))))
+  (-> (when-ok [response (fetch-json {:http-client http-client
+                                      :method :post
+                                      :url token-endpoint
+                                      :form-params {:grant_type "client_credentials"
+                                                    :client_id client-id
+                                                    :client_secret client-secret}})]
+        (token-state response))
+      (replace-anomaly (str "Error while obtaining a token from: " token-endpoint))))
 
 (defn- fetch-token [http-client provider-url client-id client-secret]
   (when-ok [config (fetch-config http-client (str provider-url well-known-uri))]

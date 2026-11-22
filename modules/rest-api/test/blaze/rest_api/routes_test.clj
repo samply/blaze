@@ -513,9 +513,9 @@
           "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db :resource]
           "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :invalid-id :db])))))
 
-(deftest middleware-with-auth-backends-test
+(deftest middleware-with-auth-backend-test
   (with-system [system system-config]
-    (let [router (router (assoc config :auth-backends [:auth-backend]) system)]
+    (let [router (router (assoc config :auth-backend ::auth-backend) system)]
       (are [path request-method middleware]
            (= middleware
               (->> (get-in

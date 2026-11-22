@@ -1,6 +1,7 @@
 (ns blaze.system-test
   (:require
    [blaze.async.comp :as ac]
+   [blaze.auth.protocols :as ap]
    [blaze.coerce-env :as ce]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.parsing-context]
@@ -38,7 +39,8 @@
    [blaze.terminology-service-spec]
    [blaze.terminology-service.not-available]
    [blaze.test-util :as tu :refer [given-thrown]]
-   [buddy.auth.protocols :as ap]
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -48,7 +50,7 @@
    [ring.core.protocols :as rp]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayInputStream ByteArrayOutputStream]))
+   [java.io ByteArrayInputStream ByteArrayOutputStream PushbackReader]))
 
 (st/instrument)
 (log/set-min-level! :trace)
@@ -176,6 +178,31 @@
           :foo := nil
           [:blaze/admin-api :features 0 :enabled] := false)))))
 
+(defn- read-blaze-edn
+  "Reads blaze.edn keeping tagged literals like `#blaze/ref` as tuples."
+  []
+  (with-open [rdr (PushbackReader. (io/reader (io/resource "blaze.edn")))]
+    (edn/read {:default vector} rdr)))
+
+(defn- feature [blaze-edn key]
+  (some #(when (= key (:key %)) %) (:features blaze-edn)))
+
+(deftest open-id-authentication-feature-test
+  (let [blaze-edn {:base-config {}
+                   :features [(feature (read-blaze-edn) :open-id-authentication)]}]
+
+    (testing "without OPENID_PROVIDER_URL there is no backend"
+      (given (system/merge-features blaze-edn {} {})
+        :blaze.openid-auth/backend := nil
+        [:blaze/rest-api :auth-backend] := nil
+        [:blaze/admin-api :auth-backend] := nil))
+
+    (testing "with OPENID_PROVIDER_URL the backend is used by both APIs"
+      (given (system/merge-features blaze-edn {"OPENID_PROVIDER_URL" "http://localhost:8080"} {})
+        [:blaze.openid-auth/backend :clock] := ['blaze/ref :blaze/clock]
+        [:blaze/rest-api :auth-backend] := ['blaze/ref :blaze.openid-auth/backend]
+        [:blaze/admin-api :auth-backend] := ['blaze/ref :blaze.openid-auth/backend]))))
+
 (def ^:private config
   (assoc
    api-stub/mem-node-config
@@ -187,7 +214,7 @@
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
-    :auth-backends [(ig/ref ::auth-backend)]
+    :auth-backend (ig/ref ::auth-backend)
     :search-system-handler (ig/ref :blaze.interaction/search-system)
     :transaction-handler (ig/ref :blaze.interaction/transaction)
     :history-system-handler (ig/ref :blaze.interaction.history/system)
@@ -338,9 +365,8 @@
 
 (defmethod ig/init-key ::auth-backend
   [_ _]
-  (reify ap/IAuthentication
-    (-parse [_ _] ::token)
-    (-authenticate [_ _ data] (when (= ::token data) ::identity))))
+  (reify ap/AuthenticationBackend
+    (-authenticate [_ _] ::identity)))
 
 (defmethod ig/init-key ::page-store
   [_ _]

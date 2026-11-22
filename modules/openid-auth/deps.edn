@@ -1,42 +1,15 @@
 {:deps
- {blaze/http-client
+ {blaze/auth
+  {:local/root "../auth"}
+
+  blaze/http-client
   {:local/root "../http-client"}
 
   blaze/module-base
   {:local/root "../module-base"}
 
   blaze/scheduler
-  {:local/root "../scheduler"}
-
-  buddy/buddy-auth
-  {:mvn/version "3.0.323"}
-
-  ;; newer version for buddy-auth dependency
-  buddy/buddy-core
-  {:mvn/version "1.12.0-430"}
-
-  ;; newer version for buddy-core dependency
-  cheshire/cheshire
-  {:mvn/version "6.2.1"}
-
-  ;; newer version for cheshire dependency
-  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.23.0"}
-
-  ;; newer version for cheshire dependency
-  com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.23.0"}
-
-  ;; pinned to fix CVE-2025-8916 and CVE-2026-5588, can be removed if buddy-core
-  ;; depends on at least this version
-  org.bouncycastle/bcpkix-jdk18on
-  {:mvn/version "1.87"}
-
-  ;; pinned to fix CVE-2025-14813, CVE-2026-0636, CVE-2026-8763 and
-  ;; CVE-2026-13506, can be removed if buddy-core depends on at least this
-  ;; version
-  org.bouncycastle/bcprov-jdk18on
-  {:mvn/version "1.87"}}
+  {:local/root "../scheduler"}}
 
  :aliases
  {:test

@@ -1446,8 +1446,8 @@
   ;;
   ;; OpenID Authentication
   ;;
-  ;; Can be referred by the super key :blaze.auth/backend. Will be enabled if an
-  ;; OPENID_PROVIDER_URL is set.
+  ;; Will be enabled if an OPENID_PROVIDER_URL is set. Authenticates the
+  ;; requests of the REST API and the Admin API.
   ;;
   {:key :open-id-authentication
    :name "OpenID Authentication"
@@ -1458,7 +1458,15 @@
      :scheduler #blaze/ref :blaze/scheduler
      :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]
      :issuer #blaze/cfg ["OPENID_PROVIDER_ISSUER" string?]
-     :audience #blaze/cfg ["OPENID_AUDIENCE" string?]}
+     :audience #blaze/cfg ["OPENID_AUDIENCE" string?]
+     :legacy-mode? #blaze/cfg ["OPENID_LEGACY_MODE" boolean? false]
+     :clock #blaze/ref :blaze/clock}
+
+    :blaze/rest-api
+    {:auth-backend #blaze/ref :blaze.openid-auth/backend}
+
+    :blaze/admin-api
+    {:auth-backend #blaze/ref :blaze.openid-auth/backend}
 
     [:blaze/http-client :blaze.openid-auth/http-client]
     {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]

@@ -1,6 +1,8 @@
 (ns blaze.rest-api-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
+   [blaze.auth.protocols :as ap]
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-db]]
    [blaze.db.impl.search-param]
@@ -20,7 +22,6 @@
    [blaze.rest-api.routes-spec]
    [blaze.terminology-service :as-alias ts]
    [blaze.test-util :as tu :refer [given-failed-future]]
-   [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -506,14 +507,13 @@
           [:headers "Content-Type"] := "application/fhir+json;charset=utf-8")))))
 
 (def auth-config
-  (-> (assoc-in config [:blaze/rest-api :auth-backends] [(ig/ref ::auth-backend)])
+  (-> (assoc-in config [:blaze/rest-api :auth-backend] (ig/ref ::auth-backend))
       (assoc ::auth-backend {})))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]
-  (reify ap/IAuthentication
-    (-parse [_ _] ::token)
-    (-authenticate [_ _ data] (when (= ::token data) ::identity))))
+  (reify ap/AuthenticationBackend
+    (-authenticate [_ _] ::identity)))
 
 (deftest auth-test
   (with-system [{:blaze/keys [rest-api]} auth-config]
@@ -525,7 +525,7 @@
   (constantly (ac/completed-future (ring/response (.getBytes "admin")))))
 
 (def unauthenticated-config
-  (-> (assoc-in config [:blaze/rest-api :auth-backends] [(ig/ref ::unauthenticated-backend)])
+  (-> (assoc-in config [:blaze/rest-api :auth-backend] (ig/ref ::unauthenticated-backend))
       (assoc-in [:blaze/rest-api :admin-handler] admin-handler)
       (update-in [:blaze/rest-api :operations] conj
                  #:blaze.rest-api.operation
@@ -538,9 +538,9 @@
 
 (defmethod ig/init-key ::unauthenticated-backend
   [_ _]
-  (reify ap/IAuthentication
-    (-parse [_ _] nil)
-    (-authenticate [_ _ _])))
+  (reify ap/AuthenticationBackend
+    (-authenticate [_ _]
+      (ba/incorrect "No token." :blaze.auth/realm "realm-161012"))))
 
 (deftest unauthenticated-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} unauthenticated-config]
@@ -549,6 +549,7 @@
         :status := 401
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
         [:body json-parser :fhir/type] := :fhir/OperationOutcome
+        [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161012\""
         [:body json-parser :issue 0 :code] := #fhir/code "login"))
 
     (testing "the admin handler guards itself"
@@ -559,4 +560,24 @@
     (testing "JSON operation"
       (given (call rest-api {:request-method :get :uri "/$graphql"})
         :status := 401
-        [:headers "Content-Type"] := "application/json;charset=utf-8"))))
+        [:headers "Content-Type"] := "application/json;charset=utf-8"
+        [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161012\""))))
+
+(def ^:private unavailable-config
+  (-> (assoc-in config [:blaze/rest-api :auth-backend] (ig/ref ::unavailable-backend))
+      (assoc ::unavailable-backend {})))
+
+(defmethod ig/init-key ::unavailable-backend
+  [_ _]
+  (reify ap/AuthenticationBackend
+    (-authenticate [_ _]
+      (ba/unavailable "msg-121512" :blaze.auth/realm "realm-121518"))))
+
+(deftest authentication-unavailable-test
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} unavailable-config]
+    (given (call rest-api {:request-method :get :uri "/Patient"})
+      :status := 503
+      [:headers "WWW-Authenticate"] := nil
+      [:body json-parser :fhir/type] := :fhir/OperationOutcome
+      [:body json-parser :issue 0 :code] := #fhir/code "transient"
+      [:body json-parser :issue 0 :diagnostics] := #fhir/string "msg-121512")))

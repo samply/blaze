@@ -240,7 +240,7 @@
 
 (defn- router
   [{:keys [context-path admin-node validator parsing-context writing-context
-           auth-backends dbs create-job-handler read-job-handler
+           auth-backend dbs create-job-handler read-job-handler
            history-job-handler search-type-job-handler pause-job-handler
            resume-job-handler cancel-job-handler cql-cache-stats-handler
            cql-bloom-filters-handler]
@@ -250,7 +250,7 @@
    [""
     {:middleware
      (cond-> [[wrap-output writing-context]]
-       (seq auth-backends)
+       auth-backend
        (conj wrap-auth-guard))
      :response-type :json
      :response-type.json/opts {:encode-key-fn (comp camel name)}}
@@ -387,14 +387,14 @@
                    ::history-job-handler ::search-type-job-handler ::settings
                    ::features]
           :opt [::dbs ::expr/cache]
-          :opt-un [::auth-backends]))
+          :opt-un [::auth-backend]))
 
 (defn- not-found-handler [{:keys [uri]}]
   (-> (ring/not-found {"uri" uri})
       (ac/completed-future)))
 
 (defmethod ig/init-key :blaze/admin-api
-  [_ {:keys [job-scheduler auth-backends] :as config}]
+  [_ {:keys [job-scheduler auth-backend] :as config}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
    (router (assoc config
@@ -406,5 +406,5 @@
                   :cql-bloom-filters-handler (cql-bloom-filters-handler config)))
    ((wrap-json-output {})
     (cond-> not-found-handler
-      (seq auth-backends)
+      auth-backend
       auth-guard/wrap-auth-guard))))

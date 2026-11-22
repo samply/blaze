@@ -1,7 +1,9 @@
 (ns blaze.admin-api-test
   (:require
    [blaze.admin-api :as admin-api]
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.auth.protocols :as ap]
    [blaze.db.api :as d]
    [blaze.db.api-stub]
    [blaze.db.impl.index.patient-last-change :as plc]
@@ -38,7 +40,6 @@
    [blaze.test-util :as tu]
    [blaze.util-spec]
    [blaze.value-set-expander]
-   [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -394,8 +395,8 @@
       [:cause-data ::s/problems 0 :via] := [::admin-api/features]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
-  (testing "invalid auth backends"
-    (given-failed-system (assoc-in (config!) [:blaze/admin-api :auth-backends] [::invalid])
+  (testing "invalid auth backend"
+    (given-failed-system (assoc-in (config!) [:blaze/admin-api :auth-backend] ::invalid)
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :val] := ::invalid))
@@ -436,12 +437,12 @@
 
 (defmethod ig/init-key ::auth-backend
   [_ _]
-  (reify ap/IAuthentication
-    (-parse [_ _])
-    (-authenticate [_ _ _])))
+  (reify ap/AuthenticationBackend
+    (-authenticate [_ _]
+      (ba/incorrect "No token." :blaze.auth/realm "realm-161530"))))
 
 (defn- auth-config! []
-  (-> (assoc-in (config!) [:blaze/admin-api :auth-backends] [(ig/ref ::auth-backend)])
+  (-> (assoc-in (config!) [:blaze/admin-api :auth-backend] (ig/ref ::auth-backend))
       (assoc ::auth-backend {})))
 
 (def ^:private path-param-values
@@ -469,6 +470,14 @@
     [{:request-method method :uri (fill-path-params path)}
      (:response-type data)]))
 
+(def ^:private no-credentials
+  (ba/incorrect "No token." :blaze.auth/realm "realm-161530"))
+
+(def ^:private rejected-credentials
+  (ba/forbidden "Invalid token."
+                :blaze.auth/realm "realm-161530"
+                :blaze.auth/error "invalid_token"))
+
 (deftest unauthenticated-test
   (testing "every route rejects unauthenticated requests"
     (with-system [{handler :blaze/admin-api} (auth-config!)]
@@ -481,24 +490,33 @@
           (testing (str (name request-method) " " uri)
             (case response-type
               :json
-              (given @(handler request)
+              (given @(handler (assoc request :blaze.auth/failure no-credentials))
                 :status := 401
                 [:headers "Content-Type"] := "application/json;charset=utf-8"
+                [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161530\""
                 :body := {"msg" "Authentication required."})
 
               :fhir
-              (given @(handler request)
+              (given @(handler (assoc request :blaze.auth/failure no-credentials))
                 :status := 401
                 [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+                [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161530\""
                 [:body "resourceType"] := "OperationOutcome"
                 [:body "issue" 0 "code"] := "login"
-                [:body "issue" 0 "details" "coding" 0 "code"] := "MSG_AUTH_REQUIRED")))))))
+                [:body "issue" 0 "details" "coding" 0 "code"] := "MSG_AUTH_REQUIRED"))
+
+            (testing "with rejected credentials"
+              (given @(handler (assoc request :blaze.auth/failure rejected-credentials))
+                :status := 401
+                [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161530\", error=\"invalid_token\"")))))))
 
   (testing "unknown paths return a small JSON body"
     (with-handler [handler] (auth-config!) []
-      (given @(handler {:request-method :get :uri "/fhir/__admin/foo"})
+      (given @(handler {:request-method :get :uri "/fhir/__admin/foo"
+                        :blaze.auth/failure rejected-credentials})
         :status := 401
         [:headers "Content-Type"] := "application/json;charset=utf-8"
+        [:headers "WWW-Authenticate"] := "Bearer realm=\"realm-161530\", error=\"invalid_token\""
         :body := {"msg" "Authentication required."})))
 
   (testing "authenticated requests are passed through"

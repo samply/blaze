@@ -46,6 +46,12 @@ test_empty() {
   fi
 }
 
+# Prints the value of the WWW-Authenticate header of the response headers
+# dumped into the file $1.
+www_authenticate() {
+  grep -i '^www-authenticate:' "$1" | sed -E 's/^[^:]+: *//' | tr -d '\r'
+}
+
 test_non_empty() {
   if [ -n "$2" ]; then
     echo "✅ the $1 is non-empty"

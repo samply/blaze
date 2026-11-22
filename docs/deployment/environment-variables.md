@@ -487,11 +487,21 @@ The password for the PKCS #12 trust store.
 
 #### `OPENID_PROVIDER_ISSUER` <Badge type="warning" text="Since 1.7.0"/>
 
-Expected issuer (`iss`) claim for JWT validation. When set, tokens with a non-matching `iss` claim are rejected. When not set, issuer validation is skipped and a warning is logged at startup. Usually that should be `OPENID_PROVIDER_URL`.
+Expected issuer (`iss`) claim for JWT validation. Tokens with a non-matching `iss` claim are rejected. Usually that is the issuer published in the OpenID configuration of `OPENID_PROVIDER_URL`. It is also the realm of the `WWW-Authenticate` header of 401 responses, so it must not contain a `"`, a `\` or a control character.
+
+Mandatory if `OPENID_PROVIDER_URL` is set, unless [`OPENID_LEGACY_MODE`](#openid-legacy-mode) is enabled <Badge type="warning" text="Since 1.15.0"/>. In legacy mode, issuer validation is skipped and a warning is logged at startup if it isn't set.
 
 #### `OPENID_AUDIENCE` <Badge type="warning" text="Since 1.7.0"/>
 
-Expected audience (`aud`) claim for JWT validation. When set, tokens whose `aud` claim does not contain this value are rejected. When not set, audience validation is skipped and a warning is logged at startup. If you deploy Blaze with frontend, that should be identical to the `AUTH_CLIENT_ID`.
+Expected audience (`aud`) claim for JWT validation. Tokens whose `aud` claim does not contain this value are rejected. If you deploy Blaze with frontend, that should be identical to the `AUTH_CLIENT_ID`.
+
+Mandatory if `OPENID_PROVIDER_URL` is set, unless [`OPENID_LEGACY_MODE`](#openid-legacy-mode) is enabled <Badge type="warning" text="Since 1.15.0"/>. In legacy mode, audience validation is skipped and a warning is logged at startup if it isn't set.
+
+#### `OPENID_LEGACY_MODE` <Badge type="warning" text="Since 1.15.0"/>
+
+Enables the legacy validation of access tokens, which keeps the rules of Blaze versions before 1.15.0: `OPENID_PROVIDER_ISSUER` and `OPENID_AUDIENCE` are optional, the `alg` and `crit` headers aren't checked, tokens without `exp` are accepted, and `exp` and `nbf` are checked without leeway. The legacy mode is deprecated and planned for removal in the next major version. See [Authentication](../authentication.md#modes) for details.
+
+**Default:** `false`
 
 #### `ENFORCE_REFERENTIAL_INTEGRITY` <Badge type="warning" text="Since 0.14"/>
 

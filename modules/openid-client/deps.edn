@@ -6,18 +6,7 @@
   {:local/root "../module-base"}
 
   blaze/scheduler
-  {:local/root "../scheduler"}
-
-  cheshire/cheshire
-  {:mvn/version "6.2.1"}
-
-  ;; newer version for cheshire dependency
-  com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.23.0"}
-
-  ;; newer version for cheshire dependency
-  com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.23.0"}}
+  {:local/root "../scheduler"}}
 
  :aliases
  {:test

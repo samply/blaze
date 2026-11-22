@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/auth
+  {:local/root "../auth"}
+
   blaze/db
   {:local/root "../db"}
 
@@ -16,10 +19,6 @@
 
   blaze/page-id-cipher
   {:local/root "../page-id-cipher"}
-
-  buddy/buddy-auth
-  {:mvn/version "3.0.323"
-   :exclusions [buddy/buddy-sign]}
 
   metosin/reitit-ring
   {:mvn/version "0.11.0"

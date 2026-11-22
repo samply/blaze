@@ -182,6 +182,7 @@
     "-d" "modules/admin-api"
     "-d" "modules/anomaly"
     "-d" "modules/async"
+    "-d" "modules/auth"
     "-d" "modules/byte-buffer"
     "-d" "modules/byte-string"
     "-d" "modules/cache-collector"

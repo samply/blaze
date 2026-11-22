@@ -35,13 +35,17 @@ get /fhir/__admin/unknown
 EOF
 )
 
+realm="http://localhost:8090/realms/blaze"
+
 body_file=$(mktemp)
-trap 'rm -f "$body_file"' EXIT
+headers_file=$(mktemp)
+trap 'rm -f "$body_file" "$headers_file"' EXIT
 
 while read -r method path; do
   echo "${method^^} $path"
-  response=$(curl -s -X "${method^^}" -o "$body_file" -w '%{response_code} %{content_type}' "$base$path")
+  response=$(curl -s -X "${method^^}" -D "$headers_file" -o "$body_file" -w '%{response_code} %{content_type}' "$base$path")
   test "status" "${response%% *}" "401"
+  test "WWW-Authenticate header" "$(www_authenticate "$headers_file")" "Bearer realm=\"$realm\""
 
   if [[ "$path" == "/fhir/__admin/Task"* ]]; then
     test "content type" "${response#* }" "application/fhir+json;charset=utf-8"
@@ -51,5 +55,9 @@ while read -r method path; do
     test "message" "$(jq -r .msg "$body_file")" "Authentication required."
   fi
 done <<< "$endpoints"
+
+echo "GET /fhir/__admin/dbs with a rejected token"
+test "status" "$(curl -s --oauth2-bearer "invalid" -D "$headers_file" -o /dev/null -w '%{response_code}' "$base/fhir/__admin/dbs")" "401"
+test "WWW-Authenticate header" "$(www_authenticate "$headers_file")" "Bearer realm=\"$realm\", error=\"invalid_token\""
 
 test "status of authenticated request" "$(curl -s --oauth2-bearer "$access_token" -o /dev/null -w '%{response_code}' "$base/fhir/__admin/dbs")" "200"

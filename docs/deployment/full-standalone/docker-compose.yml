@@ -54,6 +54,8 @@ services:
       LOG_LEVEL: "debug"
       ENABLE_ADMIN_API: "true"
       OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"
+      OPENID_PROVIDER_ISSUER: "https://keycloak.localhost/realms/blaze"
+      OPENID_AUDIENCE: "account"
       OPENID_CLIENT_TRUST_STORE: "/app/keycloak-trust-store.p12"
       OPENID_CLIENT_TRUST_STORE_PASS: "insecure"
     volumes:

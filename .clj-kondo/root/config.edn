@@ -90,7 +90,6 @@
     blaze.test-util tu
     blaze.time bt
     blaze.util u
-    buddy.auth auth
     cognitect.anomalies anom
     clojure.data.xml xml
     clojure.java.io io

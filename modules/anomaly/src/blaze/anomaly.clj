@@ -73,42 +73,66 @@
    (merge (anomaly* category msg) kvs)))
 
 (defn unavailable
-  "Creates an anomaly with category `unavailable`."
+  "Creates an anomaly with category `unavailable`, the optional message `msg`
+  and any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(unavailable \"msg\" :http/status 503)`"
   ([]
    (unavailable nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/unavailable msg kvs)))
 
 (defn interrupted
-  "Creates an anomaly with category `interrupted`."
+  "Creates an anomaly with category `interrupted`, the optional message `msg`
+  and any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(interrupted \"msg\" :blaze/op \"op-102712\")`"
   ([]
    (interrupted nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/interrupted msg kvs)))
 
 (defn incorrect
-  "Creates an anomaly with category `incorrect`."
+  "Creates an anomaly with category `incorrect`, the optional message `msg` and
+  any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(incorrect \"msg\" :http/status 400)`"
   ([]
    (incorrect nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/incorrect msg kvs)))
 
 (defn forbidden
-  "Creates an anomaly with category `forbidden`."
+  "Creates an anomaly with category `forbidden`, the optional message `msg` and
+  any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(forbidden \"msg\" :http/status 403)`"
   ([]
    (forbidden nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/forbidden msg kvs)))
 
 (defn unsupported
-  "Creates an anomaly with category `unsupported`."
+  "Creates an anomaly with category `unsupported`, the optional message `msg`
+  and any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(unsupported \"msg\" :http/status 422)`"
   ([]
    (unsupported nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/unsupported msg kvs)))
 
 (defn not-found
-  "Creates an anomaly with category `not-found`.
+  "Creates an anomaly with category `not-found`, the optional message `msg` and
+  any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(not-found \"msg\" :http/status 404)`
 
   Typical keys are: :http/status, :http/headers, :fhir/issue"
   ([]
@@ -117,21 +141,31 @@
    (anomaly* ::anom/not-found msg kvs)))
 
 (defn conflict
-  "Creates an anomaly with category `conflict`."
+  "Creates an anomaly with category `conflict`, the optional message `msg` and
+  any number of additional key-value pairs `kvs`, which are merged into the
+  anomaly.
+
+  Example: `(conflict \"msg\" :http/status 409)`"
   ([]
    (conflict nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/conflict msg kvs)))
 
 (defn fault
-  "Creates an anomaly with category `fault`."
+  "Creates an anomaly with category `fault`, the optional message `msg` and any
+  number of additional key-value pairs `kvs`, which are merged into the anomaly.
+
+  Example: `(fault \"msg\" :http/status 500)`"
   ([]
    (fault nil))
   ([msg & {:as kvs}]
    (anomaly* ::anom/fault msg kvs)))
 
 (defn busy
-  "Creates an anomaly with category `busy`."
+  "Creates an anomaly with category `busy`, the optional message `msg` and any
+  number of additional key-value pairs `kvs`, which are merged into the anomaly.
+
+  Example: `(busy \"msg\" :http/status 429)`"
   ([]
    (busy nil))
   ([msg & {:as kvs}]

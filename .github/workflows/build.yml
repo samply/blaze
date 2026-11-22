@@ -219,6 +219,7 @@ jobs:
         - admin-api
         - anomaly
         - async
+        - auth
         - byte-buffer
         - byte-string
         - cache-collector
@@ -3421,8 +3422,11 @@ jobs:
     - name: Docker Logs Blaze Correct Claims
       run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze-correct-claims
 
+    - name: Docker Logs Blaze Legacy
+      run: docker compose -f .github/openid-auth-test/docker-compose.yml logs blaze-legacy
+
     - name: Unauthenticated Request
-      run: test "MSG_AUTH_REQUIRED" = "$(curl -s http://localhost:8080/fhir | jq -r .issue[0].details.coding[0].code)"
+      run: .github/scripts/unauthenticated-request.sh 8080
 
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
@@ -3431,13 +3435,59 @@ jobs:
       run: .github/scripts/admin-api/unauthenticated-requests.sh
 
     - name: Token Rejected with Wrong Issuer
-      run: .github/scripts/rejected-request.sh 8081
+      run: .github/scripts/rejected-request.sh 8081 https://wrong-issuer.example
 
     - name: Token Rejected with Wrong Audience
       run: .github/scripts/rejected-request.sh 8082
 
     - name: Token Accepted with Correct Issuer and Audience
       run: .github/scripts/authenticated-request.sh 8083
+
+    - name: Legacy Mode Logs Warnings
+      run: .github/scripts/openid-auth-legacy-warnings.sh
+
+    - name: Unauthenticated Request in Legacy Mode
+      run: .github/scripts/unauthenticated-request.sh 8084 Blaze
+
+    - name: Token Accepted in Legacy Mode
+      run: .github/scripts/authenticated-request.sh 8084
+
+  openid-auth-limits-test:
+    if: github.event_name != 'push' || github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    env:
+      OPENID_AUTH_LIMITS_DIR: /tmp/openid-auth-limits
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Login to GHCR
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull Blaze Image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} && docker tag ghcr.io/${{ github.repository_owner }}/blaze:${{ github.sha }} blaze:latest
+
+    - name: Generate Keys and Documents of the Fake OpenID Provider
+      run: .github/scripts/openid-auth-limits/generate.sh documents "$OPENID_AUTH_LIMITS_DIR"
+
+    - name: Run Fake OpenID Provider and Blaze
+      run: docker compose -f .github/openid-auth-limits-test/docker-compose.yml up --wait
+
+    - name: Generate Tokens
+      run: .github/scripts/openid-auth-limits/generate.sh tokens "$OPENID_AUTH_LIMITS_DIR"
+
+    - name: Check Responses
+      run: .github/scripts/openid-auth-limits/check.sh "$OPENID_AUTH_LIMITS_DIR"
+
+    - name: Docker Logs
+      if: always()
+      run: docker compose -f .github/openid-auth-limits-test/docker-compose.yml logs
 
   custom-search-parameters-test:
     if: github.event_name != 'push' || github.ref_type == 'tag'
@@ -3945,6 +3995,7 @@ jobs:
     - jepsen-test
     - jepsen-distributed-test
     - openid-auth-test
+    - openid-auth-limits-test
     - doc-copy-data-test
     - large-binary-test
     - frontend-test

@@ -2,6 +2,8 @@ services:
   keycloak:
     image: "quay.io/keycloak/keycloak:latest"
     command: "start-dev --import-realm"
+    ports:
+    - "8090:8080"
     volumes:
     - "../../.github/openid-auth-test/realm:/opt/keycloak/data/import"
   blaze:
@@ -9,6 +11,8 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
+      OPENID_PROVIDER_ISSUER: "http://localhost:8090/realms/blaze"
+      OPENID_AUDIENCE: "account"
     ports:
     - "8080:8080"
     volumes:

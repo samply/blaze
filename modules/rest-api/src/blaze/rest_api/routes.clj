@@ -377,7 +377,7 @@
      structure-definition-repo
      node
      admin-node
-     auth-backends
+     auth-backend
      batch?
      search-system-handler
      transaction-handler
@@ -402,7 +402,7 @@
        (cond-> [wrap-observe-request-duration wrap-params
                 [wrap-output writing-context] wrap-error
                 [wrap-forwarded base-url] wrap-sync]
-         (seq auth-backends)
+         auth-backend
          (conj wrap-auth-guard))
        :blaze/context-path context-path}
       [""

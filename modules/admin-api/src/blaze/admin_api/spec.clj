@@ -4,17 +4,17 @@
    [blaze.admin-api.feature :as-alias feature]
    [blaze.admin-api.job :as-alias job]
    [blaze.admin-api.setting :as-alias setting]
+   [blaze.auth.spec]
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb.spec]
    [blaze.db.spec]
-   [buddy.auth.protocols :as p]
    [clojure.spec.alpha :as s]))
 
 (s/def ::admin-api/admin-node
   :blaze.db/node)
 
-(s/def ::admin-api/auth-backends
-  (s/coll-of #(satisfies? p/IAuthentication %)))
+(s/def ::admin-api/auth-backend
+  :blaze.auth/backend)
 
 (s/def ::admin-api/read-job-handler
   fn?)
