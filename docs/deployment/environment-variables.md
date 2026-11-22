@@ -431,16 +431,11 @@ The heap usage percentage (1–99) at or above which metrics are logged at WARN 
 | -&NoBreak;Xmx4g           | -       |       | The maximum amount of heap memory.                           |
 | -&NoBreak;Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -&NoBreak;Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
-| -&NoBreak;XX:-UseBASE64Intrinsics | - |   | Mitigates [CVE-2026-114938][11]. Has to be set always.        |
-
-::: danger CVE-2026-114938
-To mitigate [CVE-2026-114938][11], `JAVA_TOOL_OPTIONS` has to contain `-XX:-UseBASE64Intrinsics`, in addition to all other options, like `-Xmx4g -XX:-UseBASE64Intrinsics`.
-:::
 
 Please note that `http.proxyHost` has to be a plain hostname like `proxy.example.com`, not a URL. Example usage with Docker:
 
 ```sh
-docker run -e JAVA_TOOL_OPTIONS="-Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=8080 -XX:-UseBASE64Intrinsics" samply/blaze
+docker run -e JAVA_TOOL_OPTIONS="-Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=8080" samply/blaze
 ```
 
 #### `USE_SYSTEM_CA_CERTS`
@@ -450,7 +445,7 @@ This feature is inherited from the [eclipse-temurin][7] base image. When set to 
 Example usage with Docker:
 
 ```sh
-docker run -v $(pwd)/certs:/certificates/ -e USE_SYSTEM_CA_CERTS=true -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" samply/blaze
+docker run -v $(pwd)/certs:/certificates/ -e USE_SYSTEM_CA_CERTS=true samply/blaze
 ```
 
 Alternatively, you can use the `OPENID_CLIENT_TRUST_STORE` or `EXTERN_TERMINOLOGY_SERVICE_CLIENT_TRUST_STORE` environment variables to specify custom trust stores for specific services.
@@ -527,7 +522,6 @@ services:
   blaze:
     image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
-      JAVA_TOOL_OPTIONS: "-XX:-UseBASE64Intrinsics"
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
     ports:
     - "8080:8080"
@@ -719,4 +713,3 @@ The password for the PKCS #12 trust store.
 [8]: <https://github.com/medizininformatik-initiative/mii-fhir-validator>
 [9]: <https://github.com/facebook/rocksdb/wiki/Subcompaction>
 [10]: <https://github.com/facebook/rocksdb/wiki/Direct-IO>
-[11]: <https://www.cve.org/CVERecord?id=CVE-2026-114938>

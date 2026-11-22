@@ -10,7 +10,7 @@
 A FHIR® Server with internal, fast CQL Evaluation Engine
 
 > [!CAUTION]
-> **Security Warning:** To mitigate [CVE-2026-114938](https://www.cve.org/CVERecord?id=CVE-2026-114938), every Blaze instance has to be started with `-XX:-UseBASE64Intrinsics` added to the `JAVA_TOOL_OPTIONS` environment variable, in addition to all other options, like `JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"`. More can be found in the [Environment Variables](https://blaze-server.org/deployment/environment-variables.html#java-tool-options) documentation.
+> **Security Warning:** Blaze versions before v1.14.0 are affected by [CVE-2026-114938](https://www.cve.org/CVERecord?id=CVE-2026-114938). Please update to [v1.14.0](https://github.com/samply/blaze/releases/tag/v1.14.0). If you can't update, start every Blaze instance with `-XX:-UseBASE64Intrinsics` added to the `JAVA_TOOL_OPTIONS` environment variable, in addition to all other options, like `JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"`.
 
 ## Survey
 
@@ -28,7 +28,7 @@ A demo installation can be found [here](https://r4.blaze-server.org/fhir/).
 
 Blaze is stable and widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe.
 
-Latest release: [v1.13.0][5]
+Latest release: [v1.14.0][5]
 
 ## Key Features
 
@@ -48,7 +48,7 @@ Documentation can be found [here](https://blaze-server.org).
 Blaze can be started with a single command using docker:
 
 ```sh
-docker run -d --name blaze -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" -p 8080:8080 samply/blaze:latest
+docker run -d --name blaze -p 8080:8080 samply/blaze:latest
 ```
 
 ## Commercial Support
@@ -82,7 +82,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [2]: <https://blaze-server.org/api/operation/measure-evaluate-measure.html>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v1.13.0>
+[5]: <https://github.com/samply/blaze/releases/tag/v1.14.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

@@ -39,7 +39,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
       LOG_LEVEL: "debug"
       # Enabled on purpose, although a deployment without login shouldn't do
       # that, to test that the frontend doesn't expose the admin section.

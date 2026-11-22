@@ -196,7 +196,7 @@ The documentation of the environment variables can be found [here](./environment
 backend:
   image: "samply/blaze:{{ tag }}@{{ digest }}"
   environment:
-    JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
+    JAVA_TOOL_OPTIONS: "-Xmx2g"
     LOG_LEVEL: "debug"
     ENABLE_ADMIN_API: "true"
     OPENID_PROVIDER_URL: "https://keycloak.localhost/realms/blaze"

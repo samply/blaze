@@ -5,7 +5,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
       EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
       EXTERN_VALIDATOR_URL: "http://fhir-validator:8080"
       LOG_LEVEL: debug
@@ -29,7 +29,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx8g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx8g"
       ENABLE_TERMINOLOGY_SERVICE: "true"
       ENABLE_TERMINOLOGY_LOINC: "true"
       ENABLE_TERMINOLOGY_SNOMED_CT: "true"
