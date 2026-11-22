@@ -5,7 +5,6 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
       LOG_LEVEL: trace
     ports:

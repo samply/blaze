@@ -179,7 +179,7 @@ services:
   blaze-1:
     image: "samply/blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx4g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "3145728"
@@ -208,7 +208,7 @@ services:
   blaze-2:
     image: "samply/blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx4g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "3145728"

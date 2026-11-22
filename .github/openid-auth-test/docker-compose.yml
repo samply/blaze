@@ -19,7 +19,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
       ENABLE_ADMIN_API: "true"
     ports:
@@ -42,7 +42,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
       OPENID_PROVIDER_ISSUER: "https://wrong-issuer.example"
     ports:
@@ -65,7 +65,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
       OPENID_AUDIENCE: "wrong-audience"
     ports:
@@ -88,7 +88,7 @@ services:
     tmpfs:
     - "/tmp:exec"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
       OPENID_PROVIDER_ISSUER: "http://localhost:8090/realms/blaze"
       OPENID_AUDIENCE: "account"

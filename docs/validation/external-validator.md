@@ -151,7 +151,7 @@ services:
   blaze:
     image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx2g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
       EXTERN_VALIDATOR_URL: "http://fhir-validator:8080"
       VALIDATOR_FAILURE_MODE: "tag-outcome"
     ports:
@@ -176,7 +176,7 @@ services:
   terminology-server:
     image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx8g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx8g"
       ENABLE_TERMINOLOGY_SERVICE: "true"
       ENABLE_TERMINOLOGY_LOINC: "true"
       ENABLE_TERMINOLOGY_SNOMED_CT: "true"

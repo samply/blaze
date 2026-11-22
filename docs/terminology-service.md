@@ -44,7 +44,7 @@ For stored FHIR code systems, a graph will be built before operations like \$val
 
 ## Memory Requirements
 
-Because both the LOINC and SNOMED CT data used for terminology operations is currently hold completely in memory, at least 8 GiB of Java Heap memory is required. The Java Heap memory can be set by setting `JAVA_TOOL_OPTIONS` to `-Xmx8g -XX:-UseBASE64Intrinsics`, which also contains the mitigation of CVE-2026-114938.
+Because both the LOINC and SNOMED CT data used for terminology operations is currently hold completely in memory, at least 8 GiB of Java Heap memory is required. The Java Heap memory can be set by setting `JAVA_TOOL_OPTIONS` to `-Xmx8g`.
 
 ## Validation
 
@@ -69,7 +69,7 @@ services:
   blaze:
     image: "samply/blaze:{{ tag }}@{{ digest }}"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx8g -XX:-UseBASE64Intrinsics"
+      JAVA_TOOL_OPTIONS: "-Xmx8g"
       DB_BLOCK_CACHE_SIZE: "2048"
       ENABLE_TERMINOLOGY_SERVICE: true
       ENABLE_TERMINOLOGY_LOINC: true

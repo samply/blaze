@@ -22,7 +22,7 @@ cd blaze
 If you don't already have Blaze running, you can read about how to do it in [Deployment](../deployment.md). If you have Docker available just run:
 
 ```sh-vue
-docker run -e JAVA_TOOL_OPTIONS="-XX:-UseBASE64Intrinsics" -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:{{ tag }}@{{ digest }}
 ```
 
 ## Import some data

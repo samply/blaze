@@ -1,22 +1,16 @@
-<script setup lang="ts">
-import { withBase } from "vitepress";
-</script>
-
 <template>
   <div class="security-warning custom-block danger">
     <p class="custom-block-title">Security Warning</p>
     <p>
-      To mitigate
-      <a href="https://www.cve.org/CVERecord?id=CVE-2026-114938">CVE-2026-114938</a>,
-      every Blaze instance has to be started with
+      Blaze versions before v1.14.0 are affected by
+      <a href="https://www.cve.org/CVERecord?id=CVE-2026-114938">CVE-2026-114938</a>.
+      Please update to
+      <a href="https://github.com/samply/blaze/releases/tag/v1.14.0">v1.14.0</a>.
+      If you can't update, start every Blaze instance with
       <code>-XX:-UseBASE64Intrinsics</code> added to the
       <code>JAVA_TOOL_OPTIONS</code> environment variable, in addition to all
       other options, like
-      <code>JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"</code>. More
-      can be found in the
-      <a :href="withBase('/deployment/environment-variables#java-tool-options')">
-        Environment Variables</a>
-      documentation.
+      <code>JAVA_TOOL_OPTIONS="-Xmx4g -XX:-UseBASE64Intrinsics"</code>.
     </p>
   </div>
 </template>
