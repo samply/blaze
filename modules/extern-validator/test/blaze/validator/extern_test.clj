@@ -7,7 +7,7 @@
    [blaze.http-client.spec]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
-   [blaze.test-util :as tu :refer [given-failed-future]]
+   [blaze.test-util :as tu :refer [given-failed-future with-global-log-capture]]
    [blaze.validator :as validator]
    [blaze.validator-spec]
    [blaze.validator.extern :as extern]
@@ -21,7 +21,10 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [com.pgssoft.httpclient HttpClientMock]))
+   [com.pgssoft.httpclient HttpClientMock]
+   [java.net ConnectException]
+   [java.net.http HttpClient]
+   [java.util.concurrent CompletableFuture]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -31,6 +34,11 @@
 
 (defmethod ig/init-key ::http-client [_ _]
   (HttpClientMock.))
+
+(defmethod ig/init-key ::failing-http-client [_ _]
+  (proxy [HttpClient] []
+    (sendAsync [_request _handler]
+      (CompletableFuture/failedFuture (ConnectException. "Connection refused")))))
 
 (def ^:private config
   {:blaze.validator/extern
@@ -171,10 +179,37 @@
 
   (testing "an unavailable validator fails closed with busy"
     (with-system [{validator :blaze.validator/extern ::keys [http-client]} config]
-      (stub-validator-status http-client 500 valid-outcome)
+      (stub-validator-status http-client 500 invalid-outcome)
 
-      (given-failed-future (validator/validate validator patient)
-        ::anom/category := ::anom/busy)))
+      (with-global-log-capture
+        [logged (str "Error while validating `Patient/0` with the external "
+                     "validator: Unexpected response status 500. Got 1 issue "
+                     "with codes: processing")]
+        (given-failed-future (validator/validate validator patient)
+          ::anom/category := ::anom/busy
+          ::anom/message := "The external validator is currently unavailable.")
+
+        (testing "the cause is logged"
+          (given (deref logged 1000 ::not-logged)
+            :level := :warn
+            [:vargs count] := 1)))))
+
+  (testing "an unreachable validator fails closed with busy"
+    (with-system [{validator :blaze.validator/extern}
+                  (-> (assoc-in config [:blaze.validator/extern :http-client]
+                                (ig/ref ::failing-http-client))
+                      (dissoc ::http-client)
+                      (assoc ::failing-http-client {}))]
+      (with-global-log-capture
+        [logged (str "Error while validating `Patient/0` with the external "
+                     "validator: java.net.ConnectException: Connection refused")]
+        (given-failed-future (validator/validate validator patient)
+          ::anom/category := ::anom/busy
+          ::anom/message := "The external validator is currently unavailable.")
+
+        (testing "the cause is logged"
+          (given (deref logged 1000 ::not-logged)
+            :level := :warn)))))
 
   (testing "a concurrency-bounded validator validates all resources"
     (with-system [{validator :blaze.validator/extern ::keys [http-client]}

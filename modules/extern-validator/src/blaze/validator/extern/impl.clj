@@ -5,7 +5,9 @@
    [blaze.anomaly :as ba]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
-   [blaze.util :refer [conj-vec]]))
+   [blaze.util :refer [conj-vec]]
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom]))
 
 (def validation-status-system
   "Code system of the tag added to invalid resources."
@@ -85,3 +87,26 @@
    "External validation of the resource failed."
    :fhir/issue "invalid"
    :fhir/issues (mapv issue->internal (:issue operation-outcome))))
+
+(defn- issue-code [{:keys [code]}]
+  (or (:value code) "unknown"))
+
+(defn- issues-msg
+  "Returns a message stating the number and codes of `issues`.
+
+  Omits the diagnostics and expressions of the issues, because they can contain
+  sensitive data of the validated resource."
+  [issues]
+  (format "Got %d issue%s with codes: %s" (count issues)
+          (if (= 1 (count issues)) "" "s")
+          (str/join ", " (map issue-code issues))))
+
+(defn cause-msg
+  "Returns a message describing `anomaly`, the cause of a failed request to the
+  external validator.
+
+  Includes the message and the number and codes of the issues of a returned
+  OperationOutcome, if available, but no other keys of the anomaly."
+  [{::anom/keys [message] :fhir/keys [issues]}]
+  (cond-> (or message "No message available.")
+    (seq issues) (str " " (issues-msg issues))))

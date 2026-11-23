@@ -18,3 +18,7 @@
 (s/fdef impl/reject-anomaly
   :args (s/cat :operation-outcome :fhir/OperationOutcome)
   :ret ::anom/anomaly)
+
+(s/fdef impl/cause-msg
+  :args (s/cat :anomaly ::anom/anomaly)
+  :ret string?)

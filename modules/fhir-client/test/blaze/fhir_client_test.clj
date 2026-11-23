@@ -19,8 +19,11 @@
    [taoensso.timbre :as log])
   (:import
    [com.pgssoft.httpclient Condition HttpClientMock]
+   [java.net ConnectException]
+   [java.net.http HttpClient]
    [java.nio.file Files Path]
    [java.nio.file.attribute FileAttribute]
+   [java.util.concurrent CompletableFuture]
    [org.hamcrest Matchers]))
 
 (set! *warn-on-reflection* true)
@@ -35,6 +38,14 @@
     {:structure-definition-repo structure-definition-repo}
     :blaze.fhir/writing-context
     {:structure-definition-repo structure-definition-repo}}))
+
+(defn- failing-http-client
+  "Returns a HTTP client failing all async requests with `e`, like the JDK HTTP
+  client does if the server can't be reached."
+  [e]
+  (proxy [HttpClient] []
+    (sendAsync [_request _handler]
+      (CompletableFuture/failedFuture e))))
 
 (defn- opts []
   {:http-client (HttpClientMock.)
@@ -141,6 +152,22 @@
                                              "Patient" "0"
                                              opts)
         ::anom/category := ::anom/busy)))
+
+  (testing "Connection failure"
+    (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                           "Patient" "0"
+                                           (assoc (opts) :http-client (failing-http-client (ConnectException. "Connection refused"))))
+      ::anom/category := ::anom/fault
+      ::anom/message := "java.net.ConnectException: Connection refused"
+      :stacktrace := nil))
+
+  (testing "Connection failure without message"
+    (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                           "Patient" "0"
+                                           (assoc (opts) :http-client (failing-http-client (ConnectException.))))
+      ::anom/category := ::anom/fault
+      ::anom/message := "java.net.ConnectException"
+      :stacktrace := nil))
 
   (testing "Zero Response Code"
     (let [{:keys [^HttpClientMock http-client] :as opts} (opts)]

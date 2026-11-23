@@ -138,3 +138,36 @@
              :issue [{:fhir/type :fhir.OperationOutcome/issue}]})
       ::anom/category := ::anom/incorrect
       [:fhir/issues 0] := {})))
+
+(deftest cause-msg-test
+  (testing "the message only"
+    (is (= "Unexpected response status 500."
+           (impl/cause-msg {::anom/category ::anom/fault
+                            ::anom/message "Unexpected response status 500."}))))
+
+  (testing "without message"
+    (is (= "No message available."
+           (impl/cause-msg {::anom/category ::anom/fault}))))
+
+  (testing "with issues only their number and codes are included"
+    (is (= "Unexpected response status 500. Got 2 issues with codes: processing, invalid"
+           (impl/cause-msg {::anom/category ::anom/fault
+                            ::anom/message "Unexpected response status 500."
+                            :fhir/issues
+                            [(first (:issue (operation-outcome "error")))
+                             (assoc (first (:issue (operation-outcome "fatal")))
+                                    :code #fhir/code "invalid"
+                                    :expression [#fhir/string "Patient.gender"])]}))))
+
+  (testing "with one issue"
+    (is (= "Unexpected response status 500. Got 1 issue with codes: processing"
+           (impl/cause-msg {::anom/category ::anom/fault
+                            ::anom/message "Unexpected response status 500."
+                            :fhir/issues (:issue (operation-outcome "error"))}))))
+
+  (testing "with an issue without code"
+    (is (= "Unexpected response status 500. Got 1 issue with codes: unknown"
+           (impl/cause-msg {::anom/category ::anom/fault
+                            ::anom/message "Unexpected response status 500."
+                            :fhir/issues [{:fhir/type :fhir.OperationOutcome/issue
+                                           :diagnostics #fhir/string "Patient.gender: missing"}]})))))
