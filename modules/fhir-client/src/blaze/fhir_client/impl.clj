@@ -15,7 +15,7 @@
   (:import
    [java.nio.channels SeekableByteChannel]
    [java.nio.file Files Path StandardOpenOption]
-   [java.util.concurrent Flow$Subscriber Flow$Subscription]))
+   [java.util.concurrent CompletionException Flow$Subscriber Flow$Subscription]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,10 +37,30 @@
   {::anom/category (category (:status response))
    ::anom/message (format "Unexpected response status %d." (:status response))})
 
-(defn- anomaly [e]
+(defn- transport-anomaly
+  "Returns a fault anomaly for `e`, the cause of a request without response,
+  like a connection failure.
+
+  The message consists of the type and message of `e`. A stacktrace isn't
+  included, because it doesn't help with transport errors."
+  [e]
+  (ba/fault (str e)))
+
+(defn- anomaly
+  "Returns an anomaly for `e`, the error of a request.
+
+  Hato raises responses with an error status as `ExceptionInfo` and wraps all
+  other errors, like connection failures, in a `CompletionException`."
+  [e]
   (let [data (ex-data e)]
-    (if (ba/anomaly? data)
+    (cond
+      (ba/anomaly? data)
       (assoc data ::anom/category ::anom/fault)
+
+      (instance? CompletionException e)
+      (transport-anomaly (ex-cause e))
+
+      :else
       (cond-> (anomaly* data)
         (identical? :fhir/OperationOutcome (-> data :body :fhir/type))
         (assoc :fhir/issues (-> data :body :issue))))))

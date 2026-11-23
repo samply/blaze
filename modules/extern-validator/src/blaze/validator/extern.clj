@@ -33,18 +33,29 @@
       (impl/tag-invalid resource operation-outcome true))
     resource))
 
+(defn- resource-ref [{:fhir/keys [type] :keys [id]}]
+  (str (name type) "/" id))
+
+(defn- unavailable
+  "Logs the message and known details of `anomaly`, the cause of the failed
+  validation of `resource`, and returns a busy anomaly, because clients only
+  need to know that they can retry."
+  [resource anomaly]
+  (log/warn (format "Error while validating `%s` with the external validator: %s"
+                    (resource-ref resource) (impl/cause-msg anomaly)))
+  (ba/busy "The external validator is currently unavailable."))
+
 (defn- validate [base-uri http-opts failure-mode resource]
   (let [timer (prom/timer request-duration-seconds)]
     (-> (fhir-client/post (str base-uri "/validateResource") resource http-opts)
-        (ac/exceptionally
-         (fn [_] (ba/busy "The external validator is currently unavailable.")))
+        (ac/exceptionally (partial unavailable resource))
         (ac/then-apply (partial interpret resource failure-mode))
         (ac/when-complete
          (fn [_ _]
            (let [duration (prom/observe-duration! timer)]
              (log/trace
               (format "Validated resource `%s` in %.0f ms."
-                      (str (name (:fhir/type resource)) "/" (:id resource))
+                      (resource-ref resource)
                       (* duration 1e3)))))))))
 
 (defn- bounded
