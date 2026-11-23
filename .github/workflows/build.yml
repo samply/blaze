@@ -2479,7 +2479,7 @@ jobs:
       run: .github/integration-test-kds/validate.sh
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
+      run: .github/integration-test-kds/load-data.sh
 
     - name: Check Total Number of Resources
       run: .github/scripts/check-total-number-of-resources.sh 345
