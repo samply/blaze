@@ -6,7 +6,8 @@ set -euo pipefail
 # Link headers (RFC 8288). It follows the next link twice (to the third page) and
 # afterwards follows the previous link of the third page, expecting to arrive at
 # the second page again. Going to the third page ensures the previous link points
-# to a real middle page instead of being equivalent to the first link.
+# to a real middle page instead of being equivalent to the first link. It also
+# expects the Link header of the first page to carry no self link.
 #
 
 script_dir="$(dirname "$(readlink -f "$0")")"
@@ -27,9 +28,11 @@ first_entry_id() {
 # first page
 first_page="$base/Observation"
 first_page_id="$(first_entry_id "$first_page")"
-next_link="$(link_url "$(link_header "$first_page")" "next")"
+first_page_link_header="$(link_header "$first_page")"
+next_link="$(link_url "$first_page_link_header" "next")"
 
 test_non_empty "next link of the first page" "$next_link"
+test "self link presence in the Link header of the first page" "$([[ "$first_page_link_header" == *'rel="self"'* ]] && echo true || echo false)" "false"
 
 # follow the next link to the second page
 second_page="$next_link"

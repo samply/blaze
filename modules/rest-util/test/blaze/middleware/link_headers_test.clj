@@ -56,43 +56,42 @@
       [:headers "Link"] := nil
       [:body :fhir/type] := :fhir/Bundle))
 
+  (testing "the self link is never included"
+    (testing "as only link"
+      (given @((wrap-link-headers handler) (bundle {:relation "self" :url "url-091207"}))
+        [:headers "Link"] := nil
+        [:body :link 0 :relation] := #fhir/string "self"))
+
+    (testing "among other links"
+      (given @((wrap-link-headers handler) (bundle {:relation "first" :url "url-091231"}
+                                                   {:relation "self" :url "url-091207"}
+                                                   {:relation "next" :url "url-091242"}))
+        [:headers "Link"] := "<url-091231>;rel=\"first\",<url-091242>;rel=\"next\""
+        [:body :link count] := 3)))
+
   (testing "links are dropped incrementally so the value fits into 2048 bytes"
-    (let [self {:relation "self" :url (apply str (repeat 600 "s"))}
-          first {:relation "first" :url (apply str (repeat 600 "f"))}
-          previous {:relation "previous" :url (apply str (repeat 600 "p"))}
-          next {:relation "next" :url (apply str (repeat 600 "n"))}]
+    (let [first {:relation "first" :url (apply str (repeat 700 "f"))}
+          previous {:relation "previous" :url (apply str (repeat 700 "p"))}
+          next {:relation "next" :url (apply str (repeat 700 "n"))}]
 
       (testing "the previous link is dropped first"
-        (given @((wrap-link-headers handler) (bundle self first previous next))
-          [:headers "Link"] := (str "<" (:url self) ">;rel=\"self\","
-                                    "<" (:url first) ">;rel=\"first\","
+        (given @((wrap-link-headers handler) (bundle first previous next))
+          [:headers "Link"] := (str "<" (:url first) ">;rel=\"first\","
                                     "<" (:url next) ">;rel=\"next\"")
           [:body :fhir/type] := :fhir/Bundle))))
 
   (testing "the previous and first links are dropped to fit into 2048 bytes"
-    (let [self {:relation "self" :url (apply str (repeat 700 "s"))}
-          first {:relation "first" :url (apply str (repeat 700 "f"))}
-          previous {:relation "previous" :url (apply str (repeat 700 "p"))}
-          next {:relation "next" :url (apply str (repeat 700 "n"))}]
-      (given @((wrap-link-headers handler) (bundle self first previous next))
-        [:headers "Link"] := (str "<" (:url self) ">;rel=\"self\","
-                                  "<" (:url next) ">;rel=\"next\"")
-        [:body :fhir/type] := :fhir/Bundle)))
-
-  (testing "the previous, first and self links are dropped to fit into 2048 bytes"
-    (let [self {:relation "self" :url (apply str (repeat 1100 "s"))}
-          first {:relation "first" :url (apply str (repeat 1100 "f"))}
+    (let [first {:relation "first" :url (apply str (repeat 1100 "f"))}
           previous {:relation "previous" :url (apply str (repeat 1100 "p"))}
           next {:relation "next" :url (apply str (repeat 1100 "n"))}]
-      (given @((wrap-link-headers handler) (bundle self first previous next))
+      (given @((wrap-link-headers handler) (bundle first previous next))
         [:headers "Link"] := (str "<" (:url next) ">;rel=\"next\"")
         [:body :fhir/type] := :fhir/Bundle)))
 
   (testing "the link header is omitted when even the next link alone is too large"
-    (let [self {:relation "self" :url (apply str (repeat 2100 "s"))}
-          first {:relation "first" :url (apply str (repeat 2100 "f"))}
+    (let [first {:relation "first" :url (apply str (repeat 2100 "f"))}
           previous {:relation "previous" :url (apply str (repeat 2100 "p"))}
           next {:relation "next" :url (apply str (repeat 2100 "n"))}]
-      (given @((wrap-link-headers handler) (bundle self first previous next))
+      (given @((wrap-link-headers handler) (bundle first previous next))
         [:headers "Link"] := nil
         [:body :fhir/type] := :fhir/Bundle))))

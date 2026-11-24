@@ -1,6 +1,6 @@
 (ns blaze.middleware.link-headers
   "Middleware that will transfer bundle links into link headers according to
-  RFC 8288."
+  RFC 8288. The self link is left out."
   (:refer-clojure :exclude [str])
   (:require
    [blaze.async.comp :refer [do-sync]]
@@ -20,7 +20,7 @@
 
   The `next` link is kept until the end so that forward navigation via the
   header survives as long as possible."
-  ["previous" "first" "self"])
+  ["previous" "first"])
 
 (defn- link-header-value [{{relation :value} :relation {url :value} :url}]
   (str "<" url ">;rel=\"" relation "\""))
@@ -46,6 +46,14 @@
         (when relation-to-drop
           (recur (remove (comp #{relation-to-drop} relation) links) more))))))
 
+(defn- navigation-links
+  "Returns `links` without the self link.
+
+  The self link isn't used for navigation and carries the search params in
+  clear, which shouldn't end up in response headers that are commonly logged."
+  [links]
+  (remove (comp #{"self"} relation) links))
+
 (defn- add-link-header [response links]
   (if-let [value (constrain links)]
     (assoc-in response [:headers "Link"] value)
@@ -55,4 +63,5 @@
   [handler]
   (fn [request]
     (do-sync [{{links :link} :body :as response} (handler request)]
-      (cond-> response (seq links) (add-link-header links)))))
+      (let [links (navigation-links links)]
+        (cond-> response (seq links) (add-link-header links))))))

@@ -1015,8 +1015,9 @@
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
 
-        (testing "has no self link"
-          (is (nil? (link-url body "self"))))
+        (testing "has a self link"
+          (is (= (str base-url context-path "/Patient?_count=1")
+                 (link-url body "self"))))
 
         (testing "has a first link"
           (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
@@ -1072,8 +1073,9 @@
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
-          (testing "has no self link"
-            (is (nil? (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient?_count=1")
+                   (link-url body "self"))))
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
@@ -1282,8 +1284,9 @@
                     more hits than page-size"
           (is (nil? (:total body))))
 
-        (testing "has no self link"
-          (is (nil? (link-url body "self"))))
+        (testing "has a self link"
+          (is (= (str base-url context-path "/Patient?active=true&_count=1")
+                 (link-url body "self"))))
 
         (testing "has a first link with token"
           (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
@@ -1328,8 +1331,9 @@
                 {::reitit/match patient-page-match
                  :path-params (page-path-params page-id-cipher {"active" "true" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
-          (testing "has no self link"
-            (is (nil? (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient?active=true&_count=1")
+                   (link-url body "self"))))
 
           (testing "has a previous link with search params"
             (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1"})
@@ -1348,8 +1352,9 @@
                   {::reitit/match patient-page-match
                    :path-params (page-path-params page-id-cipher {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
 
-            (testing "has no self link"
-              (is (nil? (link-url body "self"))))
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=true&_count=1")
+                     (link-url body "self"))))
 
             (testing "has a previous link with search params"
               (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
@@ -1385,8 +1390,9 @@
                 {::reitit/match patient-page-match
                  :path-params (page-path-params page-id-cipher {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})})]
 
-          (testing "has no self link"
-            (is (nil? (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient?active=true&_count=1")
+                   (link-url body "self"))))
 
           (testing "has a previous link with token"
             (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
@@ -1402,8 +1408,9 @@
                   {::reitit/match patient-page-match
                    :path-params (page-path-params page-id-cipher {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "3" "__page-id-stack" ["" "2"]})})]
 
-            (testing "has no self link"
-              (is (nil? (link-url body "self"))))
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=true&_count=1")
+                     (link-url body "self"))))
 
             (testing "has a previous link with token"
               (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1" "__page-id" "2" "__page-id-stack" [""]})
@@ -1522,8 +1529,9 @@
                         have more hits than page-size"
               (is (nil? (:total body))))
 
-            (testing "has no self link"
-              (is (nil? (link-url body "self"))))
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_id=0%2C2%2C3%2C4&_count=2")
+                     (link-url body "self"))))
 
             (testing "has a first link"
               (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})

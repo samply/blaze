@@ -321,6 +321,11 @@
         "/__admin" :get ::admin
         "/__admin/more" :get ::admin))))
 
+(deftest system-route-name-test
+  (with-system [system system-config]
+    (testing "the search-system route is named, so that self links can be built on page requests"
+      (is (= "" (:path (reitit/match-by-name (router config system) :system)))))))
+
 (deftest resource-operation-routes-test
   (with-system [system system-config]
     (let [router (router config system)]

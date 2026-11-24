@@ -1188,15 +1188,19 @@
          :headers {"content-type" "application/fhir+json"}
          :body (json-writer (re-index-job canonical/base))})
 
-      (let [{:keys [status body]}
+      (let [{:keys [status headers body]}
             @(handler
               {:request-method :get
                :uri "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history"})]
 
         (is (= 200 status))
 
+        (testing "the self link isn't included in the Link header"
+          (is (nil? (get headers "Link"))))
+
         (given body
           "resourceType" := "Bundle"
+          ["link" 0 "relation"] := "self"
           "type" := "history"
           ["entry" 0 "request" "method"] := "POST"
           ["entry" 0 "request" "url"] := "Task"

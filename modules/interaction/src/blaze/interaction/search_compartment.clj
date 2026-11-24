@@ -58,9 +58,9 @@
   (into [] (entries-xf context query) resources))
 
 (defn- self-link
-  [{::search-util/keys [link] :keys [match params] :blaze/keys [base-url]}
+  [{::search-util/keys [link] :keys [search-match params] :blaze/keys [base-url]}
    clauses]
-  (link "self" (nav/url base-url match params
+  (link "self" (nav/url base-url search-match params
                         (nav/client-clauses params clauses))))
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
@@ -113,13 +113,17 @@
     summary? (search-summary context)
     :else (search-normal context)))
 
+(defn- search-match [router code id type]
+  (reitit/match-by-name router (keyword code "compartment")
+                        {:id id :type type}))
+
 (defn page-match [router code id type]
   #(reitit/match-by-name router (keyword code "compartment-page")
                          {:id id :type type :page-id %}))
 
 (defn- search-context
   [{:keys [page-store value-set-expander] :as context}
-   {{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
+   {{{:fhir.compartment/keys [code]} :data} ::reitit/match
     {:keys [id type]} :path-params
     :keys [headers params]
     :blaze/keys [base-url db paging-params]
@@ -140,11 +144,11 @@
                 :blaze/base-url base-url
                 :blaze/db db
                 ::reitit/router router
-                :match match
                 :code code
                 :id id
                 :type type
                 :page-match (page-match router code id type)
+                :search-match (search-match router code id type)
                 :params params)
           handling
           (assoc :blaze.preference/handling handling))))))

@@ -176,6 +176,18 @@ Paging links are completely opaque and have to be followed as is. Clients must n
 
 Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 10 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
 
+### Self Link <Badge type="warning" text="Since 1.15.0"/>
+
+Every search result page carries a self link describing the search that was performed. It is a GET search URL with the search parameters actually used, including `_count`, so that clients can review which parameters were applied. All pages of a search carry the same self link. It holds no paging state, so following it starts a new search on the current database and returns its first page. Use the first, previous and next links to navigate within a paging session.
+
+Unlike the other paging links, the self link carries the search parameters in clear, also for searches issued via POST. Clients shall review the returned parameters in the self link to ensure proper processing of results.
+
+### Link Header
+
+The navigation links of a page are also returned in the `Link` header according to [RFC 8288][11]. This applies to the search (system, type and compartment) and history (system, type and instance) interactions and to the job history of the admin API. The self link is never included, because it carries the search parameters in clear, which can contain sensitive information, and response headers are commonly logged. A response whose only link is the self link, like a search with `_summary=count` or without matches, has no `Link` header. Before version 1.15.0, the self link was included.
+
+Because the size of the header is limited to 2048 bytes, links are dropped from it if it would get larger. The previous link is dropped first, followed by the first link. The next link is kept as long as it fits; otherwise the `Link` header is omitted. The links in the Bundle resource are never dropped.
+
 ## Content Negotiation
 
 Blaze returns FHIR resources as JSON or XML. The format is chosen as follows:
@@ -203,3 +215,4 @@ Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy hea
 [8]: <http://hl7.org/fhir/R5/async-bundle.html>
 [9]: <https://r4.blaze-server.org/fhir/>
 [10]: <https://www.rfc-editor.org/rfc/rfc9110#name-accept>
+[11]: <https://www.rfc-editor.org/rfc/rfc8288>

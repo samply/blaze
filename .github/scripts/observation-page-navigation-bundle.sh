@@ -6,7 +6,9 @@ set -euo pipefail
 # FHIR Bundle (Bundle.link). It follows the next link twice (to the third page)
 # and afterwards follows the previous link of the third page, expecting to arrive
 # at the second page again. Going to the third page ensures the previous link
-# points to a real middle page instead of being equivalent to the first link.
+# points to a real middle page instead of being equivalent to the first link. It
+# also expects the self link of the third page to describe the same search as the
+# self link of the first page.
 #
 
 script_dir="$(dirname "$(readlink -f "$0")")"
@@ -28,8 +30,10 @@ first_entry_id() {
 first_page="$(curl -sSfH 'Accept: application/fhir+json' "$base/Observation")"
 first_page_id="$(first_entry_id "$first_page")"
 next_link="$(link_url "$first_page" "next")"
+first_page_self_link="$(link_url "$first_page" "self")"
 
 test_non_empty "next link of the first page" "$next_link"
+test_non_empty "self link of the first page" "$first_page_self_link"
 
 # follow the next link to the second page
 second_page="$(curl -sSfH 'Accept: application/fhir+json' "$next_link")"
@@ -46,6 +50,7 @@ previous_link="$(link_url "$third_page" "previous")"
 
 test_not_equal "first entry id of the third page" "$third_page_id" "$second_page_id"
 test_non_empty "previous link of the third page" "$previous_link"
+test "self link of the third page" "$(link_url "$third_page" "self")" "$first_page_self_link"
 
 # follow the previous link back to the second page
 previous_page="$(curl -sSfH 'Accept: application/fhir+json' "$previous_link")"

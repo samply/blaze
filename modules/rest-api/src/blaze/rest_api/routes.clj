@@ -406,7 +406,7 @@
          (conj wrap-auth-guard))
        :blaze/context-path context-path}
       [""
-       (cond-> {}
+       (cond-> {:name :system}
          (some? search-system-handler)
          (assoc :get {:interaction "search-system"
                       :middleware [[wrap-db node]
