@@ -34,3 +34,7 @@
   :args (s/cat :cfhs (s/map-of keyword? ::impl/column-family-handle)
                :wb ::impl/write-batch
                :entries (cs/coll-of :blaze.db.kv/write-entry)))
+
+(s/fdef impl/compression-display-name
+  :args (s/cat :compression-name string?)
+  :ret string?)
