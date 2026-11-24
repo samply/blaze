@@ -11,7 +11,11 @@
    [blaze.db.impl.index.single-version-id-spec]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.impl.search-param.util-spec]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
    [blaze.fhir.hash :as hash]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -133,3 +137,24 @@
                     (completing (fn [_ x] (reduced (ih/id x))))
                     nil
                     [(key "0") (key "1")])))))))
+
+(def ^:private config
+  {::kv/mem {:column-families {:search-param-value-index nil}}})
+
+(defn- patient-ref [id]
+  (codec/tid-id (codec/tid "Patient") id))
+
+(deftest estimated-scan-size-test
+  (with-system [{kv-store ::kv/mem} config]
+    (let [c-hash (codec/c-hash "subject")
+          tid (codec/tid "Observation")
+          hash #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"]
+      (kv/put! kv-store [(sp-vr/index-entry c-hash tid (patient-ref "x") "0" hash)
+                         (sp-vr/index-entry c-hash tid (patient-ref "xa") "1" hash)
+                         (sp-vr/index-entry c-hash tid (patient-ref "xa") "2" hash)])
+
+      (testing "doesn't count values the given value is a prefix of"
+        (is (= 1 (sp-vr/estimated-scan-size kv-store c-hash tid (patient-ref "x")))))
+
+      (testing "counts all resources with the given value"
+        (is (= 2 (sp-vr/estimated-scan-size kv-store c-hash tid (patient-ref "xa"))))))))

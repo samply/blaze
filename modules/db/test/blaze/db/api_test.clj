@@ -10222,6 +10222,67 @@
             count := 1
             [0 :id] := "2"))))))
 
+(deftest type-query-reference-id-prefix-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [(into
+      [[:put {:fhir/type :fhir/Patient :id "x"}]
+       [:put {:fhir/type :fhir/Patient :id "xa"}]
+       [:put {:fhir/type :fhir/Observation :id "0"
+              :code
+              #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                  {:system #fhir/uri "http://loinc.org"
+                   :code #fhir/code "94564-2"}]}
+              :subject #fhir/Reference{:reference #fhir/string "Patient/xa"}}]]
+      ;; the other observations make the estimated scan sizes of the reference
+      ;; clauses to both patients so large, that they are used as matchers
+      ;; instead of being scanned
+      (for [[patient-id ids] [["x" (range 1 21)] ["xa" (range 21 41)]]
+            id ids]
+        [:put {:fhir/type :fhir/Observation :id (str id)
+               :subject (literal-ref (str "Patient/" patient-id))}]))]
+
+    (with-db [db node]
+      (testing "doesn't find observations referencing a patient whose id starts with the queried id"
+        (doseq [ref-clause [["subject" "Patient/x"] ["patient" "x"]]
+                :let [clauses [["code" "94564-2"] ref-clause]]]
+          (given-type-query db "Observation" clauses
+            count := 0)
+
+          (given (explain-type-query db "Observation" clauses)
+            [:scan-clauses 0 :code] := "code"
+            [:seek-clauses 0 :code] := (first ref-clause))
+
+          (testing "in a type matcher"
+            (let [matcher (d/compile-type-matcher db "Observation" [ref-clause])]
+              (is (false? (d/matches? db matcher (d/resource-handle db "Observation" "0")))))))
+
+        (testing "in a compartment query"
+          (is (empty? (pull-compartment-query db "Patient" "x" "Observation"
+                                              [["code" "94564-2"]])))))
+
+      (testing "finds the observation referencing the queried patient"
+        (doseq [ref-clause [["subject" "Patient/xa"] ["patient" "xa"]]
+                :let [clauses [["code" "94564-2"] ref-clause]]]
+          (given-type-query db "Observation" clauses
+            count := 1
+            [0 :id] := "0")
+
+          (given (explain-type-query db "Observation" clauses)
+            [:scan-clauses 0 :code] := "code"
+            [:seek-clauses 0 :code] := (first ref-clause))
+
+          (testing "in a type matcher"
+            (let [matcher (d/compile-type-matcher db "Observation" [ref-clause])]
+              (is (true? (d/matches? db matcher (d/resource-handle db "Observation" "0")))))))
+
+        (testing "in a compartment query"
+          (given (pull-compartment-query db "Patient" "xa" "Observation"
+                                         [["code" "94564-2"]])
+            count := 1
+            [0 :id] := "0"))))))
+
 (deftest type-query-location-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Location :id "0"
