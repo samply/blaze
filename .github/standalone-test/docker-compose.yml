@@ -26,7 +26,7 @@ services:
       start_period: 30s
 
   ingress:
-    image: "nginx:1.31.9@sha256:08f354a3b44c422021a5c0f5efb3e27f8f90236b5447d3bac4053f5f50ab6760"
+    image: "nginx:1.31.10@sha256:def91a3c286bb384ad54a3695000fbed704f4ae5cd799a8226785a6e2401184c"
     ports:
     - "8080:8080"
     volumes:
