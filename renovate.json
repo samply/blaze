@@ -70,6 +70,23 @@
       "allowedVersions": "<25"
     },
     {
+      "description": [
+        "Update the many npm dependencies of the frontend and its e2e tests together in one weekly PR instead of one PR each, saving CI runs. Major updates stay separate, because they often need code changes and should be reviewed on their own."
+      ],
+      "matchDatasources": [
+        "npm"
+      ],
+      "matchFileNames": [
+        "modules/frontend/package.json",
+        "modules/frontend-e2e/package.json"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "frontend non-major dependencies"
+    },
+    {
       "groupName": "jackson",
       "matchPackageNames": [
         "/com.fasterxml.jackson/"
