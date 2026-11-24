@@ -83,6 +83,21 @@
                  (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
                  target))))
 
+(defn- seek-filter
+  "Returns a stateful transducer that filters inputs by seeking forward to the
+  key `encode` returns for the input and each of the `values`. Inputs pass if
+  `matches?` returns true for one of them.
+
+  See `i/seek-key-filter` for the arguments of `encode` and `matches?`."
+  [snapshot matches? encode values]
+  (i/seek-key-filter
+   snapshot
+   :resource-value-index
+   (fn [_] kv/seek-buffer!)
+   matches?
+   encode
+   values))
+
 (defn value-filter
   "Returns a stateful transducer that filters inputs depending on having one of
   the `values` match via `matches?`.
@@ -93,10 +108,8 @@
   Inputs will be given to `encode` and the optional `value-prefix-length` function.
   Inputs can be resource handles or single-version-ids."
   ([snapshot encode matches? values]
-   (i/seek-key-filter
+   (seek-filter
     snapshot
-    :resource-value-index
-    (fn [_] kv/seek-buffer!)
     (i/target-length-matcher
      (fn [key-buf _ value]
        (matches? (decode-value key-buf) value)))
@@ -158,15 +171,17 @@
       (encode-key-buf-1! target-buf tid id hash-prefix c-hash)
       (bb/put-byte-string! target-buf value))))
 
+(def ^:private key-starts-with-target?
+  "Returns true if the key byte buffer starts with the target byte buffer."
+  (i/target-length-matcher (fn [_ _ _] true)))
+
 (defn value-prefix-filter
   "Returns a stateful transducer that filters resource handles depending on
   having one of the `value-prefixes` on search param with `c-hash`."
   [snapshot c-hash value-prefixes]
-  (i/seek-key-filter
+  (seek-filter
    snapshot
-   :resource-value-index
-   (fn [_] kv/seek-buffer!)
-   (i/target-length-matcher (fn [_ _ _] true))
+   key-starts-with-target?
    (resource-handle-search-param-value-encoder c-hash)
    value-prefixes))
 
@@ -174,13 +189,40 @@
   "Returns a stateful transducer that filters single-version-ids depending on
   having one of the `value-prefixes` on search param with `c-hash`."
   [snapshot tid c-hash value-prefixes]
-  (i/seek-key-filter
+  (seek-filter
    snapshot
-   :resource-value-index
-   (fn [_] kv/seek-buffer!)
-   (i/target-length-matcher (fn [_ _ _] true))
+   key-starts-with-target?
    (single-version-id-search-param-value-encoder tid c-hash)
    value-prefixes))
+
+(defn- key-equals-target?
+  "Returns true if the key byte buffer equals the target byte buffer.
+
+  Values are the last part of the key and aren't terminated. So the key has to
+  end with the target value. Otherwise a value, like a reference to an id, would
+  match all values it's a prefix of, like references to longer ids."
+  [target-buf key-buf _ _]
+  (neg? (bb/mismatch target-buf key-buf)))
+
+(defn value-equals-filter
+  "Returns a stateful transducer that filters resource handles depending on
+  having one of the `values` on search param with `c-hash`."
+  [snapshot c-hash values]
+  (seek-filter
+   snapshot
+   key-equals-target?
+   (resource-handle-search-param-value-encoder c-hash)
+   values))
+
+(defn single-version-id-value-equals-filter
+  "Returns a stateful transducer that filters single-version-ids depending on
+  having one of the `values` on search param with `c-hash`."
+  [snapshot tid c-hash values]
+  (seek-filter
+   snapshot
+   key-equals-target?
+   (single-version-id-search-param-value-encoder tid c-hash)
+   values))
 
 (defn- prefix-keys* [snapshot prefix-length start-key]
   (i/prefix-keys snapshot :resource-value-index decode-value prefix-length

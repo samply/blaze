@@ -243,14 +243,16 @@
 
 (defn estimated-scan-size
   "Returns a relative estimation for the amount of work to do while scanning the
-  SearchParamValueResource index with the prefix consisting of `c-hash`, `tid`
-  and `value`.
+  SearchParamValueResource index with the keys of `c-hash`, `tid` and `value`.
+
+  Like `index-handles-full-value`, it covers only keys with the whole `value`,
+  not keys with values `value` is a prefix of, like references to longer ids.
 
   The metric is relative and unitless. It can be only used to compare the amount
-  of scan work between different prefixes.
+  of scan work between different values.
 
   Returns an anomaly if estimating the scan size isn't supported by `kv-store`."
   [kv-store c-hash tid value]
-  (let [seek-key (encode-seek-key c-hash tid value)
+  (let [seek-key (encode-seek-key-full-value c-hash tid value)
         key-range [seek-key (bs/concat seek-key #blaze/byte-string"FF")]]
     (kv/estimate-scan-size kv-store :search-param-value-index key-range)))

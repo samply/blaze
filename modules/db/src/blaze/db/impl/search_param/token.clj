@@ -319,12 +319,12 @@
         (u/union-index-handles (map index-handles compiled-values)))))
 
   (-matcher [_ db modifier compiled-values]
-    (r-sp-v/value-prefix-filter
+    (r-sp-v/value-equals-filter
      (:snapshot db) (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
   (-single-version-id-matcher [_ db tid modifier compiled-values]
-    (r-sp-v/single-version-id-value-prefix-filter
+    (r-sp-v/single-version-id-value-equals-filter
      (:snapshot db) tid (c-hash-w-modifier c-hash code (canonical-url-modifier expression-type modifier))
      compiled-values))
 
@@ -416,12 +416,12 @@
     (ba/unsupported))
 
   (-matcher [_ db modifier compiled-values]
-    (r-sp-v/value-prefix-filter
+    (r-sp-v/value-equals-filter
      (:snapshot db) (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 
   (-single-version-id-matcher [_ db tid modifier compiled-values]
-    (r-sp-v/single-version-id-value-prefix-filter
+    (r-sp-v/single-version-id-value-equals-filter
      (:snapshot db) tid (c-hash-w-modifier c-hash code modifier)
      compiled-values))
 

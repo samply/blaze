@@ -31,6 +31,26 @@
                :value-prefixes (s/coll-of byte-string? :min-count 1))
   :ret fn?)
 
+(s/fdef r-sp-v/single-version-id-value-prefix-filter
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :tid :blaze.db/tid
+               :c-hash :blaze.db/c-hash
+               :value-prefixes (s/coll-of byte-string? :min-count 1))
+  :ret fn?)
+
+(s/fdef r-sp-v/value-equals-filter
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :c-hash :blaze.db/c-hash
+               :values (s/coll-of byte-string? :min-count 1))
+  :ret fn?)
+
+(s/fdef r-sp-v/single-version-id-value-equals-filter
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :tid :blaze.db/tid
+               :c-hash :blaze.db/c-hash
+               :values (s/coll-of byte-string? :min-count 1))
+  :ret fn?)
+
 (s/fdef r-sp-v/index-entry
   :args (s/cat :tid :blaze.db/tid
                :id :blaze.resource/id

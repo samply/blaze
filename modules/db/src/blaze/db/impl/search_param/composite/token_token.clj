@@ -59,10 +59,10 @@
     (ba/unsupported))
 
   (-matcher [_ db _ compiled-values]
-    (r-sp-v/value-prefix-filter (:snapshot db) c-hash compiled-values))
+    (r-sp-v/value-equals-filter (:snapshot db) c-hash compiled-values))
 
   (-single-version-id-matcher [_ db tid _ compiled-values]
-    (r-sp-v/single-version-id-value-prefix-filter
+    (r-sp-v/single-version-id-value-equals-filter
      (:snapshot db) tid c-hash compiled-values))
 
   (-postprocess-matches [_ _ _ _ _])
