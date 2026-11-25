@@ -593,11 +593,11 @@
   (not (str/includes? link "rel=\"self\"")))
 
 (deftest search-system-test
-  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
+  (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
-      [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "50" "__t" "1"}))
-      [:headers "Link"] :? without-self-link?
+      [:headers "Link" #(str/split % #",") count] := 1
+      [:headers "Link"] :? #(str/ends-with? % "rel=\"next\"")
       [:body json-parser self-link-url] := "http://localhost:8080?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle))
 
@@ -637,8 +637,7 @@
 
         (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-          [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
           [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
           [:body json-parser :fhir/type] := :fhir/Bundle)
 
@@ -696,8 +695,7 @@
                                :headers {"content-type" "application/x-www-form-urlencoded"}
                                :body (input-stream (byte-array 0))})
           :status := 200
-          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-          [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
           [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
           [:body json-parser :fhir/type] := :fhir/Bundle)
 

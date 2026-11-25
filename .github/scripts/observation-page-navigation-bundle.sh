@@ -8,7 +8,7 @@ set -euo pipefail
 # at the second page again. Going to the third page ensures the previous link
 # points to a real middle page instead of being equivalent to the first link. It
 # also expects the self link of the third page to describe the same search as the
-# self link of the first page.
+# self link of the first page and only subsequent pages to carry a first link.
 #
 
 script_dir="$(dirname "$(readlink -f "$0")")"
@@ -34,6 +34,7 @@ first_page_self_link="$(link_url "$first_page" "self")"
 
 test_non_empty "next link of the first page" "$next_link"
 test_non_empty "self link of the first page" "$first_page_self_link"
+test_empty "first link of the first page" "$(link_url "$first_page" "first")"
 
 # follow the next link to the second page
 second_page="$(curl -sSfH 'Accept: application/fhir+json' "$next_link")"
@@ -50,6 +51,7 @@ previous_link="$(link_url "$third_page" "previous")"
 
 test_not_equal "first entry id of the third page" "$third_page_id" "$second_page_id"
 test_non_empty "previous link of the third page" "$previous_link"
+test_non_empty "first link of the third page" "$(link_url "$third_page" "first")"
 test "self link of the third page" "$(link_url "$third_page" "self")" "$first_page_self_link"
 
 # follow the previous link back to the second page

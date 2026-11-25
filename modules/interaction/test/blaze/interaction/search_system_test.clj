@@ -438,9 +438,8 @@
             (is (= (str base-url "?_count=1")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher {"_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -782,9 +781,8 @@
             (is (= (str base-url "?_tag=system-190657%7Ccode-190711&_count=1")
                    (link-url body "self"))))
 
-          (testing "has a first link with search params"
-            (is (= (page-url page-id-cipher {"_tag" ["system-190657|code-190711"] "_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))

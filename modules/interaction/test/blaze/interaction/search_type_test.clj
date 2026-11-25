@@ -992,9 +992,8 @@
           (is (= (str base-url context-path "/Patient?_count=1")
                  (link-url body "self"))))
 
-        (testing "has a first link"
-          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
-                 (link-url body "first"))))
+        (testing "has no first link"
+          (is (nil? (link-url body "first"))))
 
         (testing "has no previous link"
           (is (nil? (link-url body "previous"))))
@@ -1033,6 +1032,39 @@
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))))
 
+    (testing "following the first link"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1"})})]
+
+        (testing "has a self link"
+          (is (= (str base-url context-path "/Patient?_count=1")
+                 (link-url body "self"))))
+
+        (testing "has no first link, because it is the first page"
+          (is (nil? (link-url body "first"))))
+
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))
+
+        (testing "has a next link"
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1" "__page-id-stack" [""]})
+                 (link-url body "next"))))))
+
+    (testing "a subsequent page with an empty page-id stack"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/match patient-page-match
+               :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"})})]
+
+        (testing "has a first link, because it isn't the first page"
+          (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
+                 (link-url body "first"))))
+
+        (testing "has no previous link"
+          (is (nil? (link-url body "previous"))))))
+
     (testing "on /_search request"
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
@@ -1047,9 +1079,8 @@
             (is (= (str base-url context-path "/Patient?_count=1")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -1129,9 +1160,8 @@
             (is (= (str base-url context-path "/Patient?active=true&_count=1")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -1155,9 +1185,8 @@
               (is (= (str base-url context-path "/Patient?active=true&_total=accurate&_count=1")
                      (link-url body "self"))))
 
-            (testing "has a first link"
-              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1"})
-                     (link-url body "first"))))
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
 
             (testing "has no previous link"
               (is (nil? (link-url body "previous"))))
@@ -1208,9 +1237,8 @@
             (is (= (str base-url context-path "/Patient?active=true&_count=1")
                    (link-url body "self"))))
 
-          (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -1235,9 +1263,8 @@
               (is (= (str base-url context-path "/Patient?active=true&_total=accurate&_count=1")
                      (link-url body "self"))))
 
-            (testing "has a first link with token"
-              (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_total" "accurate" "_count" "1" "__t" "1"})
-                     (link-url body "first"))))
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
 
             (testing "has no previous link"
               (is (nil? (link-url body "previous"))))
@@ -1373,9 +1400,8 @@
                 {::reitit/match patient-search-match
                  :params {"active" "true" "_count" "1"}})]
 
-          (testing "has a first link with token"
-            (is (= (page-url page-id-cipher "Patient" {"__token" "4A70EBA4262BCE71A9FEEBDB06B7444999B65A8897C1E46017618C8CBA035710" "_count" "1" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -1487,9 +1513,8 @@
             (is (= (str base-url context-path "/Patient?_id=0%2C2%2C3%2C4&_count=2")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_id" ["0,2,3,4"] "_count" "2" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
@@ -1734,7 +1759,7 @@
             (is (zero? (count (:entry body))))))))))
 
 (deftest handler-id-sort-test
-  (with-handler [handler _ page-id-cipher]
+  (with-handler [handler]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]]
      [[:put {:fhir/type :fhir/Patient :id "2"}]]
      [[:put {:fhir/type :fhir/Patient :id "1"}]]]
@@ -1770,9 +1795,8 @@
             (is (= (str base-url context-path "/Patient?_sort=_id&_count=50")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_sort" "_id" "_count" "50" "__t" "3"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous")))))))
@@ -1793,7 +1817,7 @@
             [:issue 0 :diagnostics] := #fhir/string "Unsupported sort direction `desc` for search param `_id`."))))))
 
 (deftest handler-lastUpdated-sort-test
-  (with-handler [handler _ page-id-cipher]
+  (with-handler [handler]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]]
      [[:put {:fhir/type :fhir/Patient :id "1"}]]
      [[:put {:fhir/type :fhir/Patient :id "2"}]]]
@@ -1829,9 +1853,8 @@
             (is (= (str base-url context-path "/Patient?_sort=_lastUpdated&_count=50")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_sort" "_lastUpdated" "_count" "50" "__t" "3"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous")))))))
@@ -1867,9 +1890,8 @@
             (is (= (str base-url context-path "/Patient?_sort=-_lastUpdated&_count=50")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_sort" "-_lastUpdated" "_count" "50" "__t" "3"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous")))))))))
@@ -2820,7 +2842,7 @@
 
 (deftest handler-include-resources-test
   (testing "direct include"
-    (with-handler [handler _ page-id-cipher]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -2845,11 +2867,8 @@
           (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=50")
                  (link-url body "self"))))
 
-        (testing "has a first link"
-          (is (= (page-url page-id-cipher "Observation"
-                           {"_include" ["Observation:subject"]
-                            "_count" "50" "__t" "1"})
-                 (link-url body "first"))))
+        (testing "has no first link"
+          (is (nil? (link-url body "first"))))
 
         (testing "has no previous link"
           (is (nil? (link-url body "previous"))))
@@ -3408,7 +3427,7 @@
             [:search :mode] := #fhir/code "include")))))
 
   (testing "revinclude"
-    (with-handler [handler _ page-id-cipher]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -3432,10 +3451,8 @@
           (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50")
                  (link-url body "self"))))
 
-        (testing "has a first link"
-          (is (= (page-url page-id-cipher "Patient" {"_revinclude" ["Observation:subject"]
-                                                     "_count" "50" "__t" "1"})
-                 (link-url body "first"))))
+        (testing "has no first link"
+          (is (nil? (link-url body "first"))))
 
         (testing "has no previous link"
           (is (nil? (link-url body "previous"))))
@@ -3456,7 +3473,7 @@
             [:search :mode] := #fhir/code "include"))))
 
     (testing "two revincludes"
-      (with-handler [handler _ page-id-cipher]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]
@@ -3484,10 +3501,8 @@
             (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50")
                    (link-url body "self"))))
 
-          (testing "has a first link"
-            (is (= (page-url page-id-cipher "Patient" {"_revinclude" ["Observation:subject" "Condition:subject"]
-                                                       "_count" "50" "__t" "1"})
-                   (link-url body "first"))))
+          (testing "has no first link"
+            (is (nil? (link-url body "first"))))
 
           (testing "has no previous link"
             (is (nil? (link-url body "previous"))))
