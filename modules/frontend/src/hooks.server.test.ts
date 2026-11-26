@@ -95,7 +95,10 @@ describe('init test', () => {
 describe('checkOrigin test', () => {
   it('logs an error if the origin of a request differs from ORIGIN and resolves', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const event = { url: new URL('https://frontend:3000/fhir/Patient') };
+    const event = {
+      url: new URL('https://frontend:3000/fhir/Patient'),
+      request: new Request('https://frontend:3000/fhir/Patient')
+    };
     const resolve = vi.fn().mockResolvedValue(new Response('ok'));
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +107,26 @@ describe('checkOrigin test', () => {
     expect(error).toHaveBeenCalledWith(expect.stringContaining('https://frontend:3000'));
     expect(resolve).toHaveBeenCalledWith(event);
     expect(await result.text()).toBe('ok');
+    error.mockRestore();
+  });
+
+  it('logs an error if the origin the browser uses differs from the derived one', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const url = 'https://blaze.example.com/fhir/__sign-in';
+    const event = {
+      url: new URL(url),
+      request: new Request(url, {
+        method: 'POST',
+        headers: { origin: 'https://blaze.example.com:444', 'sec-fetch-site': 'same-origin' }
+      })
+    };
+    const resolve = vi.fn().mockResolvedValue(new Response('ok'));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await checkOrigin({ event: event as any, resolve } as any);
+
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('https://blaze.example.com:444'));
+    expect(resolve).toHaveBeenCalledWith(event);
     error.mockRestore();
   });
 });
