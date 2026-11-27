@@ -9,6 +9,7 @@
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
    [blaze.elm.code :refer [code?]]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
@@ -28,6 +29,11 @@
   "Number of times a retrieve expression was evaluated."
   {:namespace "blaze"
    :subsystem "cql"})
+
+(def ^:private resource-types
+  "The set of all concrete FHIR resource types. It contains no data types and
+  no abstract types like `Resource`."
+  (set codec/all-types))
 
 (defn- code->clause-value [{:keys [system code]}]
   (str system "|" code))
@@ -211,14 +217,35 @@
     :else
     (type-query-expr node data-type [(codes-clause code-property codes-expr)])))
 
+(defn- unfiltered-type?
+  "Returns true if a retrieve of `data-type` in `eval-context` has to return all
+  resources of the type, as in Unfiltered context.
+
+  That is the case for types outside the Patient compartment, for example
+  Medication. Only the Patient compartment is defined, so the rule is limited to
+  the Patient context. Unknown types, data types and abstract types return
+  false, so the compartment query reports them."
+  [node eval-context data-type]
+  (and (= "Patient" eval-context)
+       (contains? resource-types data-type)
+       (not (d/in-compartment? node eval-context data-type))))
+
 (defn- expr* [{:keys [node eval-context] :as context} data-type code-property codes-expr]
-  (if (and (not (vs/value-set? codes-expr)) (empty? codes-expr))
-    (if (= data-type eval-context)
+  (let [no-codes? (and (not (vs/value-set? codes-expr)) (empty? codes-expr))]
+    (cond
+      (and no-codes? (= data-type eval-context))
       resource-expr
-      (context-expr node eval-context data-type))
-    (if-clauses
-     (retrieve-clauses context data-type code-property codes-expr)
-     (partial compartment-query-expr node eval-context data-type))))
+
+      (unfiltered-type? node eval-context data-type)
+      (unfiltered-context-expr context data-type code-property codes-expr)
+
+      no-codes?
+      (context-expr node eval-context data-type)
+
+      :else
+      (if-clauses
+       (retrieve-clauses context data-type code-property codes-expr)
+       (partial compartment-query-expr node eval-context data-type)))))
 
 ;; 11.1. Retrieve
 (defn- expr

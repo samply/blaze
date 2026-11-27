@@ -74,12 +74,21 @@ The ELM expression are compiled into instances of the `blaze.elm.compiler.core/E
 * that Bloom filters will be stored in a Caffeine cache by expression hash
   * the expression hash covers the codes of expanded value sets, so that a Bloom filter created with an outdated expansion isn't used
 * each Bloom filter will be assigned the t of its creation
+* expressions that retrieve resources outside of the Patient compartment, like Medication, get no Bloom filter, because changes to such resources don't change the last change t of any patient
 * the Bloom filters of all expressions of a query will be collected at the start of the query evaluation
 * if a Bloom filter isn't found, its calculation will be queued and carried out asynchronously
 * existing Bloom filters are immutable and will be used in query evaluation
   * the Patient ID will be used to test whether this Patient isn't in the Bloom filter
   * if the Patient ID wasn't found, the expression will return false
   * if the Patient ID is found, the expression will be evaluated normally
+
+### Rewrites That Read Resources Outside of the Patient Compartment
+
+* an optimization can replace a retrieve of resources outside of the Patient compartment by a matcher that reads these resources at evaluation time
+* the `with` clause over Medications retrieved by code is replaced by a matcher with the chained search parameter `medication:Medication.code`
+* an expression with such a matcher gets no Bloom filter, for the same reason as an expression with such a retrieve
+  * the expression cache detects the matcher by the type its search parameter chains to
+  * a Bloom filter keyed by the set of matching Medications isn't used, because the Bloom filter is calculated at a newer database than the one of the optimization, so it could be calculated for another set than its key says
 
 ### Bloom Filter Calculation
 
