@@ -81,8 +81,10 @@ Rigorous adherence to these patterns is required:
 ## Design Documents
 
 * Before implementing a feature that involves real design decisions (competing approaches, non-obvious rules, migrations), write a design document and get it approved. Bug fixes and small enhancements need none; the GitHub issue is enough.
-* Put it in `specs/YYYY-MM-DD-<topic>-design.md`, never under `docs/`, which is published. Cover the intent, goals and non-goals, the approaches considered with the one chosen, and the decisions made.
-* Commit the design together with the change. Don't commit implementation plans: they are build instructions and go stale once the code exists.
+* Design documents follow the structure of Rust RFCs, with the divergences described in `specs/README.md`. Start from `specs/0000-template.md` and put the document in `specs/YYYY-MM-DD-<topic>-design.md`, never under `docs/`, which is published.
+* Set its status to `Accepted` once it's approved, and commit it together with the change. Don't commit implementation plans: they are build instructions and go stale once the code exists.
+* Don't rewrite an accepted design document when a later change alters the design. Write a new one and mark the old one as superseded, as described in `specs/README.md`.
+* Link the design document from the issues it was written for and from later issues building on it.
 
 ## Release Notes
 
