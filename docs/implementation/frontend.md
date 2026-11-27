@@ -27,6 +27,9 @@ database.
   doesn't expire while the backend requests of a page are still running
 * if the access token can't be refreshed, the user has to sign in again
 * no base URL is configured; Better Auth takes the origin of each request, which is the one the adapter derived for it
+* behind a reverse proxy that doesn't forward the host the browser uses, for example dropping a non-standard port, that
+  origin differs from the `Origin` header, which Better Auth rejects; `src/hooks.server.ts` logs an error naming both
+  origins and the env vars to fix it, the first time a same-origin request (`Sec-Fetch-Site`) shows such a difference
 * Keycloak users don't need an email, but Better Auth requires one, so an email under the reserved `.invalid` TLD is
   made up for users without one
 

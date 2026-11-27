@@ -50,6 +50,14 @@ Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse pro
 
 Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy which doesn't keep the `Host` header.
 
+The forwarded host has to be the one the browser uses, including a non-standard port like in `https://blaze.example.com:8443`. With nginx, forward `$http_host`, which keeps the port, not `$host`, which drops it:
+
+```nginx
+proxy_set_header X-Forwarded-Host $http_host;
+```
+
+Otherwise, the origin of the frontend derived from the request differs from the one the browser uses, and sign-in fails with `Invalid origin`, as do form actions and the links in responses of the backend. The frontend logs an error the first time a request of the browser shows such a difference.
+
 #### `NODE_EXTRA_CA_CERTS` <Badge type="warning" text="Since 0.26"/>
 
 The name of a file with additional CA certificates needed to access especially the auth provider.

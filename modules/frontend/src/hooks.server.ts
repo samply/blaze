@@ -12,7 +12,11 @@ import { sequence, type Handle, type HandleFetch, type ServerInit } from '@svelt
 import { authConfig } from '#lib/server/auth-config.js';
 import { authHandle, createAuth } from '#lib/server/auth.js';
 import { authenticate, type AuthApi } from '#lib/server/session.js';
-import { createOriginCheck, warnAboutOrigin } from '#lib/server/origin.js';
+import {
+  createBrowserOriginCheck,
+  createOriginCheck,
+  warnAboutOrigin
+} from '#lib/server/origin.js';
 import { resolve as resolveRoute } from '$app/paths';
 
 /**
@@ -88,12 +92,16 @@ export const init: ServerInit = () => {
 
 const checkRequestOrigin = createOriginCheck(ORIGIN, (message) => console.error(message));
 
+const checkBrowserOrigin = createBrowserOriginCheck((message) => console.error(message));
+
 /**
  * Logs an error once if the origin derived from a request differs from the
- * no longer supported `ORIGIN`.
+ * no longer supported `ORIGIN`, and once if it differs from the origin the
+ * browser uses.
  */
 export const checkOrigin: Handle = ({ event, resolve }) => {
   checkRequestOrigin(event.url.origin);
+  checkBrowserOrigin(event.request.headers, event.url.origin);
   return resolve(event);
 };
 
