@@ -249,16 +249,13 @@
    :link [(self-link context clauses)]})
 
 (defn normal-bundle
-  [{{{route-name :name} :data} ::reitit/match :as context} token
-   {:keys [entries total clauses]}]
+  [context token {:keys [entries total clauses]}]
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
     :type #fhir/code "searchset"
     :entry entries
-    :link [(first-link context token clauses)]}
-    (not= "page" (some-> route-name name))
-    (update :link conj (self-link context clauses))
+    :link [(first-link context token clauses) (self-link context clauses)]}
     total
     (assoc :total (type/unsignedInt total))))
 

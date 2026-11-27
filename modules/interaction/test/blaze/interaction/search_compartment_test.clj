@@ -65,7 +65,7 @@
    {:data
     {:fhir.compartment/code code
      :name (keyword code "compartment-page")}
-    :path (str context-path (format "/%s/%s/Observation" code id))}))
+    :path (str context-path (format "/%s/%s/Observation/__page/page-id-100342" code id))}))
 
 (def ^:private config
   (assoc
@@ -751,6 +751,10 @@
 
               (testing "the total count is 2"
                 (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "has a self link"
+                (is (= (str base-url context-path "/Patient/0/Observation?_count=1")
+                       (link-url body "self"))))
 
               (testing "has no next link"
                 (is (nil? (link-url body "next"))))

@@ -189,10 +189,11 @@
   (fn [page-id]
     (reitit/match-by-name router :page {:page-id page-id})))
 
-(defn- self-link-url-fn [{:blaze/keys [base-url] ::reitit/keys [match]} params]
-  (fn [clauses]
-    (nav/url base-url match params
-             (nav/client-clauses params clauses))))
+(defn- self-link-url-fn [{:blaze/keys [base-url] ::reitit/keys [router]} params]
+  (let [match (reitit/match-by-name router :system)]
+    (fn [clauses]
+      (nav/url base-url match params
+               (nav/client-clauses params clauses)))))
 
 (defn- search-context
   [{:keys [page-store page-id-cipher value-set-expander] :as context}

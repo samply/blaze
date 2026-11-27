@@ -43,13 +43,20 @@
 
 (def base-url "base-url-114650")
 
+(def context-path "/context-path-104332")
+
+(def ^:private routes
+  [["" {:name :system}]
+   ["/__page/{page-id}" {:name :page}]
+   ["/Patient" {:name :Patient/type}]
+   ["/Observation" {:name :Observation/type}]
+   ["/Group" {:name :Group/type}]])
+
 (def router
-  (reitit/router
-   [["/__page/{page-id}" {:name :page}]
-    ["/Patient" {:name :Patient/type}]
-    ["/Observation" {:name :Observation/type}]
-    ["/Group" {:name :Group/type}]]
-   {:syntax :bracket}))
+  (reitit/router routes {:syntax :bracket}))
+
+(def context-path-router
+  (reitit/router routes {:syntax :bracket :path context-path}))
 
 (def default-match
   (reitit/map->Match
@@ -62,7 +69,7 @@
    {:data
     {:name :page
      :blaze/base-url ""}
-    :path ""}))
+    :path "/__page/page-id-090611"}))
 
 (def ^:private config
   (assoc
@@ -176,17 +183,20 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (defn wrap-defaults [handler]
-  (fn [{::reitit/keys [match] :as request}]
+  (fn [{::reitit/keys [match] request-router ::reitit/router :as request}]
     (handler
-     (cond-> (assoc request
-                    :blaze/base-url base-url
-                    ::reitit/router router)
+     (cond-> (assoc request :blaze/base-url base-url)
+       (nil? request-router)
+       (assoc ::reitit/router router)
        (nil? match)
        (assoc ::reitit/match default-match)))))
 
+(defn- page-request? [{{{route-name :name} :data} ::reitit/match}]
+  (= :page route-name))
+
 (defn wrap-db [handler node page-id-cipher]
-  (fn [{::reitit/keys [match] :as request}]
-    (if (= page-match match)
+  (fn [request]
+    (if (page-request? request)
       ((page-id/wrap-decrypt-page-id
         (db/wrap-snapshot-db handler node)
         page-id-cipher)
@@ -211,6 +221,30 @@
 
 (defn- page-path-params [page-id-cipher params]
   {:page-id (page-id/encrypt page-id-cipher params)})
+
+(deftest context-path-test
+  (with-handler [handler _ page-id-cipher]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (testing "following the next link"
+      (let [{:keys [body]}
+            @(handler
+              {::reitit/router context-path-router
+               ::reitit/match (reitit/match-by-name context-path-router :page {:page-id "page-id-104527"})
+               :path-params
+               (page-path-params
+                page-id-cipher
+                {"_count" "1" "__t" "1" "__page-type" "Patient"
+                 "__page-id" "1" "__page-id-stack" [""]})})]
+
+        (testing "has a self link"
+          (is (= (str base-url context-path "?_count=1")
+                 (link-url body "self"))))
+
+        (testing "has a first link"
+          (is (= (str base-url context-path "/__page/" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+                 (link-url body "first"))))))))
 
 (deftest handler-test
   (testing "on empty database"
@@ -431,8 +465,9 @@
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
-          (testing "has no self link"
-            (is (nil? (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url "?_count=1")
+                   (link-url body "self"))))
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher {"_count" "1" "__t" "1"})
@@ -464,8 +499,9 @@
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
-            (testing "has no self link"
-              (is (nil? (link-url body "self"))))
+            (testing "has a self link"
+              (is (= (str base-url "?_count=1")
+                     (link-url body "self"))))
 
             (testing "has no next link"
               (is (nil? (link-url body "next"))))
@@ -786,8 +822,9 @@
           (testing "there is no total count"
             (is (nil? (:total body))))
 
-          (testing "has no self link"
-            (is (nil? (link-url body "self"))))
+          (testing "has a self link"
+            (is (= (str base-url "?_tag=system-190657%7Ccode-190711&_count=1")
+                   (link-url body "self"))))
 
           (testing "has a first link"
             (is (= (page-url page-id-cipher {"_tag" ["system-190657|code-190711"] "_count" "1" "__t" "1"})

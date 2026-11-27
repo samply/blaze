@@ -581,12 +581,24 @@
     (given (call rest-api {:request-method :delete :uri "/Patient"})
       :status := 204)))
 
+(defn- self-link-url
+  "Returns the URL of the self link of `bundle`."
+  [bundle]
+  (some #(when (= "self" (-> % :relation :value)) (-> % :url :value))
+        (:link bundle)))
+
+(defn- without-self-link?
+  "Returns true if the Link header value `link` carries no self link."
+  [link]
+  (not (str/includes? link "rel=\"self\"")))
+
 (deftest search-system-test
   (with-system [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
       [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "50" "__t" "1"}))
-      [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080?_count=50>;rel=\"self\""
+      [:headers "Link"] :? without-self-link?
+      [:body json-parser self-link-url] := "http://localhost:8080?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle))
 
   (testing "unencrypted paging params are ignored"
@@ -599,7 +611,8 @@
           :status := 200
           [:body json-parser :entry count] := 1
           [:body json-parser :entry 0 :resource :fhir/type] := :fhir/Patient
-          [:body json-parser :entry 0 :resource :id] := "1"))
+          [:body json-parser :entry 0 :resource :id] := "1"
+          [:body json-parser self-link-url] := "http://localhost:8080?_count=1"))
 
       (testing "the same paging params as query params don't"
         (given (call rest-api {:request-method :get :uri ""
@@ -613,7 +626,8 @@
     (with-system [{:blaze/keys [rest-api] :blaze.test/keys [json-parser]} config]
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200
-        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
+        [:headers "Link"] := nil
+        [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=50"
         [:body json-parser :fhir/type] := :fhir/Bundle))
 
     (testing "with two patients"
@@ -624,8 +638,8 @@
         (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
           :status := 200
           [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-          [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
           [:body json-parser :fhir/type] := :fhir/Bundle)
 
         (testing "fetch the second page"
@@ -634,6 +648,7 @@
 
             [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
             [:body json-parser :fhir/type] := :fhir/Bundle))
 
         (testing "fetch an unknown page"
@@ -667,7 +682,8 @@
                              :headers {"content-type" "application/x-www-form-urlencoded"}
                              :body (input-stream (byte-array 0))})
         :status := 200
-        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
+        [:headers "Link"] := nil
+        [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=50"
         [:body json-parser :fhir/type] := :fhir/Bundle))
 
     (testing "with two patients"
@@ -681,8 +697,8 @@
                                :body (input-stream (byte-array 0))})
           :status := 200
           [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
-          [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
-          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2" "__page-id" "1" "__page-id-stack" [""]}))
+          [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
           [:body json-parser :fhir/type] := :fhir/Bundle)
 
         (testing "fetch the second page"
@@ -691,6 +707,7 @@
 
             [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
             [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"previous\"" (page-id/encrypt page-id-cipher {"_count" "1" "__t" "2"}))
+            [:body json-parser self-link-url] := "http://localhost:8080/Patient?_count=1"
             [:body json-parser :fhir/type] := :fhir/Bundle))
 
         (testing "fetch an unknown page"
@@ -713,6 +730,8 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"})
       :status := 200
+      [:headers "Link"] := nil
+      [:body json-parser self-link-url] := "http://localhost:8080/Patient/0/Observation?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle))
 
   (testing "unencrypted paging params are ignored"
@@ -726,6 +745,8 @@
       (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"
                              :query-string "_count=1&__page-offset=1"})
         :status := 200
+        [:headers "Link"] :? without-self-link?
+        [:body json-parser self-link-url] := "http://localhost:8080/Patient/0/Observation?_count=1"
         [:body json-parser :entry count] := 1
         [:body json-parser :entry 0 :resource :id] := "0"))))
 
@@ -744,6 +765,8 @@
 
     (given (call rest-api {:request-method :get :uri "/_history"})
       :status := 200
+      [:headers "Link"] :? without-self-link?
+      [:body json-parser self-link-url] := "http://localhost:8080/_history?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle
       [:body json-parser :entry 0 :resource :id] := "0"))
 
@@ -763,6 +786,7 @@
                                :query-string (str "_count=1&" client-paging-params)})
           :status := 200
           next-link := (format "<http://localhost:8080/__history-page/%s>;rel=\"next\"" page-id)
+          [:headers "Link"] :? without-self-link?
           [:body json-parser :entry count] := 1
           [:body json-parser :entry 0 :resource :id] := "1")
 
@@ -778,7 +802,8 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/_history"})
       :status := 200
-      [:headers "Link"] := "<http://localhost:8080/Patient/_history?_count=50>;rel=\"self\""
+      [:headers "Link"] := nil
+      [:body json-parser self-link-url] := "http://localhost:8080/Patient/_history?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle))
 
   (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher json-parser]} config]
@@ -813,7 +838,8 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0/_history"})
       :status := 200
-      [:headers "Link"] := "<http://localhost:8080/Patient/0/_history?_count=50>;rel=\"self\""
+      [:headers "Link"] := nil
+      [:body json-parser self-link-url] := "http://localhost:8080/Patient/0/_history?_count=50"
       [:body json-parser :fhir/type] := :fhir/Bundle)
 
     (testing "unencrypted paging params are ignored"
