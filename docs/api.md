@@ -174,7 +174,11 @@ Paging links are completely opaque and have to be followed as is. Clients must n
 
 ### Backwards Navigation
 
-Type-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 10 pages. When paging back further than that, the previous link is omitted; use the first link to jump to the start of the result set instead.
+Type-level and system-level search results additionally contain a previous link, allowing clients to page backwards through a result set. Because paging sessions keep no server-side state (see Fast), the previous link encodes the chain of preceding page positions. To keep paging URLs bounded in size, this chain is limited to the most recent 10 pages. When paging back further than that, the previous link is omitted, although the page isn't the first one (see First Link). Use the first link to jump to the start of the result set instead.
+
+### First Link <Badge type="warning" text="Since 1.15.0"/>
+
+Type-level and system-level search results carry a first link pointing to the start of the result set only on pages that have a predecessor. So the absence of the first link tells a client that it is at the start of the result set. Before version 1.15.0, the first page carried a first link pointing to itself.
 
 ### Self Link <Badge type="warning" text="Since 1.15.0"/>
 

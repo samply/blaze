@@ -212,7 +212,7 @@
   "Upper bound on the number of ancestor page start-ids carried in the
   `__page-id-stack` of a paging link. Keeps the encrypted page id (and thus the
   paging URL) small enough; beyond it, the previous link is no longer offered
-  and the always present first link is used instead."
+  and the first link, present on every page but the first, is used instead."
   10)
 
 (defn- push-page-id [page-id-stack page-id]
@@ -248,16 +248,24 @@
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses)]})
 
+(defn- first-page?
+  "Returns true if `params` describe the first page of a search, which is the
+  only page without the id of the resource it starts with (:page-id)."
+  [{:keys [page-id]}]
+  (nil? page-id))
+
 (defn normal-bundle
-  [context token {:keys [entries total clauses]}]
+  [{:keys [params] :as context} token {:keys [entries total clauses]}]
   (cond->
    {:fhir/type :fhir/Bundle
     :id (m/luid context)
     :type #fhir/code "searchset"
     :entry entries
-    :link [(first-link context token clauses) (self-link context clauses)]}
+    :link [(self-link context clauses)]}
     total
-    (assoc :total (type/unsignedInt total))))
+    (assoc :total (type/unsignedInt total))
+    (not (first-page? params))
+    (update :link conj (first-link context token clauses))))
 
 (defn summary-response [context total clauses]
   (ring/response
