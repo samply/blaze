@@ -1,6 +1,14 @@
 # Value Set Expansion outside of the Database
 
-## Intent
+- Start Date: 2026-11-11
+- Status: Accepted
+- Issues: #4640
+
+## Summary
+
+The node receiving a request expands the value sets of token clauses with the `in` modifier into plain token clauses before it calls the database. So the database no longer depends on a terminology service, and its query results and the outcome of indexing a transaction depend only on the database itself.
+
+## Motivation
 
 The `in` modifier of token search parameters, as in `Observation?code:in=<ValueSet URL>`, matches resources with a code from a value set. The codes are the result of expanding the value set with the terminology service. That result can change over time: a value set or code system can change, an external terminology server can answer differently, expansions are cached for some time, and the local terminology service reads value sets from the newest database.
 
@@ -9,7 +17,7 @@ The database has to be deterministic: a query against a database value has to re
 * **Transaction log replay.** The indexer runs the conditions of conditional creates and deletes. A replay of the transaction log, on a new node or after an index rebuild, can get another expansion and so another outcome than the original run. A replay right at startup can even fail, because the local terminology service isn't available before all components are started.
 * **Paging.** Every page of a search compiles its query again and so expands its value sets again. If the expansion changes between pages, later pages can miss resources of the original result or contain resources outside of it.
 
-## Goals
+### Goals
 
 * The database doesn't depend on a terminology service. Its query results and the outcome of indexing a transaction depend only on the database itself.
 * All pages of a search use the same expansion.
@@ -17,21 +25,22 @@ The database has to be deterministic: a query against a database value has to re
 * Query compilation becomes synchronous again, because value set expansion was its only asynchronous step.
 * Clients keep seeing the clauses as they wrote them, for example in the self link of a search.
 
-## Non-Goals
+### Non-Goals
 
 * Indexing transaction log entries of earlier versions whose conditions hold value sets. We assume that the `in` modifier hasn't been used in conditional creates or deletes yet.
 * Indices that speed up value set searches, like an index of the value sets the codes of a resource belong to.
 * Limiting the number of codes of searches, CQL retrieves and `$graph` links.
 
-## Approaches
+## Guide-Level Explanation
 
-1. **Expand in the database, but pin the expansion.** The database keeps expanding value sets, but caches expansions per value set for the lifetime of a search or a transaction. That doesn't help a replay, which runs long after the original expansion, and keeps the database dependent on the terminology service.
-2. **Expand before calling the database (chosen).** The node receiving a request expands value sets into plain token clauses and passes only those to the database. Conditional creates and deletes store their expanded clauses in the transaction log, so indexing no longer needs a terminology service. Searches keep their expanded clauses in the page store.
-3. **Record expansions in the database.** The node receiving a request stores the expansion in the database within the transaction, and queries read it from there. That would make expansions deterministic for later queries as well, but needs a new kind of data in the database and a rule for when an expansion is stored again.
+For clients, searches with the `in` modifier like `Observation?code:in=<ValueSet URL>` work as before. The self link of every page shows the `in` modifier as given, and all pages of a search use the expansion of its first page. Two cases answer differently than a client might expect:
 
-Approach 2 was chosen, because it removes the dependency of the database on the terminology service with the least new machinery and keeps approach 3 possible later for indices (see Future Value Set Indices).
+* A search whose value sets expand to no codes answers with an empty bundle.
+* A condition of a conditional create or delete whose value sets expand to no codes fails with a `422 Unprocessable Entity`, and one whose value sets expand to more than 10,000 codes fails with a `409 Conflict` and the issue code `too-costly`.
 
-## Design
+For contributors, the database no longer knows value sets. Every caller that accepts clauses with the `in` modifier, like searches, conditional creates and deletes, CQL retrieves and `$graph` links, expands them with the value set expander before passing them to the database, which rejects any value set it still gets.
+
+## Reference-Level Explanation
 
 ### Value Set Expander
 
@@ -70,6 +79,34 @@ The database rejects value sets wherever they show up, so that no caller can byp
 * **Transactions:** `d/transact` rejects conditional creates and deletes whose clauses hold a value set, before anything is written.
 * **Indexing:** Transaction log entries written by earlier versions can still hold value sets. The indexer can't index such an entry without expanding the value set, so it fails the node with a message naming the transaction, instead of indexing it with an outcome that may differ from the original run.
 
-### Future Value Set Indices
+## Drawbacks
+
+* The conditions of conditional creates and deletes are stored with their codes, which makes their transaction log records larger and needs the limit of 10,000 codes per condition.
+* A node fails on transaction log entries of earlier versions whose conditions hold value sets, instead of indexing them.
+* Every caller accepting the `in` modifier has to expand it itself. The guards in the database make a forgotten expansion fail instead of returning wrong results.
+
+## Rationale and Alternatives
+
+1. **Expand in the database, but pin the expansion.** The database keeps expanding value sets, but caches expansions per value set for the lifetime of a search or a transaction. That doesn't help a replay, which runs long after the original expansion, and keeps the database dependent on the terminology service.
+2. **Expand before calling the database (chosen).** The node receiving a request expands value sets into plain token clauses and passes only those to the database. Conditional creates and deletes store their expanded clauses in the transaction log, so indexing no longer needs a terminology service. Searches keep their expanded clauses in the page store.
+3. **Record expansions in the database.** The node receiving a request stores the expansion in the database within the transaction, and queries read it from there. That would make expansions deterministic for later queries as well, but needs a new kind of data in the database and a rule for when an expansion is stored again.
+
+Approach 2 was chosen, because it removes the dependency of the database on the terminology service with the least new machinery and keeps approach 3 possible later for indices (see Future Possibilities).
+
+## Prior Art
+
+None.
+
+## Unresolved Questions
+
+None.
+
+## Future Possibilities
+
+### Value Set Indices
 
 Moving the expansion out of the database doesn't rule out indices that speed up value set searches. To stay deterministic, such an index has to be built from data in the database, not from terminology service calls during indexing. A component outside the database would create the index through the database API, passing the expansion it is built from, and the database would record the existence of the index in a transaction. The expansion step could then check whether such an index exists in the database a query runs against and use it instead of the codes.
+
+## Verification
+
+None.

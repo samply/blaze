@@ -1,10 +1,18 @@
 # Canonical URL Resolution
 
-## Intent
+- Start Date: 2026-11-17
+- Status: Accepted
+- Issues: #4682
+
+## Summary
+
+A Cloudflare Worker on one route per resource type resolves the canonical URLs of the Implementation Guide, like `https://blaze-server.org/fhir/StructureDefinition/Job`. It answers FHIR JSON and XML in place from the rendering on GitHub Pages and redirects browsers to the rendered page, using an index of the resources generated from the guide.
+
+## Motivation
 
 Blaze emits canonical URLs rooted at `https://blaze-server.org/fhir`, like `https://blaze-server.org/fhir/StructureDefinition/Job`. The Implementation Guide defining them is served under `/fhir` as part of the documentation site on GitHub Pages, but the publisher renders every resource as a flat file, `StructureDefinition-Job.html`, so every canonical URL returns 404. Following a canonical should return the definition, as FHIR JSON or XML for a program and as the rendered page for a browser.
 
-## Goals
+### Goals
 
 * Every canonical URL in the guide resolves, with content negotiation on `Accept` and the `_format` parameter.
 * Beyond the issue's promise of canonicals: every resource of the guide answers at its FHIR read URL `[base]/[type]/[id]` with base `https://blaze-server.org/fhir`. The publisher renders `<Type>-<id>.html`, `.json` and `.xml` for every resource, canonical or not (the Task and Bundle examples, the NamingSystem), so this costs nothing extra, and relative references between the examples resolve too. A canonical is the case where `url` equals that read URL.
@@ -12,22 +20,27 @@ Blaze emits canonical URLs rooted at `https://blaze-server.org/fhir`, like `http
 * The routing logic is code in this repository, with tests.
 * It fits the free plans of Cloudflare Workers and the zone.
 
-## Non-Goals
+### Non-Goals
 
 * Canonicals of past releases. A canonical is version-independent; a client needing an exact version resolves it from the FHIR package.
 * `https://blaze-server.org/fhir/sid/JobNumber`, the `uniqueId` of the JobNumber NamingSystem. It's an identifier system, not a resource path.
 * Search, history or any other FHIR interaction besides read.
 * Moving the documentation site off GitHub Pages (#4195).
 
-## Approaches
+## Guide-Level Explanation
 
-1. **Cloudflare Worker on per-type routes (chosen).** A small Worker answers `/fhir/<Type>/<id>`, fetches the matching file from GitHub Pages and answers in place.
-2. **Cloudflare Rules.** URL Rewrite Rules plus Response Header Transform Rules. Possible on the free plan: `http.request.headers`, `contains`, `wildcard` and `wildcard_replace()` are available, and `_format` precedence works through rule order, because later rewrites overwrite earlier ones. Rejected because rules can't parse q-values (a browser sends `application/xml;q=0.9` and must get HTML), `wildcard` ignores slashes so every rule needs exclusions, it takes about 8 of the 10 free rules, and the configuration lives in the dashboard without version control or tests.
-3. **Rename the rendering into the canonical layout.** Rejected: an artifact page carries hundreds of relative references to `tbl_*.png` sprites, `assets/` and sibling pages, which break when a page moves one directory down, after every publisher release.
-4. **Generated redirect stub pages.** Work on static hosting, but can't negotiate on `Accept`.
-5. **A redirect to the flat page for every format.** Rejected: for a program the canonical is the identity, so FHIR JSON and XML are answered in place. HTML is redirected though, see below.
+A program following a canonical gets the definition as FHIR JSON or XML, depending on its `Accept` header or the `_format` parameter:
 
-## Design
+```sh
+curl -H 'Accept: application/fhir+json' https://blaze-server.org/fhir/StructureDefinition/Job
+curl 'https://blaze-server.org/fhir/StructureDefinition/Job?_format=xml'
+```
+
+A browser following the same URL is redirected to the rendered page `https://blaze-server.org/fhir/StructureDefinition-Job.html`. Every other resource of the guide answers at its read URL `[base]/[type]/[id]` in the same way. A path that isn't a resource of the guide returns `404`.
+
+For contributors, nothing has to be maintained by hand: a resource added to the guide gets its URL, and a resource type its route, with the next deployment of the guide.
+
+## Reference-Level Explanation
 
 ### Index
 
@@ -123,7 +136,24 @@ The API token is the secret `CLOUDFLARE_API_TOKEN` and the account ID the variab
 * **Worker deploy fails.** The previous Worker and routes stay active. The guide itself is deployed before, so it's never stale because of the Worker.
 * **Origin down.** The Worker passes the origin's error through.
 
-## Decisions
+## Drawbacks
+
+* A browser shows the flat URL of the rendered page after the redirect, not the canonical.
+* Resolution depends on Cloudflare and its free limit of 100,000 Worker requests a day. Above the limit, canonicals return 404 or, if the routes fail closed, a 1027 error.
+* The deployment needs a Cloudflare API token and, for the first deploy, a role that can create Workers.
+* The routing logic lives in a separate module with its own TypeScript tooling and `wrangler` dependency.
+
+## Rationale and Alternatives
+
+### Approaches
+
+1. **Cloudflare Worker on per-type routes (chosen).** A small Worker answers `/fhir/<Type>/<id>`, fetches the matching file from GitHub Pages and answers in place.
+2. **Cloudflare Rules.** URL Rewrite Rules plus Response Header Transform Rules. Possible on the free plan: `http.request.headers`, `contains`, `wildcard` and `wildcard_replace()` are available, and `_format` precedence works through rule order, because later rewrites overwrite earlier ones. Rejected because rules can't parse q-values (a browser sends `application/xml;q=0.9` and must get HTML), `wildcard` ignores slashes so every rule needs exclusions, it takes about 8 of the 10 free rules, and the configuration lives in the dashboard without version control or tests.
+3. **Rename the rendering into the canonical layout.** Rejected: an artifact page carries hundreds of relative references to `tbl_*.png` sprites, `assets/` and sibling pages, which break when a page moves one directory down, after every publisher release.
+4. **Generated redirect stub pages.** Work on static hosting, but can't negotiate on `Accept`.
+5. **A redirect to the flat page for every format.** Rejected: for a program the canonical is the identity, so FHIR JSON and XML are answered in place. HTML is redirected though, see Request Handling.
+
+### Decisions
 
 * Worker, not Rules.
 * Per-type routes, derived at deploy time.
@@ -135,6 +165,18 @@ The API token is the secret `CLOUDFLARE_API_TOKEN` and the account ID the variab
 * The deploy is a separate job after the Pages deployment, whose install and deploy steps are skipped until `CLOUDFLARE_ACCOUNT_ID` is configured.
 * An unencoded `+` in `_format`, which a query string decodes as a space, is read as `+`, so a hand-written `?_format=application/fhir+json` works.
 
-## Open Points
+## Prior Art
+
+None.
+
+## Unresolved Questions
 
 * Whether fail open survives a deploy. Wrangler replaces the routes as a whole, so a fail mode set in the dashboard may be reset on every deploy. If it is, either the deploy sets it through the API after `wrangler deploy`, or the routes stay fail closed and a 1027 error on canonicals is accepted as the consequence of an exceeded limit.
+
+## Future Possibilities
+
+None.
+
+## Verification
+
+None.

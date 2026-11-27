@@ -1,31 +1,49 @@
 # Transaction Load Test History
 
-## Intent
+- Start Date: 2026-11-16
+- Status: Accepted
+- Issues: #4675
+
+## Summary
+
+The results of the transaction load test are kept per system and version, one file each, instead of being overwritten by every run. The website lets a reader pick up to two versions per system to show and compare in its chart.
+
+## Motivation
 
 The transaction load test records the version of Blaze it ran against, but each new run overwrites the result of the previous one. To follow performance improvements over time and to spot regressions, the results of several versions are kept side by side, and the website lets a reader pick which versions a chart shows.
 
-## Goals
+### Goals
 
 * Keep one result per system and release (e.g. `1.10.0`, `1.11.0`), plus optionally one newer run of a development build, named by the commit hash the build reports as its version.
 * Keep all results in the current commit. Results are never recovered from the git history, because when the testing method changes, all stored releases are re-run with the new method. So every stored result is always measured the same way, and no result carries a method marker.
 * Make it a single `make` call to run the test against any release or a development build.
 * On the website, every system's chart gets its own row of version buttons listing only the versions measured on that system. The latest version is selected by default. Up to two versions can be selected at a time.
 
-## Non-Goals
+### Non-Goals
 
 * No recovery of earlier results from the git history.
 * No automatic (CI) runs. The test stays a manual run on the system under test.
 * No history for the other load tests (patient everything, patient graph).
 
-## Approaches
+## Guide-Level Explanation
 
-1. **One file per system and version (chosen).** `data/transaction/<SYSTEM>/<version>.csv` in today's format. The chart reads all files of its system's directory and derives the version buttons from the file names. Re-running a version overwrites just that file.
-2. **One file per system with appended rows**, the existing `version` column telling the runs apart. Fewer files, but re-running a version means cutting its rows out of the middle of the file, and the `make` target can no longer name the version.
-3. **Option 1 plus a manifest** listing the versions per system with labels or dates. Gives control over order and labels, but is one more thing to keep in step with the directory, and the file names already carry everything the chart needs.
+A contributor running the load test on a system under test runs it against a release with:
 
-Option 1 was chosen.
+```sh
+make transaction SYSTEM=LEA47 VERSION=1.10.0
+```
 
-## Design
+and against a development build, the image `blaze:latest` built on that system, with:
+
+```sh
+make transaction SYSTEM=LEA47
+```
+
+The first call stores its result as `data/transaction/LEA47/1.10.0.csv`, the second as `data/transaction/LEA47/<hash>.csv`, named by the commit hash the build reports. A new development build run replaces the previous one of that system.
+
+A reader of the load testing page sees a row of version buttons above the chart of every system, with the newest version selected. Selecting a second version draws both into the same chart, the older one dashed.
+
+## Reference-Level Explanation
 
 ### Data Layout
 
@@ -60,13 +78,37 @@ A single phony target `transaction` runs the test, so it always runs, even if th
 * The text of `docs/performance/load-testing.md` keeps describing the newest run, the one selected by default. The sentence naming the commit says so and points out that up to two versions can be compared.
 * The methodology section describes the new `make` call, the data layout, the commit run rule and that all stored releases are re-run when the method changes.
 
-## Left to the Builder
+## Drawbacks
+
+* When the testing method changes, all stored releases have to be re-run on every system, three runs each.
+* Only one development build per system is kept, so two development builds can't be compared with each other.
+* Only two versions can be compared at a time.
+
+## Rationale and Alternatives
+
+1. **One file per system and version (chosen).** `data/transaction/<SYSTEM>/<version>.csv` in today's format. The chart reads all files of its system's directory and derives the version buttons from the file names. Re-running a version overwrites just that file.
+2. **One file per system with appended rows**, the existing `version` column telling the runs apart. Fewer files, but re-running a version means cutting its rows out of the middle of the file, and the `make` target can no longer name the version.
+3. **Option 1 plus a manifest** listing the versions per system with labels or dates. Gives control over order and labels, but is one more thing to keep in step with the directory, and the file names already carry everything the chart needs.
+
+Option 1 was chosen.
+
+## Prior Art
+
+None.
+
+## Unresolved Questions
+
+Left to the implementation:
 
 * Whether the versioned chart is a new component wrapping the plotting of `LineChart` or an extension of `LineChart`. The dashed line style already exists on `Curve`.
 * The name of the image environment variable of the Compose files.
 * How `make transaction` learns the commit hash of a development build, e.g. by asking the started server for its version before the first run.
 * How the version buttons look, within the existing theme.
 * Which older releases to backfill is decided when running the test. It's not part of this change.
+
+## Future Possibilities
+
+None.
 
 ## Verification
 

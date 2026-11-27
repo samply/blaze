@@ -1,12 +1,18 @@
 # OpenVEX Statements for Blaze Images
 
-Issue: #4732
+- Start Date: 2026-11-19
+- Status: Accepted
+- Issues: #4732
 
-## Intent
+## Summary
+
+Blaze publishes its analyses of vulnerabilities that can't be exploited in its images as `not_affected` statements in a single OpenVEX document in the repository. Operators pass it to Trivy or Grype to suppress these findings, the CI scan applies it as well, and a CI job checks that both scanners keep applying it.
+
+## Motivation
 
 Vulnerability scanners flag advisories of dependencies shipped in the Blaze images even when the vulnerable code can't be reached in Blaze. An example is GHSA-x4c4-68gp-vrhc, a Clojure deserialization RCE that requires `ObjectInputStream.readObject` to be called on attacker-controlled bytes, which nothing in Blaze or on its runtime classpath does. Today every operator has to repeat such an analysis or add a local ignore rule. Blaze publishes its analyses as VEX (Vulnerability Exploitability eXchange) statements instead, so scanners suppress these findings and operators can see why.
 
-## Goals
+### Goals
 
 * State in a machine-readable form that a Blaze image is `not_affected` by a vulnerability of one of its components, with a justification and the analysis behind it.
 * Suppress findings covered by such a statement in the Trivy scan of the CI, so the GitHub Security tab only shows findings that still need action.
@@ -14,7 +20,7 @@ Vulnerability scanners flag advisories of dependencies shipped in the Blaze imag
 * Make adding a statement a reviewable change of a single file.
 * Check in CI that both scanners keep applying the statements.
 
-## Non-Goals
+### Non-Goals
 
 * No `affected` statements. An exploitable vulnerability is fixed, and if it is in Blaze itself, published as a GitHub Security Advisory.
 * No automatic pickup by scanners. Operators download the document and pass it to their scanner. The following can be added later on top of the same document:
@@ -26,28 +32,20 @@ Vulnerability scanners flag advisories of dependencies shipped in the Blaze imag
 * No statements for the npm dependencies of the frontend. SvelteKit bundles them into the JavaScript of the app, so the frontend image holds no `package.json` or `node_modules` and scanners can't identify them. They're checked in the repository by osv-scanner (`modules/frontend/osv-scanner.toml`) instead.
 * No statements for vulnerabilities of the Alpine OpenSSL packages (`libssl3`, `libcrypto3`) of the frontend image for now. The Node.js process doesn't load them, but Node.js has its own OpenSSL of the same version built in, so the vulnerable code is likely still in the process. A statement would need an analysis of which OpenSSL features Node.js uses.
 
-## Approaches
+## Guide-Level Explanation
 
-### Format
+An operator scanning a Blaze image downloads the current document before each scan and passes it to the scanner:
 
-1. **OpenVEX v0.2.0 (chosen).** A small JSON format, written by hand and read by Trivy for image scans, by Grype, by Docker Scout and by vexctl. The spec is still labelled a draft and v1 is in early drafts, but v0.2.0 has been stable for years. go-vex also reads CSAF, so a later switch stays cheap.
-2. **CSAF 2.0 VEX profile.** An OASIS standard that Trivy and Grype also read, but a document needs a full product tree and publisher metadata, which is a lot of ceremony for a handful of statements. Docker Scout doesn't read it.
-3. **CycloneDX VEX.** Trivy applies CycloneDX VEX only to SBOM scans, not to image scans, and Grype doesn't read it.
-4. **`.trivyignore` plus prose in the docs.** Works for the CI only, is specific to one scanner and has no notion of a justification or of the product a statement is about.
+```sh
+curl -fsSLO https://raw.githubusercontent.com/samply/blaze/main/.vex/blaze.openvex.json
+trivy image --vex blaze.openvex.json samply/blaze:<tag>@<digest>
+```
 
-### Distribution
+Findings covered by a statement are suppressed. `--show-suppressed` lists them, and the impact statement of each links the GitHub issue with the analysis.
 
-1. **A single document in the repository, downloaded by operators (chosen).** The document on `main` is the source of truth. A new statement reaches every released image at once, and both Trivy (`--vex`) and Grype (`--vex` or `vex-documents`) read local files.
-2. **Image attestations.** See the non-goals.
-3. **Trivy VEX Hub.** Fully automatic for Trivy users passing `--vex repo`, but it needs a registration in a third-party crawler, isn't enabled by default in Trivy and doesn't help Grype. It can be added later without changing the document, see the non-goals.
+A contributor who analysed a vulnerability and found it not exploitable in Blaze adds a statement to the document, linking the GitHub issue that holds the analysis. A contributor changing code that could reach the vulnerable code of a statement revises or removes that statement.
 
-### CI Check
-
-1. **Scan a pinned release that has a finding covered by a real statement (chosen).** It tests the statements operators actually use, and the finding stays in the scanner databases because the image never changes.
-2. **A test-only document with a statement made up for a known finding.** Tests the mechanism, but not the published statements, and a document that doesn't hold an analysis must not end up in `.vex/`, where the VEX Hub crawler would publish it.
-3. **Rely on the scan of the current image.** Current images usually have no finding a statement covers, so the check would pass without testing anything.
-
-## Design
+## Reference-Level Explanation
 
 ### Document
 
@@ -160,6 +158,47 @@ A new section "Vulnerability Scanning" in `docs/deployment.md`, after "Verificat
   ```
 
 * that `--show-suppressed` lists the suppressed findings with both scanners, and that Grype can load the document on every scan via the `vex-documents` config key.
+
+## Drawbacks
+
+* Scanners don't pick up the statements automatically. Operators have to download the document and pass it to their scanner.
+* Statements are pinned to the analysed versions of a package, so every dependency upgrade that still carries a vulnerability needs a new analysis.
+* A statement can become wrong when code changes, and only review catches that.
+* Releases before Blaze 1.10.0 aren't covered.
+
+## Rationale and Alternatives
+
+### Format
+
+1. **OpenVEX v0.2.0 (chosen).** A small JSON format, written by hand and read by Trivy for image scans, by Grype, by Docker Scout and by vexctl. The spec is still labelled a draft and v1 is in early drafts, but v0.2.0 has been stable for years. go-vex also reads CSAF, so a later switch stays cheap.
+2. **CSAF 2.0 VEX profile.** An OASIS standard that Trivy and Grype also read, but a document needs a full product tree and publisher metadata, which is a lot of ceremony for a handful of statements. Docker Scout doesn't read it.
+3. **CycloneDX VEX.** Trivy applies CycloneDX VEX only to SBOM scans, not to image scans, and Grype doesn't read it.
+4. **`.trivyignore` plus prose in the docs.** Works for the CI only, is specific to one scanner and has no notion of a justification or of the product a statement is about.
+
+### Distribution
+
+1. **A single document in the repository, downloaded by operators (chosen).** The document on `main` is the source of truth. A new statement reaches every released image at once, and both Trivy (`--vex`) and Grype (`--vex` or `vex-documents`) read local files.
+2. **Image attestations.** See the non-goals.
+3. **Trivy VEX Hub.** Fully automatic for Trivy users passing `--vex repo`, but it needs a registration in a third-party crawler, isn't enabled by default in Trivy and doesn't help Grype. It can be added later without changing the document, see the non-goals.
+
+### CI Check
+
+1. **Scan a pinned release that has a finding covered by a real statement (chosen).** It tests the statements operators actually use, and the finding stays in the scanner databases because the image never changes.
+2. **A test-only document with a statement made up for a known finding.** Tests the mechanism, but not the published statements, and a document that doesn't hold an analysis must not end up in `.vex/`, where the VEX Hub crawler would publish it.
+3. **Rely on the scan of the current image.** Current images usually have no finding a statement covers, so the check would pass without testing anything.
+
+## Prior Art
+
+None.
+
+## Unresolved Questions
+
+None.
+
+## Future Possibilities
+
+* Registering the images in Trivy's VEX Hub and attaching VEX attestations for Docker Scout, both on top of the same document (see Non-Goals).
+* Statements for the Alpine OpenSSL packages of the frontend image, after an analysis of which OpenSSL features Node.js uses.
 
 ## Verification
 
